@@ -1,0 +1,73 @@
+import Link from 'next/link';
+import { SubscribeButton } from '@/components/billing/SubscribeButton';
+
+export default function PricingPage() {
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
+      <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-gray-100 bg-white/95 px-3 backdrop-blur">
+        <Link href="/" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100">
+          ←
+        </Link>
+        <h1 className="font-bold text-gray-900">1000냥 플랜</h1>
+      </header>
+
+      <section className="bg-gradient-to-b from-primary/10 to-white px-6 py-10 text-center">
+        <div className="text-4xl">💸</div>
+        <h2 className="mt-3 text-2xl font-extrabold text-gray-900">광고 없이 깔끔하게</h2>
+        <p className="mt-4 text-4xl font-black text-primary">월 ₩1,000</p>
+        <p className="mt-1 text-xs text-gray-500">7일 무료 체험 · 언제든 해지 가능</p>
+      </section>
+
+      <section className="px-6 pb-6">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
+              <th className="py-2 font-medium">기능</th>
+              <th className="py-2 text-center font-medium">무료</th>
+              <th className="py-2 text-center font-bold text-primary">1000냥 ✨</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            <Row name="지도 가격 정보" free pro />
+            <Row name="1km 알람" free pro />
+            <Row name="주유소 상세" free pro />
+            <Row name="배너 광고" freeText="포함" proText="없음" />
+            <Row name="전면 광고 (일 1회)" freeText="포함" proText="없음" />
+            <Row name="즐겨찾기 동기화" pro />
+            <Row name="가격 변동 푸시*" pro />
+          </tbody>
+        </table>
+        <p className="mt-2 text-[10px] text-gray-400">* 푸시 알림은 베타 단계에서 출시 예정</p>
+      </section>
+
+      <section className="mt-auto space-y-2 border-t border-gray-100 bg-gray-50 px-6 py-5 pb-[calc(20px+env(safe-area-inset-bottom))]">
+        <SubscribeButton />
+        <p className="text-center text-[11px] text-gray-500">
+          7일 무료 체험 후 매월 ₩1,000 자동결제 · 토스페이먼츠
+        </p>
+      </section>
+    </main>
+  );
+}
+
+interface RowProps {
+  name: string;
+  free?: boolean;
+  pro?: boolean;
+  freeText?: string;
+  proText?: string;
+}
+
+function Row({ name, free, pro, freeText, proText }: RowProps) {
+  return (
+    <tr>
+      <td className="py-3 text-gray-700">{name}</td>
+      <td className="py-3 text-center text-gray-500">
+        {freeText ?? (free ? '✓' : '—')}
+      </td>
+      <td className="py-3 text-center font-semibold text-primary">
+        {proText ?? (pro ? '✓' : '—')}
+      </td>
+    </tr>
+  );
+}
