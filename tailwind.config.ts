@@ -14,7 +14,7 @@ const config: Config = {
         expensive: '#DC2626',
       },
       fontFamily: {
-        sans: ['Pretendard', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['var(--font-pretendard)', 'system-ui', '-apple-system', 'sans-serif'],
       },
       boxShadow: {
         sheet: '0 -8px 24px rgba(0,0,0,.12)',

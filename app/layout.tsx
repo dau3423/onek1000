@@ -1,9 +1,17 @@
 import type { Metadata, Viewport } from 'next';
+import localFont from 'next/font/local';
 import { Suspense } from 'react';
 import './globals.css';
 import { SessionProvider } from '@/components/SessionProvider';
 import { AdsenseScript } from '@/components/ads/AdsenseScript';
 import { FirebaseAnalytics } from '@/components/FirebaseAnalytics';
+
+const pretendard = localFont({
+  src: './fonts/PretendardVariable.woff2',
+  display: 'swap',
+  variable: '--font-pretendard',
+  weight: '45 920',
+});
 
 export const metadata: Metadata = {
   title: '1000냥 주유소 - 내 주변 최저가 주유소',
@@ -36,7 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={pretendard.variable}>
       <body className="h-full">
         <SessionProvider>
           {children}
