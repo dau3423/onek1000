@@ -1,9 +1,12 @@
 # Firebase App Hosting — Onek
-# 문서: https://firebase.google.com/docs/app-hosting/configure
+# https://firebase.google.com/docs/app-hosting/configure
 #
-# - runConfig: 런타임 리소스 (CPU/메모리/동시성)
-# - env:       빌드/런타임 환경변수. 비밀값은 GCP Secret Manager에 저장 후 secret: 으로 참조
-#              ※ apphosting.yaml은 커밋되므로 secret 키 자체를 여기 적지 말 것
+# 규칙:
+#   - 'value:'에 빈 문자열을 두면 Firebase 파서가 invalid로 판단함.
+#     → 값이 없는 항목은 주석 처리하거나 placeholder 값 사용.
+#   - 'secret:'으로 참조하는 시크릿은 사전에 등록되어 있어야 함:
+#     firebase apphosting:secrets:set <NAME>
+#     firebase apphosting:secrets:grantaccess <NAME> --backend onek1000
 
 runConfig:
   cpu: 1
@@ -13,101 +16,155 @@ runConfig:
   concurrency: 80
 
 env:
-  # ─── 공개 가능 (NEXT_PUBLIC_*) ───
+  # ─── Kakao Map (공개 가능) ───
   - variable: NEXT_PUBLIC_KAKAO_MAP_KEY
     value: "1023989d81f2656bd93d8ce80e1f4814"
     availability:
       - BUILD
       - RUNTIME
 
+  # ─── 데이터 모드 ───
   - variable: NEXT_PUBLIC_USE_MOCK
-    value: "true"           # Supabase 연결 전까지 mock. 알파 진입 시 "false"로
+    value: "true"
     availability:
       - BUILD
       - RUNTIME
 
-  # ─── Firebase Web SDK (apiKey는 클라이언트 노출 정상) ───
+  # ─── Firebase Web SDK (apiKey 노출 정상) ───
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     value: "AIzaSyAosUb8ADQwn1MkNmy47IPB_BQ1S34bvzg"
-    availability: [BUILD, RUNTIME]
+    availability:
+      - BUILD
+      - RUNTIME
+
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
     value: "onek1000.firebaseapp.com"
-    availability: [BUILD, RUNTIME]
+    availability:
+      - BUILD
+      - RUNTIME
+
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
     value: "onek1000"
-    availability: [BUILD, RUNTIME]
+    availability:
+      - BUILD
+      - RUNTIME
+
   - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
     value: "onek1000.firebasestorage.app"
-    availability: [BUILD, RUNTIME]
+    availability:
+      - BUILD
+      - RUNTIME
+
   - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
     value: "514320363056"
-    availability: [BUILD, RUNTIME]
+    availability:
+      - BUILD
+      - RUNTIME
+
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
     value: "1:514320363056:web:4b8fac630c666c3798c7f5"
-    availability: [BUILD, RUNTIME]
+    availability:
+      - BUILD
+      - RUNTIME
+
   - variable: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
     value: "G-L8YLHPS1C6"
-    availability: [BUILD, RUNTIME]
+    availability:
+      - BUILD
+      - RUNTIME
 
-  # ─── 비밀값 (GCP Secret Manager) ──
-  # 사전에 1회 등록:
-  #   firebase apphosting:secrets:set OPINET_API_KEY
-  #   firebase apphosting:secrets:set NEXTAUTH_SECRET
-  #   firebase apphosting:secrets:set CRON_SECRET
-  #   firebase apphosting:secrets:set SUPABASE_SERVICE_ROLE_KEY
-  #   firebase apphosting:secrets:set TOSS_PAYMENTS_SECRET_KEY
-  #   firebase apphosting:secrets:set VAPID_PRIVATE_KEY
-  #   firebase apphosting:secrets:set KAKAO_CLIENT_SECRET
-  #   firebase apphosting:secrets:set GOOGLE_CLIENT_SECRET
-  #   firebase apphosting:secrets:set UPSTASH_REDIS_REST_TOKEN
+  # ─── NextAuth ───
+  - variable: NEXTAUTH_URL
+    value: "https://onek1000.web.app"
+    availability:
+      - BUILD
+      - RUNTIME
 
-  - variable: OPINET_API_KEY
-    secret: OPINET_API_KEY
   - variable: NEXTAUTH_SECRET
     secret: NEXTAUTH_SECRET
-  - variable: NEXTAUTH_URL
-    value: "https://onek1000.kr"   # 커스텀 도메인 연결 후 갱신
-    availability: [BUILD, RUNTIME]
+
   - variable: CRON_SECRET
     secret: CRON_SECRET
 
-  - variable: SUPABASE_SERVICE_ROLE_KEY
-    secret: SUPABASE_SERVICE_ROLE_KEY
-  - variable: NEXT_PUBLIC_SUPABASE_URL
-    value: ""
-    availability: [BUILD, RUNTIME]
-  - variable: NEXT_PUBLIC_SUPABASE_ANON_KEY
-    value: ""
-    availability: [BUILD, RUNTIME]
-
-  - variable: UPSTASH_REDIS_REST_URL
-    value: ""
-    availability: [BUILD, RUNTIME]
-  - variable: UPSTASH_REDIS_REST_TOKEN
-    secret: UPSTASH_REDIS_REST_TOKEN
-
-  - variable: KAKAO_CLIENT_ID
-    value: ""
-    availability: [BUILD, RUNTIME]
-  - variable: KAKAO_CLIENT_SECRET
-    secret: KAKAO_CLIENT_SECRET
-  - variable: GOOGLE_CLIENT_ID
-    value: ""
-    availability: [BUILD, RUNTIME]
-  - variable: GOOGLE_CLIENT_SECRET
-    secret: GOOGLE_CLIENT_SECRET
-
-  - variable: NEXT_PUBLIC_TOSS_PAYMENTS_CLIENT_KEY
-    value: ""
-    availability: [BUILD, RUNTIME]
-  - variable: TOSS_PAYMENTS_SECRET_KEY
-    secret: TOSS_PAYMENTS_SECRET_KEY
-
-  - variable: NEXT_PUBLIC_VAPID_PUBLIC_KEY
-    value: ""
-    availability: [BUILD, RUNTIME]
-  - variable: VAPID_PRIVATE_KEY
-    secret: VAPID_PRIVATE_KEY
   - variable: VAPID_SUBJECT
     value: "mailto:admin@onek1000.kr"
-    availability: [BUILD, RUNTIME]
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # ─── 아래는 발급/등록되는 대로 주석 해제 ───
+  #
+  # firebase apphosting:secrets:set OPINET_API_KEY 후:
+  # - variable: OPINET_API_KEY
+  #   secret: OPINET_API_KEY
+  #
+  # Supabase 발급 후:
+  # - variable: NEXT_PUBLIC_SUPABASE_URL
+  #   value: "https://xxx.supabase.co"
+  #   availability:
+  #     - BUILD
+  #     - RUNTIME
+  # - variable: NEXT_PUBLIC_SUPABASE_ANON_KEY
+  #   value: "eyJ..."
+  #   availability:
+  #     - BUILD
+  #     - RUNTIME
+  # - variable: SUPABASE_SERVICE_ROLE_KEY
+  #   secret: SUPABASE_SERVICE_ROLE_KEY
+  #
+  # Upstash 발급 후:
+  # - variable: UPSTASH_REDIS_REST_URL
+  #   value: "https://xxx.upstash.io"
+  #   availability:
+  #     - BUILD
+  #     - RUNTIME
+  # - variable: UPSTASH_REDIS_REST_TOKEN
+  #   secret: UPSTASH_REDIS_REST_TOKEN
+  #
+  # 카카오 로그인:
+  # - variable: KAKAO_CLIENT_ID
+  #   value: "..."
+  #   availability:
+  #     - BUILD
+  #     - RUNTIME
+  # - variable: KAKAO_CLIENT_SECRET
+  #   secret: KAKAO_CLIENT_SECRET
+  #
+  # 구글 로그인:
+  # - variable: GOOGLE_CLIENT_ID
+  #   value: "..."
+  #   availability:
+  #     - BUILD
+  #     - RUNTIME
+  # - variable: GOOGLE_CLIENT_SECRET
+  #   secret: GOOGLE_CLIENT_SECRET
+  #
+  # 토스페이먼츠:
+  # - variable: NEXT_PUBLIC_TOSS_PAYMENTS_CLIENT_KEY
+  #   value: "test_ck_..."
+  #   availability:
+  #     - BUILD
+  #     - RUNTIME
+  # - variable: TOSS_PAYMENTS_SECRET_KEY
+  #   secret: TOSS_PAYMENTS_SECRET_KEY
+  #
+  # Web Push (VAPID):
+  # - variable: NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  #   value: "..."
+  #   availability:
+  #     - BUILD
+  #     - RUNTIME
+  # - variable: VAPID_PRIVATE_KEY
+  #   secret: VAPID_PRIVATE_KEY
+  #
+  # AdSense:
+  # - variable: NEXT_PUBLIC_ADSENSE_CLIENT
+  #   value: "ca-pub-..."
+  #   availability:
+  #     - BUILD
+  #     - RUNTIME
+  # - variable: NEXT_PUBLIC_ADSENSE_BANNER_SLOT
+  #   value: "1234567890"
+  #   availability:
+  #     - BUILD
+  #     - RUNTIME
