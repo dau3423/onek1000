@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Onek 1k logo maskable">
+  <!-- Maskable: safe-zone은 가운데 80% (= 102~410 영역). 시스템이 가장자리를 자르므로 풀배경 채우고 글자는 안쪽에 -->
+  <rect width="512" height="512" fill="#FF6B00"/>
+  <text x="256" y="320" font-family="Pretendard, system-ui, -apple-system, sans-serif" font-size="200" font-weight="900" fill="white" text-anchor="middle">1k</text>
+</svg>

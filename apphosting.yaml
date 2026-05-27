@@ -74,8 +74,9 @@ env:
       - RUNTIME
 
   # ─── NextAuth ───
+  # 커스텀 도메인 onek1000.kr 연결 후 활성화 — 도메인이 "연결됨" 상태가 되면 push
   - variable: NEXTAUTH_URL
-    value: "https://onek1000.web.app"
+    value: "https://onek1000.kr"
     availability:
       - BUILD
       - RUNTIME

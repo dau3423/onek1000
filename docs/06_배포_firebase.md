@@ -3,8 +3,11 @@
 Firebase App Hosting은 Next.js 14 App Router의 SSR + API Routes + 동적 라우트를 Cloud Run 위에서 그대로 돌려줍니다. 본 가이드는 0→배포까지 전 과정을 정리합니다.
 
 > Firebase 프로젝트 ID: `onek1000`
-> 기본 도메인: `https://onek1000.web.app`, `https://onek1000.firebaseapp.com`
+> App Hosting 기본 도메인: `https://onek1000--onek1000.<region>.hosted.app`
 > 커스텀 도메인 (예정): `https://onek1000.kr`
+>
+> ⚠️ `.web.app` / `.firebaseapp.com`은 **옛 Firebase Hosting 전용** 도메인이며,
+>    App Hosting에는 자동 연결되지 않습니다. 무료 도메인은 `.hosted.app`을 그대로 사용.
 
 ---
 
@@ -33,7 +36,7 @@ firebase projects:list
 3. GitHub 리포 연결 → 이 리포 선택
 4. **Branch**: `main` (또는 배포할 브랜치)
 5. **Root directory**: `/` (기본값)
-6. **Backend ID**: `onek-web` (이 리포의 `firebase.json`과 동일하게)
+6. **Backend ID**: `onek1000` (이 리포의 `firebase.json`과 동일하게)
 7. **Region**: `asia-northeast3` 한국 region이 보이면 선택, 없으면 `us-central1`
 8. 생성 후 자동 첫 빌드가 시작됨 (5~10분)
 
@@ -72,14 +75,13 @@ firebase apphosting:secrets:set VAPID_PRIVATE_KEY
 [카카오 디벨로퍼스 콘솔](https://developers.kakao.com) → 앱 → **앱 설정 → 플랫폼 → Web** 에 다음 도메인 추가:
 
 ```
-http://localhost:3000               (개발)
-https://onek1000.web.app            (Firebase 기본)
-https://onek1000.firebaseapp.com    (Firebase 기본)
-https://<branch>--onek-web-<hash>.<region>.hosted.app   (PR preview 채널, 와일드카드 미지원 → 도메인이 새로 생길 때마다 추가)
-https://onek1000.kr                 (커스텀 도메인)
+http://localhost:3000                                       (개발)
+https://onek1000--onek1000.asia-southeast1.hosted.app       (App Hosting 운영)
+https://<branch>--onek1000-<hash>.asia-southeast1.hosted.app  (PR preview, 새 도메인 생길 때마다 추가)
+https://onek1000.kr                                          (커스텀 도메인)
 ```
 
-> 카카오 디벨로퍼스는 와일드카드 도메인 미지원이라 미리보기 채널 도메인은 필요할 때마다 추가해야 합니다. PR 머지로 main에 들어가면 안정 도메인 1개로 충분.
+> 카카오 디벨로퍼스는 와일드카드 도메인 미지원이라 미리보기 채널 도메인은 필요할 때마다 추가해야 합니다. main 안정 도메인은 위 4번째 줄 1개로 충분.
 
 ---
 
@@ -91,7 +93,7 @@ https://onek1000.kr                 (커스텀 도메인)
 **카카오 디벨로퍼스 → 제품 설정 → 카카오 로그인 → Redirect URI**
 ```
 https://onek1000.kr/api/auth/callback/kakao
-https://onek1000.web.app/api/auth/callback/kakao
+https://onek1000--onek1000.asia-southeast1.hosted.app/api/auth/callback/kakao
 http://localhost:3000/api/auth/callback/kakao
 ```
 
@@ -99,7 +101,7 @@ http://localhost:3000/api/auth/callback/kakao
 **GCP Console → API 및 서비스 → 사용자 인증 정보 → OAuth 2.0 클라이언트 ID → 승인된 리디렉션 URI**
 ```
 https://onek1000.kr/api/auth/callback/google
-https://onek1000.web.app/api/auth/callback/google
+https://onek1000--onek1000.asia-southeast1.hosted.app/api/auth/callback/google
 http://localhost:3000/api/auth/callback/google
 ```
 
