@@ -68,6 +68,19 @@ firebase apphosting:secrets:set VAPID_PRIVATE_KEY
 
 **공개 환경변수** (Supabase URL, AnonKey, Kakao Client ID 등)는 `apphosting.yaml`의 `value:`에 직접 적습니다. 발급받는 대로 PR에 함께 커밋.
 
+### 2-1. Supabase Storage 버킷 생성 — 리뷰 사진용
+
+리뷰 사진은 Supabase Storage의 `review-photos` 버킷에 올라갑니다. **콘솔에서 1회 설정**:
+
+1. Supabase 콘솔 → **Storage** → **New bucket**
+2. Name: `review-photos`
+3. **Public: OFF** (private 버킷, 서명 URL로만 접근)
+4. File size limit: `5 MB`
+5. Allowed MIME types: `image/jpeg, image/png, image/webp, image/heic, image/heif`
+6. **Save**
+
+서비스 롤 키로만 업로드/삭제하므로 RLS 정책은 기본값 그대로 두어도 됩니다 (서비스 키는 RLS 우회).
+
 ---
 
 ## 3. 카카오 디벨로퍼스 도메인 추가 (필수)

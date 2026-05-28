@@ -35,6 +35,10 @@ npm run dev
 supabase/migrations/0001_init.sql                  # 기본 스키마
 supabase/migrations/0002_lat_lng_and_search.sql    # lat/lng, 검색, 푸시, 경로 RPC
 supabase/migrations/0003_history_rpc.sql           # 가격 이력 RPC
+supabase/migrations/0004_reviews.sql               # 리뷰 + 별점 + 사진
+
+# Storage 콘솔에서 1회: 버킷 'review-photos' 생성 (Public OFF, 5MB, image/*)
+# 자세히 → docs/06_배포_firebase.md 의 2-1
 
 # Project Settings → API 에서 URL / service_role 키 복사
 NEXT_PUBLIC_USE_MOCK=false
@@ -152,6 +156,7 @@ curl -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/internal/
 - [x] FCM/Web Push (VAPID) + Service Worker
 - [x] 즐겨찾기 가격 변동 감지 → 프리미엄 사용자 푸시 (Cron 내장)
 - [x] k6 부하 테스트 스크립트 (`loadtest/bbox.js`)
+- [x] 주유소 리뷰 (별점 1-5, 500자, 사진 최대 5장) — `0004_reviews.sql` + `review-photos` 버킷
 
 ## 정식 출시 단계 (다음)
 

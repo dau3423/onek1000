@@ -25,10 +25,26 @@ env:
 
   # ─── 데이터 모드 ───
   - variable: NEXT_PUBLIC_USE_MOCK
-    value: "true"
+    value: "false"
     availability:
       - BUILD
       - RUNTIME
+
+  # ─── Supabase ───
+  - variable: NEXT_PUBLIC_SUPABASE_URL
+    value: "https://qaszteoadtykuzjzqukm.supabase.co"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_SUPABASE_ANON_KEY
+    value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhc3p0ZW9hZHR5a3V6anpxdWttIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NzA3MzEsImV4cCI6MjA5NTU0NjczMX0.REkhfvPicGWLAGYyiQhy_CPgSrtr8XEImvZxAxerv2Q"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: SUPABASE_SERVICE_ROLE_KEY
+    secret: SUPABASE_SERVICE_ROLE_KEY
 
   # ─── Firebase Web SDK (apiKey 노출 정상) ───
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY

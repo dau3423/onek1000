@@ -5,6 +5,7 @@ import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL, type ProductCode } from '@/typ
 import { InterstitialAd } from '@/components/ads/InterstitialAd';
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { PriceHistoryChart } from '@/components/charts/PriceHistoryChart';
+import { ReviewSection } from '@/components/reviews/ReviewSection';
 
 interface Props { params: { id: string } }
 
@@ -73,6 +74,9 @@ export default async function StationDetailPage({ params }: Props) {
         <h2 className="mb-2 text-sm font-bold text-gray-800">휘발유 30일 추이</h2>
         <PriceHistoryChart stationId={detail.id} product="B027" />
       </section>
+
+      {/* 리뷰 */}
+      <ReviewSection stationId={detail.id} />
 
       {/* 부가서비스 */}
       <section className="border-t border-gray-100 px-5 py-4">
