@@ -13,7 +13,8 @@ export function Header() {
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary font-black text-white">
           1k
         </div>
-        <span className="font-bold text-gray-900">1000냥 주유소</span>
+        {/* 모바일은 1k 로고만, sm(640px) 이상에서 텍스트 노출 */}
+        <span className="hidden font-bold text-gray-900 sm:inline">1000냥 주유소</span>
       </Link>
 
       <div className="flex items-center gap-1.5">

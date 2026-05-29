@@ -22,13 +22,17 @@ function SignInInner() {
           onClick={() => signIn('kakao', { callbackUrl })}
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FEE500] py-3.5 font-bold text-[#191919] hover:opacity-90"
         >
-          <span>💬</span> 카카오로 시작하기
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/kakao.png" alt="" width={20} height={20} className="h-5 w-5 object-contain" />
+          카카오로 시작하기
         </button>
         <button
           onClick={() => signIn('google', { callbackUrl })}
           className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-3.5 font-semibold text-gray-700 hover:bg-gray-50"
         >
-          <span>🔵</span> 구글로 시작하기
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/google.png" alt="" width={20} height={20} className="h-5 w-5 object-contain" />
+          구글로 시작하기
         </button>
       </div>
 
