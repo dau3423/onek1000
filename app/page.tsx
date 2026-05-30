@@ -9,6 +9,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { BannerAd } from '@/components/ads/BannerAd';
 import { RadiusAlert } from '@/components/alert/RadiusAlert';
 import { NaviConfirm } from '@/components/alert/NaviConfirm';
+import { ProductSync } from '@/components/map/ProductSync';
 import { useMapStore, getInitialMapView, type MapView } from '@/stores/map';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { quantize } from '@/lib/map/geo';
@@ -163,6 +164,7 @@ export default function HomePage() {
 
   return (
     <div className="relative flex h-dvh flex-col">
+      <ProductSync />
       <Header />
       <FilterBar />
 

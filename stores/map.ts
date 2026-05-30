@@ -41,7 +41,11 @@ function writeLastView(v: MapView | null) {
 
 interface MapState {
   product: ProductCode;
+  /** 사용자가 필터바에서 직접 유종을 바꿨는지 — 차량 기본 유종 자동 선택보다 우선 */
+  productUserSet: boolean;
   setProduct: (p: ProductCode) => void;
+  /** 차량 기본 유종으로 초기화(사용자가 직접 바꾼 적 없을 때만 적용) */
+  initProductFromVehicle: (p: ProductCode) => void;
 
   selfOnly: boolean;
   toggleSelfOnly: () => void;
@@ -60,7 +64,10 @@ interface MapState {
 
 export const useMapStore = create<MapState>((set) => ({
   product: 'B027',
-  setProduct: (p) => set({ product: p, alertDismissed: false }),
+  productUserSet: false,
+  setProduct: (p) => set({ product: p, productUserSet: true, alertDismissed: false }),
+  initProductFromVehicle: (p) =>
+    set((s) => (s.productUserSet ? {} : { product: p, alertDismissed: false })),
 
   selfOnly: false,
   toggleSelfOnly: () => set((s) => ({ selfOnly: !s.selfOnly })),

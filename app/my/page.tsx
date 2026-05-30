@@ -110,6 +110,22 @@ export default async function MyPage() {
       </section>
 
       <section className="border-t border-gray-100 px-5 py-5">
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">내 차량</h2>
+        <Link href="/my/vehicles" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
+          <span className="text-sm text-gray-700">🚗 차량 / 기름 종류</span>
+          <span className="text-sm text-primary">관리 →</span>
+        </Link>
+      </section>
+
+      <section className="border-t border-gray-100 px-5 py-5">
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">관심 지역</h2>
+        <Link href="/my/interest-regions" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
+          <span className="text-sm text-gray-700">📍 관심 지역 최저가 알림</span>
+          <span className="text-sm text-primary">관리 →</span>
+        </Link>
+      </section>
+
+      <section className="border-t border-gray-100 px-5 py-5">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">알림</h2>
         <EnablePushButton />
       </section>

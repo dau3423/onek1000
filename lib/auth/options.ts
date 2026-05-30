@@ -5,7 +5,7 @@ import type { NextAuthOptions } from 'next-auth';
 import KakaoProvider from 'next-auth/providers/kakao';
 import GoogleProvider from 'next-auth/providers/google';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
-import { getPremiumStatus } from './session';
+import { getPremiumStatus, getDefaultProduct } from './session';
 
 const PREMIUM_CACHE_MS = 60_000;
 
@@ -71,6 +71,8 @@ export const authOptions: NextAuthOptions = {
         token.isPremium = status.isPremium;
         token.subStatus = status.status;
         token.premiumCheckedAt = now;
+        // 기본 차량 유종도 같은 캐시 주기로 갱신(없으면 undefined → 클라이언트 B027 유지)
+        token.defaultProduct = (await getDefaultProduct(token.userId)) ?? undefined;
       }
       return token;
     },
@@ -79,6 +81,7 @@ export const authOptions: NextAuthOptions = {
       if (token.userId) session.user.id = token.userId;
       session.user.isPremium = Boolean(token.isPremium);
       session.user.subStatus = token.subStatus ?? 'none';
+      session.user.defaultProduct = token.defaultProduct;
       return session;
     },
   },

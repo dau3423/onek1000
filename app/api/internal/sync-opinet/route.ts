@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { redis, keys } from '@/lib/cache/redis';
 import { sendPush } from '@/lib/push/webpush';
+import { queryRegionTop10 } from '@/lib/db/queries';
 import { katecToWgs84 } from '@/lib/map/katec';
 import { PRODUCT_LABEL, BRAND_LABEL, type BrandCode, type SidoCode, type ProductCode } from '@/types/station';
 
@@ -192,10 +193,106 @@ export async function POST(req: Request) {
     }
   }
 
+  // ─── 관심 지역 최저가 TOP10 변동 감지 → 푸시 ───
+  // 사용자가 등록한 고정 좌표(집/회사) 반경 내 "최저가 TOP10"(가격 오름차순)을 산출한다.
+  // 이 앱의 목적은 "가장 저렴한 주유소 찾기"이므로 TOP10을 알림 기준으로 삼는다.
+  // 통지 조건(아래 중 하나):
+  //   1) 최초 산출(직전 통지 이력 없음)
+  //   2) 최저가(1위)가 REGION_MIN_DROP 이상 하락
+  //   3) TOP10에 "새 주유소가 진입"(직전 집합에 없던 id가 등장)
+  // 스팸 방지: 직전 통지 상태(최저가 + TOP10 집합)와 비교 + 지역당 쿨다운(6h) 내 재발송 금지.
+  const REGION_MIN_DROP = 30;                         // 30원/L 이상 하락 시 통지
+  const REGION_COOLDOWN_MS = 6 * 60 * 60 * 1000;      // 지역당 6시간 쿨다운
+  let regionPushSent = 0;
+  let regionPushFailed = 0;
+
+  if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    try {
+      // 푸시 구독이 있는 사용자만 대상 (구독 없으면 무의미)
+      const { data: subRows } = await sb
+        .from('push_subscriptions')
+        .select('user_id, id, endpoint, p256dh, auth');
+      const subsByUser = new Map<string, Array<{ id: number; endpoint: string; p256dh: string; auth: string }>>();
+      for (const s of subRows ?? []) {
+        const arr = subsByUser.get(s.user_id) ?? [];
+        arr.push({ id: s.id, endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth });
+        subsByUser.set(s.user_id, arr);
+      }
+
+      if (subsByUser.size > 0) {
+        // 푸시 구독이 있는 사용자의 관심 지역만 배치 조회 (사용자×지역 N+1 회피)
+        const userIds = [...subsByUser.keys()];
+        const { data: regions } = await sb
+          .from('interest_regions')
+          .select('id, user_id, name, lat, lng, radius_m, product, last_notified_price, last_notified_station_id, last_notified_station_ids, last_notified_at')
+          .in('user_id', userIds);
+
+        const nowMs = Date.now();
+        for (const reg of regions ?? []) {
+          const subs = subsByUser.get(reg.user_id);
+          if (!subs || subs.length === 0) continue;
+
+          // 쿨다운: 최근 통지 후 일정 시간 내면 skip
+          if (reg.last_notified_at && nowMs - new Date(reg.last_notified_at).getTime() < REGION_COOLDOWN_MS) continue;
+
+          const top10 = await queryRegionTop10(reg.lat, reg.lng, reg.radius_m, reg.product as ProductCode);
+          if (top10.length === 0) continue;
+
+          const lowest = top10[0];
+          const curIds = top10.map((t) => t.stationId);
+
+          const prevPrice = reg.last_notified_price as number | null;
+          const prevIds = (reg.last_notified_station_ids as string[] | null) ?? [];
+          const prevIdSet = new Set(prevIds);
+
+          const firstTime = prevPrice == null;
+          const priceDropped = prevPrice != null && prevPrice - lowest.price >= REGION_MIN_DROP;
+          // 직전 TOP10 집합에 없던 주유소가 새로 진입했는가
+          const newEntry = prevIds.length > 0 && curIds.some((id) => !prevIdSet.has(id));
+          if (!firstTime && !priceDropped && !newEntry) continue;
+
+          const extra = top10.length > 1 ? ` 외 TOP${top10.length}` : '';
+          const payload = {
+            title: `📍 ${reg.name} 최저가`,
+            body: `${PRODUCT_LABEL[reg.product as ProductCode] ?? reg.product} ₩${lowest.price.toLocaleString()} (${lowest.stationName})${extra}`,
+            url: `/station/${lowest.stationId}`,
+            tag: `region-${reg.id}`,
+          };
+
+          let delivered = false;
+          for (const sub of subs) {
+            const r = await sendPush(
+              { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+              payload,
+            );
+            if (r.ok) { regionPushSent++; delivered = true; }
+            else {
+              regionPushFailed++;
+              if (r.gone) await sb.from('push_subscriptions').delete().eq('id', sub.id);
+            }
+          }
+
+          // 발송 성공 시에만 통지 상태 갱신 (실패 시 다음 cron에서 재시도)
+          if (delivered) {
+            await sb.from('interest_regions').update({
+              last_notified_price: lowest.price,
+              last_notified_station_id: lowest.stationId,
+              last_notified_station_ids: curIds,
+              last_notified_at: new Date().toISOString(),
+            }).eq('id', reg.id);
+          }
+        }
+      }
+    } catch (e) {
+      fetchErrors.push(`region push: ${(e as Error).message}`);
+    }
+  }
+
   return NextResponse.json({
     ok: true, asOf: new Date().toISOString(),
     sidos: SIDOS.length, products: PRODUCTS.length,
     stationUpserts, priceUpserts, pushSent, pushFailed,
+    regionPushSent, regionPushFailed,
     fetchErrors: fetchErrors.length ? fetchErrors : undefined,
   });
 }

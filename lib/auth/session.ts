@@ -3,6 +3,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from './options';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
+import { PRODUCT_LABEL, type ProductCode } from '@/types/station';
 
 export async function getSessionUser() {
   const session = await getServerSession(authOptions);
@@ -34,4 +35,21 @@ export async function getPremiumStatus(userId?: string): Promise<PremiumStatus> 
     status: data.status as PremiumStatus['status'],
     periodEnd: periodEnd ?? undefined,
   };
+}
+
+/**
+ * 사용자의 기본 차량 유종 조회 — 앱 기본 유종 자동 선택에 사용.
+ * 기본 차량이 없으면 null(클라이언트는 기존 B027 유지).
+ */
+export async function getDefaultProduct(userId?: string): Promise<ProductCode | null> {
+  if (!userId || !isSupabaseConfigured()) return null;
+  const sb = getSupabase();
+  const { data } = await sb
+    .from('vehicles')
+    .select('fuel')
+    .eq('user_id', userId)
+    .eq('is_default', true)
+    .maybeSingle();
+  const fuel = data?.fuel as string | undefined;
+  return fuel && fuel in PRODUCT_LABEL ? (fuel as ProductCode) : null;
 }

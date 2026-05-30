@@ -62,6 +62,39 @@ export async function queryStationsByRadius(
   }));
 }
 
+/** 관심 지역 최저가 TOP10 1건 */
+export interface RegionTopRow {
+  stationId: string;
+  stationName: string;
+  price: number;
+  rank: number;
+}
+
+/**
+ * 반경 내 해당 유종 최저가 TOP10(가격 오름차순) 조회 — 관심 지역 변동 감지용.
+ * 이 앱의 목적은 "가장 저렴한 주유소 찾기"이므로 가격이 싼 순서대로 상위 10건을 반환한다.
+ * Supabase 미설정 시 mock 폴백.
+ */
+export async function queryRegionTop10(
+  lat: number, lng: number, radiusM: number, product: ProductCode,
+): Promise<RegionTopRow[]> {
+  if (!isSupabaseConfigured()) {
+    return getMockStations(product)
+      .map((s) => ({ ...s, distance: distanceMeters(lat, lng, s.lat, s.lng) }))
+      .filter((s) => (s.distance ?? Infinity) <= radiusM)
+      .sort((a, b) => a.price - b.price || (a.distance ?? 0) - (b.distance ?? 0))
+      .slice(0, 10)
+      .map((s, i) => ({ stationId: s.id, stationName: s.name, price: s.price, rank: i + 1 }));
+  }
+  const sb = getSupabase();
+  const { data, error } = await sb.rpc('rpc_region_top10', {
+    p_lat: lat, p_lng: lng, p_radius_m: radiusM, p_product: product,
+  });
+  if (error) throw new Error(`region top10 query failed: ${error.message}`);
+  return (data as Array<{ station_id: string; station_name: string; price: number; rank: number }> ?? [])
+    .map((r) => ({ stationId: r.station_id, stationName: r.station_name, price: r.price, rank: r.rank }));
+}
+
 export async function queryStationDetail(id: string) {
   if (!isSupabaseConfigured()) return getMockStationDetail(id);
   const sb = getSupabase();
