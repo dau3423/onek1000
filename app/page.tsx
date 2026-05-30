@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/ui/Header';
@@ -10,8 +11,10 @@ import { BannerAd } from '@/components/ads/BannerAd';
 import { RadiusAlert } from '@/components/alert/RadiusAlert';
 import { NaviConfirm } from '@/components/alert/NaviConfirm';
 import { ProductSync } from '@/components/map/ProductSync';
+import { StationPopup } from '@/components/map/StationPopup';
 import { useMapStore, getInitialMapView, type MapView } from '@/stores/map';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { quantize } from '@/lib/map/geo';
 import type { BboxResponse, RadiusResponse, StationWithPrice, NationalTop10Item, NationalTop10Response } from '@/types/station';
 
@@ -28,7 +31,7 @@ const NEARBY_LIMIT = 20; // 반경 응답 최대 개수 (5km TOP10 + 1km 알람 
 
 export default function HomePage() {
   const router = useRouter();
-  const { product, selfOnly, alertDismissed, dismissAlert, resetAlert, setLastView } = useMapStore();
+  const { product, alertDismissed, dismissAlert, resetAlert, setLastView } = useMapStore();
 
   // 마운트 시점에 1회 고정: 직전에 보던 지도 시점(상세 왕복/새로고침 복원).
   // 있으면 그 시점을 초기값으로 쓰고, 자동 위치 센터링을 억제한다.
@@ -71,6 +74,25 @@ export default function HomePage() {
 
   // 길안내 확인 모달 대상
   const [naviTarget, setNaviTarget] = useState<StationWithPrice | null>(null);
+
+  // PC(데스크톱) 판별: lg(1024px) 이상. 마운트 후 클라이언트에서 판별(SSR/CSR 일관성).
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  // PC에서 마커 클릭 시 노출할 정보 카드 팝업 대상 (모바일은 사용 안 함)
+  const [popupStation, setPopupStation] = useState<StationWithPrice | null>(null);
+
+  // 마커 클릭 동작 분기:
+  //  - PC: 상세 페이지로 이동하지 않고 요약 정보 카드(팝업)를 띄운다.
+  //  - 모바일: 기존 동작 유지 — 상세 페이지로 이동.
+  // 일반 마커와 전국 TOP10 메달 마커 모두 onMarkerClick을 경유하므로 동일하게 적용된다.
+  function handleMarkerClick(s: StationWithPrice) {
+    if (isDesktop) setPopupStation(s);
+    else router.push(`/station/${s.id}`);
+  }
+
+  // 팝업이 열린 채로 뷰포트가 모바일 폭으로 줄면 팝업을 닫는다(분기 일관성).
+  useEffect(() => {
+    if (!isDesktop && popupStation) setPopupStation(null);
+  }, [isDesktop, popupStation]);
 
   // bbox 변경 시 stations 조회
   useEffect(() => {
@@ -115,10 +137,9 @@ export default function HomePage() {
       .then((data) => {
         // 오류 응답({error})이나 예기치 못한 형태로 stations가 비어도 마커 렌더가 깨지지 않도록 방어
         const list = Array.isArray(data?.stations) ? data.stations : [];
-        const filtered = selfOnly ? list.filter((s) => s.isSelf) : list;
-        setStations(filtered);
-        if (filtered.length) {
-          const avg = Math.round(filtered.reduce((s, x) => s + x.price, 0) / filtered.length);
+        setStations(list);
+        if (list.length) {
+          const avg = Math.round(list.reduce((s, x) => s + x.price, 0) / list.length);
           setAveragePrice(avg);
         }
       })
@@ -208,7 +229,7 @@ export default function HomePage() {
           }}
           onViewChange={setLastView}
           onUserPan={() => setFollow(false)}
-          onMarkerClick={(s) => router.push(`/station/${s.id}`)}
+          onMarkerClick={handleMarkerClick}
         />
 
         {/* 내 위치 / 따라가기 버튼 — 누르면 따라가기 ON(위치 자동 추적), 다시 누르면 즉시 내 위치로 재이동 */}
@@ -242,7 +263,14 @@ export default function HomePage() {
             ? '🚫'
             : geo.status === 'locating'
               ? '⏳'
-              : follow ? '🧭' : '📍'}
+              : (
+                <Image
+                  src="/icons/icon_gps.png"
+                  alt={follow ? '따라가기 모드 켜짐' : '내 위치'}
+                  width={22}
+                  height={22}
+                />
+              )}
         </button>
 
         {/* 1km 알람 */}
@@ -270,6 +298,23 @@ export default function HomePage() {
           onNavigate={(s) => setNaviTarget(s)}
         />
       </div>
+
+      {/* PC: 마커 클릭 시 요약 정보 카드 팝업 (모바일은 상세 페이지로 직접 이동) */}
+      {popupStation && (
+        <StationPopup
+          station={popupStation}
+          onClose={() => setPopupStation(null)}
+          onDetail={() => {
+            const id = popupStation.id;
+            setPopupStation(null);
+            router.push(`/station/${id}`);
+          }}
+          onNavigate={() => {
+            setNaviTarget(popupStation);
+            setPopupStation(null);
+          }}
+        />
+      )}
 
       {/* 길안내 확인 모달 → 카카오내비 실행 */}
       {naviTarget && (

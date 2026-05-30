@@ -47,9 +47,6 @@ interface MapState {
   /** 차량 기본 유종으로 초기화(사용자가 직접 바꾼 적 없을 때만 적용) */
   initProductFromVehicle: (p: ProductCode) => void;
 
-  selfOnly: boolean;
-  toggleSelfOnly: () => void;
-
   selectedStationId: string | null;
   selectStation: (id: string | null) => void;
 
@@ -68,9 +65,6 @@ export const useMapStore = create<MapState>((set) => ({
   setProduct: (p) => set({ product: p, productUserSet: true, alertDismissed: false }),
   initProductFromVehicle: (p) =>
     set((s) => (s.productUserSet ? {} : { product: p, alertDismissed: false })),
-
-  selfOnly: false,
-  toggleSelfOnly: () => set((s) => ({ selfOnly: !s.selfOnly })),
 
   selectedStationId: null,
   selectStation: (id) => set({ selectedStationId: id }),

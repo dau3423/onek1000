@@ -39,14 +39,6 @@ export function Header() {
         >
           <Image src="/icons/icon_run.png" alt="" width={26} height={26} />
         </Link>
-        {!data?.user?.isPremium && (
-          <Link
-            href="/pricing"
-            className="rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-white hover:bg-primary-dark"
-          >
-            ₩1,000 광고 OFF
-          </Link>
-        )}
         <Link
           href={signedIn ? '/my' : '/auth/sign-in'}
           className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-gray-100"
