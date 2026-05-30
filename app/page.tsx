@@ -9,7 +9,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { BannerAd } from '@/components/ads/BannerAd';
 import { RadiusAlert } from '@/components/alert/RadiusAlert';
 import { NaviConfirm } from '@/components/alert/NaviConfirm';
-import { useMapStore } from '@/stores/map';
+import { useMapStore, getInitialMapView, type MapView } from '@/stores/map';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { quantize } from '@/lib/map/geo';
 import type { BboxResponse, RadiusResponse, StationWithPrice } from '@/types/station';
@@ -27,7 +27,11 @@ const NEARBY_LIMIT = 20; // 반경 응답 최대 개수 (5km TOP10 + 1km 알람 
 
 export default function HomePage() {
   const router = useRouter();
-  const { product, selfOnly, alertDismissed, dismissAlert, resetAlert } = useMapStore();
+  const { product, selfOnly, alertDismissed, dismissAlert, resetAlert, setLastView } = useMapStore();
+
+  // 마운트 시점에 1회 고정: 직전에 보던 지도 시점(상세 왕복/새로고침 복원).
+  // 있으면 그 시점을 초기값으로 쓰고, 자동 위치 센터링을 억제한다.
+  const [restoredView] = useState<MapView | null>(() => getInitialMapView());
 
   // 지도 영역 (bbox) 내 주유소
   const [stations, setStations] = useState<StationWithPrice[]>([]);
@@ -38,12 +42,25 @@ export default function HomePage() {
   // 위치 기반 반경 조회 (내 주변 TOP10 + 1km 알람)
   const [geoEnabled, setGeoEnabled] = useState(false);
   const geo = useGeolocation(geoEnabled);
+
+  // 첫 신규 진입 시 자동으로 위치 추적 시작 (FR-2.1).
+  // 복원된 시점(restoredView)이 있으면 = 상세에서 돌아왔거나 새로고침한 경우이므로
+  // 자동 요청하지 않고 복원 시점을 유지한다(사용자가 보던 위치 우선).
+  useEffect(() => {
+    if (restoredView) return;
+    setGeoEnabled(true);
+    // 권한 허용 시 watchPosition 시작 → 첫 위치 획득에서 KakaoMap이 자동 센터링.
+    // 거부/미지원이면 기존처럼 서울시청 기본 화면 유지, 버튼으로 재시도.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [radiusStations, setRadiusStations] = useState<StationWithPrice[]>([]);
   const radiusAbort = useRef<AbortController | null>(null);
   // 100m 이상 의미있는 이동에서만 재조회하기 위한 양자화 키 (FR-2.2)
   const lastRadiusKeyRef = useRef<string | null>(null);
   // 값이 바뀌면 지도가 내 위치로 이동 (버튼 재클릭마다 증가)
   const [recenterSignal, setRecenterSignal] = useState(0);
+  // 버튼을 눌렀지만 아직 좌표를 모를 때, 첫 좌표 획득 시 1회 내 위치로 이동시키기 위한 대기 플래그
+  const pendingRecenterRef = useRef(false);
 
   // 길안내 확인 모달 대상
   const [naviTarget, setNaviTarget] = useState<StationWithPrice | null>(null);
@@ -84,6 +101,15 @@ export default function HomePage() {
         if (e.name !== 'AbortError') console.error('bbox fetch fail', e);
       });
   }
+
+  // 버튼으로 내 위치를 요청했는데 아직 좌표가 없던 경우(복원 모드 등 자동 센터링이 꺼진 상황),
+  // 첫 좌표 획득 시 1회 내 위치로 이동시킨다.
+  useEffect(() => {
+    if (geo.coords && pendingRecenterRef.current) {
+      pendingRecenterRef.current = false;
+      setRecenterSignal((n) => n + 1);
+    }
+  }, [geo.coords]);
 
   // 내 위치 변경 시 반경 조회.
   // GPS가 watchPosition으로 자주 갱신되므로, 좌표를 ~110m로 양자화해
@@ -140,6 +166,9 @@ export default function HomePage() {
 
       <div className="map-container flex-1">
         <KakaoMap
+          initialCenter={restoredView ? { lat: restoredView.lat, lng: restoredView.lng } : undefined}
+          initialLevel={restoredView?.level}
+          suppressAutoCenter={!!restoredView}
           stations={stations}
           averagePrice={averagePrice}
           myLocation={myLocation}
@@ -148,6 +177,7 @@ export default function HomePage() {
             lastBoundsRef.current = b;
             fetchStations(b);
           }}
+          onViewChange={setLastView}
           onMarkerClick={(s) => router.push(`/station/${s.id}`)}
         />
 
@@ -156,9 +186,11 @@ export default function HomePage() {
           onClick={() => {
             setGeoEnabled(true);
             geo.request();
-            // 이미 위치를 알고 있으면 즉시 그 위치로 이동(재클릭). 아직 모르면
-            // 첫 위치 획득 시 KakaoMap이 자동으로 중심을 이동한다.
+            // 이미 위치를 알고 있으면 즉시 그 위치로 이동(재클릭).
+            // 아직 모르면 대기 플래그를 켜서 첫 좌표 획득 시 이동시킨다
+            // (복원 모드에선 자동 센터링이 꺼져 있으므로 이 경로로 이동을 보장).
             if (geo.coords) setRecenterSignal((n) => n + 1);
+            else pendingRecenterRef.current = true;
           }}
           className="absolute right-3 top-[calc(56px+44px+12px+env(safe-area-inset-top))] z-20 flex h-11 w-11 items-center justify-center rounded-full bg-white text-lg shadow-md hover:bg-gray-50"
           aria-label="내 위치"

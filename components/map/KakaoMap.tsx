@@ -12,11 +12,15 @@ interface Props {
   myLocation?: { lat: number; lng: number } | null;
   /** 값이 바뀔 때마다 내 위치로 지도 중심 이동 (버튼 재클릭 대응). 0이면 이동 안 함. */
   recenterSignal?: number;
+  /** true면 첫 위치 획득 시 자동 중심 이동을 하지 않는다(복원된 시점을 우선). */
+  suppressAutoCenter?: boolean;
   stations: StationWithPrice[];
   averagePrice?: number;
   onBoundsChange?: (b: {
     swLat: number; swLng: number; neLat: number; neLng: number; zoom: number;
   }) => void;
+  /** 패닝/줌이 안정될 때 현재 지도 중심/level 전달 (마지막 시점 저장용). */
+  onViewChange?: (v: { lat: number; lng: number; level: number }) => void;
   onMarkerClick?: (s: StationWithPrice) => void;
 }
 
@@ -25,9 +29,11 @@ export function KakaoMap({
   initialLevel = 5,
   myLocation,
   recenterSignal = 0,
+  suppressAutoCenter = false,
   stations,
   averagePrice = 1600,
   onBoundsChange,
+  onViewChange,
   onMarkerClick,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -36,10 +42,13 @@ export function KakaoMap({
   const myOverlayRef = useRef<kakao.maps.CustomOverlay | null>(null);
   const myCircleRef = useRef<kakao.maps.Circle | null>(null);
   // 첫 위치 획득 시 1회 자동 중심 이동 했는지 여부 (이후 watchPosition 갱신엔 패닝하지 않음)
-  const didAutoCenterRef = useRef(false);
-  // onBoundsChange는 부모에서 매번 새 함수가 들어올 수 있으므로 ref로 최신값 유지
+  // 복원된 시점이 있으면(suppressAutoCenter) 처음부터 true로 두어 자동 센터링을 막는다.
+  const didAutoCenterRef = useRef(suppressAutoCenter);
+  // onBoundsChange/onViewChange는 부모에서 매번 새 함수가 들어올 수 있으므로 ref로 최신값 유지
   const onBoundsChangeRef = useRef(onBoundsChange);
   useEffect(() => { onBoundsChangeRef.current = onBoundsChange; }, [onBoundsChange]);
+  const onViewChangeRef = useRef(onViewChange);
+  useEffect(() => { onViewChangeRef.current = onViewChange; }, [onViewChange]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,8 +76,16 @@ export function KakaoMap({
 
   function emitBounds() {
     const map = mapRef.current;
+    if (!map) return;
+
+    // 현재 중심/level을 마지막 시점으로 저장 (상세 왕복 시 복원용)
+    const center = map.getCenter();
+    onViewChangeRef.current?.({
+      lat: center.getLat(), lng: center.getLng(), level: map.getLevel(),
+    });
+
     const fn = onBoundsChangeRef.current;
-    if (!map || !fn) return;
+    if (!fn) return;
     const b = map.getBounds();
     const sw = b.getSouthWest();
     const ne = b.getNorthEast();
