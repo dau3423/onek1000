@@ -1,6 +1,7 @@
 'use client';
 
 import { signIn } from 'next-auth/react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
@@ -11,9 +12,14 @@ function SignInInner() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-6">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary font-black text-2xl text-white">
-        1k
-      </div>
+      <Image
+        src="/icons/app_icon.png"
+        alt="1000냥 주유소"
+        width={64}
+        height={64}
+        className="rounded-2xl"
+        priority
+      />
       <h1 className="mt-4 text-xl font-bold text-gray-900">1000냥 주유소</h1>
       <p className="mt-1 text-sm text-gray-500">소셜 계정으로 1초만에 시작</p>
 

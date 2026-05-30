@@ -14,8 +14,8 @@ export function Header() {
         <Image
           src="/icons/app_icon.png"
           alt="1000냥 주유소"
-          width={28}
-          height={28}
+          width={36}
+          height={36}
           className="rounded-lg"
           priority
         />
@@ -27,17 +27,17 @@ export function Header() {
         <Link
           href="/search"
           aria-label="검색"
-          className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100"
+          className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-gray-100"
         >
-          <Image src="/icons/icon_search.png" alt="" width={20} height={20} />
+          <Image src="/icons/icon_search.png" alt="" width={26} height={26} />
         </Link>
         <Link
           href="/route"
           aria-label="경로별 최저가"
-          className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100"
+          className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-gray-100"
           title="경로별 최저가"
         >
-          <Image src="/icons/icon_run.png" alt="" width={20} height={20} />
+          <Image src="/icons/icon_run.png" alt="" width={26} height={26} />
         </Link>
         {!data?.user?.isPremium && (
           <Link
@@ -49,16 +49,16 @@ export function Header() {
         )}
         <Link
           href={signedIn ? '/my' : '/auth/sign-in'}
-          className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100"
+          className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-gray-100"
           aria-label={signedIn ? '마이페이지' : '로그인'}
           title={data?.user?.email ?? '로그인'}
         >
           {signedIn ? (
             // 프로필 아이콘 (로그인 상태)
-            <Image src="/icons/icon_profile.png" alt="" width={22} height={22} />
+            <Image src="/icons/icon_profile.png" alt="" width={28} height={28} />
           ) : (
             // 로그인 아이콘 (비로그인)
-            <Image src="/icons/icon_login.png" alt="" width={22} height={22} />
+            <Image src="/icons/icon_login.png" alt="" width={28} height={28} />
           )}
         </Link>
       </div>
