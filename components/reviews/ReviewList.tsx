@@ -41,16 +41,28 @@ export function ReviewList({ reviews, onDeleted }: Props) {
   return (
     <>
       <ul className="divide-y divide-gray-100">
-        {reviews.map((r) => (
+        {reviews.map((r) => {
+          const displayName = r.user.nickname ?? r.user.name ?? '익명';
+          return (
           <li key={r.id} className="py-4">
             <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-500">
-                {r.user.name?.[0] ?? '·'}
-              </div>
+              {r.user.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={r.user.imageUrl}
+                  alt=""
+                  className="h-9 w-9 shrink-0 rounded-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-500">
+                  {displayName[0] ?? '·'}
+                </div>
+              )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="truncate text-sm font-semibold text-gray-900">
-                    {r.user.name ?? '익명'}
+                    {displayName}
                   </span>
                   <span className="text-[11px] text-gray-400">
                     {formatRelative(r.createdAt)}
@@ -90,7 +102,8 @@ export function ReviewList({ reviews, onDeleted }: Props) {
               </div>
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       {openImage && (

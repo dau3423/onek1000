@@ -35,7 +35,7 @@ export async function GET(
     .select(`
       id, rating, content, photo_paths, created_at, updated_at,
       user_id,
-      user:users!inner(id, name, image_url)
+      user:users!inner(id, nickname, name, image_url)
     `)
     .eq('station_id', params.id)
     .eq('is_hidden', false)
@@ -58,7 +58,12 @@ export async function GET(
     return {
       id: r.id,
       stationId: params.id,
-      user: { id: user?.id, name: user?.name ?? null, imageUrl: user?.image_url ?? null },
+      user: {
+        id: user?.id,
+        nickname: user?.nickname ?? null,
+        name: user?.name ?? null,
+        imageUrl: user?.image_url ?? null,
+      },
       rating: r.rating,
       content: r.content ?? '',
       photoUrls: urls,
@@ -110,6 +115,7 @@ export async function POST(
       stationId: params.id,
       user: {
         id: (session.user as any).id ?? 'mock-self',
+        nickname: session.user.nickname ?? null,
         name: session.user.name ?? '나',
         imageUrl: session.user.image ?? null,
       },

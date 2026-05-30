@@ -6,6 +6,8 @@ import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { CancelButton } from '@/components/billing/CancelButton';
 import { SignOutButton } from '@/components/SignOutButton';
 import { EnablePushButton } from '@/components/push/EnablePushButton';
+import { NicknameEditor } from '@/components/profile/NicknameEditor';
+import { AvatarEditor } from '@/components/profile/AvatarEditor';
 
 interface Sub {
   id: string;
@@ -23,15 +25,19 @@ export default async function MyPage() {
 
   let sub: Sub | null = null;
   let favCount = 0;
+  let nickname: string | null = session.user.nickname ?? null;
+  let image: string | null = session.user.image ?? null;
 
   if (isSupabaseConfigured()) {
     const sb = getSupabase();
     const { data: user } = await sb
       .from('users')
-      .select('id')
+      .select('id, nickname, image_url')
       .eq('email', session.user.email)
       .maybeSingle();
     if (user) {
+      nickname = (user.nickname as string | null) ?? nickname;
+      image = (user.image_url as string | null) ?? image;
       const { data: s } = await sb
         .from('subscriptions')
         .select('id, status, plan, current_period_end, trial_end, next_charge_at, canceled_at')
@@ -63,11 +69,24 @@ export default async function MyPage() {
 
       <section className="px-5 py-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-xl">👤</div>
+          {image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={image} alt="프로필 사진" className="h-12 w-12 rounded-full object-cover" />
+          ) : (
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-xl">👤</div>
+          )}
           <div>
-            <div className="font-bold text-gray-900">{session.user.name ?? '회원'}</div>
+            <div className="font-bold text-gray-900">{nickname ?? session.user.name ?? '회원'}</div>
             <div className="text-xs text-gray-500">{session.user.email}</div>
           </div>
+        </div>
+      </section>
+
+      <section className="border-t border-gray-100 px-5 py-5">
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">프로필</h2>
+        <div className="space-y-3">
+          <AvatarEditor initialImage={image} displayName={nickname ?? session.user.name} />
+          <NicknameEditor initialNickname={nickname} />
         </div>
       </section>
 

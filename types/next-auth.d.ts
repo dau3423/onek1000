@@ -14,6 +14,8 @@ declare module 'next-auth' {
       subStatus?: 'trial' | 'active' | 'canceled' | 'expired' | 'past_due' | 'none';
       /** 기본 차량 유종 — 지도/필터 자동 선택용(없으면 undefined → B027 유지) */
       defaultProduct?: ProductCode;
+      /** 표시용 닉네임(첫 로그인 시 자동 생성, /my에서 변경) */
+      nickname?: string;
     };
   }
 }
@@ -28,5 +30,7 @@ declare module 'next-auth/jwt' {
     premiumCheckedAt?: number;
     /** 기본 차량 유종(캐시) */
     defaultProduct?: ProductCode;
+    /** 닉네임(캐시) */
+    nickname?: string;
   }
 }

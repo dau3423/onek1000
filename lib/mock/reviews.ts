@@ -14,7 +14,7 @@ const seed: Review[] = [
   {
     id: 'mock-rev-1',
     stationId: 'A0010003',
-    user: { id: 'mock-u1', name: '주니코드', imageUrl: null },
+    user: { id: 'mock-u1', nickname: '주니코드', name: '주니코드', imageUrl: null },
     rating: 5,
     content: '강남에서 이만한 가격은 진짜 드물어요. 셀프라 빠르고 세차장도 깔끔합니다.',
     photoUrls: [
@@ -26,7 +26,7 @@ const seed: Review[] = [
   {
     id: 'mock-rev-2',
     stationId: 'A0010003',
-    user: { id: 'mock-u2', name: '연비왕', imageUrl: null },
+    user: { id: 'mock-u2', nickname: '연비왕', name: '연비왕', imageUrl: null },
     rating: 4,
     content: '셀프 결제가 카드만 되는 게 아쉽긴 한데 가격이 좋아서 자주 옵니다.',
     photoUrls: [],
@@ -36,7 +36,7 @@ const seed: Review[] = [
   {
     id: 'mock-rev-3',
     stationId: 'A0010003',
-    user: { id: 'mock-u3', name: '강남러', imageUrl: null },
+    user: { id: 'mock-u3', nickname: '강남러', name: '강남러', imageUrl: null },
     rating: 3,
     content: '주말 저녁엔 줄이 좀 깁니다. 가격은 만족.',
     photoUrls: [],
@@ -46,7 +46,7 @@ const seed: Review[] = [
   {
     id: 'mock-rev-4',
     stationId: 'A0010001',
-    user: { id: 'mock-u4', name: '경유민수', imageUrl: null },
+    user: { id: 'mock-u4', nickname: '경유민수', name: '경유민수', imageUrl: null },
     rating: 4,
     content: 'GS답게 시설 깨끗하고 직원분이 친절해요.',
     photoUrls: [

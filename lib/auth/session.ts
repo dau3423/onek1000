@@ -53,3 +53,19 @@ export async function getDefaultProduct(userId?: string): Promise<ProductCode | 
   const fuel = data?.fuel as string | undefined;
   return fuel && fuel in PRODUCT_LABEL ? (fuel as ProductCode) : null;
 }
+
+/** 사용자 닉네임 조회 — 세션 주입/표시용. 없으면 null. */
+export async function getNickname(userId?: string): Promise<string | null> {
+  if (!userId || !isSupabaseConfigured()) return null;
+  const sb = getSupabase();
+  const { data } = await sb.from('users').select('nickname').eq('id', userId).maybeSingle();
+  return (data?.nickname as string | null) ?? null;
+}
+
+/** 사용자 프로필 사진(image_url) 조회 — 세션 주입/표시용. 없으면 null. */
+export async function getAvatar(userId?: string): Promise<string | null> {
+  if (!userId || !isSupabaseConfigured()) return null;
+  const sb = getSupabase();
+  const { data } = await sb.from('users').select('image_url').eq('id', userId).maybeSingle();
+  return (data?.image_url as string | null) ?? null;
+}

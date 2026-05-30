@@ -5,6 +5,8 @@ export interface Review {
   stationId: string;
   user: {
     id: string;
+    /** 표시용 닉네임(없으면 name → '익명' 폴백) */
+    nickname: string | null;
     name: string | null;
     imageUrl: string | null;
   };
