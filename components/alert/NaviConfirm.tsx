@@ -3,18 +3,20 @@
 import { useState } from 'react';
 import type { StationWithPrice } from '@/types/station';
 import { BRAND_LABEL } from '@/types/station';
-import { startKakaoNavi } from '@/lib/map/navi';
+import { startKakaoNavi, type NaviOrigin } from '@/lib/map/navi';
 
 interface Props {
   station: StationWithPrice;
+  /** 출발지(현재 위치). 있으면 출발→도착 경로로 길안내가 시작된다. */
+  origin?: NaviOrigin | null;
   onClose: () => void;
 }
 
 /**
  * "이 주유소로 길안내를 시작할까요?" 확인 모달.
- * 허용 시 카카오내비 앱으로 deep-link 하여 길안내를 시작한다.
+ * 허용 시 카카오맵으로 도착지(가능하면 출발지까지) 설정된 길안내를 시작한다.
  */
-export function NaviConfirm({ station, onClose }: Props) {
+export function NaviConfirm({ station, origin, onClose }: Props) {
   const [starting, setStarting] = useState(false);
 
   const distanceText = station.distance != null
@@ -26,7 +28,7 @@ export function NaviConfirm({ station, onClose }: Props) {
   async function handleStart() {
     setStarting(true);
     try {
-      await startKakaoNavi({ name: station.name, lat: station.lat, lng: station.lng });
+      await startKakaoNavi({ name: station.name, lat: station.lat, lng: station.lng }, origin);
     } finally {
       setStarting(false);
       onClose();
@@ -57,7 +59,10 @@ export function NaviConfirm({ station, onClose }: Props) {
           </div>
         </div>
         <p className="mt-3 text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
-          카카오내비 앱으로 길안내가 시작됩니다. 앱이 없으면 설치 안내로 이동합니다.
+          {origin
+            ? '현재 위치에서 이 주유소까지 카카오맵 길안내가 시작됩니다.'
+            : '카카오맵에서 이 주유소로 길안내가 시작됩니다.'}
+          {' '}앱이 없으면 웹 길찾기로 열립니다.
         </p>
         <div className="mt-4 flex gap-2">
           <button

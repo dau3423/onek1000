@@ -199,7 +199,11 @@ export default function HomePage() {
 
       {/* 길안내 확인 모달 → 카카오내비 실행 */}
       {naviTarget && (
-        <NaviConfirm station={naviTarget} onClose={() => setNaviTarget(null)} />
+        <NaviConfirm
+          station={naviTarget}
+          origin={myLocation ? { name: '내 위치', lat: myLocation.lat, lng: myLocation.lng } : null}
+          onClose={() => setNaviTarget(null)}
+        />
       )}
     </div>
   );
