@@ -7,8 +7,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || '1000냥 주유소';
   const options = {
     body: data.body || '',
-    icon: '/favicon.svg',
-    badge: '/favicon.svg',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/favicon-32.png',
     tag: data.tag || 'price-drop',
     data: { url: data.url || '/' },
   };
