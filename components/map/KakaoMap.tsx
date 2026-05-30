@@ -134,39 +134,71 @@ export function KakaoMap({
     const HL_COLOR = '#F59E0B';   // 강조색(앰버) — tier 색과 구분되는 톤
     const HL_RING = '#B45309';    // 강조 테두리(진한 앰버)
 
+    // 순위 단서(색맹 대비: 색 외 형태/문자로도 구분).
+    // 1~3위는 메달 이모지, 4~10위는 깃발 + 숫자. 모든 줌에서 동일한 단서 사용.
+    const rankMedal = (r: number) => (r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : '');
+    // TOP10 핀(물방울) 모양 마커 SVG — 일반 원형 마커와 형태부터 확연히 구분.
+    // size: 핀 전체 높이(px). 순위 메달/숫자를 핀 원형 머리 안에 배치.
+    const topPinSvg = (rank: number, size: number) => {
+      const w = Math.round(size * 0.72);
+      const medal = rankMedal(rank);
+      const headR = w * 0.5;
+      // 핀 머리(원) 안 표시: 1~3위 메달 이모지, 4위 이하 순위 숫자
+      const inner = medal
+        ? `<text x="${headR}" y="${headR * 1.05}" text-anchor="middle" dominant-baseline="central" font-size="${headR * 1.1}">${medal}</text>`
+        : `<text x="${headR}" y="${headR}" text-anchor="middle" dominant-baseline="central" font-size="${headR}" font-weight="800" fill="#fff">${rank}</text>`;
+      // 물방울 경로: 위쪽 원 + 아래로 뾰족한 꼬리
+      return `<svg width="${w}" height="${size}" viewBox="0 0 ${w} ${size}" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))">
+        <path d="M${headR} ${size} C${headR * 0.15} ${size * 0.62} 0 ${headR * 1.25} 0 ${headR} a${headR} ${headR} 0 1 1 ${w} 0 C${w} ${headR * 1.25} ${headR * 1.85} ${size * 0.62} ${headR} ${size} Z" fill="${HL_COLOR}" stroke="${HL_RING}" stroke-width="2"/>
+        <circle cx="${headR}" cy="${headR}" r="${headR * 0.78}" fill="${HL_RING}" opacity="0.18"/>
+        ${inner}
+      </svg>`;
+    };
+
     for (const s of stations) {
       const rank = top10Rank.get(s.id);      // TOP10이면 1~10, 아니면 undefined
       const isTop = rank !== undefined;
       const tier = priceTier(s.price, averagePrice);
       const tierColor = tier === 'cheap' ? '#16A34A' : tier === 'expensive' ? '#DC2626' : '#EAB308';
       const brandColor = BRAND_COLOR[s.brand] ?? '#666';
-      // 라벨 배경: TOP10은 강조색 + 진한 테두리, 그 외는 기존 tier 색
-      const labelBg = isTop ? HL_COLOR : tierColor;
-      const labelBorder = isTop ? `border:2px solid ${HL_RING};` : '';
-      // 순위 뱃지(색맹 대비: 색 외 숫자/형태로도 구분). 라벨 표시 여부와 무관하게 항상 노출
-      const rankBadge = isTop
-        ? `<div style="position:absolute;top:-7px;right:-7px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:${HL_RING};color:white;font-size:11px;font-weight:800;line-height:18px;text-align:center;border:1.5px solid white;box-shadow:0 1px 3px rgba(0,0,0,.35)">${rank}</div>`
-        : '';
 
       const content = document.createElement('div');
       content.className = 'cursor-pointer select-none';
       content.style.transform = 'translate(-50%, -100%)';
       content.style.position = 'relative';
-      content.innerHTML = showLabel
-        ? `
-          <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
-            ${rankBadge}
-            <div style="padding:4px 8px;border-radius:10px;background:${labelBg};color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap;${labelBorder}">
-              ${isTop ? '👑 ' : ''}₩${s.price.toLocaleString()}
+
+      if (isTop) {
+        // === TOP10: 물방울 핀 + 순위 메달/숫자 (모든 줌에서 형태로 구분) ===
+        // 라벨 줌에서는 가격 라벨을 핀 위에 함께, 축소 줌에서는 핀만 (단, 크게).
+        const r = rank as number;
+        const pinSize = showLabel ? 38 : 42;  // 축소 줌에서 오히려 더 크게 → 전국에서 눈에 띔
+        const pin = topPinSvg(r, pinSize);
+        content.innerHTML = showLabel
+          ? `
+          <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:1px">
+            <div style="padding:4px 8px;border-radius:10px;background:${HL_COLOR};color:white;font-size:12px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap;border:2px solid ${HL_RING}">
+              ₩${s.price.toLocaleString()}
             </div>
-            <div style="width:8px;height:8px;background:${labelBg};transform:rotate(45deg);margin-top:-4px"></div>
+            <div style="width:8px;height:8px;background:${HL_COLOR};border-right:2px solid ${HL_RING};border-bottom:2px solid ${HL_RING};transform:rotate(45deg);margin-top:-5px"></div>
+            <div style="margin-top:0">${pin}</div>
+          </div>`
+          : `<div style="position:relative;display:flex;justify-content:center">${pin}</div>`;
+      } else {
+        // === 일반 마커: 기존 원형 점 유지 ===
+        content.innerHTML = showLabel
+          ? `
+          <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
+            <div style="padding:4px 8px;border-radius:10px;background:${tierColor};color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
+              ₩${s.price.toLocaleString()}
+            </div>
+            <div style="width:8px;height:8px;background:${tierColor};transform:rotate(45deg);margin-top:-4px"></div>
             <div style="width:16px;height:16px;border-radius:50%;background:${brandColor};border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,.3);margin-top:-2px"></div>
           </div>`
-        : `
+          : `
           <div style="position:relative;display:flex;flex-direction:column;align-items:center">
-            ${rankBadge}
-            <div style="width:${isTop ? 24 : 18}px;height:${isTop ? 24 : 18}px;border-radius:50%;background:${brandColor};border:3px solid ${isTop ? HL_COLOR : tierColor};box-shadow:0 2px 4px rgba(0,0,0,.25)${isTop ? ',0 0 0 3px rgba(245,158,11,.35)' : ''}"></div>
+            <div style="width:18px;height:18px;border-radius:50%;background:${brandColor};border:3px solid ${tierColor};box-shadow:0 2px 4px rgba(0,0,0,.25)"></div>
           </div>`;
+      }
 
       content.addEventListener('click', () => onMarkerClick?.(s));
 
