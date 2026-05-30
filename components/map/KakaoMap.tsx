@@ -14,6 +14,8 @@ interface Props {
   recenterSignal?: number;
   /** true면 첫 위치 획득 시 자동 중심 이동을 하지 않는다(복원된 시점을 우선). */
   suppressAutoCenter?: boolean;
+  /** 따라가기 모드. true면 myLocation 갱신 시마다 지도 중심을 내 위치로 자동 이동(panTo). */
+  follow?: boolean;
   stations: StationWithPrice[];
   averagePrice?: number;
   onBoundsChange?: (b: {
@@ -21,6 +23,8 @@ interface Props {
   }) => void;
   /** 패닝/줌이 안정될 때 현재 지도 중심/level 전달 (마지막 시점 저장용). */
   onViewChange?: (v: { lat: number; lng: number; level: number }) => void;
+  /** 사용자가 지도를 직접 드래그(팬)했을 때 호출 (따라가기 모드 해제 트리거). */
+  onUserPan?: () => void;
   onMarkerClick?: (s: StationWithPrice) => void;
 }
 
@@ -30,10 +34,12 @@ export function KakaoMap({
   myLocation,
   recenterSignal = 0,
   suppressAutoCenter = false,
+  follow = false,
   stations,
   averagePrice = 1600,
   onBoundsChange,
   onViewChange,
+  onUserPan,
   onMarkerClick,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -49,6 +55,14 @@ export function KakaoMap({
   useEffect(() => { onBoundsChangeRef.current = onBoundsChange; }, [onBoundsChange]);
   const onViewChangeRef = useRef(onViewChange);
   useEffect(() => { onViewChangeRef.current = onViewChange; }, [onViewChange]);
+  const onUserPanRef = useRef(onUserPan);
+  useEffect(() => { onUserPanRef.current = onUserPan; }, [onUserPan]);
+  // 따라가기 모드 최신값 — 초기화 effect의 dragstart 리스너에서 참조
+  const followRef = useRef(follow);
+  useEffect(() => { followRef.current = follow; }, [follow]);
+  // 프로그램적 panTo(따라가기/recenter)로 인한 이동을 사용자 드래그와 구분하기 위한 플래그.
+  // panTo는 보통 dragstart를 발생시키지 않지만, 만일을 대비한 안전장치.
+  const programmaticMoveRef = useRef(false);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,6 +82,13 @@ export function KakaoMap({
 
         // idle 이벤트 — 패닝/줌 후 안정될 때 발생
         window.kakao.maps.event.addListener(map, 'idle', emitBounds);
+
+        // 사용자가 지도를 직접 드래그하면 따라가기 모드 해제 트리거.
+        // 프로그램적 panTo는 dragstart를 발생시키지 않지만, 플래그로 한 번 더 방어한다.
+        window.kakao.maps.event.addListener(map, 'dragstart', () => {
+          if (programmaticMoveRef.current) return;
+          if (followRef.current) onUserPanRef.current?.();
+        });
       })
       .catch((e) => setError(e.message));
     return () => { mounted = false; };
@@ -190,8 +211,13 @@ export function KakaoMap({
     if (!didAutoCenterRef.current) {
       didAutoCenterRef.current = true;
       map.setLevel(4);
-      map.panTo(pos);
+      panToProgrammatic(pos);
+    } else if (follow) {
+      // 따라가기 모드: 위치 갱신마다 줌은 유지한 채 중심만 부드럽게 이동
+      panToProgrammatic(pos);
     }
+    // follow 변화만으로는 재이동하지 않고 위치 갱신 시점에만 추적 (의도치 않은 이동 방지)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, myLocation]);
 
   // 내 위치 버튼 재클릭 시(recenterSignal 증가) 명시적으로 내 위치로 이동
@@ -199,9 +225,19 @@ export function KakaoMap({
     if (!ready || !mapRef.current || !myLocation || recenterSignal === 0) return;
     const map = mapRef.current;
     map.setLevel(4);
-    map.panTo(new window.kakao.maps.LatLng(myLocation.lat, myLocation.lng));
+    panToProgrammatic(new window.kakao.maps.LatLng(myLocation.lat, myLocation.lng));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recenterSignal]);
+
+  // 프로그램적 중심 이동 — 따라가기 해제 트리거(dragstart)와 구분하기 위해 플래그를 잠깐 세운다.
+  function panToProgrammatic(pos: kakao.maps.LatLng) {
+    const map = mapRef.current;
+    if (!map) return;
+    programmaticMoveRef.current = true;
+    map.panTo(pos);
+    // panTo 애니메이션 동안 발생할 수 있는 이벤트를 흡수한 뒤 플래그 해제
+    window.setTimeout(() => { programmaticMoveRef.current = false; }, 600);
+  }
 
   if (error) {
     return (

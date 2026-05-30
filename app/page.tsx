@@ -61,6 +61,8 @@ export default function HomePage() {
   const [recenterSignal, setRecenterSignal] = useState(0);
   // 버튼을 눌렀지만 아직 좌표를 모를 때, 첫 좌표 획득 시 1회 내 위치로 이동시키기 위한 대기 플래그
   const pendingRecenterRef = useRef(false);
+  // 따라가기 모드: ON이면 위치 갱신마다 지도가 내 위치를 자동 추적, 사용자가 지도를 드래그하면 자동 OFF
+  const [follow, setFollow] = useState(false);
 
   // 길안내 확인 모달 대상
   const [naviTarget, setNaviTarget] = useState<StationWithPrice | null>(null);
@@ -173,34 +175,48 @@ export default function HomePage() {
           averagePrice={averagePrice}
           myLocation={myLocation}
           recenterSignal={recenterSignal}
+          follow={follow}
           onBoundsChange={(b) => {
             lastBoundsRef.current = b;
             fetchStations(b);
           }}
           onViewChange={setLastView}
+          onUserPan={() => setFollow(false)}
           onMarkerClick={(s) => router.push(`/station/${s.id}`)}
         />
 
-        {/* 내 위치 버튼 */}
+        {/* 내 위치 / 따라가기 버튼 — 누르면 따라가기 ON(위치 자동 추적), 다시 누르면 즉시 내 위치로 재이동 */}
         <button
           onClick={() => {
             setGeoEnabled(true);
             geo.request();
+            // 따라가기 모드 ON: 이후 위치 갱신마다 지도가 내 위치를 따라간다.
+            setFollow(true);
             // 이미 위치를 알고 있으면 즉시 그 위치로 이동(재클릭).
             // 아직 모르면 대기 플래그를 켜서 첫 좌표 획득 시 이동시킨다
             // (복원 모드에선 자동 센터링이 꺼져 있으므로 이 경로로 이동을 보장).
             if (geo.coords) setRecenterSignal((n) => n + 1);
             else pendingRecenterRef.current = true;
           }}
-          className="absolute right-3 top-[calc(56px+44px+12px+env(safe-area-inset-top))] z-20 flex h-11 w-11 items-center justify-center rounded-full bg-white text-lg shadow-md hover:bg-gray-50"
-          aria-label="내 위치"
+          className={`absolute right-3 top-[calc(56px+44px+12px+env(safe-area-inset-top))] z-20 flex h-11 w-11 items-center justify-center rounded-full text-lg shadow-md transition-colors ${
+            follow && geo.status !== 'denied'
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
+          }`}
+          aria-label={follow ? '따라가기 모드 켜짐 — 내 위치 추적 중' : '내 위치로 이동'}
+          aria-pressed={follow}
           title={
             geo.status === 'denied'
               ? '위치 권한이 차단되었습니다. 브라우저 설정에서 허용해주세요.'
-              : geo.error ?? '내 위치로 이동'
+              : geo.error
+                ?? (follow ? '내 위치 따라가는 중 (지도를 움직이면 해제)' : '내 위치로 이동 / 따라가기')
           }
         >
-          {geo.status === 'denied' ? '🚫' : geo.status === 'locating' ? '⏳' : '📍'}
+          {geo.status === 'denied'
+            ? '🚫'
+            : geo.status === 'locating'
+              ? '⏳'
+              : follow ? '🧭' : '📍'}
         </button>
 
         {/* 1km 알람 */}
