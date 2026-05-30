@@ -2,9 +2,34 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadKakao } from './loadKakao';
-import type { StationWithPrice, NationalTop10Item } from '@/types/station';
+import type { StationWithPrice, NationalTop10Item, ProductCode } from '@/types/station';
 import { BRAND_COLOR } from '@/types/station';
 import { priceTier } from '@/lib/map/geo';
+
+// === 전국 TOP10 강조 마커 디자인 상수/헬퍼 (일반 마커와 형태부터 구분) ===
+const HL_COLOR = '#F59E0B'; // 강조색(앰버) — tier 색과 구분되는 톤
+const HL_RING = '#B45309';  // 강조 테두리(진한 앰버)
+
+// 순위 단서(색맹 대비: 색 외 형태/문자로도 구분). 1~3위는 메달 이모지, 4~10위는 숫자.
+const rankMedal = (r: number) => (r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : '');
+
+// TOP10 핀(물방울) 모양 마커 SVG — 일반 원형 마커와 형태부터 확연히 구분.
+// size: 핀 전체 높이(px). 순위 메달/숫자를 핀 원형 머리 안에 배치.
+function topPinSvg(rank: number, size: number) {
+  const w = Math.round(size * 0.72);
+  const medal = rankMedal(rank);
+  const headR = w * 0.5;
+  // 핀 머리(원) 안 표시: 1~3위 메달 이모지, 4위 이하 순위 숫자
+  const inner = medal
+    ? `<text x="${headR}" y="${headR * 1.05}" text-anchor="middle" dominant-baseline="central" font-size="${headR * 1.1}">${medal}</text>`
+    : `<text x="${headR}" y="${headR}" text-anchor="middle" dominant-baseline="central" font-size="${headR}" font-weight="800" fill="#fff">${rank}</text>`;
+  // 물방울 경로: 위쪽 원 + 아래로 뾰족한 꼬리
+  return `<svg width="${w}" height="${size}" viewBox="0 0 ${w} ${size}" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))">
+    <path d="M${headR} ${size} C${headR * 0.15} ${size * 0.62} 0 ${headR * 1.25} 0 ${headR} a${headR} ${headR} 0 1 1 ${w} 0 C${w} ${headR * 1.25} ${headR * 1.85} ${size * 0.62} ${headR} ${size} Z" fill="${HL_COLOR}" stroke="${HL_RING}" stroke-width="2"/>
+    <circle cx="${headR}" cy="${headR}" r="${headR * 0.78}" fill="${HL_RING}" opacity="0.18"/>
+    ${inner}
+  </svg>`;
+}
 
 interface Props {
   initialCenter?: { lat: number; lng: number };
@@ -17,8 +42,10 @@ interface Props {
   /** 따라가기 모드. true면 myLocation 갱신 시마다 지도 중심을 내 위치로 자동 이동(panTo). */
   follow?: boolean;
   stations: StationWithPrice[];
-  /** 전국 최저가 TOP10(화면 영역 무관). 이 목록의 id에 해당하는 마커만 핀/메달로 강조한다. */
+  /** 전국 최저가 TOP10(화면 영역 무관). 이 목록을 핀/메달 오버레이로 항상 직접 렌더한다. */
   nationalTop10?: NationalTop10Item[];
+  /** 현재 선택 유종 코드. TOP10 마커 클릭 시 합성하는 StationWithPrice의 product 채움용. */
+  product?: ProductCode;
   averagePrice?: number;
   onBoundsChange?: (b: {
     swLat: number; swLng: number; neLat: number; neLng: number; zoom: number;
@@ -39,6 +66,7 @@ export function KakaoMap({
   follow = false,
   stations,
   nationalTop10,
+  product = 'B027',
   averagePrice = 1600,
   onBoundsChange,
   onViewChange,
@@ -48,6 +76,9 @@ export function KakaoMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<kakao.maps.Map | null>(null);
   const overlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
+  // 전국 최저가 TOP10 핀/메달 오버레이는 bbox 마커와 독립적으로 관리한다.
+  // (화면 영역과 무관하게 항상 그 좌표에 표시되어야 하므로 별도 배열로 분리)
+  const topOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
   const myOverlayRef = useRef<kakao.maps.CustomOverlay | null>(null);
   const myCircleRef = useRef<kakao.maps.Circle | null>(null);
   // 첫 위치 획득 시 1회 자동 중심 이동 했는지 여부 (이후 watchPosition 갱신엔 패닝하지 않음)
@@ -68,14 +99,34 @@ export function KakaoMap({
   const programmaticMoveRef = useRef(false);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 현재 카카오 level. 줌만 변경돼도 가격 라벨 노출 정책(showLabel)을 마커에 반영하기 위해
+  // idle 때 갱신한다. (일반 마커는 stations 재조회로도 갱신되지만 TOP10 오버레이는 독립이므로 필요)
+  const [mapLevel, setMapLevel] = useState(initialLevel);
 
-  // 전국 최저가 TOP10: station id → 순위(1~10) 맵.
-  // 화면 영역과 무관하게 전국 순위로 강조 대상을 결정한다(유종 변경 시 부모가 갱신).
+  // 전국 최저가 TOP10에 포함된 station id 집합.
+  // 일반 마커 루프에서 이 id를 건너뛰어 메달 오버레이와의 이중 렌더를 막는다.
   const top10Rank = useMemo(() => {
     const m = new Map<string, number>();
     for (const t of nationalTop10 ?? []) m.set(t.id, t.rank);
     return m;
   }, [nationalTop10]);
+
+  // TOP10 핀 클릭 시 onMarkerClick에 넘길 최소 StationWithPrice 합성.
+  // 호출부는 상세 이동(s.id)만 사용하지만, 시그니처 일관성을 위해 항목 값으로 채운다.
+  // 위치/가격은 top10 항목 값(bbox 비동기 불일치 차단), product는 현재 선택 유종.
+  const top10ToStation = (t: NationalTop10Item): StationWithPrice => ({
+    id: t.id,
+    name: t.name,
+    brand: t.brand,
+    isSelf: false,
+    sido: '01',
+    address: '',
+    lat: t.lat,
+    lng: t.lng,
+    product,
+    price: t.price,
+    tradeDate: '',
+  });
 
   // SDK 로드 + 지도 초기화
   useEffect(() => {
@@ -110,6 +161,9 @@ export function KakaoMap({
     const map = mapRef.current;
     if (!map) return;
 
+    // 줌 변경 시 라벨 노출 정책을 마커에 반영 (값이 실제로 바뀔 때만 setState)
+    setMapLevel((prev) => (prev === map.getLevel() ? prev : map.getLevel()));
+
     // 현재 중심/level을 마지막 시점으로 저장 (상세 왕복 시 복원용)
     const center = map.getCenter();
     onViewChangeRef.current?.({
@@ -130,44 +184,22 @@ export function KakaoMap({
     });
   }
 
-  // 주유소 마커 갱신
+  // 일반 주유소 마커 갱신 (bbox stations). 전국 TOP10에 속한 id는 건너뛰고,
+  // 메달/핀은 아래의 별도 effect가 독립 오버레이로 그린다(이중 렌더 방지).
   useEffect(() => {
     if (!ready || !mapRef.current) return;
     const map = mapRef.current;
 
-    // 기존 오버레이 제거
+    // 기존 일반 오버레이 제거
     overlaysRef.current.forEach((o) => o.setMap(null));
     overlaysRef.current = [];
 
     const showLabel = map.getLevel() <= 5; // 줌 인 상태에서만 가격 라벨
-    // 강조 대상은 전국 최저가 TOP10(top10Rank, 화면 영역 무관). 화면에 그 id가 보일 때만 핀/메달.
-    const HL_COLOR = '#F59E0B';   // 강조색(앰버) — tier 색과 구분되는 톤
-    const HL_RING = '#B45309';    // 강조 테두리(진한 앰버)
-
-    // 순위 단서(색맹 대비: 색 외 형태/문자로도 구분).
-    // 1~3위는 메달 이모지, 4~10위는 깃발 + 숫자. 모든 줌에서 동일한 단서 사용.
-    const rankMedal = (r: number) => (r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : '');
-    // TOP10 핀(물방울) 모양 마커 SVG — 일반 원형 마커와 형태부터 확연히 구분.
-    // size: 핀 전체 높이(px). 순위 메달/숫자를 핀 원형 머리 안에 배치.
-    const topPinSvg = (rank: number, size: number) => {
-      const w = Math.round(size * 0.72);
-      const medal = rankMedal(rank);
-      const headR = w * 0.5;
-      // 핀 머리(원) 안 표시: 1~3위 메달 이모지, 4위 이하 순위 숫자
-      const inner = medal
-        ? `<text x="${headR}" y="${headR * 1.05}" text-anchor="middle" dominant-baseline="central" font-size="${headR * 1.1}">${medal}</text>`
-        : `<text x="${headR}" y="${headR}" text-anchor="middle" dominant-baseline="central" font-size="${headR}" font-weight="800" fill="#fff">${rank}</text>`;
-      // 물방울 경로: 위쪽 원 + 아래로 뾰족한 꼬리
-      return `<svg width="${w}" height="${size}" viewBox="0 0 ${w} ${size}" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))">
-        <path d="M${headR} ${size} C${headR * 0.15} ${size * 0.62} 0 ${headR * 1.25} 0 ${headR} a${headR} ${headR} 0 1 1 ${w} 0 C${w} ${headR * 1.25} ${headR * 1.85} ${size * 0.62} ${headR} ${size} Z" fill="${HL_COLOR}" stroke="${HL_RING}" stroke-width="2"/>
-        <circle cx="${headR}" cy="${headR}" r="${headR * 0.78}" fill="${HL_RING}" opacity="0.18"/>
-        ${inner}
-      </svg>`;
-    };
 
     for (const s of stations) {
-      const rank = top10Rank.get(s.id);      // 전국 TOP10이면 1~10, 아니면 undefined
-      const isTop = rank !== undefined;
+      // 전국 TOP10에 포함된 주유소는 메달 오버레이로만 표시 (중복 방지)
+      if (top10Rank.has(s.id)) continue;
+
       const tier = priceTier(s.price, averagePrice);
       const tierColor = tier === 'cheap' ? '#16A34A' : tier === 'expensive' ? '#DC2626' : '#EAB308';
       const brandColor = BRAND_COLOR[s.brand] ?? '#666';
@@ -177,38 +209,20 @@ export function KakaoMap({
       content.style.transform = 'translate(-50%, -100%)';
       content.style.position = 'relative';
 
-      if (isTop) {
-        // === TOP10: 물방울 핀 + 순위 메달/숫자 (모든 줌에서 형태로 구분) ===
-        // 라벨 줌에서는 가격 라벨을 핀 위에 함께, 축소 줌에서는 핀만 (단, 크게).
-        const r = rank as number;
-        const pinSize = showLabel ? 38 : 42;  // 축소 줌에서 오히려 더 크게 → 전국에서 눈에 띔
-        const pin = topPinSvg(r, pinSize);
-        content.innerHTML = showLabel
-          ? `
-          <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:1px">
-            <div style="padding:4px 8px;border-radius:10px;background:${HL_COLOR};color:white;font-size:12px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap;border:2px solid ${HL_RING}">
-              ₩${s.price.toLocaleString()}
-            </div>
-            <div style="width:8px;height:8px;background:${HL_COLOR};border-right:2px solid ${HL_RING};border-bottom:2px solid ${HL_RING};transform:rotate(45deg);margin-top:-5px"></div>
-            <div style="margin-top:0">${pin}</div>
-          </div>`
-          : `<div style="position:relative;display:flex;justify-content:center">${pin}</div>`;
-      } else {
-        // === 일반 마커: 기존 원형 점 유지 ===
-        content.innerHTML = showLabel
-          ? `
-          <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
-            <div style="padding:4px 8px;border-radius:10px;background:${tierColor};color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
-              ₩${s.price.toLocaleString()}
-            </div>
-            <div style="width:8px;height:8px;background:${tierColor};transform:rotate(45deg);margin-top:-4px"></div>
-            <div style="width:16px;height:16px;border-radius:50%;background:${brandColor};border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,.3);margin-top:-2px"></div>
-          </div>`
-          : `
-          <div style="position:relative;display:flex;flex-direction:column;align-items:center">
-            <div style="width:18px;height:18px;border-radius:50%;background:${brandColor};border:3px solid ${tierColor};box-shadow:0 2px 4px rgba(0,0,0,.25)"></div>
-          </div>`;
-      }
+      // === 일반 마커: 기존 원형 점 유지 ===
+      content.innerHTML = showLabel
+        ? `
+        <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
+          <div style="padding:4px 8px;border-radius:10px;background:${tierColor};color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
+            ₩${s.price.toLocaleString()}
+          </div>
+          <div style="width:8px;height:8px;background:${tierColor};transform:rotate(45deg);margin-top:-4px"></div>
+          <div style="width:16px;height:16px;border-radius:50%;background:${brandColor};border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,.3);margin-top:-2px"></div>
+        </div>`
+        : `
+        <div style="position:relative;display:flex;flex-direction:column;align-items:center">
+          <div style="width:18px;height:18px;border-radius:50%;background:${brandColor};border:3px solid ${tierColor};box-shadow:0 2px 4px rgba(0,0,0,.25)"></div>
+        </div>`;
 
       content.addEventListener('click', () => onMarkerClick?.(s));
 
@@ -217,13 +231,65 @@ export function KakaoMap({
         content,
         yAnchor: 1,
         clickable: true,
-        // TOP10 마커는 다른 마커 위에 그려지도록 zIndex 상향 (순위 높을수록 더 위)
-        zIndex: isTop ? 10 + (11 - (rank as number)) : 1,
+        zIndex: 1,
       });
       overlay.setMap(map);
       overlaysRef.current.push(overlay);
     }
-  }, [ready, stations, top10Rank, averagePrice, onMarkerClick]);
+  }, [ready, stations, top10Rank, averagePrice, onMarkerClick, mapLevel]);
+
+  // 전국 최저가 TOP10 핀/메달 오버레이 — bbox stations 포함 여부와 무관하게 항상 렌더.
+  // 위치/가격/순위는 모두 nationalTop10 항목 값을 사용한다(bbox의 비동기 타이밍 불일치 차단).
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    const map = mapRef.current;
+
+    // 기존 TOP10 오버레이 제거
+    topOverlaysRef.current.forEach((o) => o.setMap(null));
+    topOverlaysRef.current = [];
+
+    const showLabel = map.getLevel() <= 5; // 줌 인 상태에서만 가격 라벨
+
+    for (const t of nationalTop10 ?? []) {
+      const r = t.rank;
+      const content = document.createElement('div');
+      content.className = 'cursor-pointer select-none';
+      content.style.transform = 'translate(-50%, -100%)';
+      content.style.position = 'relative';
+
+      // === TOP10: 물방울 핀 + 순위 메달/숫자 (모든 줌에서 형태로 구분) ===
+      // 라벨 줌에서는 가격 라벨을 핀 위에 함께, 축소 줌에서는 핀만 (단, 크게).
+      const pinSize = showLabel ? 38 : 42; // 축소 줌에서 오히려 더 크게 → 전국에서 눈에 띔
+      const pin = topPinSvg(r, pinSize);
+      content.innerHTML = showLabel
+        ? `
+        <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:1px">
+          <div style="padding:4px 8px;border-radius:10px;background:${HL_COLOR};color:white;font-size:12px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap;border:2px solid ${HL_RING}">
+            ₩${t.price.toLocaleString()}
+          </div>
+          <div style="width:8px;height:8px;background:${HL_COLOR};border-right:2px solid ${HL_RING};border-bottom:2px solid ${HL_RING};transform:rotate(45deg);margin-top:-5px"></div>
+          <div style="margin-top:0">${pin}</div>
+        </div>`
+        : `<div style="position:relative;display:flex;justify-content:center">${pin}</div>`;
+
+      // 클릭 시 상세 이동(onMarkerClick과 동일 동작). top10 항목으로 최소 StationWithPrice 합성.
+      // 호출부는 s.id만 사용하므로 위치/가격/순위 출처는 top10 값으로 일관.
+      content.addEventListener('click', () => onMarkerClick?.(top10ToStation(t)));
+
+      const overlay = new window.kakao.maps.CustomOverlay({
+        position: new window.kakao.maps.LatLng(t.lat, t.lng),
+        content,
+        yAnchor: 1,
+        clickable: true,
+        // 일반 마커(zIndex 1) 위에 그려지도록 상향. 순위 높을수록 더 위.
+        zIndex: 10 + (11 - r),
+      });
+      overlay.setMap(map);
+      topOverlaysRef.current.push(overlay);
+    }
+    // top10ToStation은 product/렌더마다 새로 생성되므로 product를 직접 의존성에 둔다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, nationalTop10, product, onMarkerClick, mapLevel]);
 
   // 내 위치 마커 + 1km 원
   useEffect(() => {

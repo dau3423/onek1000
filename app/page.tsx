@@ -197,6 +197,7 @@ export default function HomePage() {
           suppressAutoCenter={!!restoredView}
           stations={stations}
           nationalTop10={nationalTop10}
+          product={product}
           averagePrice={averagePrice}
           myLocation={myLocation}
           recenterSignal={recenterSignal}
