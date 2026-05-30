@@ -1,9 +1,9 @@
 // Supabase 기반 도메인 쿼리 — Supabase 미설정 시 mock 폴백
 import { getSupabase, isSupabaseConfigured } from './supabase';
-import type { StationWithPrice, ProductCode, SidoCode, BrandCode } from '@/types/station';
+import type { StationWithPrice, ProductCode, SidoCode, BrandCode, NationalTop10Item } from '@/types/station';
 import type { Bbox } from '@/lib/map/geo';
 import { getMockStations, getMockStationDetail } from '@/lib/mock/stations';
-import { distanceMeters, inBbox } from '@/lib/map/geo';
+import { distanceMeters, inBbox, topPriceRankMap } from '@/lib/map/geo';
 
 interface RpcRow {
   id: string; name: string; brand_code: string; is_self: boolean;
@@ -93,6 +93,57 @@ export async function queryRegionTop10(
   if (error) throw new Error(`region top10 query failed: ${error.message}`);
   return (data as Array<{ station_id: string; station_name: string; price: number; rank: number }> ?? [])
     .map((r) => ({ stationId: r.station_id, stationName: r.station_name, price: r.price, rank: r.rank }));
+}
+
+/**
+ * 전국 최저가 TOP10 조회 — 지도 핀/메달 강조 대상 선정용.
+ * 화면 영역과 무관하게 해당 유종(product)의 전국 가격 오름차순 상위 10개를 반환한다.
+ * 좌표/이름/브랜드를 함께 담아 지도 마커가 보일 때 강조에 사용한다.
+ * Supabase 미설정 시 mock 폴백(전국 SEED 기준 TOP10).
+ */
+export async function queryNationalTop10(
+  product: ProductCode,
+): Promise<NationalTop10Item[]> {
+  if (!isSupabaseConfigured()) {
+    const stations = getMockStations(product);
+    const rankMap = topPriceRankMap(stations, 10);
+    return stations
+      .filter((s) => rankMap.has(s.id))
+      .map((s) => ({
+        id: s.id, name: s.name, brand: s.brand,
+        lat: s.lat, lng: s.lng, price: s.price,
+        rank: rankMap.get(s.id) as number,
+      }))
+      .sort((a, b) => a.rank - b.rank);
+  }
+  const sb = getSupabase();
+  // prices_latest를 해당 유종 가격 오름차순으로 상위 10개 뽑고 stations 조인.
+  // (product, price) 인덱스를 활용. RPC 없이 PostgREST 조인으로 처리해 경량 유지.
+  const { data, error } = await sb
+    .from('prices_latest')
+    .select('station_id, price, stations!inner(name, brand_code, lat, lng)')
+    .eq('product', product)
+    .order('price', { ascending: true })
+    .limit(10);
+  if (error) throw new Error(`national top10 query failed: ${error.message}`);
+  type Row = {
+    station_id: string;
+    price: number;
+    stations: { name: string; brand_code: string; lat: number; lng: number }
+      | Array<{ name: string; brand_code: string; lat: number; lng: number }>;
+  };
+  return (data as Row[] ?? []).map((r, i) => {
+    const st = Array.isArray(r.stations) ? r.stations[0] : r.stations;
+    return {
+      id: r.station_id,
+      name: st?.name ?? '',
+      brand: (st?.brand_code as BrandCode) ?? 'ETC',
+      lat: st?.lat ?? 0,
+      lng: st?.lng ?? 0,
+      price: r.price,
+      rank: i + 1,
+    };
+  });
 }
 
 export async function queryStationDetail(id: string) {

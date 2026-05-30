@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadKakao } from './loadKakao';
-import type { StationWithPrice, ProductCode } from '@/types/station';
+import type { StationWithPrice, NationalTop10Item } from '@/types/station';
 import { BRAND_COLOR } from '@/types/station';
-import { priceTier, topPriceRankMap } from '@/lib/map/geo';
+import { priceTier } from '@/lib/map/geo';
 
 interface Props {
   initialCenter?: { lat: number; lng: number };
@@ -17,6 +17,8 @@ interface Props {
   /** 따라가기 모드. true면 myLocation 갱신 시마다 지도 중심을 내 위치로 자동 이동(panTo). */
   follow?: boolean;
   stations: StationWithPrice[];
+  /** 전국 최저가 TOP10(화면 영역 무관). 이 목록의 id에 해당하는 마커만 핀/메달로 강조한다. */
+  nationalTop10?: NationalTop10Item[];
   averagePrice?: number;
   onBoundsChange?: (b: {
     swLat: number; swLng: number; neLat: number; neLng: number; zoom: number;
@@ -36,6 +38,7 @@ export function KakaoMap({
   suppressAutoCenter = false,
   follow = false,
   stations,
+  nationalTop10,
   averagePrice = 1600,
   onBoundsChange,
   onViewChange,
@@ -65,6 +68,14 @@ export function KakaoMap({
   const programmaticMoveRef = useRef(false);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 전국 최저가 TOP10: station id → 순위(1~10) 맵.
+  // 화면 영역과 무관하게 전국 순위로 강조 대상을 결정한다(유종 변경 시 부모가 갱신).
+  const top10Rank = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const t of nationalTop10 ?? []) m.set(t.id, t.rank);
+    return m;
+  }, [nationalTop10]);
 
   // SDK 로드 + 지도 초기화
   useEffect(() => {
@@ -129,8 +140,7 @@ export function KakaoMap({
     overlaysRef.current = [];
 
     const showLabel = map.getLevel() <= 5; // 줌 인 상태에서만 가격 라벨
-    // 현재 표시 집합 기준 최저가 TOP10 강조 (FR-1.2/1.4): id → 순위(1~10)
-    const top10Rank = topPriceRankMap(stations, 10);
+    // 강조 대상은 전국 최저가 TOP10(top10Rank, 화면 영역 무관). 화면에 그 id가 보일 때만 핀/메달.
     const HL_COLOR = '#F59E0B';   // 강조색(앰버) — tier 색과 구분되는 톤
     const HL_RING = '#B45309';    // 강조 테두리(진한 앰버)
 
@@ -156,7 +166,7 @@ export function KakaoMap({
     };
 
     for (const s of stations) {
-      const rank = top10Rank.get(s.id);      // TOP10이면 1~10, 아니면 undefined
+      const rank = top10Rank.get(s.id);      // 전국 TOP10이면 1~10, 아니면 undefined
       const isTop = rank !== undefined;
       const tier = priceTier(s.price, averagePrice);
       const tierColor = tier === 'cheap' ? '#16A34A' : tier === 'expensive' ? '#DC2626' : '#EAB308';
@@ -213,7 +223,7 @@ export function KakaoMap({
       overlay.setMap(map);
       overlaysRef.current.push(overlay);
     }
-  }, [ready, stations, averagePrice, onMarkerClick]);
+  }, [ready, stations, top10Rank, averagePrice, onMarkerClick]);
 
   // 내 위치 마커 + 1km 원
   useEffect(() => {

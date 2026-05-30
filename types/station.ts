@@ -97,6 +97,24 @@ export interface RadiusResponse {
   ttlSec: number;
 }
 
+/** 전국 최저가 TOP10 1건 (지도 핀/메달 강조 대상) */
+export interface NationalTop10Item {
+  id: string;
+  name: string;
+  brand: BrandCode;
+  lat: number;
+  lng: number;
+  price: number;
+  rank: number;       // 1~10 (전국 순위)
+}
+
+export interface NationalTop10Response {
+  product: ProductCode;
+  stations: NationalTop10Item[];
+  cachedAt: string;
+  ttlSec: number;
+}
+
 export interface AvgPriceResponse {
   product: ProductCode;
   nation: number;

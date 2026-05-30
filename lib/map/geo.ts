@@ -54,7 +54,8 @@ export function priceTier(price: number, avg: number): 'cheap' | 'normal' | 'exp
 }
 
 /**
- * 표시 집합 기준 최저가 TOP N의 순위 맵을 반환한다 (FR-1.2/1.4 강조용).
+ * 입력 집합 기준 최저가 TOP N의 순위 맵을 반환한다.
+ * 전국 TOP10 mock 산출(`queryNationalTop10`) 등에서 재사용한다.
  * - 입력 stations를 가격 오름차순으로 정렬해 상위 n개를 추출한다.
  * - 반환: station id → 순위(1부터). TOP N 밖이면 맵에 없음.
  * - 동가일 경우 입력 순서를 유지(안정 정렬)하여 결정적으로 동작한다.

@@ -53,6 +53,7 @@ export const redis = {
 // ─── 캐시 키 빌더 ───
 export const keys = {
   bbox: (z: number, prod: string, q: string) => `bbox:z${z}:${prod}:${q}`,
+  nationalTop10: (prod: string) => `top10:nation:${prod}`,
   radius: (prod: string, q: string, r: number) => `radius:${prod}:${q}:r${r}`,
   detail: (id: string) => `station:${id}`,
   avgNation: () => `avg:nation`,

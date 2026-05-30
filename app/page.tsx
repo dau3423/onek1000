@@ -13,7 +13,7 @@ import { ProductSync } from '@/components/map/ProductSync';
 import { useMapStore, getInitialMapView, type MapView } from '@/stores/map';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { quantize } from '@/lib/map/geo';
-import type { BboxResponse, RadiusResponse, StationWithPrice } from '@/types/station';
+import type { BboxResponse, RadiusResponse, StationWithPrice, NationalTop10Item, NationalTop10Response } from '@/types/station';
 
 // KakaoMap은 window 의존 + SDK 외부 스크립트라 SSR 비활성
 const KakaoMap = dynamic(
@@ -37,6 +37,10 @@ export default function HomePage() {
   // 지도 영역 (bbox) 내 주유소
   const [stations, setStations] = useState<StationWithPrice[]>([]);
   const [averagePrice, setAveragePrice] = useState(1600);
+
+  // 전국 최저가 TOP10 (화면 영역 무관). 핀/메달 강조 대상. 유종 변경 시에만 재조회.
+  const [nationalTop10, setNationalTop10] = useState<NationalTop10Item[]>([]);
+  const top10Abort = useRef<AbortController | null>(null);
   const lastBoundsRef = useRef<{ swLat: number; swLng: number; neLat: number; neLng: number; zoom: number } | null>(null);
   const bboxAbort = useRef<AbortController | null>(null);
 
@@ -74,6 +78,24 @@ export default function HomePage() {
     if (!b) return;
     fetchStations(b);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product]);
+
+  // 유종 변경 시 전국 최저가 TOP10 재조회 (마운트 1회 + product 변경 시).
+  // 화면 영역과 무관하므로 bbox 패닝/줌에는 재호출하지 않는다(캐시/rate limit 보호).
+  useEffect(() => {
+    if (top10Abort.current) top10Abort.current.abort();
+    top10Abort.current = new AbortController();
+    fetch(`/api/stations/top10?product=${product}`, { signal: top10Abort.current.signal })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`top10 ${r.status}`);
+        return (await r.json()) as NationalTop10Response;
+      })
+      .then((data) => {
+        setNationalTop10(Array.isArray(data?.stations) ? data.stations : []);
+      })
+      .catch((e) => {
+        if (e.name !== 'AbortError') console.error('top10 fetch fail', e);
+      });
   }, [product]);
 
   function fetchStations(b: { swLat: number; swLng: number; neLat: number; neLng: number; zoom: number }) {
@@ -174,6 +196,7 @@ export default function HomePage() {
           initialLevel={restoredView?.level}
           suppressAutoCenter={!!restoredView}
           stations={stations}
+          nationalTop10={nationalTop10}
           averagePrice={averagePrice}
           myLocation={myLocation}
           recenterSignal={recenterSignal}
