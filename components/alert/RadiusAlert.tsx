@@ -8,9 +8,11 @@ interface Props {
   averagePrice: number;
   onClick: () => void;
   onDismiss: () => void;
+  /** 길안내(카카오내비) 시작 요청 — 확인 모달을 띄운다 */
+  onNavigate?: () => void;
 }
 
-export function RadiusAlert({ station, averagePrice, onClick, onDismiss }: Props) {
+export function RadiusAlert({ station, averagePrice, onClick, onDismiss, onNavigate }: Props) {
   const diff = station.price - averagePrice;
   const distanceText = station.distance != null
     ? station.distance < 1000 ? `${Math.round(station.distance)}m` : `${(station.distance / 1000).toFixed(1)}km`
@@ -33,10 +35,20 @@ export function RadiusAlert({ station, averagePrice, onClick, onDismiss }: Props
           {BRAND_LABEL[station.brand]} {station.name} · {distanceText}
         </div>
       </div>
+      {onNavigate && (
+        <button
+          onClick={onNavigate}
+          aria-label="길안내 시작"
+          title="카카오내비 길안내"
+          className="shrink-0 rounded-lg bg-white/20 px-2.5 py-2 text-sm font-bold text-white hover:bg-white/30"
+        >
+          🧭 길안내
+        </button>
+      )}
       <button
         onClick={onDismiss}
         aria-label="알림 닫기"
-        className="ml-2 rounded-full p-1 text-white/80 hover:bg-white/15 hover:text-white"
+        className="ml-1 rounded-full p-1 text-white/80 hover:bg-white/15 hover:text-white"
       >
         ✕
       </button>

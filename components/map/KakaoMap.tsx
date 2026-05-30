@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { loadKakao } from './loadKakao';
 import type { StationWithPrice, ProductCode } from '@/types/station';
 import { BRAND_COLOR } from '@/types/station';
-import { priceTier } from '@/lib/map/geo';
+import { priceTier, topPriceRankMap } from '@/lib/map/geo';
 
 interface Props {
   initialCenter?: { lat: number; lng: number };
@@ -91,26 +91,43 @@ export function KakaoMap({
     overlaysRef.current = [];
 
     const showLabel = map.getLevel() <= 5; // 줌 인 상태에서만 가격 라벨
+    // 현재 표시 집합 기준 최저가 TOP10 강조 (FR-1.2/1.4): id → 순위(1~10)
+    const top10Rank = topPriceRankMap(stations, 10);
+    const HL_COLOR = '#F59E0B';   // 강조색(앰버) — tier 색과 구분되는 톤
+    const HL_RING = '#B45309';    // 강조 테두리(진한 앰버)
+
     for (const s of stations) {
+      const rank = top10Rank.get(s.id);      // TOP10이면 1~10, 아니면 undefined
+      const isTop = rank !== undefined;
       const tier = priceTier(s.price, averagePrice);
       const tierColor = tier === 'cheap' ? '#16A34A' : tier === 'expensive' ? '#DC2626' : '#EAB308';
       const brandColor = BRAND_COLOR[s.brand] ?? '#666';
+      // 라벨 배경: TOP10은 강조색 + 진한 테두리, 그 외는 기존 tier 색
+      const labelBg = isTop ? HL_COLOR : tierColor;
+      const labelBorder = isTop ? `border:2px solid ${HL_RING};` : '';
+      // 순위 뱃지(색맹 대비: 색 외 숫자/형태로도 구분). 라벨 표시 여부와 무관하게 항상 노출
+      const rankBadge = isTop
+        ? `<div style="position:absolute;top:-7px;right:-7px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:${HL_RING};color:white;font-size:11px;font-weight:800;line-height:18px;text-align:center;border:1.5px solid white;box-shadow:0 1px 3px rgba(0,0,0,.35)">${rank}</div>`
+        : '';
 
       const content = document.createElement('div');
       content.className = 'cursor-pointer select-none';
       content.style.transform = 'translate(-50%, -100%)';
+      content.style.position = 'relative';
       content.innerHTML = showLabel
         ? `
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-            <div style="padding:4px 8px;border-radius:10px;background:${tierColor};color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
-              ₩${s.price.toLocaleString()}
+          <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
+            ${rankBadge}
+            <div style="padding:4px 8px;border-radius:10px;background:${labelBg};color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap;${labelBorder}">
+              ${isTop ? '👑 ' : ''}₩${s.price.toLocaleString()}
             </div>
-            <div style="width:8px;height:8px;background:${tierColor};transform:rotate(45deg);margin-top:-4px"></div>
+            <div style="width:8px;height:8px;background:${labelBg};transform:rotate(45deg);margin-top:-4px"></div>
             <div style="width:16px;height:16px;border-radius:50%;background:${brandColor};border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,.3);margin-top:-2px"></div>
           </div>`
         : `
-          <div style="display:flex;flex-direction:column;align-items:center">
-            <div style="width:18px;height:18px;border-radius:50%;background:${brandColor};border:3px solid ${tierColor};box-shadow:0 2px 4px rgba(0,0,0,.25)"></div>
+          <div style="position:relative;display:flex;flex-direction:column;align-items:center">
+            ${rankBadge}
+            <div style="width:${isTop ? 24 : 18}px;height:${isTop ? 24 : 18}px;border-radius:50%;background:${brandColor};border:3px solid ${isTop ? HL_COLOR : tierColor};box-shadow:0 2px 4px rgba(0,0,0,.25)${isTop ? ',0 0 0 3px rgba(245,158,11,.35)' : ''}"></div>
           </div>`;
 
       content.addEventListener('click', () => onMarkerClick?.(s));
@@ -120,6 +137,8 @@ export function KakaoMap({
         content,
         yAnchor: 1,
         clickable: true,
+        // TOP10 마커는 다른 마커 위에 그려지도록 zIndex 상향 (순위 높을수록 더 위)
+        zIndex: isTop ? 10 + (11 - (rank as number)) : 1,
       });
       overlay.setMap(map);
       overlaysRef.current.push(overlay);
