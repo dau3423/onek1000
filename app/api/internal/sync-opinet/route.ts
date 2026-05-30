@@ -141,6 +141,42 @@ export async function POST(req: Request) {
   const stationUpserts = stationRows.length;
   const priceUpserts = priceRows.length;
 
+  // ─── stale 가격 정리 ───
+  // lowTop10.do는 "현재 시도×유종 최저가 TOP20"만 돌려준다. 한 번 TOP20에 들었다가
+  // 가격이 올라 목록에서 빠진 주유소의 prices_latest 행은 UPSERT만으로는 지워지지 않아
+  // 영구히 stale로 남고, 그 옛 가격이 top10/bbox/radius "최저가" 순위를 오염시킨다.
+  // (실제 사례: 다향주유소 D047=1619가 잔존해 1위로 표시, 실제 현재가는 1995)
+  //
+  // 매 실행마다 전 시도×PRODUCTS를 재수집하므로, 이번 run에서 보고되지 않은
+  // (= updated_at < runStartedAt) 행은 stale로 간주해 삭제한다.
+  // 단, 이번에 수집한 PRODUCTS 유종에 한정해 다른 유종 데이터는 건드리지 않는다.
+  //
+  // 안전 가드: fetch 일부 실패로 priceRows가 비정상적으로 적으면(시도×유종 평균
+  // 기대치의 절반 미만) 과삭제로 prices_latest가 비는 사고를 막기 위해 정리를 skip.
+  const EXPECTED_MIN_ROWS = SIDOS.length * PRODUCTS.length * 5; // 시도×유종당 최소 5건 기대
+  let staleDeleted = 0;
+  let staleSkipped = false;
+  if (priceRows.length >= EXPECTED_MIN_ROWS) {
+    // 이번 run 시작 시각(now)보다 오래된 updated_at = 이번에 보고되지 않은 행.
+    // UPSERT가 모두 성공한 뒤 실행하므로 신규/갱신 행은 updated_at=now 로 보존된다.
+    const { data: deleted, error } = await sb
+      .from('prices_latest')
+      .delete()
+      .in('product', PRODUCTS)
+      .lt('updated_at', now)
+      .select('station_id'); // 삭제 건수 집계용
+    if (error) {
+      fetchErrors.push(`stale cleanup failed: ${error.message}`);
+    } else {
+      staleDeleted = deleted?.length ?? 0;
+    }
+  } else {
+    staleSkipped = true;
+    fetchErrors.push(
+      `stale cleanup skipped: priceRows ${priceRows.length} < expected ${EXPECTED_MIN_ROWS}`,
+    );
+  }
+
   // ─── 가격 변동 감지 → 프리미엄 사용자에게 푸시 ───
   // 즐겨찾기 주유소 중 직전 가격 대비 30원/L 이상 떨어진 항목을 사용자별로 모음
   let pushSent = 0;
@@ -291,7 +327,8 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true, asOf: new Date().toISOString(),
     sidos: SIDOS.length, products: PRODUCTS.length,
-    stationUpserts, priceUpserts, pushSent, pushFailed,
+    stationUpserts, priceUpserts, staleDeleted, staleSkipped,
+    pushSent, pushFailed,
     regionPushSent, regionPushFailed,
     fetchErrors: fetchErrors.length ? fetchErrors : undefined,
   });
