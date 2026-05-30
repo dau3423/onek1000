@@ -15,7 +15,11 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
 const SIDOS: SidoCode[] = ['01','02','03','04','05','06','07','08','09','10','11','14','15','16','17','18','19'];
-const PRODUCTS: ProductCode[] = ['B027', 'D047'];
+// 5종 전체 적재 — 휘발유/경유/고급휘발유/LPG/실내등유.
+// stale 삭제 범위(.in('product', PRODUCTS))·과삭제 가드 임계치(EXPECTED_MIN_ROWS)·
+// 평균가/TOP20 조회 루프가 모두 이 배열을 단일 소스로 참조하므로 여기만 바꾸면 일관 확장된다.
+// 호출량: 평균 5회 + TOP20 5종×17시도=85회 (모두 병렬). maxDuration(120s) 내 안전.
+const PRODUCTS: ProductCode[] = ['B027', 'D047', 'B034', 'C004', 'K015'];
 
 const OPINET_BASE = 'https://www.opinet.co.kr/api';
 
@@ -69,11 +73,13 @@ export async function POST(req: Request) {
 
   // 2) 시도×유종 TOP20 전체를 병렬로 조회 (이전엔 순차 호출이라 60초 초과로 미완료됨)
   const jobs = SIDOS.flatMap((sido) => PRODUCTS.map((prod) => ({ sido, prod })));
+  let topFetchFailed = 0; // fetch 자체 실패(=catch) job 수. stale 과삭제 가드용.
   const lists = await Promise.all(
     jobs.map(async ({ sido, prod }) => {
       try {
         return { sido, prod, oils: await opinetLowTop10(sido, prod) };
       } catch (e) {
+        topFetchFailed++;
         fetchErrors.push(`top ${sido}/${prod}: ${(e as Error).message}`);
         return { sido, prod, oils: [] as any[] };
       }
@@ -151,12 +157,19 @@ export async function POST(req: Request) {
   // (= updated_at < runStartedAt) 행은 stale로 간주해 삭제한다.
   // 단, 이번에 수집한 PRODUCTS 유종에 한정해 다른 유종 데이터는 건드리지 않는다.
   //
-  // 안전 가드: fetch 일부 실패로 priceRows가 비정상적으로 적으면(시도×유종 평균
-  // 기대치의 절반 미만) 과삭제로 prices_latest가 비는 사고를 막기 위해 정리를 skip.
-  const EXPECTED_MIN_ROWS = SIDOS.length * PRODUCTS.length * 5; // 시도×유종당 최소 5건 기대
+  // 안전 가드: Opinet fetch가 대량 실패하면 priceRows가 비정상적으로 적어지고,
+  // 그 상태로 stale 정리를 돌리면 prices_latest가 통째로 비는 사고가 난다.
+  // 과거엔 "priceRows >= 시도×유종×5" 절대량으로 판정했으나, 5종으로 확장하면서
+  // 데이터 밀도가 낮은 유종(B034 고급휘발유 / C004 LPG / K015 등유)이 섞여
+  // "정상 fetch인데도 행 수가 적은" 경우와 "fetch 실패로 적은" 경우를 절대량만으로는
+  // 구분할 수 없게 됐다(전자에 가드가 걸리면 stale 정리가 영구 skip → 옛 가격 잔존).
+  // → 판정 기준을 "fetch 실패율"로 바꾼다. fetch 실패 job이 전체의 절반 미만이고
+  //   적재 행이 1건 이상이면 데이터가 신뢰 가능하다고 보고 stale 정리를 진행한다.
+  const STALE_GUARD_MAX_FAIL_RATIO = 0.5;
+  const failRatio = jobs.length ? topFetchFailed / jobs.length : 1;
   let staleDeleted = 0;
   let staleSkipped = false;
-  if (priceRows.length >= EXPECTED_MIN_ROWS) {
+  if (priceRows.length > 0 && failRatio < STALE_GUARD_MAX_FAIL_RATIO) {
     // 이번 run 시작 시각(now)보다 오래된 updated_at = 이번에 보고되지 않은 행.
     // UPSERT가 모두 성공한 뒤 실행하므로 신규/갱신 행은 updated_at=now 로 보존된다.
     const { data: deleted, error } = await sb
@@ -173,7 +186,7 @@ export async function POST(req: Request) {
   } else {
     staleSkipped = true;
     fetchErrors.push(
-      `stale cleanup skipped: priceRows ${priceRows.length} < expected ${EXPECTED_MIN_ROWS}`,
+      `stale cleanup skipped: priceRows ${priceRows.length}, fetchFailed ${topFetchFailed}/${jobs.length} (ratio ${failRatio.toFixed(2)})`,
     );
   }
 
@@ -327,6 +340,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true, asOf: new Date().toISOString(),
     sidos: SIDOS.length, products: PRODUCTS.length,
+    topJobs: jobs.length, topFetchFailed,
     stationUpserts, priceUpserts, staleDeleted, staleSkipped,
     pushSent, pushFailed,
     regionPushSent, regionPushFailed,
