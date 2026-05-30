@@ -131,6 +131,17 @@ env:
       - BUILD
       - RUNTIME
 
+  # ─── Web Push (VAPID) ───
+  # 공개키는 클라이언트에 노출되는 값이라 value로 둠
+  - variable: NEXT_PUBLIC_VAPID_PUBLIC_KEY
+    value: "BMlQ4UqKwd1vTAbgRbTQc2dDp-qI4AcleUbenpSt-M9V_tKMkZsErE64ke2rX6y1KnJiiGGO4t-bxtH3rujV6ME"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: VAPID_PRIVATE_KEY
+    secret: VAPID_PRIVATE_KEY
+
   # ─── Opinet API 키 ───
   - variable: OPINET_API_KEY
     secret: OPINET_API_KEY
