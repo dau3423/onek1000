@@ -100,6 +100,17 @@ env:
   - variable: NEXTAUTH_SECRET
     secret: NEXTAUTH_SECRET
 
+  # ─── 카카오 로그인 ───
+  # REST API 키는 OAuth 리다이렉트에서 노출되는 값이라 value로 둠 (지도/Firebase 키와 동일 정책)
+  - variable: KAKAO_CLIENT_ID
+    value: "71e86c35d3673ac8441d6f5e679286d5"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: KAKAO_CLIENT_SECRET
+    secret: KAKAO_CLIENT_SECRET
+
   - variable: CRON_SECRET
     secret: CRON_SECRET
 
