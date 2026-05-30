@@ -35,6 +35,8 @@ export default function HomePage() {
   const geo = useGeolocation(geoEnabled);
   const [radiusStations, setRadiusStations] = useState<StationWithPrice[]>([]);
   const [radiusAvg, setRadiusAvg] = useState<number>(1600);
+  // 값이 바뀌면 지도가 내 위치로 이동 (버튼 재클릭마다 증가)
+  const [recenterSignal, setRecenterSignal] = useState(0);
 
   // bbox 변경 시 stations 조회
   useEffect(() => {
@@ -54,9 +56,14 @@ export default function HomePage() {
       product,
     });
     fetch(`/api/stations/bbox?${params}`, { signal: bboxAbort.current.signal })
-      .then((r) => r.json() as Promise<BboxResponse>)
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`bbox ${r.status}`);
+        return (await r.json()) as BboxResponse;
+      })
       .then((data) => {
-        const filtered = selfOnly ? data.stations.filter((s) => s.isSelf) : data.stations;
+        // 오류 응답({error})이나 예기치 못한 형태로 stations가 비어도 마커 렌더가 깨지지 않도록 방어
+        const list = Array.isArray(data?.stations) ? data.stations : [];
+        const filtered = selfOnly ? list.filter((s) => s.isSelf) : list;
         setStations(filtered);
         if (filtered.length) {
           const avg = Math.round(filtered.reduce((s, x) => s + x.price, 0) / filtered.length);
@@ -104,6 +111,7 @@ export default function HomePage() {
           stations={stations}
           averagePrice={averagePrice}
           myLocation={myLocation}
+          recenterSignal={recenterSignal}
           onBoundsChange={(b) => {
             lastBoundsRef.current = b;
             fetchStations(b);
@@ -116,12 +124,19 @@ export default function HomePage() {
           onClick={() => {
             setGeoEnabled(true);
             geo.request();
+            // 이미 위치를 알고 있으면 즉시 그 위치로 이동(재클릭). 아직 모르면
+            // 첫 위치 획득 시 KakaoMap이 자동으로 중심을 이동한다.
+            if (geo.coords) setRecenterSignal((n) => n + 1);
           }}
           className="absolute right-3 top-[calc(56px+44px+12px+env(safe-area-inset-top))] z-20 flex h-11 w-11 items-center justify-center rounded-full bg-white text-lg shadow-md hover:bg-gray-50"
           aria-label="내 위치"
-          title={geo.error ?? '내 위치로 이동'}
+          title={
+            geo.status === 'denied'
+              ? '위치 권한이 차단되었습니다. 브라우저 설정에서 허용해주세요.'
+              : geo.error ?? '내 위치로 이동'
+          }
         >
-          {geo.status === 'denied' ? '🚫' : '📍'}
+          {geo.status === 'denied' ? '🚫' : geo.status === 'locating' ? '⏳' : '📍'}
         </button>
 
         {/* 1km 알람 */}

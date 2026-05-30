@@ -10,6 +10,8 @@ interface Props {
   initialCenter?: { lat: number; lng: number };
   initialLevel?: number;          // 카카오 level: 작을수록 확대 (1~14)
   myLocation?: { lat: number; lng: number } | null;
+  /** 값이 바뀔 때마다 내 위치로 지도 중심 이동 (버튼 재클릭 대응). 0이면 이동 안 함. */
+  recenterSignal?: number;
   stations: StationWithPrice[];
   averagePrice?: number;
   onBoundsChange?: (b: {
@@ -22,6 +24,7 @@ export function KakaoMap({
   initialCenter = { lat: 37.5663, lng: 126.9779 }, // 서울시청
   initialLevel = 5,
   myLocation,
+  recenterSignal = 0,
   stations,
   averagePrice = 1600,
   onBoundsChange,
@@ -32,6 +35,8 @@ export function KakaoMap({
   const overlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
   const myOverlayRef = useRef<kakao.maps.CustomOverlay | null>(null);
   const myCircleRef = useRef<kakao.maps.Circle | null>(null);
+  // 첫 위치 획득 시 1회 자동 중심 이동 했는지 여부 (이후 watchPosition 갱신엔 패닝하지 않음)
+  const didAutoCenterRef = useRef(false);
   // onBoundsChange는 부모에서 매번 새 함수가 들어올 수 있으므로 ref로 최신값 유지
   const onBoundsChangeRef = useRef(onBoundsChange);
   useEffect(() => { onBoundsChangeRef.current = onBoundsChange; }, [onBoundsChange]);
@@ -144,7 +149,23 @@ export function KakaoMap({
       fillColor: '#1d4ed8', fillOpacity: 0.06,
     });
     myCircleRef.current.setMap(map);
+
+    // 첫 위치 획득 시에만 자동으로 내 위치로 중심 이동 (이후 위치 갱신엔 사용자 패닝 방해 X)
+    if (!didAutoCenterRef.current) {
+      didAutoCenterRef.current = true;
+      map.setLevel(4);
+      map.panTo(pos);
+    }
   }, [ready, myLocation]);
+
+  // 내 위치 버튼 재클릭 시(recenterSignal 증가) 명시적으로 내 위치로 이동
+  useEffect(() => {
+    if (!ready || !mapRef.current || !myLocation || recenterSignal === 0) return;
+    const map = mapRef.current;
+    map.setLevel(4);
+    map.panTo(new window.kakao.maps.LatLng(myLocation.lat, myLocation.lng));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recenterSignal]);
 
   if (error) {
     return (
