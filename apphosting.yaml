@@ -111,6 +111,17 @@ env:
   - variable: KAKAO_CLIENT_SECRET
     secret: KAKAO_CLIENT_SECRET
 
+  # ─── 구글 로그인 ───
+  # OAuth 클라이언트 ID는 리다이렉트에서 노출되는 값이라 value로 둠
+  - variable: GOOGLE_CLIENT_ID
+    value: "514320363056-mqd726ps4plfed23f50b8o762nguqpef.apps.googleusercontent.com"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: GOOGLE_CLIENT_SECRET
+    secret: GOOGLE_CLIENT_SECRET
+
   - variable: CRON_SECRET
     secret: CRON_SECRET
 
