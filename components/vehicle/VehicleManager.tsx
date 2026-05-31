@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import { PRODUCT_LABEL, type ProductCode } from '@/types/station';
 import { VEHICLE_MAX, type Vehicle } from '@/types/vehicle';
 
-const FUEL_OPTIONS: ProductCode[] = ['B027', 'B034', 'D047', 'C004', 'K015'];
+const FUEL_OPTIONS: ProductCode[] = ['B027', 'B034', 'D047', 'C004'];
 
 export function VehicleManager() {
   // 세션 update()로 기본 유종 변경을 즉시 토큰에 반영(다음 페이지 진입 시 자동 선택)

@@ -4,7 +4,7 @@ import { useMapStore } from '@/stores/map';
 import { PRODUCT_LABEL, type ProductCode } from '@/types/station';
 import clsx from 'clsx';
 
-const PRODUCTS: ProductCode[] = ['B027', 'D047', 'B034', 'C004', 'K015'];
+const PRODUCTS: ProductCode[] = ['B027', 'D047', 'B034', 'C004'];
 
 export function FilterBar() {
   const { product, setProduct } = useMapStore();

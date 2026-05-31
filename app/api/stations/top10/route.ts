@@ -5,7 +5,7 @@ import { redis, keys } from '@/lib/cache/redis';
 
 export const revalidate = 600;
 
-const VALID_PRODUCTS: ProductCode[] = ['B027', 'B034', 'D047', 'K015', 'C004'];
+const VALID_PRODUCTS: ProductCode[] = ['B027', 'B034', 'D047', 'C004'];
 const TTL_SEC = 600; // 데이터 신선도 최대 1시간 허용(NFR-3) — 동기화 주기 대비 충분히 짧게
 
 // 전국 최저가 TOP10: 화면 영역과 무관한 전국 순위. product당 1건만 캐시하면 충분.

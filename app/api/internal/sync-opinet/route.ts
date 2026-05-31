@@ -1,4 +1,4 @@
-// Cron (1일 1회) — 시도별 최저가 TOP N(대량) + 시도별 평균가 동기화
+// Cron (1일 1회) — 시군구별 최저가 TOP10(전국 고른 분포) + 시도별 평균가 동기화
 // Authorization: Bearer ${CRON_SECRET}
 // USE_MOCK=true 거나 Supabase 미설정인 경우 skip.
 
@@ -12,30 +12,72 @@ import { PRODUCT_LABEL, BRAND_LABEL, type BrandCode, type SidoCode, type Product
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-// 적재량 확대(시도별 cnt 상향)로 청크 upsert가 많아져 120s를 넘길 수 있어 상향.
-// Cloud Run/App Hosting 요청 타임아웃 허용 범위 내(기본 최대 3600s, 여기선 300s).
+// 시군구 단위 적재로 lowTop10 호출이 ~1,000회(시군구 ~250 × 4유종)로 늘었다.
+// 동시성 제한(아래 CONCURRENCY) 때문에 호출이 직렬에 가깝게 흘러 수십 초~분 단위가
+// 걸릴 수 있어 충분히 상향한다. Cloud Run/App Hosting 요청 타임아웃 허용 범위 내(기본 최대 3600s).
 export const maxDuration = 300;
 
 const SIDOS: SidoCode[] = ['01','02','03','04','05','06','07','08','09','10','11','14','15','16','17','18','19'];
-// 5종 전체 적재 — 휘발유/경유/고급휘발유/LPG/실내등유.
+// 취급 4종 — 휘발유/경유/고급휘발유/LPG. (실내등유 K015 제외)
 // stale 삭제 범위·과삭제 가드(실패율 기반)·평균가/TOP 조회 루프가 모두 이 배열을
 // 단일 소스로 참조하므로 여기만 바꾸면 일관 확장된다.
-// 호출량: 평균 5회 + TOP 5종×17시도=85회 (모두 병렬). cnt를 키워도 호출 "횟수"는 불변.
-const PRODUCTS: ProductCode[] = ['B027', 'D047', 'B034', 'C004', 'K015'];
+const PRODUCTS: ProductCode[] = ['B027', 'D047', 'B034', 'C004'];
 
-// lowTop10.do는 "시도×유종 최저가 TOP N"을 반환한다.
-// 직관과 달리 cnt가 크면 시도당 반환이 오히려 줄어듦(실측: cnt=500이면 시도당 ~10개,
-// cnt=20이면 시도당 ~20개로 더 많음). 20이 시도당 최대 수집량이 가장 많아 최적.
-// (Opinet이 더 적게 주면 그만큼만 적재되고, 더 줘도 청크 upsert로 안전 처리된다.)
-const TOP_CNT = 20;
+// lowTop10.do(area=시군구4자리)는 "그 시군구 최저가 TOP10"을 반환한다.
+// cnt를 키워도 시군구당 10개로 캡되므로 10으로 고정한다.
+const TOP_CNT = 10;
 
 // 대량 적재 대비: 단일 배치 upsert/insert는 행이 수천~수만이면 payload 크기·DB 타임아웃
 // 위험이 있어 청크 단위로 분할해 순차 처리한다.
 const UPSERT_CHUNK = 1000;
 
+// Opinet 동시호출 제한 — 시군구×유종 ~1,000회를 Promise.all로 한꺼번에 쏘면
+// Opinet이 순간 차단해 빈 응답(0건)을 준다(실측). 동시 실행 수를 이 값으로 묶는다.
+const CONCURRENCY = 6;
+// 동시 호출 풀이 한 슬롯 비울 때마다 다음 요청을 곧장 던지므로 폭주를 막기 위해
+// 각 호출 직후 짧은 지연을 둔다(throttle 회피용 완충).
+const REQUEST_DELAY_MS = 60;
+
 const OPINET_BASE = 'https://www.opinet.co.kr/api';
 
-async function opinetLowTop10(area: SidoCode, prod: ProductCode, cnt = TOP_CNT) {
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// 동시 실행 수를 limit개로 제한하는 워커 풀(p-limit류 패턴, 외부 의존 없이 직접 구현).
+// items 순서대로 worker를 호출하되 동시에 살아있는 작업이 limit개를 넘지 않도록 한다.
+// 입력 순서와 무관한 결과 누적을 가정한다(각 worker가 부수효과/배열 push로 처리).
+async function mapWithConcurrency<T>(
+  items: T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<void>,
+): Promise<void> {
+  let cursor = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    for (;;) {
+      const i = cursor++;
+      if (i >= items.length) return;
+      await worker(items[i], i);
+    }
+  });
+  await Promise.all(runners);
+}
+
+// areaCode.do?area={시도2자리} → 그 시도의 시군구 코드(4자리) 목록.
+// 응답: RESULT.OIL = [{ AREA_CD: '0201', AREA_NM: '수원시' }, ...]
+async function opinetAreaCodes(sido: SidoCode): Promise<Array<{ code: string; name: string }>> {
+  const key = process.env.OPINET_API_KEY;
+  if (!key) throw new Error('OPINET_API_KEY missing');
+  const url = `${OPINET_BASE}/areaCode.do?out=json&code=${key}&area=${sido}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`opinet ${res.status}`);
+  const data = await res.json();
+  const list = (data?.RESULT?.OIL ?? []) as Array<{ AREA_CD?: string; AREA_NM?: string }>;
+  return list
+    .map((a) => ({ code: String(a.AREA_CD ?? '').trim(), name: String(a.AREA_NM ?? '').trim() }))
+    .filter((a) => a.code.length === 4);
+}
+
+// lowTop10.do(area=시군구4자리) → 그 시군구 최저가 TOP10.
+async function opinetLowTop10(area: string, prod: ProductCode, cnt = TOP_CNT) {
   const key = process.env.OPINET_API_KEY;
   if (!key) throw new Error('OPINET_API_KEY missing');
   const url = `${OPINET_BASE}/lowTop10.do?out=json&code=${key}&area=${area}&prodcd=${prod}&cnt=${cnt}`;
@@ -84,33 +126,51 @@ export async function POST(req: Request) {
   const today = new Date().toISOString().slice(0, 10);
   const now = new Date().toISOString();
   const fetchErrors: string[] = [];
+  let opinetCalls = 0; // Opinet 호출 누적(일일 한도 1,500 모니터링용)
 
-  // 1) 시도별 평균가 → Redis (병렬)
-  await Promise.all(
-    PRODUCTS.map(async (prod) => {
-      try {
-        const list = await opinetAvgSido(prod);
-        await redis.setJson(keys.avgSido(prod), list, 3600);
-      } catch (e) {
-        fetchErrors.push(`avg ${prod}: ${(e as Error).message}`);
-      }
-    }),
-  );
+  // 1) 시도별 평균가 → Redis (4종, 동시성 제한)
+  await mapWithConcurrency(PRODUCTS, CONCURRENCY, async (prod) => {
+    opinetCalls++;
+    try {
+      const list = await opinetAvgSido(prod);
+      await redis.setJson(keys.avgSido(prod), list, 3600);
+    } catch (e) {
+      fetchErrors.push(`avg ${prod}: ${(e as Error).message}`);
+    }
+    await sleep(REQUEST_DELAY_MS);
+  });
 
-  // 2) 시도×유종 최저가 TOP_CNT 전체를 병렬로 조회 (호출 횟수=85회 불변, cnt만 확대)
-  const jobs = SIDOS.flatMap((sido) => PRODUCTS.map((prod) => ({ sido, prod })));
+  // 2) 시도(17개)별 areaCode → 전국 시군구 코드 목록(~250개) 수집 (동시성 제한)
+  const sigungus: Array<{ code: string; sido: SidoCode }> = [];
+  let areaFetchFailed = 0;
+  await mapWithConcurrency(SIDOS, CONCURRENCY, async (sido) => {
+    opinetCalls++;
+    try {
+      const list = await opinetAreaCodes(sido);
+      for (const a of list) sigungus.push({ code: a.code, sido });
+    } catch (e) {
+      areaFetchFailed++;
+      fetchErrors.push(`area ${sido}: ${(e as Error).message}`);
+    }
+    await sleep(REQUEST_DELAY_MS);
+  });
+
+  // 3) (시군구 × 4유종)마다 lowTop10(area=시군구4자리) 조회 — ~1,000회, 동시성 제한.
+  //    Promise.all로 한꺼번에 쏘면 Opinet이 throttle해 빈 응답을 주므로 풀로 묶는다.
+  const jobs = sigungus.flatMap(({ code, sido }) => PRODUCTS.map((prod) => ({ code, sido, prod })));
+  const lists: Array<{ code: string; sido: SidoCode; prod: ProductCode; oils: any[] }> = [];
   let topFetchFailed = 0; // fetch 자체 실패(=catch) job 수. stale 과삭제 가드용.
-  const lists = await Promise.all(
-    jobs.map(async ({ sido, prod }) => {
-      try {
-        return { sido, prod, oils: await opinetLowTop10(sido, prod) };
-      } catch (e) {
-        topFetchFailed++;
-        fetchErrors.push(`top ${sido}/${prod}: ${(e as Error).message}`);
-        return { sido, prod, oils: [] as any[] };
-      }
-    }),
-  );
+  await mapWithConcurrency(jobs, CONCURRENCY, async ({ code, sido, prod }) => {
+    opinetCalls++;
+    try {
+      lists.push({ code, sido, prod, oils: await opinetLowTop10(code, prod) });
+    } catch (e) {
+      topFetchFailed++;
+      fetchErrors.push(`top ${code}/${prod}: ${(e as Error).message}`);
+      lists.push({ code, sido, prod, oils: [] as any[] });
+    }
+    await sleep(REQUEST_DELAY_MS);
+  });
 
   // 응답 행 누적 — 주유소는 id 기준, 가격은 (station_id, product) 기준으로 dedupe
   const stationMap = new Map<string, Record<string, unknown>>();
@@ -118,7 +178,7 @@ export async function POST(req: Request) {
   const history: Array<{ station_id: string; product: ProductCode; price: number }> = [];
 
   let coordSkipped = 0;
-  for (const { sido, prod, oils } of lists) {
+  for (const { code, sido, prod, oils } of lists) {
     for (const o of oils) {
       const id = o.UNI_ID as string;
       if (!id) continue;
@@ -135,6 +195,7 @@ export async function POST(req: Request) {
         brand_name: BRAND_LABEL[brand] ?? BRAND_LABEL.ETC,
         name: o.OS_NM,
         sido_code: sido,
+        sigungu_code: code,
         address: o.NEW_ADR ?? o.VAN_ADR ?? null,
         lat: wgs.lat,
         lng: wgs.lng,
@@ -157,7 +218,7 @@ export async function POST(req: Request) {
   const stationRows = [...stationMap.values()];
   const priceRows = [...priceMap.values()];
 
-  // 청크 분할 UPSERT/INSERT — cnt 확대로 행이 수천~수만이 되어도
+  // 청크 분할 UPSERT/INSERT — 시군구 단위 적재로 행이 수천~수만이 되어도
   // payload 크기·DB 타임아웃을 피하도록 UPSERT_CHUNK(1000)씩 나눠 순차 처리한다.
   await inChunks(stationRows, UPSERT_CHUNK,
     async (chunk) => await sb.from('stations').upsert(chunk, { onConflict: 'id' }),
@@ -173,12 +234,12 @@ export async function POST(req: Request) {
   const priceUpserts = priceRows.length;
 
   // ─── stale 가격 정리 ───
-  // lowTop10.do는 "현재 시도×유종 최저가 TOP_CNT"만 돌려준다. 한 번 목록에 들었다가
+  // lowTop10.do(area=시군구)는 "현재 시군구×유종 최저가 TOP10"만 돌려준다. 한 번 목록에 들었다가
   // 가격이 올라 목록에서 빠진 주유소의 prices_latest 행은 UPSERT만으로는 지워지지 않아
   // 영구히 stale로 남고, 그 옛 가격이 top10/bbox/radius "최저가" 순위를 오염시킨다.
   // (실제 사례: 다향주유소 D047=1619가 잔존해 1위로 표시, 실제 현재가는 1995)
   //
-  // 매 실행마다 전 시도×PRODUCTS(5종)를 재수집하므로, 이번 run에서 보고되지 않은
+  // 매 실행마다 전 시군구×PRODUCTS(4종)를 재수집하므로, 이번 run에서 보고되지 않은
   // (= updated_at < runStartedAt) 행은 stale로 간주해 삭제한다.
   //
   // 삭제 범위는 product 화이트리스트로 한정하지 않고 updated_at < now 단일 조건으로 둔다.
@@ -364,7 +425,10 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true, asOf: new Date().toISOString(),
     sidos: SIDOS.length, products: PRODUCTS.length,
+    sigungus: sigungus.length, areaFetchFailed,
     topJobs: jobs.length, topFetchFailed,
+    opinetCalls, // areaCode(17) + lowTop10(~1,000) + avg(4) ≈ ~1,020회 (일일 한도 1,500 이내)
+    concurrency: CONCURRENCY,
     stationUpserts, priceUpserts, staleDeleted, staleSkipped,
     pushSent, pushFailed,
     regionPushSent, regionPushFailed,
