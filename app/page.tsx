@@ -15,6 +15,7 @@ import { StationPopup } from '@/components/map/StationPopup';
 import { useMapStore, getInitialMapView, type MapView } from '@/stores/map';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useFullscreen } from '@/hooks/useFullscreen';
 import { quantize } from '@/lib/map/geo';
 import type { BboxResponse, RadiusResponse, StationWithPrice, NationalTop10Item, NationalTop10Response } from '@/types/station';
 
@@ -99,6 +100,10 @@ export default function HomePage() {
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   // PC에서 마커 클릭 시 노출할 정보 카드 팝업 대상 (모바일은 사용 안 함)
   const [popupStation, setPopupStation] = useState<StationWithPrice | null>(null);
+
+  // 지도 영역 전체화면 토글. 대상은 map-container(지도 + 버튼/배너/시트 포함).
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const fullscreen = useFullscreen(mapContainerRef);
 
   // 마커 클릭 동작 분기:
   //  - PC: 상세 페이지로 이동하지 않고 요약 정보 카드(팝업)를 띄운다.
@@ -231,7 +236,7 @@ export default function HomePage() {
       <Header />
       <FilterBar />
 
-      <div className="map-container flex-1">
+      <div ref={mapContainerRef} className="map-container flex-1">
         <KakaoMap
           initialCenter={restoredView ? { lat: restoredView.lat, lng: restoredView.lng } : undefined}
           initialLevel={restoredView?.level}
@@ -241,6 +246,7 @@ export default function HomePage() {
           product={product}
           averagePrice={averagePrice}
           myLocation={myLocation}
+          heading={geo.coords?.heading ?? null}
           recenterSignal={recenterSignal}
           follow={follow}
           onBoundsChange={(b) => {
@@ -294,6 +300,21 @@ export default function HomePage() {
                 />
               )}
         </button>
+
+        {/* 전체화면 토글 — 지원 브라우저에서만 노출(iOS Safari 등 미지원 시 숨김).
+            우측 상단(필터바 아래)에 고정해 GPS 버튼(우측 하단)과 겹치지 않게 둔다. */}
+        {fullscreen.supported && (
+          <button
+            onClick={fullscreen.toggle}
+            style={{ top: '12px' }}
+            className="absolute right-3 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-lg text-gray-700 shadow-md backdrop-blur transition hover:bg-white dark:bg-gray-800/90 dark:text-gray-200 dark:hover:bg-gray-800"
+            aria-label={fullscreen.isFullscreen ? '전체화면 종료' : '전체화면'}
+            aria-pressed={fullscreen.isFullscreen}
+            title={fullscreen.isFullscreen ? '전체화면 종료' : '전체화면으로 보기'}
+          >
+            {fullscreen.isFullscreen ? '🗗' : '⛶'}
+          </button>
+        )}
 
         {/* 1km 알람 */}
         {alertStation && !alertDismissed && (

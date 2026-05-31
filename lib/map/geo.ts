@@ -14,6 +14,25 @@ export function distanceMeters(
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+/**
+ * 두 좌표 사이 방위각(bearing)을 도(0~360°, 북=0 시계방향)로 반환.
+ * GPS heading이 없을 때 진행 방향 폴백 계산에 사용한다.
+ * - 두 점이 거의 같으면(이동 ~5m 미만) 방향이 불안정하므로 null 반환.
+ */
+export function bearingDeg(
+  lat1: number, lng1: number,
+  lat2: number, lng2: number,
+): number | null {
+  if (distanceMeters(lat1, lng1, lat2, lng2) < 5) return null;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const φ1 = toRad(lat1);
+  const φ2 = toRad(lat2);
+  const dλ = toRad(lng2 - lng1);
+  const y = Math.sin(dλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(dλ);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
 /** 좌표를 일정 정밀도로 양자화하여 캐시 키 생성 (precision=3 → ~110m) */
 export function quantize(lat: number, lng: number, precision = 3): string {
   return `${lat.toFixed(precision)},${lng.toFixed(precision)}`;
@@ -31,18 +50,20 @@ export function inBbox(lat: number, lng: number, b: Bbox): boolean {
 /**
  * 줌 레벨별 표시 개수 정책 (FR-1.2)
  * - zoom 1~6 (전국/광역 축소): 전국 최저가 TOP 100
- * - zoom 7~9 (시군구): TOP 30
- * - zoom 10~11 (시군구 확대): TOP 60
- * - zoom 12+ (동네): TOP 100
+ * - zoom 7~9 (시/도·시군구): TOP 60
+ * - zoom 10+ (내 지역 확대~동네): TOP 100
  *
- * 데이터가 희소(시도별 TOP20 ≈ 477개)하여 전국 영역에서도 최저가 100개를
- * 모두 보여주는 것이 사용자 가치가 크므로, 줌아웃 시에도 TOP 100을 반환한다.
+ * 카카오 level↔zoom 매핑은 zoom = 15 - level.
+ * GPS 위치 획득 시 내 지역으로 자동 줌인(level 6, zoom 9)하므로, 그 이상 줌인된
+ * 구간(zoom 9+)에서는 화면(bbox) 영역 자체가 좁아 TOP 100이어도 곧 내 지역
+ * 주유소만 남는다. 데이터가 희소(시도별 ≈ 20, 전국 ≈ 340)하므로 별도 데이터/뷰
+ * 적재 없이 "줌인하면 내 지역 최저가가 자연히 보이는" 정책으로 처리한다.
+ * 전국 줌아웃(zoom ≤ 6)은 기존대로 전국 최저가 TOP 100을 유지한다.
  */
 export function topNByZoom(zoom: number): number {
-  if (zoom <= 6) return 100;         // 전국/광역: 최저가 TOP 100
-  if (zoom <= 9) return 30;          // 시/군/구
-  if (zoom <= 11) return 60;
-  return 100;                        // 동네 상세
+  if (zoom <= 6) return 100;         // 전국/광역: 전국 최저가 TOP 100
+  if (zoom <= 8) return 60;          // 광역시/도
+  return 100;                        // 내 지역 확대(시군구)~동네 상세
 }
 
 /** 가격 색상 분류 */

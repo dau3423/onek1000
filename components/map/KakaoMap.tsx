@@ -10,6 +10,10 @@ import { priceTier } from '@/lib/map/geo';
 const HL_COLOR = '#F59E0B'; // 강조색(앰버) — tier 색과 구분되는 톤
 const HL_RING = '#B45309';  // 강조 테두리(진한 앰버)
 
+// 내 위치로 자동 줌인할 카카오 level (zoom = 15 - level). level 6 = zoom 9(시군구 단위).
+// 내 지역 주유소가 화면에 여러 개 들어와 bbox 최저가가 자연히 보이는 수준.
+const MY_AREA_LEVEL = 6;
+
 // 순위 단서(색맹 대비: 색 외 형태/문자로도 구분). 1~3위는 메달 이모지, 4~10위는 숫자.
 const rankMedal = (r: number) => (r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : '');
 
@@ -35,6 +39,12 @@ interface Props {
   initialCenter?: { lat: number; lng: number };
   initialLevel?: number;          // 카카오 level: 작을수록 확대 (1~14)
   myLocation?: { lat: number; lng: number } | null;
+  /**
+   * 진행 방향(0~360°, 북=0 시계방향). null이면 방향 정보 없음(정지/미지원).
+   * 내 위치 마커를 이 각도로 회전한 화살표로 표시한다. 카카오맵 웹 SDK는 지도
+   * 회전을 지원하지 않으므로 지도는 북쪽 고정, 마커만 회전한다.
+   */
+  heading?: number | null;
   /** 값이 바뀔 때마다 내 위치로 지도 중심 이동 (버튼 재클릭 대응). 0이면 이동 안 함. */
   recenterSignal?: number;
   /** true면 첫 위치 획득 시 자동 중심 이동을 하지 않는다(복원된 시점을 우선). */
@@ -61,6 +71,7 @@ export function KakaoMap({
   initialCenter = { lat: 37.5663, lng: 126.9779 }, // 서울시청
   initialLevel = 5,
   myLocation,
+  heading = null,
   recenterSignal = 0,
   suppressAutoCenter = false,
   follow = false,
@@ -81,6 +92,10 @@ export function KakaoMap({
   const topOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
   const myOverlayRef = useRef<kakao.maps.CustomOverlay | null>(null);
   const myCircleRef = useRef<kakao.maps.Circle | null>(null);
+  // 내 위치 마커 내부의 회전 대상 엘리먼트 — heading 변경 시 위치 effect 재실행 없이 회전만 갱신.
+  const myArrowRef = useRef<HTMLDivElement | null>(null);
+  // 진행 중이 아닐 때(heading 없음) 직전 방향을 유지하기 위한 마지막 유효 각도.
+  const lastHeadingRef = useRef<number | null>(null);
   // 첫 위치 획득 시 1회 자동 중심 이동 했는지 여부 (이후 watchPosition 갱신엔 패닝하지 않음)
   // 복원된 시점이 있으면(suppressAutoCenter) 처음부터 true로 두어 자동 센터링을 막는다.
   const didAutoCenterRef = useRef(suppressAutoCenter);
@@ -300,10 +315,30 @@ export function KakaoMap({
     if (myOverlayRef.current) myOverlayRef.current.setMap(null);
     if (myCircleRef.current) myCircleRef.current.setMap(null);
 
-    const dot = document.createElement('div');
-    dot.style.cssText = 'width:16px;height:16px;border-radius:50%;background:#1d4ed8;border:3px solid white;box-shadow:0 0 0 4px rgba(29,78,216,.25)';
+    // 내 위치 마커: 파란 점 + 진행 방향 화살표(▲).
+    // 바깥 wrapper(중앙 정렬) > 회전 레이어(myArrowRef, transform:rotate) > 화살표 + 점.
+    // 화살표는 점보다 위에 떠 있는 작은 삼각형으로, heading 각도로 회전한다.
+    // 지도는 북쪽 고정이므로 마커만 회전해 "내가 향하는 방향"을 나타낸다.
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:relative;width:28px;height:28px;pointer-events:none';
+
+    const rotor = document.createElement('div');
+    // 초기 회전: 직전 유효 각도 → 현재 heading 순. 둘 다 없으면 0(점만 보이는 형태).
+    const initDeg = (Number.isFinite(heading as number) ? (heading as number) : lastHeadingRef.current) ?? 0;
+    const hasDir = Number.isFinite(heading as number) || lastHeadingRef.current !== null;
+    rotor.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;'
+      + `transform:rotate(${initDeg}deg);transition:transform .3s ease-out`;
+    // 진행 방향 화살표(위쪽=0°). conic 없이 순수 삼각형 SVG로 다크모드 무관 가시성 확보.
+    rotor.innerHTML = `
+      <svg width="28" height="28" viewBox="0 0 28 28" style="position:absolute;top:-9px;left:0;${hasDir ? '' : 'opacity:0'};filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))">
+        <path d="M14 1 L20 13 L14 10 L8 13 Z" fill="#1d4ed8" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/>
+      </svg>
+      <div style="width:14px;height:14px;border-radius:50%;background:#1d4ed8;border:3px solid #fff;box-shadow:0 0 0 4px rgba(29,78,216,.25)"></div>`;
+    wrap.appendChild(rotor);
+    myArrowRef.current = rotor;
+
     const overlay = new window.kakao.maps.CustomOverlay({
-      position: pos, content: dot, yAnchor: 0.5, xAnchor: 0.5, zIndex: 5,
+      position: pos, content: wrap, yAnchor: 0.5, xAnchor: 0.5, zIndex: 5,
     });
     overlay.setMap(map);
     myOverlayRef.current = overlay;
@@ -315,10 +350,12 @@ export function KakaoMap({
     });
     myCircleRef.current.setMap(map);
 
-    // 첫 위치 획득 시에만 자동으로 내 위치로 중심 이동 (이후 위치 갱신엔 사용자 패닝 방해 X)
+    // 첫 위치 획득 시에만 자동으로 내 위치로 중심 이동 (이후 위치 갱신엔 사용자 패닝 방해 X).
+    // level 6(zoom 9, 시군구 단위)로 줌인 → 내 지역 주유소가 화면에 여러 개 들어와
+    // bbox 최저가가 자연히 보이게 한다(별도 데이터/뷰 없이 줌 경험으로 해결).
     if (!didAutoCenterRef.current) {
       didAutoCenterRef.current = true;
-      map.setLevel(4);
+      map.setLevel(MY_AREA_LEVEL);
       panToProgrammatic(pos);
     } else if (follow) {
       // 따라가기 모드: 위치 갱신마다 줌은 유지한 채 중심만 부드럽게 이동
@@ -332,10 +369,31 @@ export function KakaoMap({
   useEffect(() => {
     if (!ready || !mapRef.current || !myLocation || recenterSignal === 0) return;
     const map = mapRef.current;
-    map.setLevel(4);
+    map.setLevel(MY_AREA_LEVEL);
     panToProgrammatic(new window.kakao.maps.LatLng(myLocation.lat, myLocation.lng));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recenterSignal]);
+
+  // heading(진행 방향) 변경 시 내 위치 마커 화살표만 회전 갱신.
+  // 위치 effect를 재실행하지 않아(마커 재생성 X) 부드러운 transition이 유지된다.
+  // - 유효 heading이면 그 각도로 회전 + 화살표 표시, 직전 각도를 기억.
+  // - heading 없음(정지/미지원)이면 직전 방향을 유지(화살표 그대로), 둘 다 없으면 점만.
+  useEffect(() => {
+    const rotor = myArrowRef.current;
+    if (!rotor) return;
+    const arrow = rotor.querySelector('svg') as SVGElement | null;
+    if (Number.isFinite(heading as number)) {
+      lastHeadingRef.current = heading as number;
+      // 최단 경로 회전을 위한 각도 정규화 없이도 transition은 자연스러우므로 단순 적용.
+      rotor.style.transform = `rotate(${heading as number}deg)`;
+      if (arrow) arrow.style.opacity = '1';
+    } else if (lastHeadingRef.current !== null) {
+      rotor.style.transform = `rotate(${lastHeadingRef.current}deg)`;
+      if (arrow) arrow.style.opacity = '1';
+    } else if (arrow) {
+      arrow.style.opacity = '0'; // 방향 정보 전무 → 점만 표시
+    }
+  }, [heading, myLocation]);
 
   // 프로그램적 중심 이동 — 따라가기 해제 트리거(dragstart)와 구분하기 위해 플래그를 잠깐 세운다.
   function panToProgrammatic(pos: kakao.maps.LatLng) {

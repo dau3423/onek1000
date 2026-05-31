@@ -3,7 +3,7 @@
   "short_name": "1000냥",
   "description": "내 주변 최저가 주유소를 지도에서 확인",
   "start_url": "/",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#ffffff",
   "theme_color": "#FF6B00",
   "icons": [
