@@ -43,7 +43,7 @@ export function BottomSheet({
   onSelect,
   nearbyStations = [],
   nearbyEnabled = false,
-  nearbyRadiusM = 5000,
+  nearbyRadiusM = 10000,
   onNavigate,
   onOpenChange,
 }: Props) {

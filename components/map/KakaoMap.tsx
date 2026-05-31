@@ -10,6 +10,12 @@ import { priceTier } from '@/lib/map/geo';
 const HL_COLOR = '#F59E0B'; // 강조색(앰버) — tier 색과 구분되는 톤
 const HL_RING = '#B45309';  // 강조 테두리(진한 앰버)
 
+// === 내 주변(10km) TOP10 강조 마커 디자인 상수 ===
+// 내 위치(파란 점)와 톤을 맞춘 파란 계열로 묶어 "내 근처 저렴한 곳"임을 직관적으로 전달.
+// 전국 메달(앰버 물방울 핀)과 색·형태(테두리 원형)로 구분하되 과하지 않게.
+const NEAR_COLOR = '#2563EB'; // 내 주변 강조색(블루)
+const NEAR_RING = '#1D4ED8';  // 내 주변 테두리(진한 블루)
+
 // 내 위치로 자동 줌인할 카카오 level (zoom = 15 - level). level 6 = zoom 9(시군구 단위).
 // 내 지역 주유소가 화면에 여러 개 들어와 bbox 최저가가 자연히 보이는 수준.
 const MY_AREA_LEVEL = 6;
@@ -54,6 +60,11 @@ interface Props {
   stations: StationWithPrice[];
   /** 전국 최저가 TOP10(화면 영역 무관). 이 목록을 핀/메달 오버레이로 항상 직접 렌더한다. */
   nationalTop10?: NationalTop10Item[];
+  /**
+   * 내 현재 위치 기준 반경 10km 내 최저가 TOP10. 위치 권한이 잡혔을 때만 채워진다.
+   * 전국 메달과 별개로, 파란 계열 마커로 항상 직접 렌더해 내 근처 최저가가 보이게 한다.
+   */
+  nearbyTop10?: StationWithPrice[];
   /** 현재 선택 유종 코드. TOP10 마커 클릭 시 합성하는 StationWithPrice의 product 채움용. */
   product?: ProductCode;
   averagePrice?: number;
@@ -77,6 +88,7 @@ export function KakaoMap({
   follow = false,
   stations,
   nationalTop10,
+  nearbyTop10,
   product = 'B027',
   averagePrice = 1600,
   onBoundsChange,
@@ -90,6 +102,8 @@ export function KakaoMap({
   // 전국 최저가 TOP10 핀/메달 오버레이는 bbox 마커와 독립적으로 관리한다.
   // (화면 영역과 무관하게 항상 그 좌표에 표시되어야 하므로 별도 배열로 분리)
   const topOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
+  // 내 주변(10km) TOP10 핀 오버레이 — bbox 마커/전국 메달과 독립적으로 관리.
+  const nearOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
   const myOverlayRef = useRef<kakao.maps.CustomOverlay | null>(null);
   const myCircleRef = useRef<kakao.maps.Circle | null>(null);
   // 내 위치 마커 내부의 회전 대상 엘리먼트 — heading 변경 시 위치 effect 재실행 없이 회전만 갱신.
@@ -125,6 +139,20 @@ export function KakaoMap({
     for (const t of nationalTop10 ?? []) m.set(t.id, t.rank);
     return m;
   }, [nationalTop10]);
+
+  // 내 주변(10km) TOP10에 포함된 station id → 순위(1~10).
+  // 중복 방지 우선순위(전국메달 > 내주변 > 일반)에 따라, 전국 TOP10에 이미 든 id는 제외한다.
+  // 일반 마커 루프와 내 주변 핀 루프 모두 이 Map을 기준으로 그려 이중 렌더를 막는다.
+  const nearbyRank = useMemo(() => {
+    const m = new Map<string, number>();
+    let rank = 1;
+    for (const s of nearbyTop10 ?? []) {
+      if (top10Rank.has(s.id)) continue; // 전국 메달이 우선 — 내 주변에선 생략
+      m.set(s.id, rank);
+      rank += 1;
+    }
+    return m;
+  }, [nearbyTop10, top10Rank]);
 
   // TOP10 핀 클릭 시 onMarkerClick에 넘길 최소 StationWithPrice 합성.
   // 호출부는 상세 이동(s.id)만 사용하지만, 시그니처 일관성을 위해 항목 값으로 채운다.
@@ -212,8 +240,9 @@ export function KakaoMap({
     const showLabel = map.getLevel() <= 5; // 줌 인 상태에서만 가격 라벨
 
     for (const s of stations) {
-      // 전국 TOP10에 포함된 주유소는 메달 오버레이로만 표시 (중복 방지)
-      if (top10Rank.has(s.id)) continue;
+      // 중복 방지(우선순위: 전국메달 > 내주변 > 일반).
+      // 전국 TOP10 또는 내 주변 TOP10에 포함된 주유소는 각 강조 오버레이로만 표시.
+      if (top10Rank.has(s.id) || nearbyRank.has(s.id)) continue;
 
       const tier = priceTier(s.price, averagePrice);
       const tierColor = tier === 'cheap' ? '#16A34A' : tier === 'expensive' ? '#DC2626' : '#EAB308';
@@ -251,7 +280,7 @@ export function KakaoMap({
       overlay.setMap(map);
       overlaysRef.current.push(overlay);
     }
-  }, [ready, stations, top10Rank, averagePrice, onMarkerClick, mapLevel]);
+  }, [ready, stations, top10Rank, nearbyRank, averagePrice, onMarkerClick, mapLevel]);
 
   // 전국 최저가 TOP10 핀/메달 오버레이 — bbox stations 포함 여부와 무관하게 항상 렌더.
   // 위치/가격/순위는 모두 nationalTop10 항목 값을 사용한다(bbox의 비동기 타이밍 불일치 차단).
@@ -305,6 +334,59 @@ export function KakaoMap({
     // top10ToStation은 product/렌더마다 새로 생성되므로 product를 직접 의존성에 둔다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, nationalTop10, product, onMarkerClick, mapLevel]);
+
+  // 내 주변(10km) TOP10 핀/배지 오버레이 — 전국 메달/일반 마커와 독립적으로 항상 렌더.
+  // 위치/가격/순위는 nearbyTop10(이미 가격순) 기준. 전국 메달과 겹치는 id는 nearbyRank에서 제외됨.
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    const map = mapRef.current;
+
+    // 기존 내 주변 오버레이 제거
+    nearOverlaysRef.current.forEach((o) => o.setMap(null));
+    nearOverlaysRef.current = [];
+
+    const showLabel = map.getLevel() <= 5; // 줌 인 상태에서만 가격 라벨
+
+    for (const s of nearbyTop10 ?? []) {
+      const rank = nearbyRank.get(s.id);
+      if (rank == null) continue; // 전국 메달과 중복(제외됨) → 내 주변에선 생략
+
+      const content = document.createElement('div');
+      content.className = 'cursor-pointer select-none';
+      content.style.transform = 'translate(-50%, -100%)';
+      content.style.position = 'relative';
+
+      // === 내 주변 TOP10: 파란 원형 배지 + 순위 숫자 (전국 앰버 물방울 핀과 색/형태로 구분) ===
+      // 둥근 핀(원 + 아래 꼬리). 순위 숫자를 흰색으로 원 안에 표시.
+      const badge = `
+        <div style="position:relative;display:flex;flex-direction:column;align-items:center">
+          <div style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:${NEAR_COLOR};border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,.3);color:#fff;font-size:12px;font-weight:800;line-height:1">${rank}</div>
+          <div style="width:7px;height:7px;background:${NEAR_COLOR};border-right:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(45deg);margin-top:-4px"></div>
+        </div>`;
+      content.innerHTML = showLabel
+        ? `
+        <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:1px">
+          <div style="padding:3px 7px;border-radius:9px;background:${NEAR_COLOR};color:white;font-size:11px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap;border:2px solid ${NEAR_RING}">
+            ₩${s.price.toLocaleString()}
+          </div>
+          <div style="margin-top:1px">${badge}</div>
+        </div>`
+        : badge;
+
+      content.addEventListener('click', () => onMarkerClick?.(s));
+
+      const overlay = new window.kakao.maps.CustomOverlay({
+        position: new window.kakao.maps.LatLng(s.lat, s.lng),
+        content,
+        yAnchor: 1,
+        clickable: true,
+        // 일반 마커(zIndex 1)보다 위, 전국 메달(zIndex 10~)보다는 아래에 둔다(우선순위 시각화).
+        zIndex: 6,
+      });
+      overlay.setMap(map);
+      nearOverlaysRef.current.push(overlay);
+    }
+  }, [ready, nearbyTop10, nearbyRank, onMarkerClick, mapLevel]);
 
   // 내 위치 마커 + 1km 원
   useEffect(() => {

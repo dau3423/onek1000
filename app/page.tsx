@@ -27,8 +27,12 @@ const KakaoMap = dynamic(
 
 const ALERT_THRESHOLD = 50; // 평균 대비 -50원 이상 저렴할 때 알람
 const ALERT_RADIUS_M = 1000; // 알람 판정 반경 (FR-2.3)
-const NEARBY_RADIUS_M = 5000; // '내 주변' 표시 반경 (데이터 희소성 고려)
-const NEARBY_LIMIT = 20; // 반경 응답 최대 개수 (5km TOP10 + 1km 알람 산출에 충분)
+const NEARBY_RADIUS_M = 10000; // '내 주변' 표시 반경 (현재 위치 기준 10km)
+// 반경 응답 최대 개수. 내 주변 TOP10(가격 정렬) + 1km 알람 산출(거리 기반)을 한 응답에서
+// 모두 뽑아내려면 충분히 커야 한다(10km 내 주유소가 많아도 1km 내 최저가가 잘리지 않게).
+const NEARBY_LIMIT = 60;
+// 지도에 별도 마커로 표시할 '내 주변(10km)' 최저가 상위 개수
+const NEARBY_TOP_N = 10;
 
 export default function HomePage() {
   const router = useRouter();
@@ -214,6 +218,16 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geo.coords?.lat, geo.coords?.lng, product, resetAlert]);
 
+  // 내 주변(10km) 최저가 TOP10 — 지도에 별도 마커로 표시.
+  // radius 응답은 이미 가격 오름차순으로 정렬되어 오므로 상위 N건을 그대로 사용한다.
+  // (좌표가 없으면 빈 배열 → 마커 미표시)
+  const nearbyTop10 = useMemo<StationWithPrice[]>(() => {
+    if (!geo.coords) return [];
+    return [...radiusStations]
+      .sort((a, b) => a.price - b.price)
+      .slice(0, NEARBY_TOP_N);
+  }, [radiusStations, geo.coords]);
+
   // 1km 반경 최저가 (알람 판정용)
   const cheapestWithin1km = useMemo(() => {
     const within = radiusStations
@@ -243,6 +257,7 @@ export default function HomePage() {
           suppressAutoCenter={!!restoredView}
           stations={stations}
           nationalTop10={nationalTop10}
+          nearbyTop10={nearbyTop10}
           product={product}
           averagePrice={averagePrice}
           myLocation={myLocation}
