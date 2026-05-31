@@ -5,8 +5,6 @@ import Link from 'next/link';
 import { loadKakao } from '@/components/map/loadKakao';
 import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL, type BrandCode, type ProductCode, type StationWithPrice } from '@/types/station';
 
-const SEOUL_CITY_HALL = { lat: 37.5663, lng: 126.9779, name: '서울시청' };
-
 type Point = { lat: number; lng: number; name?: string };
 
 type SearchResult = {
@@ -34,10 +32,6 @@ export default function RouteCheapestPage() {
       },
       () => alert('위치 권한이 필요합니다.'),
     );
-  };
-
-  const pickSeoul = (which: 'from' | 'to') => {
-    which === 'from' ? setFrom(SEOUL_CITY_HALL) : setTo(SEOUL_CITY_HALL);
   };
 
   const setPoint = (which: 'from' | 'to', v: Point) => {
@@ -78,14 +72,12 @@ export default function RouteCheapestPage() {
           label="출발"
           value={from}
           onMyLocation={() => pickMyLocation('from')}
-          onPreset={() => pickSeoul('from')}
           onSelect={(p) => setPoint('from', p)}
         />
         <PointPicker
           label="도착"
           value={to}
           onMyLocation={() => pickMyLocation('to')}
-          onPreset={() => pickSeoul('to')}
           onSelect={(p) => setPoint('to', p)}
         />
 
@@ -149,12 +141,11 @@ export default function RouteCheapestPage() {
 }
 
 function PointPicker({
-  label, value, onMyLocation, onPreset, onSelect,
+  label, value, onMyLocation, onSelect,
 }: {
   label: string;
   value: Point | null;
   onMyLocation: () => void;
-  onPreset: () => void;
   onSelect: (p: Point) => void;
 }) {
   const [query, setQuery] = useState('');
@@ -171,7 +162,7 @@ function PointPicker({
     try {
       const kakao = await loadKakao();
       if (!kakao.maps.services?.Places) {
-        throw new Error('장소 검색을 사용할 수 없습니다. 빠른 지정 버튼을 이용해주세요.');
+        throw new Error('장소 검색을 사용할 수 없습니다. "내 위치"를 이용해주세요.');
       }
       const ps = new kakao.maps.services.Places();
       ps.keywordSearch(keyword, (data, status) => {
@@ -272,14 +263,9 @@ function PointPicker({
         </div>
       )}
 
-      <div className="flex gap-2">
-        <button onClick={onMyLocation} className="flex-1 rounded-lg bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-200">
-          📍 내 위치
-        </button>
-        <button onClick={onPreset} className="flex-1 rounded-lg bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-200">
-          서울시청
-        </button>
-      </div>
+      <button onClick={onMyLocation} className="w-full rounded-lg bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-200">
+        📍 내 위치
+      </button>
     </div>
   );
 }
