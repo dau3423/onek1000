@@ -1,4 +1,4 @@
-// Vercel Cron (매시간) — 시도별 TOP20 + 시도별 평균가 동기화
+// Cron (1일 1회) — 시도별 최저가 TOP N(대량) + 시도별 평균가 동기화
 // Authorization: Bearer ${CRON_SECRET}
 // USE_MOCK=true 거나 Supabase 미설정인 경우 skip.
 
@@ -12,18 +12,30 @@ import { PRODUCT_LABEL, BRAND_LABEL, type BrandCode, type SidoCode, type Product
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 120;
+// 적재량 확대(시도별 cnt 상향)로 청크 upsert가 많아져 120s를 넘길 수 있어 상향.
+// Cloud Run/App Hosting 요청 타임아웃 허용 범위 내(기본 최대 3600s, 여기선 300s).
+export const maxDuration = 300;
 
 const SIDOS: SidoCode[] = ['01','02','03','04','05','06','07','08','09','10','11','14','15','16','17','18','19'];
 // 5종 전체 적재 — 휘발유/경유/고급휘발유/LPG/실내등유.
-// stale 삭제 범위(.in('product', PRODUCTS))·과삭제 가드 임계치(EXPECTED_MIN_ROWS)·
-// 평균가/TOP20 조회 루프가 모두 이 배열을 단일 소스로 참조하므로 여기만 바꾸면 일관 확장된다.
-// 호출량: 평균 5회 + TOP20 5종×17시도=85회 (모두 병렬). maxDuration(120s) 내 안전.
+// stale 삭제 범위(.in('product', PRODUCTS))·과삭제 가드(실패율 기반)·
+// 평균가/TOP 조회 루프가 모두 이 배열을 단일 소스로 참조하므로 여기만 바꾸면 일관 확장된다.
+// 호출량: 평균 5회 + TOP 5종×17시도=85회 (모두 병렬). cnt를 키워도 호출 "횟수"는 불변.
 const PRODUCTS: ProductCode[] = ['B027', 'D047', 'B034', 'C004', 'K015'];
+
+// lowTop10.do는 "시도×유종 최저가 TOP N"을 반환한다. cnt를 키우면 호출 횟수는 그대로 둔 채
+// 해당 시도에서 더 많은(저렴한 순) 주유소를 한 번에 받아 DB 밀도를 높일 수 있다.
+// 500으로 시작하고, Opinet이 실제로 주는 개수는 운영에서 확인해 조정한다.
+// (Opinet이 더 적게 주면 그만큼만 적재되고, 더 줘도 청크 upsert로 안전 처리된다.)
+const TOP_CNT = 500;
+
+// 대량 적재 대비: 단일 배치 upsert/insert는 행이 수천~수만이면 payload 크기·DB 타임아웃
+// 위험이 있어 청크 단위로 분할해 순차 처리한다.
+const UPSERT_CHUNK = 1000;
 
 const OPINET_BASE = 'https://www.opinet.co.kr/api';
 
-async function opinetLowTop10(area: SidoCode, prod: ProductCode, cnt = 20) {
+async function opinetLowTop10(area: SidoCode, prod: ProductCode, cnt = TOP_CNT) {
   const key = process.env.OPINET_API_KEY;
   if (!key) throw new Error('OPINET_API_KEY missing');
   const url = `${OPINET_BASE}/lowTop10.do?out=json&code=${key}&area=${area}&prodcd=${prod}&cnt=${cnt}`;
@@ -31,6 +43,20 @@ async function opinetLowTop10(area: SidoCode, prod: ProductCode, cnt = 20) {
   if (!res.ok) throw new Error(`opinet ${res.status}`);
   const data = await res.json();
   return data?.RESULT?.OIL ?? [];
+}
+
+// 배열을 size 단위로 잘라 순차 처리. 청크별 콜백이 에러 객체를 반환하면 즉시 throw.
+async function inChunks<T>(
+  rows: T[],
+  size: number,
+  fn: (chunk: T[]) => Promise<{ error: { message: string } | null }>,
+  label: string,
+) {
+  for (let i = 0; i < rows.length; i += size) {
+    const chunk = rows.slice(i, i + size);
+    const { error } = await fn(chunk);
+    if (error) throw new Error(`${label} failed (rows ${i}-${i + chunk.length}): ${error.message}`);
+  }
 }
 
 async function opinetAvgSido(prod: ProductCode) {
@@ -71,7 +97,7 @@ export async function POST(req: Request) {
     }),
   );
 
-  // 2) 시도×유종 TOP20 전체를 병렬로 조회 (이전엔 순차 호출이라 60초 초과로 미완료됨)
+  // 2) 시도×유종 최저가 TOP_CNT 전체를 병렬로 조회 (호출 횟수=85회 불변, cnt만 확대)
   const jobs = SIDOS.flatMap((sido) => PRODUCTS.map((prod) => ({ sido, prod })));
   let topFetchFailed = 0; // fetch 자체 실패(=catch) job 수. stale 과삭제 가드용.
   const lists = await Promise.all(
@@ -131,24 +157,23 @@ export async function POST(req: Request) {
   const stationRows = [...stationMap.values()];
   const priceRows = [...priceMap.values()];
 
-  // 배치 UPSERT (행 단위 await 루프 제거 → 라운드트립 수백 회 → 수 회로 감소)
-  if (stationRows.length) {
-    const { error } = await sb.from('stations').upsert(stationRows, { onConflict: 'id' });
-    if (error) throw new Error(`stations upsert failed: ${error.message}`);
-  }
-  if (priceRows.length) {
-    const { error } = await sb.from('prices_latest').upsert(priceRows, { onConflict: 'station_id,product' });
-    if (error) throw new Error(`prices_latest upsert failed: ${error.message}`);
-  }
-  if (history.length) {
-    await sb.from('prices_history').insert(history);
-  }
+  // 청크 분할 UPSERT/INSERT — cnt 확대로 행이 수천~수만이 되어도
+  // payload 크기·DB 타임아웃을 피하도록 UPSERT_CHUNK(1000)씩 나눠 순차 처리한다.
+  await inChunks(stationRows, UPSERT_CHUNK,
+    async (chunk) => await sb.from('stations').upsert(chunk, { onConflict: 'id' }),
+    'stations upsert');
+  await inChunks(priceRows, UPSERT_CHUNK,
+    async (chunk) => await sb.from('prices_latest').upsert(chunk, { onConflict: 'station_id,product' }),
+    'prices_latest upsert');
+  await inChunks(history, UPSERT_CHUNK,
+    async (chunk) => await sb.from('prices_history').insert(chunk),
+    'prices_history insert');
 
   const stationUpserts = stationRows.length;
   const priceUpserts = priceRows.length;
 
   // ─── stale 가격 정리 ───
-  // lowTop10.do는 "현재 시도×유종 최저가 TOP20"만 돌려준다. 한 번 TOP20에 들었다가
+  // lowTop10.do는 "현재 시도×유종 최저가 TOP_CNT"만 돌려준다. 한 번 목록에 들었다가
   // 가격이 올라 목록에서 빠진 주유소의 prices_latest 행은 UPSERT만으로는 지워지지 않아
   // 영구히 stale로 남고, 그 옛 가격이 top10/bbox/radius "최저가" 순위를 오염시킨다.
   // (실제 사례: 다향주유소 D047=1619가 잔존해 1위로 표시, 실제 현재가는 1995)
