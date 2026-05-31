@@ -6,6 +6,7 @@ import { InterstitialAd } from '@/components/ads/InterstitialAd';
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { PriceHistoryChart } from '@/components/charts/PriceHistoryChart';
 import { ReviewSection } from '@/components/reviews/ReviewSection';
+import { NaviButton } from '@/components/station/NaviButton';
 
 interface Props { params: { id: string } }
 
@@ -14,8 +15,6 @@ const PRODUCT_ORDER: ProductCode[] = ['B027', 'B034', 'D047', 'K015', 'C004'];
 export default async function StationDetailPage({ params }: Props) {
   const detail = await fetchStationDetail(params.id);
   if (!detail) notFound();
-
-  const kakaoMapUrl = `https://map.kakao.com/link/to/${encodeURIComponent(detail.name)},${detail.lat},${detail.lng}`;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
@@ -91,14 +90,7 @@ export default async function StationDetailPage({ params }: Props) {
 
       {/* CTA */}
       <section className="mt-auto space-y-2 border-t border-gray-100 bg-gray-50 px-5 py-4 pb-[calc(16px+env(safe-area-inset-bottom))]">
-        <a
-          href={kakaoMapUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block w-full rounded-xl bg-primary py-3.5 text-center font-bold text-white shadow-md hover:bg-primary-dark"
-        >
-          🧭 카카오맵으로 길찾기
-        </a>
+        <NaviButton name={detail.name} lat={detail.lat} lng={detail.lng} />
         {detail.tel && (
           <a
             href={`tel:${detail.tel}`}
