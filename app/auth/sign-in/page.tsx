@@ -51,6 +51,9 @@ function SignInInner() {
         <Link href="/legal/payment" className="underline">유료 결제 이용약관</Link>
         에 동의한 것으로 간주됩니다.
       </p>
+      <p className="mt-3 text-center text-[11px] text-gray-400">
+        <Link href="/legal/business" className="underline">사업자 정보</Link>
+      </p>
     </main>
   );
 }

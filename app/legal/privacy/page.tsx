@@ -99,7 +99,7 @@ export default function PrivacyPage() {
 
       <h2>제11조 (개인정보 보호책임자)</h2>
       <ul>
-        <li>개인정보 보호책임자 연락처: admin@onek1000.kr</li>
+        <li>개인정보 보호책임자 연락처: junicode0901@gmail.com</li>
       </ul>
       <p>
         이용자는 개인정보 보호와 관련한 문의·불만·피해 구제 등을 위 연락처로 요청할 수 있으며,

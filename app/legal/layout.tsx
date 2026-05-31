@@ -14,6 +14,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
         <Link href="/legal/terms" className="hover:underline">이용약관</Link>
         <Link href="/legal/privacy" className="hover:underline">개인정보처리방침</Link>
         <Link href="/legal/payment" className="hover:underline">유료 결제 이용약관</Link>
+        <Link href="/legal/business" className="hover:underline">사업자 정보</Link>
       </footer>
     </main>
   );

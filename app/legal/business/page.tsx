@@ -1,0 +1,45 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: '사업자 정보 - 1000냥 주유소',
+  description: '1000냥 주유소 운영 사업자 정보 및 통신판매업 신고 정보',
+};
+
+export default function BusinessInfoPage() {
+  return (
+    <>
+      <h1>사업자 정보</h1>
+      <p className="text-gray-500">
+        「전자상거래 등에서의 소비자보호에 관한 법률」에 따라 다음과 같이 사업자 정보를 표시합니다.
+      </p>
+
+      <h2>운영 사업자</h2>
+      <ul>
+        <li>상호: 주니코드(Junicode)</li>
+        <li>대표자: 박순복</li>
+        <li>사업자등록번호: 574-06-02215</li>
+        <li>통신판매업 신고번호: 제2025-수원장안-0459호</li>
+        <li>사업장 주소: 경기도 수원시 장안구 영화로 71번길</li>
+      </ul>
+
+      <h2>연락처</h2>
+      <ul>
+        <li>고객센터: 010-3401-5201</li>
+        <li>이메일: junicode0901@gmail.com</li>
+      </ul>
+
+      <h2>호스팅 제공자</h2>
+      <ul>
+        <li>Google Firebase (App Hosting)</li>
+      </ul>
+
+      <h2>취소·환불 정책</h2>
+      <p>
+        유료 구독(1000냥 플랜)의 결제, 정기결제, 청약철회 및 취소·환불에 관한 사항은{' '}
+        <Link href="/legal/payment#refund" className="text-primary underline">취소·환불 정책(유료 결제 이용약관 제4조)</Link>
+        에서 확인하실 수 있습니다.
+      </p>
+    </>
+  );
+}

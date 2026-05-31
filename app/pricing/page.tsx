@@ -50,6 +50,18 @@ export default function PricingPage() {
           <Link href="/legal/payment" className="underline">유료 결제 이용약관</Link>
           에 동의하게 됩니다.
         </p>
+        <div className="flex justify-center gap-4 text-[11px] text-gray-400">
+          <Link href="/legal/payment#refund" className="underline">취소·환불 정책</Link>
+          <Link href="/legal/business" className="underline">사업자 정보</Link>
+        </div>
+
+        <div className="mt-2 space-y-0.5 border-t border-gray-200 pt-3 text-[10px] leading-relaxed text-gray-400">
+          <p>상호: 주니코드(Junicode) · 대표자: 박순복</p>
+          <p>사업자등록번호: 574-06-02215</p>
+          <p>통신판매업 신고번호: 제2025-수원장안-0459호</p>
+          <p>주소: 경기도 수원시 장안구 영화로 71번길</p>
+          <p>고객센터: 010-3401-5201 · 이메일: junicode0901@gmail.com</p>
+        </div>
       </section>
     </main>
   );

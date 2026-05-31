@@ -111,7 +111,7 @@ export default function TermsPage() {
       </ul>
 
       <h2>제13조 (문의처)</h2>
-      <p>본 약관 및 서비스 이용에 관한 문의: admin@onek1000.kr</p>
+      <p>본 약관 및 서비스 이용에 관한 문의: junicode0901@gmail.com</p>
     </>
   );
 }
