@@ -3,7 +3,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from './options';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
-import { isHandledProduct, type ProductCode } from '@/types/station';
+import { PRODUCT_LABEL, type ProductCode } from '@/types/station';
 
 export async function getSessionUser() {
   const session = await getServerSession(authOptions);
@@ -50,9 +50,8 @@ export async function getDefaultProduct(userId?: string): Promise<ProductCode | 
     .eq('user_id', userId)
     .eq('is_default', true)
     .maybeSingle();
-  // 취급 외 유종(기존 데이터)은 기본 유종 자동선택에서 제외 → 클라이언트 B027 유지
-  const fuel = data?.fuel;
-  return isHandledProduct(fuel) ? fuel : null;
+  const fuel = data?.fuel as string | undefined;
+  return fuel && fuel in PRODUCT_LABEL ? (fuel as ProductCode) : null;
 }
 
 /** 사용자 닉네임 조회 — 세션 주입/표시용. 없으면 null. */

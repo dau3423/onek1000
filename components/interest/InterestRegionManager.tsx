@@ -9,8 +9,7 @@ import {
   type InterestRegion,
 } from '@/types/interest-region';
 
-// 취급 유종은 휘발유/경유 2종만
-const PRODUCT_OPTIONS: ProductCode[] = ['B027', 'D047'];
+const PRODUCT_OPTIONS: ProductCode[] = ['B027', 'B034', 'D047', 'C004'];
 const RADIUS_OPTIONS = [1000, 3000, 5000, 10000];
 
 export function InterestRegionManager() {

@@ -82,7 +82,7 @@ export default function RouteCheapestPage() {
         />
 
         <div className="flex items-center gap-1.5 overflow-x-auto">
-          {(['B027', 'D047'] as ProductCode[]).map((p) => (
+          {(['B027', 'D047', 'C004'] as ProductCode[]).map((p) => (
             <button
               key={p}
               onClick={() => setProduct(p)}

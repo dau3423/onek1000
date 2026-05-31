@@ -4,8 +4,7 @@ import { useMapStore } from '@/stores/map';
 import { PRODUCT_LABEL, type ProductCode } from '@/types/station';
 import clsx from 'clsx';
 
-// 취급 유종은 휘발유/경유 2종만 노출 (상세 페이지는 별도로 5종 표시)
-const PRODUCTS: ProductCode[] = ['B027', 'D047'];
+const PRODUCTS: ProductCode[] = ['B027', 'D047', 'B034', 'C004', 'K015'];
 
 export function FilterBar() {
   const { product, setProduct } = useMapStore();
