@@ -86,19 +86,14 @@ export default function HomePage() {
   // 배너(광고 OFF CTA / AdSense)가 실제로 노출되는지 — BannerAd와 동일한 표시 조건을 공유.
   const bannerVisible = useBannerVisible();
 
-  // GPS 버튼 위치 계산. 맵 컨테이너(relative) 기준이며, 우선순위는 다음과 같다.
-  //  1) 펼침: 시트 높이를 따라가지 않고 맵 상단에서 80px 아래(top 고정)에 멈춰
-  //     화면이 짧아도 지도 밖(상단)으로 사라지지 않게 상한을 둔다.
-  //  2) 접힘 + 배너 표시: 배너 상단 기준 20px 위(bottom 고정).
-  //  3) 접힘 + 배너 없음: 시트 peek 바로 위(+safe-area).
-  // 펼침일 때 bottom은 무효화(top 사용), 접힘일 때 top은 무효화(bottom 사용).
-  const GPS_TOP_MARGIN_PX = 80; // 맵 상단 기준 상한 마진 (헤더 h-14·필터바 위 영역과 별개로 맵 내부 기준)
+  // GPS 버튼 위치 계산. 맵 컨테이너(relative) 기준이며, 항상 '접힘 상태' 기준의 고정 위치를 쓴다.
+  // 시트 펼침/접힘에 따라 위아래로 따라다니지 않는다(시트 펼침 시에는 별도로 버튼을 숨김 처리).
+  //  - 배너 표시: 배너 상단 기준 20px 위(bottom 고정).
+  //  - 배너 없음: 시트 peek 바로 위(+safe-area).
   const GPS_BANNER_GAP_PX = 20; // 배너 상단과의 간격
-  const gpsPosition: { top?: string; bottom?: string } = sheetOpen
-    ? { top: `${GPS_TOP_MARGIN_PX}px`, bottom: 'auto' }
-    : bannerVisible
-      ? { top: 'auto', bottom: `calc(${BANNER_BOTTOM_PX}px + ${BANNER_HEIGHT_PX}px + ${GPS_BANNER_GAP_PX}px + env(safe-area-inset-bottom))` }
-      : { top: 'auto', bottom: `calc(${SHEET_PEEK_PX}px + 12px + env(safe-area-inset-bottom))` };
+  const gpsPosition: { top?: string; bottom?: string } = bannerVisible
+    ? { top: 'auto', bottom: `calc(${BANNER_BOTTOM_PX}px + ${BANNER_HEIGHT_PX}px + ${GPS_BANNER_GAP_PX}px + env(safe-area-inset-bottom))` }
+    : { top: 'auto', bottom: `calc(${SHEET_PEEK_PX}px + 12px + env(safe-area-inset-bottom))` };
 
   // PC(데스크톱) 판별: lg(1024px) 이상. 마운트 후 클라이언트에서 판별(SSR/CSR 일관성).
   const isDesktop = useMediaQuery('(min-width: 1024px)');
@@ -286,9 +281,13 @@ export default function HomePage() {
             if (geo.coords) setRecenterSignal((n) => n + 1);
             else pendingRecenterRef.current = true;
           }}
-          // 우측 고정. 펼침 시 맵 상단 80px(top 고정)에서 멈추고, 접힘 시 배너/peek 위(bottom)로 내려온다.
+          // 우측 하단 고정(접힘 상태 기준). 시트 펼침 시에는 fade-out + 클릭 차단으로 숨긴다(시트 뒤로 가려짐).
           style={gpsPosition}
-          className="absolute right-3 z-30 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full text-lg text-gray-700 transition-[top,bottom,opacity] duration-300 hover:opacity-90 dark:text-gray-200"
+          aria-hidden={sheetOpen}
+          tabIndex={sheetOpen ? -1 : undefined}
+          className={`absolute right-3 z-30 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full text-lg text-gray-700 transition-opacity duration-300 hover:opacity-90 dark:text-gray-200 ${
+            sheetOpen ? 'pointer-events-none opacity-0' : 'opacity-100'
+          }`}
           aria-label={follow ? '따라가기 모드 켜짐 — 내 위치 추적 중' : '내 위치로 이동'}
           aria-pressed={follow}
           title={
