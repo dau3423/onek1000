@@ -50,7 +50,18 @@ export async function GET() {
   return NextResponse.json({ regions: (data ?? []).map((r) => toRegion(r as RegionRow)) });
 }
 
-export async function POST(req: Request) {
+// [관심지역 비활성] 위치 좌표 저장(lat/lng) 중단. 신규 등록 경로를 막는다.
+// 되살리려면: 아래 POST(비활성판)를 지우고, _disabledPOST 를 export async function POST 로 되돌리면 됨.
+// (DB 테이블/마이그레이션 0005·types/interest-region.ts·queryRegionTop10 은 그대로 유지되어 있음)
+export async function POST() {
+  return NextResponse.json(
+    { error: '관심 지역 등록 기능은 현재 사용할 수 없어요.', disabled: true },
+    { status: 410 },
+  );
+}
+
+// [관심지역 비활성] 원본 등록 로직 — 되살릴 때 이 함수를 POST 로 환원.
+async function _disabledPOST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   if (!isSupabaseConfigured()) return NextResponse.json({ error: 'db not configured' }, { status: 503 });

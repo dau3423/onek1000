@@ -121,6 +121,8 @@ export default async function MyPage() {
         </Link>
       </section>
 
+      {/* [관심지역 비활성] 위치 좌표 저장 중단으로 진입점 숨김. 되살리려면 아래 주석 블록을 해제하면 됨.
+          (관련: app/my/interest-regions/page.tsx, app/api/interest-regions/route.ts(POST), sync-opinet의 관심지역 푸시)
       <section className="border-t border-gray-100 px-5 py-5">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">관심 지역</h2>
         <Link href="/my/interest-regions" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
@@ -128,6 +130,7 @@ export default async function MyPage() {
           <span className="text-sm text-primary">관리 →</span>
         </Link>
       </section>
+      */}
 
       <section className="border-t border-gray-100 px-5 py-5">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">알림</h2>
