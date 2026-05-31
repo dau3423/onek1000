@@ -56,14 +56,14 @@ export default function HomePage() {
   const [geoEnabled, setGeoEnabled] = useState(false);
   const geo = useGeolocation(geoEnabled);
 
-  // 첫 신규 진입 시 자동으로 위치 추적 시작 (FR-2.1).
-  // 복원된 시점(restoredView)이 있으면 = 상세에서 돌아왔거나 새로고침한 경우이므로
-  // 자동 요청하지 않고 복원 시점을 유지한다(사용자가 보던 위치 우선).
+  // 첫 진입 시 항상 위치 추적을 시작한다 (FR-2.1).
+  // 복원된 시점(restoredView: 새로고침/상세 왕복)이 있어도 위치 요청은 그대로 수행해야
+  // geo.coords가 채워져 '내 주변 10km' radius 조회·마커가 정상 동작한다.
+  // 단, 복원된 경우 지도 '중심'은 복원 시점을 유지해야 하므로 KakaoMap에
+  // suppressAutoCenter={!!restoredView}를 넘겨 첫 좌표 획득 시 자동 센터링만 억제한다.
+  // (즉 "위치는 잡되, 지도는 복원 위치 그대로".) 거부/미지원이면 기존처럼 graceful.
   useEffect(() => {
-    if (restoredView) return;
     setGeoEnabled(true);
-    // 권한 허용 시 watchPosition 시작 → 첫 위치 획득에서 KakaoMap이 자동 센터링.
-    // 거부/미지원이면 기존처럼 서울시청 기본 화면 유지, 버튼으로 재시도.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [radiusStations, setRadiusStations] = useState<StationWithPrice[]>([]);
