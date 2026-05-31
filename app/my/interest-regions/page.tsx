@@ -4,14 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/options';
 import { InterestRegionManager } from '@/components/interest/InterestRegionManager';
 
-// [관심지역 비활성] 위치 좌표 저장 중단으로 이 라우트를 막는다(직접 URL 접근도 마이페이지로 리다이렉트).
-// 되살리려면: 아래 redirect('/my') 한 줄을 지우고, 그 아래 원래 렌더 블록(현재 _disabledRender)을 환원하면 됨.
-// (InterestRegionManager / api(GET) / types / 마이그레이션 0005 는 그대로 유지)
 export default async function InterestRegionsPage() {
-  redirect('/my');
-}
-
-async function _disabledRender() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) redirect('/auth/sign-in?callbackUrl=/my/interest-regions');
 

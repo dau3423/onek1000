@@ -255,12 +255,7 @@ export async function POST(req: Request) {
   let regionPushSent = 0;
   let regionPushFailed = 0;
 
-  // [관심지역 비활성] 위치 좌표 저장 기능 중단에 따라 관심지역 최저가 푸시 단계를 끈다.
-  //   - 신규 저장이 막혀 interest_regions 에 더 이상 새 좌표가 쌓이지 않으므로 이 푸시도 비활성.
-  //   - 되살리려면 아래 가드 `INTEREST_REGION_PUSH_ENABLED` 를 true 로 바꾸면 됨(코드/쿼리는 그대로 유지).
-  //   - 다른 동기화(가격 적재/즐겨찾기 푸시/stale 정리)는 영향 없음.
-  const INTEREST_REGION_PUSH_ENABLED = false;
-  if (INTEREST_REGION_PUSH_ENABLED && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
     try {
       // 푸시 구독이 있는 사용자만 대상 (구독 없으면 무의미)
       const { data: subRows } = await sb
