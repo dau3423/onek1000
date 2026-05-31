@@ -78,6 +78,38 @@ declare global {
       function addListener(target: any, type: string, handler: (...args: any[]) => void): void;
       function removeListener(target: any, type: string, handler: (...args: any[]) => void): void;
     }
+
+    namespace services {
+      // 검색 결과 상태값
+      enum Status {
+        OK = 'OK',
+        ZERO_RESULT = 'ZERO_RESULT',
+        ERROR = 'ERROR',
+      }
+
+      // 키워드 검색 결과 항목 (사용하는 필드만)
+      interface PlacesSearchResultItem {
+        place_name: string;
+        address_name: string;
+        road_address_name: string;
+        x: string; // 경도(lng)
+        y: string; // 위도(lat)
+        id: string;
+      }
+
+      class Places {
+        constructor(map?: Map);
+        keywordSearch(
+          keyword: string,
+          callback: (
+            result: PlacesSearchResultItem[],
+            status: Status,
+            pagination: unknown,
+          ) => void,
+          options?: { size?: number; page?: number },
+        ): void;
+      }
+    }
   }
 }
 

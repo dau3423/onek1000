@@ -2,13 +2,24 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { loadKakao } from '@/components/map/loadKakao';
 import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL, type BrandCode, type ProductCode, type StationWithPrice } from '@/types/station';
 
-const SEOUL_CITY_HALL = { lat: 37.5663, lng: 126.9779 };
+const SEOUL_CITY_HALL = { lat: 37.5663, lng: 126.9779, name: '서울시청' };
+
+type Point = { lat: number; lng: number; name?: string };
+
+type SearchResult = {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+};
 
 export default function RouteCheapestPage() {
-  const [from, setFrom] = useState<{ lat: number; lng: number } | null>(null);
-  const [to, setTo] = useState<{ lat: number; lng: number } | null>(null);
+  const [from, setFrom] = useState<Point | null>(null);
+  const [to, setTo] = useState<Point | null>(null);
   const [product, setProduct] = useState<ProductCode>('B027');
   const [results, setResults] = useState<StationWithPrice[]>([]);
   const [loading, setLoading] = useState(false);
@@ -18,7 +29,7 @@ export default function RouteCheapestPage() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (p) => {
-        const v = { lat: p.coords.latitude, lng: p.coords.longitude };
+        const v: Point = { lat: p.coords.latitude, lng: p.coords.longitude, name: '내 위치' };
         which === 'from' ? setFrom(v) : setTo(v);
       },
       () => alert('위치 권한이 필요합니다.'),
@@ -27,6 +38,10 @@ export default function RouteCheapestPage() {
 
   const pickSeoul = (which: 'from' | 'to') => {
     which === 'from' ? setFrom(SEOUL_CITY_HALL) : setTo(SEOUL_CITY_HALL);
+  };
+
+  const setPoint = (which: 'from' | 'to', v: Point) => {
+    which === 'from' ? setFrom(v) : setTo(v);
   };
 
   const search = async () => {
@@ -64,12 +79,14 @@ export default function RouteCheapestPage() {
           value={from}
           onMyLocation={() => pickMyLocation('from')}
           onPreset={() => pickSeoul('from')}
+          onSelect={(p) => setPoint('from', p)}
         />
         <PointPicker
           label="도착"
           value={to}
           onMyLocation={() => pickMyLocation('to')}
           onPreset={() => pickSeoul('to')}
+          onSelect={(p) => setPoint('to', p)}
         />
 
         <div className="flex items-center gap-1.5 overflow-x-auto">
@@ -132,23 +149,129 @@ export default function RouteCheapestPage() {
 }
 
 function PointPicker({
-  label, value, onMyLocation, onPreset,
+  label, value, onMyLocation, onPreset, onSelect,
 }: {
   label: string;
-  value: { lat: number; lng: number } | null;
+  value: Point | null;
   onMyLocation: () => void;
   onPreset: () => void;
+  onSelect: (p: Point) => void;
 }) {
+  const [query, setQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [places, setPlaces] = useState<SearchResult[] | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
+  const runSearch = async () => {
+    const keyword = query.trim();
+    if (!keyword) return;
+    setSearching(true);
+    setSearchError(null);
+    setPlaces(null);
+    try {
+      const kakao = await loadKakao();
+      if (!kakao.maps.services?.Places) {
+        throw new Error('장소 검색을 사용할 수 없습니다. 빠른 지정 버튼을 이용해주세요.');
+      }
+      const ps = new kakao.maps.services.Places();
+      ps.keywordSearch(keyword, (data, status) => {
+        setSearching(false);
+        if (status === kakao.maps.services.Status.OK) {
+          setPlaces(
+            data.map((d) => ({
+              id: d.id,
+              name: d.place_name,
+              address: d.road_address_name || d.address_name,
+              lat: parseFloat(d.y),
+              lng: parseFloat(d.x),
+            })),
+          );
+        } else if (status === kakao.maps.services.Status.ZERO_RESULT) {
+          setPlaces([]);
+        } else {
+          setSearchError('검색 중 오류가 발생했어요. 다시 시도해주세요.');
+        }
+      });
+    } catch (e) {
+      setSearching(false);
+      setSearchError(e instanceof Error ? e.message : '장소 검색에 실패했어요.');
+    }
+  };
+
+  const handleSelect = (p: SearchResult) => {
+    onSelect({ lat: p.lat, lng: p.lng, name: p.name });
+    setQuery('');
+    setPlaces(null);
+    setSearchError(null);
+  };
+
   return (
     <div className="rounded-xl border border-gray-200 p-3">
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <span className="text-xs font-bold uppercase tracking-wide text-gray-500">{label}</span>
         {value && (
-          <span className="text-[11px] text-gray-500">
-            {value.lat.toFixed(5)}, {value.lng.toFixed(5)}
+          <span className="min-w-0 truncate text-right text-[11px] text-gray-600">
+            {value.name ? (
+              <>
+                <span className="font-semibold text-gray-700">{value.name}</span>
+                <span className="ml-1 text-gray-400">
+                  {value.lat.toFixed(4)}, {value.lng.toFixed(4)}
+                </span>
+              </>
+            ) : (
+              <>{value.lat.toFixed(5)}, {value.lng.toFixed(5)}</>
+            )}
           </span>
         )}
       </div>
+
+      <div className="mb-2 flex gap-2">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              runSearch();
+            }
+          }}
+          placeholder="장소·주소 검색 (예: 강남역)"
+          className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:bg-white focus:outline-none"
+          enterKeyHint="search"
+        />
+        <button
+          onClick={runSearch}
+          disabled={searching || !query.trim()}
+          className="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+        >
+          {searching ? '검색…' : '검색'}
+        </button>
+      </div>
+
+      {searchError && <p className="mb-2 text-[11px] text-red-500">{searchError}</p>}
+
+      {places !== null && (
+        <div className="mb-2 max-h-56 overflow-y-auto rounded-lg border border-gray-100">
+          {places.length === 0 ? (
+            <p className="px-3 py-3 text-xs text-gray-400">검색 결과가 없어요.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {places.map((p) => (
+                <li key={p.id}>
+                  <button
+                    onClick={() => handleSelect(p)}
+                    className="block w-full px-3 py-2 text-left hover:bg-gray-50"
+                  >
+                    <div className="truncate text-sm font-semibold text-gray-900">{p.name}</div>
+                    <div className="truncate text-[11px] text-gray-500">{p.address}</div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       <div className="flex gap-2">
         <button onClick={onMyLocation} className="flex-1 rounded-lg bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-200">
           📍 내 위치

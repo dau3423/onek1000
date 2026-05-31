@@ -14,7 +14,9 @@ export function loadKakao(): Promise<typeof kakao> {
   loaderPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
     script.async = true;
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${key}&autoload=false&libraries=clusterer`;
+    // clusterer(지도/마커 클러스터링) + services(장소·주소 키워드 검색) 라이브러리 로드.
+    // services는 경로별 최저가 페이지의 장소 검색에 사용. 전역 로드라 기존 지도/클러스터러 동작에는 영향 없음.
+    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${key}&autoload=false&libraries=clusterer,services`;
     script.onload = () => {
       window.kakao.maps.load(() => resolve(window.kakao));
     };
