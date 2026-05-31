@@ -6,8 +6,7 @@ import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { CancelButton } from '@/components/billing/CancelButton';
 import { SignOutButton } from '@/components/SignOutButton';
 import { EnablePushButton } from '@/components/push/EnablePushButton';
-import { NicknameEditor } from '@/components/profile/NicknameEditor';
-import { AvatarEditor } from '@/components/profile/AvatarEditor';
+import { ProfileHeader } from '@/components/profile/ProfileHeader';
 
 interface Sub {
   id: string;
@@ -68,26 +67,12 @@ export default async function MyPage() {
       </header>
 
       <section className="px-5 py-5">
-        <div className="flex items-center gap-3">
-          {image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={image} alt="프로필 사진" className="h-12 w-12 rounded-full object-cover" />
-          ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-xl">👤</div>
-          )}
-          <div>
-            <div className="font-bold text-gray-900">{nickname ?? session.user.name ?? '회원'}</div>
-            <div className="text-xs text-gray-500">{session.user.email}</div>
-          </div>
-        </div>
-      </section>
-
-      <section className="border-t border-gray-100 px-5 py-5">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">프로필</h2>
-        <div className="space-y-3">
-          <AvatarEditor initialImage={image} displayName={nickname ?? session.user.name} />
-          <NicknameEditor initialNickname={nickname} />
-        </div>
+        <ProfileHeader
+          initialImage={image}
+          initialNickname={nickname}
+          fallbackName={session.user.name}
+          email={session.user.email}
+        />
       </section>
 
       <section className="border-t border-gray-100 px-5 py-5">
