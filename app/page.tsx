@@ -245,7 +245,7 @@ export default function HomePage() {
             if (geo.coords) setRecenterSignal((n) => n + 1);
             else pendingRecenterRef.current = true;
           }}
-          className="absolute right-3 top-[calc(56px+44px+12px+env(safe-area-inset-top))] z-20 flex h-11 w-11 items-center justify-center rounded-full bg-white text-lg text-gray-700 shadow-md transition-colors hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          className="absolute right-3 top-[calc(56px+44px+12px+env(safe-area-inset-top))] z-20 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full text-lg text-gray-700 transition-opacity hover:opacity-90 dark:text-gray-200"
           aria-label={follow ? '따라가기 모드 켜짐 — 내 위치 추적 중' : '내 위치로 이동'}
           aria-pressed={follow}
           title={
@@ -260,12 +260,15 @@ export default function HomePage() {
             : geo.status === 'locating'
               ? '⏳'
               : (
-                // 따라가기 ON/OFF에 따라 다른 아이콘(on 이미지는 자체 강조 디자인)
+                // 따라가기 ON/OFF에 따라 다른 아이콘(on 이미지는 자체 강조 디자인).
+                // 아이콘 PNG에 배경이 baked-in 되어 있어, 둥근 버튼처럼 보이도록
+                // overflow-hidden + 버튼 크기를 꽉 채우는(cover) 방식으로 정사각 이미지를 원형 클립한다.
                 <Image
                   src={follow ? '/icons/icon_gps_on.png' : '/icons/icon_gps.png'}
                   alt={follow ? '따라가기 모드 켜짐' : '내 위치'}
-                  width={22}
-                  height={22}
+                  width={44}
+                  height={44}
+                  className="h-full w-full object-cover"
                 />
               )}
         </button>
