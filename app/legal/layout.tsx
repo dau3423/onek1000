@@ -13,6 +13,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
       <footer className="mt-12 flex gap-4 border-t border-gray-100 pt-6 text-xs text-gray-400">
         <Link href="/legal/terms" className="hover:underline">이용약관</Link>
         <Link href="/legal/privacy" className="hover:underline">개인정보처리방침</Link>
+        <Link href="/legal/payment" className="hover:underline">유료 결제 이용약관</Link>
       </footer>
     </main>
   );

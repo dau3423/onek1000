@@ -45,6 +45,11 @@ export default function PricingPage() {
         <p className="text-center text-[11px] text-gray-500">
           7일 무료 체험 후 매월 ₩1,000 자동결제 · 토스페이먼츠
         </p>
+        <p className="text-center text-[11px] text-gray-400">
+          결제 진행 시{' '}
+          <Link href="/legal/payment" className="underline">유료 결제 이용약관</Link>
+          에 동의하게 됩니다.
+        </p>
       </section>
     </main>
   );

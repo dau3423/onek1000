@@ -9,6 +9,15 @@ import { priceTier } from '@/lib/map/geo';
 
 type Tab = 'area' | 'nearby';
 
+/**
+ * 바텀시트 레이아웃 상수 (단일 출처).
+ * GPS 버튼 등 시트와 연동되는 요소가 동일 값을 참조해 겹침/오정렬을 방지한다.
+ */
+/** 접힘 상태에서 노출되는 손잡이 영역 높이(px) */
+export const SHEET_PEEK_PX = 72;
+/** 펼침 상태의 시트 높이(뷰포트 비율) */
+export const SHEET_OPEN_VH = 70;
+
 interface Props {
   stations: StationWithPrice[];
   averagePrice: number;
@@ -21,6 +30,8 @@ interface Props {
   nearbyRadiusM?: number;
   /** 특정 주유소로 길안내(카카오내비) 시작 요청 */
   onNavigate?: (s: StationWithPrice) => void;
+  /** 열림/접힘 상태 변화 통지 (부모가 GPS 버튼 위치 등을 연동) */
+  onOpenChange?: (open: boolean) => void;
 }
 
 const NEARBY_LIMIT = 10;
@@ -34,9 +45,18 @@ export function BottomSheet({
   nearbyEnabled = false,
   nearbyRadiusM = 5000,
   onNavigate,
+  onOpenChange,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('area');
+
+  function toggleOpen() {
+    setOpen((v) => {
+      const next = !v;
+      onOpenChange?.(next);
+      return next;
+    });
+  }
 
   const activeTab: Tab = nearbyEnabled ? tab : 'area';
   const radiusKm = nearbyRadiusM >= 1000
@@ -55,12 +75,13 @@ export function BottomSheet({
     <div
       className={clsx(
         'pointer-events-auto absolute inset-x-0 bottom-0 z-20 rounded-t-2xl bg-white shadow-sheet transition-transform duration-300 dark:bg-gray-900',
+        // 접힘 시 SHEET_PEEK_PX(72px)만 노출. Tailwind JIT가 정적으로 스캔하도록 리터럴 유지.
         open ? 'translate-y-0' : 'translate-y-[calc(100%-72px)]',
       )}
-      style={{ maxHeight: '70vh' }}
+      style={{ maxHeight: `${SHEET_OPEN_VH}vh` }}
     >
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggleOpen}
         className="flex w-full items-center justify-between px-5 py-3"
       >
         <div className="flex items-center gap-2">
@@ -82,6 +103,7 @@ export function BottomSheet({
         </div>
       )}
 
+      {/* 시트 높이(SHEET_OPEN_VH=70vh)에서 손잡이/탭 영역(~96px)을 뺀 스크롤 영역 */}
       <div className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
         {list.length === 0 ? (
           <p className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">

@@ -45,8 +45,10 @@ function SignInInner() {
       <p className="mt-8 text-center text-[11px] text-gray-400">
         로그인하면{' '}
         <Link href="/legal/terms" className="underline">이용약관</Link>
-        {' '}및{' '}
+        {', '}
         <Link href="/legal/privacy" className="underline">개인정보처리방침</Link>
+        {' '}및{' '}
+        <Link href="/legal/payment" className="underline">유료 결제 이용약관</Link>
         에 동의한 것으로 간주됩니다.
       </p>
     </main>

@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/ui/Header';
 import { FilterBar } from '@/components/ui/FilterBar';
-import { BottomSheet } from '@/components/ui/BottomSheet';
+import { BottomSheet, SHEET_PEEK_PX, SHEET_OPEN_VH } from '@/components/ui/BottomSheet';
 import { BannerAd } from '@/components/ads/BannerAd';
 import { RadiusAlert } from '@/components/alert/RadiusAlert';
 import { NaviConfirm } from '@/components/alert/NaviConfirm';
@@ -74,6 +74,16 @@ export default function HomePage() {
 
   // 길안내 확인 모달 대상
   const [naviTarget, setNaviTarget] = useState<StationWithPrice | null>(null);
+
+  // 하단 시트 펼침 여부 — GPS 버튼이 시트에 가려지지 않게 위치를 연동한다.
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  // GPS 버튼 하단 오프셋: 시트가 펼쳐지면 시트 높이 위로, 접히면 peek(+배너) 위로.
+  //  - 펼침: SHEET_OPEN_VH(70vh) + 여백 12px
+  //  - 접힘: peek(72px) + 배너/여백(64px) + safe-area. 배너(BannerAd, bottom-[72px])와 겹치지 않게 그 위로 띄운다.
+  const gpsBottom = sheetOpen
+    ? `calc(${SHEET_OPEN_VH}vh + 12px)`
+    : `calc(${SHEET_PEEK_PX}px + 64px + env(safe-area-inset-bottom))`;
 
   // PC(데스크톱) 판별: lg(1024px) 이상. 마운트 후 클라이언트에서 판별(SSR/CSR 일관성).
   const isDesktop = useMediaQuery('(min-width: 1024px)');
@@ -245,7 +255,9 @@ export default function HomePage() {
             if (geo.coords) setRecenterSignal((n) => n + 1);
             else pendingRecenterRef.current = true;
           }}
-          className="absolute right-3 top-[calc(56px+44px+12px+env(safe-area-inset-top))] z-20 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full text-lg text-gray-700 transition-opacity hover:opacity-90 dark:text-gray-200"
+          // 우측 하단 고정. bottom은 시트 상태에 따라 동적으로 오르내린다(시트 애니메이션과 동일 duration).
+          style={{ bottom: gpsBottom }}
+          className="absolute right-3 z-30 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full text-lg text-gray-700 transition-[bottom,opacity] duration-300 hover:opacity-90 dark:text-gray-200"
           aria-label={follow ? '따라가기 모드 켜짐 — 내 위치 추적 중' : '내 위치로 이동'}
           aria-pressed={follow}
           title={
@@ -296,6 +308,7 @@ export default function HomePage() {
           nearbyRadiusM={NEARBY_RADIUS_M}
           onSelect={(s) => router.push(`/station/${s.id}`)}
           onNavigate={(s) => setNaviTarget(s)}
+          onOpenChange={setSheetOpen}
         />
       </div>
 

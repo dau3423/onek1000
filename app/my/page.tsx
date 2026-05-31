@@ -149,6 +149,22 @@ export default async function MyPage() {
         <EnablePushButton />
       </section>
 
+      <section className="border-t border-gray-100 px-5 py-5">
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">지원</h2>
+        <a
+          href="mailto:admin@onek1000.kr?subject=%5B1000%EB%83%A5%20%EC%A3%BC%EC%9C%A0%EC%86%8C%5D%20%EB%AC%B8%EC%9D%98"
+          className="flex items-center justify-between rounded-xl bg-gray-50 p-4"
+        >
+          <span className="text-sm text-gray-700">✉️ 문의하기</span>
+          <span className="text-sm text-primary">이메일 보내기 →</span>
+        </a>
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs text-gray-400">
+          <Link href="/legal/terms" className="hover:underline">이용약관</Link>
+          <Link href="/legal/privacy" className="hover:underline">개인정보처리방침</Link>
+          <Link href="/legal/payment" className="hover:underline">유료 결제 이용약관</Link>
+        </div>
+      </section>
+
       <section className="mt-auto border-t border-gray-100 px-5 py-5 pb-[calc(20px+env(safe-area-inset-bottom))]">
         <SignOutButton />
       </section>
