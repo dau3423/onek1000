@@ -17,11 +17,12 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 const SIDOS: SidoCode[] = ['01','02','03','04','05','06','07','08','09','10','11','14','15','16','17','18','19'];
-// 5종 전체 적재 — 휘발유/경유/고급휘발유/LPG/실내등유.
-// stale 삭제 범위(.in('product', PRODUCTS))·과삭제 가드(실패율 기반)·
-// 평균가/TOP 조회 루프가 모두 이 배열을 단일 소스로 참조하므로 여기만 바꾸면 일관 확장된다.
-// 호출량: 평균 5회 + TOP 5종×17시도=85회 (모두 병렬). cnt를 키워도 호출 "횟수"는 불변.
-const PRODUCTS: ProductCode[] = ['B027', 'D047', 'B034', 'C004', 'K015'];
+// 취급 2종만 적재 — 휘발유(B027)/경유(D047).
+// stale 삭제 범위·과삭제 가드(실패율 기반)·평균가/TOP 조회 루프가 모두 이 배열을
+// 단일 소스로 참조하므로 여기만 바꾸면 일관 적용된다.
+// 호출량: 평균 2회 + TOP 2종×17시도=34회 (모두 병렬). cnt를 키워도 호출 "횟수"는 불변.
+// (상세 페이지는 별도로 실시간 Opinet에서 5종을 조회하므로 영향 없음.)
+const PRODUCTS: ProductCode[] = ['B027', 'D047'];
 
 // lowTop10.do는 "시도×유종 최저가 TOP N"을 반환한다.
 // 직관과 달리 cnt가 크면 시도당 반환이 오히려 줄어듦(실측: cnt=500이면 시도당 ~10개,
@@ -180,15 +181,16 @@ export async function POST(req: Request) {
   //
   // 매 실행마다 전 시도×PRODUCTS를 재수집하므로, 이번 run에서 보고되지 않은
   // (= updated_at < runStartedAt) 행은 stale로 간주해 삭제한다.
-  // 단, 이번에 수집한 PRODUCTS 유종에 한정해 다른 유종 데이터는 건드리지 않는다.
+  //
+  // 취급 유종 축소(5종→2종) 대응: 더 이상 product 화이트리스트(.in('product', PRODUCTS))로
+  // 삭제 범위를 한정하지 않는다. 그렇게 하면 PRODUCTS에서 빠진 유종(B034/C004/K015)의
+  // 기존 prices_latest 행이 이번 run에 절대 갱신되지 않으면서도 삭제 대상에서 제외돼
+  // 영구 잔존(orphan)하게 된다. updated_at < now 단일 조건으로 삭제하면, 이번 run에
+  // 보고된 2종 행만 살아남고(updated_at=now) 미보고 유종 행은 자연히 정리된다.
   //
   // 안전 가드: Opinet fetch가 대량 실패하면 priceRows가 비정상적으로 적어지고,
   // 그 상태로 stale 정리를 돌리면 prices_latest가 통째로 비는 사고가 난다.
-  // 과거엔 "priceRows >= 시도×유종×5" 절대량으로 판정했으나, 5종으로 확장하면서
-  // 데이터 밀도가 낮은 유종(B034 고급휘발유 / C004 LPG / K015 등유)이 섞여
-  // "정상 fetch인데도 행 수가 적은" 경우와 "fetch 실패로 적은" 경우를 절대량만으로는
-  // 구분할 수 없게 됐다(전자에 가드가 걸리면 stale 정리가 영구 skip → 옛 가격 잔존).
-  // → 판정 기준을 "fetch 실패율"로 바꾼다. fetch 실패 job이 전체의 절반 미만이고
+  // → 판정 기준을 "fetch 실패율"로 둔다. fetch 실패 job이 전체의 절반 미만이고
   //   적재 행이 1건 이상이면 데이터가 신뢰 가능하다고 보고 stale 정리를 진행한다.
   const STALE_GUARD_MAX_FAIL_RATIO = 0.5;
   const failRatio = jobs.length ? topFetchFailed / jobs.length : 1;
@@ -197,10 +199,10 @@ export async function POST(req: Request) {
   if (priceRows.length > 0 && failRatio < STALE_GUARD_MAX_FAIL_RATIO) {
     // 이번 run 시작 시각(now)보다 오래된 updated_at = 이번에 보고되지 않은 행.
     // UPSERT가 모두 성공한 뒤 실행하므로 신규/갱신 행은 updated_at=now 로 보존된다.
+    // product 제약을 두지 않아 취급에서 빠진 유종(orphan)도 함께 정리된다.
     const { data: deleted, error } = await sb
       .from('prices_latest')
       .delete()
-      .in('product', PRODUCTS)
       .lt('updated_at', now)
       .select('station_id'); // 삭제 건수 집계용
     if (error) {

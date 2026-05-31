@@ -5,7 +5,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/options';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { VEHICLE_MAX, type Vehicle } from '@/types/vehicle';
-import { PRODUCT_LABEL, type ProductCode } from '@/types/station';
+import { isHandledProduct, type ProductCode } from '@/types/station';
 
 export const runtime = 'nodejs';
 
@@ -23,13 +23,15 @@ interface VehicleRow {
 function toVehicle(r: VehicleRow): Vehicle {
   return {
     id: r.id, name: r.name,
-    fuel: (r.fuel as ProductCode) in PRODUCT_LABEL ? (r.fuel as ProductCode) : 'B027',
+    // 취급 외 유종(기존 데이터의 B034/C004/K015 등)은 휘발유로 폴백
+    fuel: isHandledProduct(r.fuel) ? r.fuel : 'B027',
     isDefault: r.is_default, createdAt: r.created_at,
   };
 }
 
 function parseFuel(v: unknown): ProductCode {
-  return typeof v === 'string' && v in PRODUCT_LABEL ? (v as ProductCode) : 'B027';
+  // 취급 2종(B027/D047)만 허용, 그 외 입력은 휘발유로 강제
+  return isHandledProduct(v) ? v : 'B027';
 }
 
 export async function GET() {

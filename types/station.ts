@@ -10,6 +10,16 @@ export const PRODUCT_LABEL: Record<ProductCode, string> = {
   C004: 'LPG',
 };
 
+// 현재 서비스가 취급(동기화/필터/차량 선택)하는 유종 — 휘발유/경유 2종.
+// PRODUCT_LABEL/ProductCode 타입 정의는 상세 페이지(실시간 Opinet 5종 표시)가 쓰므로
+// 그대로 두되, "취급/노출 목록"은 이 상수를 단일 소스로 참조한다.
+export const HANDLED_PRODUCTS: ProductCode[] = ['B027', 'D047'];
+
+/** 취급 유종 여부 (서버 검증용) */
+export function isHandledProduct(v: unknown): v is ProductCode {
+  return typeof v === 'string' && (HANDLED_PRODUCTS as string[]).includes(v);
+}
+
 export type BrandCode = 'SKE' | 'GSC' | 'HDO' | 'SOL' | 'RTE' | 'ETC' | 'RTO' | 'NHO' | 'E1G' | 'SOG';
 
 export const BRAND_LABEL: Record<BrandCode, string> = {
