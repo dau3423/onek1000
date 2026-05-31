@@ -302,15 +302,18 @@ export default function HomePage() {
             : geo.status === 'locating'
               ? '⏳'
               : (
-                // 따라가기 ON/OFF에 따라 다른 아이콘(on 이미지는 자체 강조 디자인).
+                // 따라가기 ON/OFF 모두 같은 아이콘(icon_gps.png)을 쓴다.
+                // ON(선택): 원본 컬러. OFF(비선택): CSS grayscale로 회색 처리해 "비활성" 느낌.
                 // 아이콘 PNG에 배경이 baked-in 되어 있어, 둥근 버튼처럼 보이도록
                 // overflow-hidden + 버튼 크기를 꽉 채우는(cover) 방식으로 정사각 이미지를 원형 클립한다.
                 <Image
-                  src={follow ? '/icons/icon_gps_on.png' : '/icons/icon_gps.png'}
+                  src="/icons/icon_gps.png"
                   alt={follow ? '따라가기 모드 켜짐' : '내 위치'}
                   width={44}
                   height={44}
-                  className="h-full w-full object-cover"
+                  className={`h-full w-full object-cover transition ${
+                    follow ? '' : 'opacity-70 grayscale'
+                  }`}
                 />
               )}
         </button>
