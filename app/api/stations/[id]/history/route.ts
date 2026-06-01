@@ -38,9 +38,10 @@ export async function GET(
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const series: Point[] = (data ?? []).map((r: { day: string; price: number }) => ({
-    date: r.day, price: r.price,
-  }));
+  // RPC는 최신순(desc)으로 반환하므로 차트가 좌→우 시간순이 되도록 날짜 오름차순으로 정렬
+  const series: Point[] = (data ?? [])
+    .map((r: { day: string; price: number }) => ({ date: r.day, price: r.price }))
+    .sort((a: Point, b: Point) => a.date.localeCompare(b.date));
 
   return NextResponse.json({ stationId: params.id, product, days, series });
 }
