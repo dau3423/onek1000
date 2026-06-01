@@ -62,7 +62,7 @@ export default function PrivacyPage() {
       <ul>
         <li>소셜 로그인(인증): 카카오, 구글 — 로그인 인증 및 회원 식별</li>
         <li>데이터 저장 및 인프라 운영: Supabase, Google Cloud / Firebase — 데이터 보관, 호스팅, 푸시 발송</li>
-        <li>결제 처리: 토스페이먼츠 등 전자지급결제대행사(PG) — 결제 승인 및 정기결제</li>
+        <li>결제 처리: KG이니시스 등 전자지급결제대행사(PG) — 결제 승인 및 정기결제</li>
       </ul>
 
       <h2>제6조 (위치정보의 처리)</h2>

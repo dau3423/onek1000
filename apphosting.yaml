@@ -146,6 +146,26 @@ env:
   - variable: OPINET_API_KEY
     secret: OPINET_API_KEY
 
+  # ─── KG이니시스 결제 ───
+  # 미설정 시 코드의 공개 테스트값(INIpayTest)으로 동작. 실연동 시 아래를 등록.
+  # MID는 클라이언트 결제창에도 노출되는 값이라 value로 둬도 무방.
+  # - variable: INICIS_MID
+  #   value: "INIpayTest"
+  #   availability:
+  #     - BUILD
+  #     - RUNTIME
+  # signKey / API Key / 서버 IP는 시크릿(서버 전용):
+  #   firebase apphosting:secrets:set INICIS_SIGN_KEY
+  #   firebase apphosting:secrets:set INICIS_API_KEY
+  # - variable: INICIS_SIGN_KEY
+  #   secret: INICIS_SIGN_KEY
+  # - variable: INICIS_API_KEY
+  #   secret: INICIS_API_KEY
+  # - variable: INICIS_CLIENT_IP
+  #   value: "1.2.3.4"   # 빌링 REST API 호출용 고정 IP(이니시스 화이트리스트 등록)
+  #   availability:
+  #     - RUNTIME
+
   # ─── 아래는 발급/등록되는 대로 주석 해제 ───
   #
   # Supabase 발급 후:
@@ -189,14 +209,8 @@ env:
   # - variable: GOOGLE_CLIENT_SECRET
   #   secret: GOOGLE_CLIENT_SECRET
   #
-  # 토스페이먼츠:
-  # - variable: NEXT_PUBLIC_TOSS_PAYMENTS_CLIENT_KEY
-  #   value: "test_ck_..."
-  #   availability:
-  #     - BUILD
-  #     - RUNTIME
-  # - variable: TOSS_PAYMENTS_SECRET_KEY
-  #   secret: TOSS_PAYMENTS_SECRET_KEY
+  # KG이니시스(실연동 발급 후): 위 'KG이니시스 결제' 블록 주석 해제.
+  #   INICIS_MID(value) / INICIS_SIGN_KEY(secret) / INICIS_API_KEY(secret) / INICIS_CLIENT_IP(value)
   #
   # Web Push (VAPID):
   # - variable: NEXT_PUBLIC_VAPID_PUBLIC_KEY

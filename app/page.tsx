@@ -36,7 +36,7 @@ const NEARBY_TOP_N = 10;
 
 export default function HomePage() {
   const router = useRouter();
-  const { product, alertDismissed, dismissAlert, resetAlert, setLastView } = useMapStore();
+  const { product, brands, alertDismissed, dismissAlert, resetAlert, setLastView } = useMapStore();
 
   // 마운트 시점에 1회 고정: 직전에 보던 지도 시점(상세 왕복/새로고침 복원).
   // 있으면 그 시점을 초기값으로 쓰고, 자동 위치 센터링을 억제한다.
@@ -223,6 +223,32 @@ export default function HomePage() {
       .slice(0, NEARBY_TOP_N);
   }, [radiusStations, geo.coords]);
 
+  // 브랜드 필터(회원 전용, 빈 배열=전체) — 지도 마커 표시 집합에 일관 적용.
+  // 알람/하단 시트 등 '내 주변 데이터' 본연의 동작에는 영향을 주지 않고, 마커 노출만 좁힌다.
+  const brandSet = useMemo(() => new Set(brands), [brands]);
+  const matchBrand = useMemo(
+    () => (b: string) => brandSet.size === 0 || brandSet.has(b as never),
+    [brandSet],
+  );
+  const visibleStations = useMemo(
+    () => (brandSet.size === 0 ? stations : stations.filter((s) => matchBrand(s.brand))),
+    [stations, brandSet, matchBrand],
+  );
+  const visibleNationalTop10 = useMemo(
+    () => (brandSet.size === 0 ? nationalTop10 : nationalTop10.filter((s) => matchBrand(s.brand))),
+    [nationalTop10, brandSet, matchBrand],
+  );
+  const visibleNearbyTop10 = useMemo(
+    () => (brandSet.size === 0 ? nearbyTop10 : nearbyTop10.filter((s) => matchBrand(s.brand))),
+    [nearbyTop10, brandSet, matchBrand],
+  );
+  // 하단 시트 리스트도 동일 브랜드 필터 적용(표시 집합 일관성).
+  // 단, 마커 색상 기준이 되는 averagePrice는 화면 영역 전체 기준을 유지한다.
+  const visibleNearbyStations = useMemo(
+    () => (brandSet.size === 0 ? radiusStations : radiusStations.filter((s) => matchBrand(s.brand))),
+    [radiusStations, brandSet, matchBrand],
+  );
+
   // 1km 반경 최저가 (알람 판정용)
   const cheapestWithin1km = useMemo(() => {
     const within = radiusStations
@@ -250,9 +276,9 @@ export default function HomePage() {
           initialCenter={restoredView ? { lat: restoredView.lat, lng: restoredView.lng } : undefined}
           initialLevel={restoredView?.level}
           suppressAutoCenter={!!restoredView}
-          stations={stations}
-          nationalTop10={nationalTop10}
-          nearbyTop10={nearbyTop10}
+          stations={visibleStations}
+          nationalTop10={visibleNationalTop10}
+          nearbyTop10={visibleNearbyTop10}
           product={product}
           averagePrice={averagePrice}
           myLocation={myLocation}
@@ -349,9 +375,9 @@ export default function HomePage() {
 
         {/* 하단 시트 */}
         <BottomSheet
-          stations={stations}
+          stations={visibleStations}
           averagePrice={averagePrice}
-          nearbyStations={radiusStations}
+          nearbyStations={visibleNearbyStations}
           nearbyEnabled={geoEnabled && !!geo.coords}
           nearbyRadiusM={NEARBY_RADIUS_M}
           onSelect={(s) => router.push(`/station/${s.id}`)}

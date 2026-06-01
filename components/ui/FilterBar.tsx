@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useMapStore } from '@/stores/map';
 import { PRODUCT_LABEL, type ProductCode } from '@/types/station';
 import { MarkerLegend } from './MarkerLegend';
+import { BrandFilter } from './BrandFilter';
 import clsx from 'clsx';
 
 const PRODUCTS: ProductCode[] = ['B027', 'D047', 'B034', 'C004'];
@@ -31,6 +32,9 @@ export function FilterBar() {
           </button>
         ))}
       </div>
+
+      {/* 브랜드별 보기(회원 전용) — 유종 버튼 우측에 고정 */}
+      <BrandFilter />
 
       {/* 색상 의미 안내 — 유종 버튼 우측 끝에 고정(스크롤되지 않음) */}
       <button

@@ -14,8 +14,8 @@ export default function PricingPage() {
       <section className="bg-gradient-to-b from-primary/10 to-white px-6 py-10 text-center">
         <div className="text-4xl">💸</div>
         <h2 className="mt-3 text-2xl font-extrabold text-gray-900">광고 없이 깔끔하게</h2>
-        <p className="mt-4 text-4xl font-black text-primary">월 ₩1,000</p>
-        <p className="mt-1 text-xs text-gray-500">7일 무료 체험 · 언제든 해지 가능</p>
+        <p className="mt-4 text-4xl font-black text-primary">₩1,000</p>
+        <p className="mt-1 text-xs text-gray-500">정기 7일 무료 체험 · 1개월권 단건 결제 · 언제든 해지 가능</p>
       </section>
 
       <section className="px-6 pb-6">
@@ -43,7 +43,7 @@ export default function PricingPage() {
       <section className="mt-auto space-y-2 border-t border-gray-100 bg-gray-50 px-6 py-5 pb-[calc(20px+env(safe-area-inset-bottom))]">
         <SubscribeButton />
         <p className="text-center text-[11px] text-gray-500">
-          7일 무료 체험 후 매월 ₩1,000 자동결제 · 토스페이먼츠
+          정기: 7일 무료 후 매월 ₩1,000 자동결제 · 1개월권: ₩1,000 단건(1개월 후 만료) · 결제 KG이니시스
         </p>
         <p className="text-center text-[11px] text-gray-400">
           결제 진행 시{' '}

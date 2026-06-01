@@ -12,8 +12,10 @@ interface Sub {
   id: string;
   status: string;
   plan: string;
+  plan_type: string | null;
   current_period_end: string | null;
   trial_end: string | null;
+  expires_at: string | null;
   next_charge_at: string | null;
   canceled_at: string | null;
 }
@@ -39,7 +41,7 @@ export default async function MyPage() {
       image = (user.image_url as string | null) ?? image;
       const { data: s } = await sb
         .from('subscriptions')
-        .select('id, status, plan, current_period_end, trial_end, next_charge_at, canceled_at')
+        .select('id, status, plan, plan_type, current_period_end, trial_end, expires_at, next_charge_at, canceled_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -53,9 +55,16 @@ export default async function MyPage() {
     }
   }
 
-  const periodEnd = sub?.current_period_end ?? sub?.trial_end;
+  const isOnetime = sub?.plan_type === 'onetime';
+  const periodEnd = sub?.expires_at ?? sub?.current_period_end ?? sub?.trial_end;
+  const periodEndValid = periodEnd ? new Date(periodEnd).getTime() > Date.now() : false;
   const periodEndStr = periodEnd ? new Date(periodEnd).toLocaleDateString('ko-KR') : null;
-  const isActive = sub?.status === 'active' || sub?.status === 'trial';
+  // 정기(trial/active)는 항상, canceled여도 만료 전이면 프리미엄 유지
+  const isActive =
+    sub?.status === 'active' ||
+    sub?.status === 'trial' ||
+    (sub?.status === 'canceled' && periodEndValid);
+  const isCanceled = sub?.status === 'canceled';
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
@@ -81,16 +90,25 @@ export default async function MyPage() {
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
             <div className="flex items-center justify-between">
               <span className="rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-white">
-                {sub.status === 'trial' ? '무료 체험 중' : '1000냥 플랜'}
+                {sub.status === 'trial'
+                  ? '무료 체험 중'
+                  : isOnetime
+                    ? '1개월권'
+                    : isCanceled
+                      ? '해지 예정'
+                      : '정기 구독'}
               </span>
-              <span className="text-xs text-gray-500">월 ₩1,000</span>
+              <span className="text-xs text-gray-500">{isOnetime ? '₩1,000 / 1개월' : '월 ₩1,000'}</span>
             </div>
             <div className="mt-3 text-sm text-gray-700">
-              다음 결제: <strong>{periodEndStr ?? '-'}</strong>
+              {isOnetime || isCanceled ? '이용 만료' : '다음 결제'}: <strong>{periodEndStr ?? '-'}</strong>
             </div>
-            <div className="mt-4">
-              <CancelButton />
-            </div>
+            {/* 단건/해지건은 끊을 자동결제가 없으므로 해지 버튼 미노출 */}
+            {!isOnetime && !isCanceled && (
+              <div className="mt-4">
+                <CancelButton />
+              </div>
+            )}
           </div>
         ) : (
           <div className="rounded-xl bg-gray-50 p-4">

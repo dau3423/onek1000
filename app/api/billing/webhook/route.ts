@@ -1,6 +1,7 @@
-// 토스페이먼츠 결제 결과 웹훅 수신
-// https://docs.tosspayments.com/guides/webhook
-// 알파 단계에선 charge-cron에서 결과를 즉시 처리하므로 보조용. 결제 실패/취소 알림 처리에 활용.
+// KG이니시스 가상계좌 입금통보/결제 통보(noti) 수신 — 보조용.
+// 표준결제 승인은 /api/billing/confirm 의 S2S 승인요청에서 즉시 확정하므로,
+// 여기서는 결과 로깅 및 (운영 시) 상태 보정에 활용한다.
+// KG이니시스 noti는 application/x-www-form-urlencoded(NVP)로 전송된다.
 
 import { NextResponse } from 'next/server';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
@@ -10,21 +11,30 @@ export const runtime = 'nodejs';
 export async function POST(req: Request) {
   if (!isSupabaseConfigured()) return NextResponse.json({ ok: true }); // dev 환경
 
-  const body = await req.json().catch(() => ({}));
-  const sb = getSupabase();
+  // form-urlencoded 우선, JSON 폴백
+  let body: Record<string, unknown> = {};
+  const ct = req.headers.get('content-type') ?? '';
+  try {
+    if (ct.includes('application/json')) {
+      body = (await req.json()) as Record<string, unknown>;
+    } else {
+      const form = await req.formData();
+      body = Object.fromEntries(Array.from(form.entries()).map(([k, v]) => [k, String(v)]));
+    }
+  } catch {
+    body = {};
+  }
 
-  // 보안: 토스 IP allow list 또는 시그니처 검증 추가 권장 (Toss는 서명 헤더 별도 안 줌 → IP 기반)
+  const sb = getSupabase();
   await sb.from('billing_events').insert({
     kind: 'webhook',
-    amount: typeof body?.totalAmount === 'number' ? body.totalAmount : null,
-    toss_payment_key: body?.paymentKey ?? null,
-    toss_order_id: body?.orderId ?? null,
+    provider: 'inicis',
+    amount: body?.price != null ? Number(body.price) : null,
+    tid: (body?.tid as string) ?? null,
+    oid: (body?.oid as string) ?? (body?.MOID as string) ?? null,
     raw: body,
   });
 
-  // status별 액션 (운영 시 확장)
-  // - DONE → 결제 성공 처리
-  // - CANCELED / FAILED → 구독 상태 past_due 마킹
-
-  return NextResponse.json({ ok: true });
+  // KG이니시스는 정상 수신 시 "OK" 텍스트 응답을 기대한다.
+  return new NextResponse('OK', { status: 200, headers: { 'Content-Type': 'text/plain' } });
 }

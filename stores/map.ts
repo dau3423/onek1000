@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ProductCode } from '@/types/station';
+import type { ProductCode, BrandCode } from '@/types/station';
 
 /** 마지막으로 보던 지도 시점(중심 좌표 + 카카오 level). 상세보기 왕복 시 복원에 사용. */
 export interface MapView {
@@ -47,6 +47,15 @@ interface MapState {
   /** 차량 기본 유종으로 초기화(사용자가 직접 바꾼 적 없을 때만 적용) */
   initProductFromVehicle: (p: ProductCode) => void;
 
+  /**
+   * 브랜드 필터(회원 전용). 빈 배열=전체 표시.
+   * 선택된 브랜드만 지도 마커로 노출하는 client-side 필터에 사용.
+   */
+  brands: BrandCode[];
+  toggleBrand: (b: BrandCode) => void;
+  setBrands: (b: BrandCode[]) => void;
+  clearBrands: () => void;
+
   selectedStationId: string | null;
   selectStation: (id: string | null) => void;
 
@@ -65,6 +74,14 @@ export const useMapStore = create<MapState>((set) => ({
   setProduct: (p) => set({ product: p, productUserSet: true, alertDismissed: false }),
   initProductFromVehicle: (p) =>
     set((s) => (s.productUserSet ? {} : { product: p, alertDismissed: false })),
+
+  brands: [],
+  toggleBrand: (b) =>
+    set((s) => ({
+      brands: s.brands.includes(b) ? s.brands.filter((x) => x !== b) : [...s.brands, b],
+    })),
+  setBrands: (b) => set({ brands: b }),
+  clearBrands: () => set({ brands: [] }),
 
   selectedStationId: null,
   selectStation: (id) => set({ selectedStationId: id }),
