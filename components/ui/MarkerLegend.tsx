@@ -48,6 +48,44 @@ function RingDot({ color }: { color: string }) {
 }
 
 /**
+ * 전국 TOP10 칩 — 물방울 핀 형태(전국 단서) + 본체는 브랜드 색(가변), 테두리는 앰버.
+ * 본체 색은 "브랜드별로 달라짐"을 알리려 대표 브랜드 색으로 그라데이션 표현 대신
+ * 안내 텍스트로 보완하고, 칩 자체는 형태/테두리(앰버)로 카테고리를 나타낸다.
+ */
+function TopPinChip({ body }: { body: string }) {
+  return (
+    <svg viewBox="0 0 14 18" className="h-4 w-3.5 shrink-0">
+      <path
+        d="M7 17 C1 11 0.5 8 0.5 6 a6.5 6.5 0 1 1 13 0 C13.5 8 13 11 7 17 Z"
+        fill={body}
+        stroke={HL_COLOR}
+        strokeWidth={1.6}
+      />
+    </svg>
+  );
+}
+
+/**
+ * 내 주변 TOP10 칩 — 실제 지도 마커와 동일한 핀 형태(원형 배지 + 아래 꼬리).
+ * KakaoMap.tsx 배지 마커와 일치: 원형 배지(본체=브랜드 색, 링=블루) + 아래 회전 사각형 꼬리(블루).
+ * 본체=브랜드 색(body), 링/꼬리=블루(NEAR_COLOR). 범례용으로 작게 렌더.
+ */
+function NearBadgeChip({ body }: { body: string }) {
+  return (
+    <span className="relative inline-flex h-[18px] w-3.5 shrink-0 flex-col items-center">
+      <span
+        className="h-3.5 w-3.5 rounded-full"
+        style={{ background: body, border: `2px solid ${NEAR_COLOR}` }}
+      />
+      <span
+        className="-mt-[3px] h-[5px] w-[5px] rotate-45"
+        style={{ background: NEAR_COLOR }}
+      />
+    </span>
+  );
+}
+
+/**
  * 지도 마커 색상/표식 의미 안내 팝오버.
  * FilterBar 우측 info 버튼에서 띄운다. ESC/바깥클릭으로 닫힌다.
  */
@@ -123,14 +161,27 @@ export function MarkerLegend({ onClose }: Props) {
 
           <section>
             <p className="font-semibold text-gray-900">특별 표식</p>
+            <p className="text-[11px] text-gray-400">본체 색은 브랜드, 테두리·형태는 종류 구분</p>
             <div className="mt-1.5 space-y-1.5">
-              <div className="flex items-center gap-1.5">
-                <Dot color={HL_COLOR} ring="#B45309" />
-                <span>앰버 핀 + 메달(🥇🥈🥉)·숫자 = 전국 최저가 TOP 10</span>
+              <div className="flex items-start gap-1.5">
+                <span className="mt-0.5 flex shrink-0 gap-0.5">
+                  <TopPinChip body={BRAND_COLOR.SKE} />
+                  <TopPinChip body={BRAND_COLOR.GSC} />
+                </span>
+                <span>
+                  앰버 테두리 물방울 핀 + 메달(🥇🥈🥉)·숫자 = 전국 최저가 TOP 10
+                  <span className="text-gray-400"> (본체=브랜드 색)</span>
+                </span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Dot color={NEAR_COLOR} ring="#1D4ED8" />
-                <span>파란 순위 핀 = 내 주변 10km 최저가 TOP 10</span>
+              <div className="flex items-start gap-1.5">
+                <span className="mt-0.5 flex shrink-0 gap-0.5">
+                  <NearBadgeChip body={BRAND_COLOR.HDO} />
+                  <NearBadgeChip body={BRAND_COLOR.RTE} />
+                </span>
+                <span>
+                  파란 테두리 순위 배지 = 내 주변 10km 최저가 TOP 10
+                  <span className="text-gray-400"> (본체=브랜드 색)</span>
+                </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Dot color={MY_COLOR} ring="#ffffff" />

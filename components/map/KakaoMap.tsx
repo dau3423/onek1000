@@ -7,13 +7,16 @@ import { BRAND_COLOR } from '@/types/station';
 import { priceTier } from '@/lib/map/geo';
 
 // === 전국 TOP10 강조 마커 디자인 상수/헬퍼 (일반 마커와 형태부터 구분) ===
-const HL_COLOR = '#F59E0B'; // 강조색(앰버) — tier 색과 구분되는 톤
-const HL_RING = '#B45309';  // 강조 테두리(진한 앰버)
+// 핀 "본체"는 브랜드 색(BRAND_COLOR)으로 칠해 어느 브랜드인지 드러내고,
+// 테두리(앰버)와 물방울 형태로 "전국 TOP10" 카테고리를 유지한다.
+const HL_COLOR = '#F59E0B'; // 전국 카테고리 색(앰버) — 핀 테두리/가격 라벨에 사용
+const HL_RING = '#B45309';  // 전국 강조 테두리(진한 앰버)
 
 // === 내 주변(10km) TOP10 강조 마커 디자인 상수 ===
-// 내 위치(파란 점)와 톤을 맞춘 파란 계열로 묶어 "내 근처 저렴한 곳"임을 직관적으로 전달.
-// 전국 메달(앰버 물방울 핀)과 색·형태(테두리 원형)로 구분하되 과하지 않게.
-const NEAR_COLOR = '#2563EB'; // 내 주변 강조색(블루)
+// 배지 "본체"는 브랜드 색으로 칠하고, 파란 링(NEAR)으로 "내 주변" 카테고리를 유지.
+// 내 위치(파란 점)와 톤을 맞춘 파란 계열로 묶어 "내 근처 저렴한 곳"임을 전달.
+// 전국 메달(앰버 물방울 핀)과는 형태(원형 배지)와 링 색으로 구분.
+const NEAR_COLOR = '#2563EB'; // 내 주변 카테고리 색(블루) — 링/가격 라벨에 사용
 const NEAR_RING = '#1D4ED8';  // 내 주변 테두리(진한 블루)
 
 // 내 위치로 자동 줌인할 카카오 level (zoom = 15 - level). level 6 = zoom 9(시군구 단위).
@@ -23,20 +26,35 @@ const MY_AREA_LEVEL = 6;
 // 순위 단서(색맹 대비: 색 외 형태/문자로도 구분). 1~3위는 메달 이모지, 4~10위는 숫자.
 const rankMedal = (r: number) => (r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : '');
 
+// 배경(브랜드 색) 위 텍스트 대비 — 밝은 배경(예: S-OIL 노랑)에는 검정, 어두운 배경엔 흰색.
+// hex(#RRGGBB) → 상대 휘도 근사. 마커가 많아도 비용이 미미한 단순 계산.
+function readableText(hex: string): string {
+  const h = hex.replace('#', '');
+  if (h.length !== 6) return '#fff';
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  // 표준 가중 휘도(0~255). 0.6 이상이면 밝은 색으로 보고 검정 텍스트.
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.6 ? '#1f2937' : '#fff';
+}
+
 // TOP10 핀(물방울) 모양 마커 SVG — 일반 원형 마커와 형태부터 확연히 구분.
+// 본체 채움은 브랜드 색(brandColor), 테두리는 전국 카테고리 색(앰버 HL_RING)으로 고정.
 // size: 핀 전체 높이(px). 순위 메달/숫자를 핀 원형 머리 안에 배치.
-function topPinSvg(rank: number, size: number) {
+function topPinSvg(rank: number, size: number, brandColor: string) {
   const w = Math.round(size * 0.72);
   const medal = rankMedal(rank);
   const headR = w * 0.5;
-  // 핀 머리(원) 안 표시: 1~3위 메달 이모지, 4위 이하 순위 숫자
+  const txt = readableText(brandColor);
+  // 핀 머리(원) 안 표시: 1~3위 메달 이모지, 4위 이하 순위 숫자(브랜드 색 대비 텍스트색)
   const inner = medal
     ? `<text x="${headR}" y="${headR * 1.05}" text-anchor="middle" dominant-baseline="central" font-size="${headR * 1.1}">${medal}</text>`
-    : `<text x="${headR}" y="${headR}" text-anchor="middle" dominant-baseline="central" font-size="${headR}" font-weight="800" fill="#fff">${rank}</text>`;
-  // 물방울 경로: 위쪽 원 + 아래로 뾰족한 꼬리
+    : `<text x="${headR}" y="${headR}" text-anchor="middle" dominant-baseline="central" font-size="${headR}" font-weight="800" fill="${txt}">${rank}</text>`;
+  // 물방울 경로: 위쪽 원 + 아래로 뾰족한 꼬리. 본체=브랜드 색, 테두리=앰버(전국 단서).
   return `<svg width="${w}" height="${size}" viewBox="0 0 ${w} ${size}" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))">
-    <path d="M${headR} ${size} C${headR * 0.15} ${size * 0.62} 0 ${headR * 1.25} 0 ${headR} a${headR} ${headR} 0 1 1 ${w} 0 C${w} ${headR * 1.25} ${headR * 1.85} ${size * 0.62} ${headR} ${size} Z" fill="${HL_COLOR}" stroke="${HL_RING}" stroke-width="2"/>
-    <circle cx="${headR}" cy="${headR}" r="${headR * 0.78}" fill="${HL_RING}" opacity="0.18"/>
+    <path d="M${headR} ${size} C${headR * 0.15} ${size * 0.62} 0 ${headR * 1.25} 0 ${headR} a${headR} ${headR} 0 1 1 ${w} 0 C${w} ${headR * 1.25} ${headR * 1.85} ${size * 0.62} ${headR} ${size} Z" fill="${brandColor}" stroke="${HL_COLOR}" stroke-width="3"/>
+    <circle cx="${headR}" cy="${headR}" r="${headR * 0.82}" fill="none" stroke="${HL_RING}" stroke-width="1" opacity="0.5"/>
     ${inner}
   </svg>`;
 }
@@ -303,8 +321,10 @@ export function KakaoMap({
 
       // === TOP10: 물방울 핀 + 순위 메달/숫자 (모든 줌에서 형태로 구분) ===
       // 라벨 줌에서는 가격 라벨을 핀 위에 함께, 축소 줌에서는 핀만 (단, 크게).
+      // 핀 본체는 브랜드 색, 테두리는 앰버(전국 단서). 브랜드 구분 + 카테고리 구분 동시 충족.
+      const brandColor = BRAND_COLOR[t.brand] ?? '#666';
       const pinSize = showLabel ? 38 : 42; // 축소 줌에서 오히려 더 크게 → 전국에서 눈에 띔
-      const pin = topPinSvg(r, pinSize);
+      const pin = topPinSvg(r, pinSize, brandColor);
       content.innerHTML = showLabel
         ? `
         <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:1px">
@@ -356,12 +376,15 @@ export function KakaoMap({
       content.style.transform = 'translate(-50%, -100%)';
       content.style.position = 'relative';
 
-      // === 내 주변 TOP10: 파란 원형 배지 + 순위 숫자 (전국 앰버 물방울 핀과 색/형태로 구분) ===
-      // 둥근 핀(원 + 아래 꼬리). 순위 숫자를 흰색으로 원 안에 표시.
+      // === 내 주변 TOP10: 원형 배지 + 순위 숫자 (전국 물방울 핀과 형태로 구분) ===
+      // 둥근 핀(원 + 아래 꼬리). 본체=브랜드 색, 바깥 링=블루(NEAR, 내 주변 단서).
+      // 순위 숫자는 브랜드 색 대비에 맞춘 텍스트색으로 원 안에 표시.
+      const brandColor = BRAND_COLOR[s.brand] ?? '#666';
+      const txt = readableText(brandColor);
       const badge = `
         <div style="position:relative;display:flex;flex-direction:column;align-items:center">
-          <div style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:${NEAR_COLOR};border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,.3);color:#fff;font-size:12px;font-weight:800;line-height:1">${rank}</div>
-          <div style="width:7px;height:7px;background:${NEAR_COLOR};border-right:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(45deg);margin-top:-4px"></div>
+          <div style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:${brandColor};border:3px solid ${NEAR_COLOR};box-shadow:0 2px 4px rgba(0,0,0,.3);color:${txt};font-size:12px;font-weight:800;line-height:1">${rank}</div>
+          <div style="width:7px;height:7px;background:${NEAR_COLOR};transform:rotate(45deg);margin-top:-4px"></div>
         </div>`;
       content.innerHTML = showLabel
         ? `
