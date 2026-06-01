@@ -172,10 +172,8 @@ export function BottomSheet({
                         title="카카오내비 길안내"
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-transparent hover:bg-gray-50/60 dark:hover:bg-gray-800/60"
                       >
-                        {/* icon_run.png는 불투명 흰 사각 배경이 내장돼 있어, 래퍼에 overflow-hidden + rounded-lg로 둥근 모서리로 클립한다. */}
-                        <span className="overflow-hidden rounded-lg">
-                          <Image src="/icons/icon_run.png" alt="" width={32} height={32} className="block" />
-                        </span>
+                        {/* icon_transparent.png는 투명 배경이라 사각/흰배경 문제가 없어 클립 래퍼 없이 직접 표시한다. */}
+                        <Image src="/icons/icon_transparent.png" alt="" width={32} height={32} className="block" />
                       </button>
                     )}
                   </div>

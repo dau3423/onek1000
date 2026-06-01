@@ -20,9 +20,9 @@ export interface TierFaceMeta {
 }
 
 export const TIER_FACE: Record<PriceTier, TierFaceMeta> = {
-  cheap: { color: '#16A34A', label: '좋음', mood: '좋음', hint: '싼 편 (하위권)' },
-  normal: { color: '#EAB308', label: '보통', mood: '보통', hint: '보통 (중간권)' },
-  expensive: { color: '#DC2626', label: '매우 나쁨', mood: '매우 나쁨', hint: '비싼 편 (상위권)' },
+  cheap: { color: '#16A34A', label: '좋음', mood: '좋음', hint: '싼 편' },
+  normal: { color: '#EAB308', label: '보통', mood: '보통', hint: '보통' },
+  expensive: { color: '#DC2626', label: '매우 나쁨', mood: '매우 나쁨', hint: '비싼 편' },
 };
 
 /**
