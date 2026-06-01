@@ -2,9 +2,17 @@
 // 환경변수 NEXT_PUBLIC_USE_MOCK=true 인 경우 mock 데이터 반환.
 // false 인 경우 실제 Opinet API 호출 (서버 사이드 전용 — OPINET_API_KEY 필요).
 
-import type { ProductCode, StationWithPrice, SidoCode, StationDetail } from '@/types/station';
+import type { ProductCode, StationWithPrice, SidoCode, StationDetail, BrandCode } from '@/types/station';
+import { BRAND_LABEL } from '@/types/station';
 import { getMockStations, getMockStationDetail } from '@/lib/mock/stations';
 import { distanceMeters, inBbox, type Bbox } from '@/lib/map/geo';
+import { katecToWgs84 } from '@/lib/map/katec';
+
+/** Opinet 브랜드 코드 정규화 — 알 수 없는 값은 'ETC'로 폴백 */
+function toBrandCode(raw?: string): BrandCode {
+  const v = (raw ?? '').trim();
+  return (v && v in BRAND_LABEL ? v : 'ETC') as BrandCode;
+}
 
 const BASE = 'https://www.opinet.co.kr/api';
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== 'false';
@@ -69,7 +77,7 @@ export async function fetchStationsByRadius(
   return (raw.RESULT?.OIL ?? []).slice(0, limit).map((o) => ({
     id: o.UNI_ID,
     name: o.OS_NM,
-    brand: (o.POLL_DVS_CD || 'ETC') as any,
+    brand: toBrandCode(o.POLL_DVS_CD),
     isSelf: false,
     sido: '01' as SidoCode,
     address: o.NEW_ADR,
@@ -85,12 +93,15 @@ export async function fetchStationsByRadius(
 /** 주유소 상세 */
 export async function fetchStationDetail(id: string): Promise<StationDetail | null> {
   if (USE_MOCK) return getMockStationDetail(id) as StationDetail | null;
+  // detailById.do 실제 응답 키 기준 (POLL_DIV_CO, GIS_X_COOR/Y_COOR=KATEC 등)
   type Raw = {
     RESULT: {
       OIL: Array<{
-        UNI_ID: string; OS_NM: string; POLL_DVS_CD: string; VAN_ADR: string; NEW_ADR: string;
-        TEL: string; LPG_YN: string; CAR_WASH_YN: string; CVS_YN: string; MAINT_YN: string;
-        GIS_X_COORD: number; GIS_Y_COORD: number;
+        UNI_ID: string; OS_NM: string; POLL_DIV_CO: string; GPOLL_DIV_CO?: string;
+        VAN_ADR: string; NEW_ADR: string; TEL: string; SIGUNCD?: string;
+        LPG_YN: string; MAINT_YN: string; CAR_WASH_YN: string; KPETRO_YN?: string;
+        CVS_YN: string; GOOD_YN?: string;
+        GIS_X_COOR: number; GIS_Y_COOR: number;
         OIL_PRICE: Array<{ PRODCD: string; PRICE: number; TRADE_DT: string }>;
       }>;
     };
@@ -105,16 +116,18 @@ export async function fetchStationDetail(id: string): Promise<StationDetail | nu
     const code = p.PRODCD as ProductCode;
     if (code in prices) prices[code] = { price: p.PRICE, tradeDate: p.TRADE_DT };
   }
+  // 좌표는 KATEC → WGS84 변환 (sync와 동일). 실패 시 0 폴백.
+  const wgs = katecToWgs84(Number(o.GIS_X_COOR), Number(o.GIS_Y_COOR));
   return {
     id: o.UNI_ID,
     name: o.OS_NM,
-    brand: (o.POLL_DVS_CD || 'ETC') as any,
+    brand: toBrandCode(o.POLL_DIV_CO),
     isSelf: false,
     sido: '01' as SidoCode,
     address: o.NEW_ADR || o.VAN_ADR,
     tel: o.TEL,
-    lat: o.GIS_Y_COORD,
-    lng: o.GIS_X_COORD,
+    lat: wgs?.lat ?? 0,
+    lng: wgs?.lng ?? 0,
     hasCarwash: o.CAR_WASH_YN === 'Y',
     hasCvs: o.CVS_YN === 'Y',
     hasMaintenance: o.MAINT_YN === 'Y',
@@ -153,7 +166,7 @@ async function fetchAllStationsByRegion(product: ProductCode): Promise<StationWi
     const raw = await callOpinet<Raw>('lowTop10.do', { area: sido, prodcd: product, cnt: '20' });
     for (const o of raw.RESULT?.OIL ?? []) {
       all.push({
-        id: o.UNI_ID, name: o.OS_NM, brand: (o.POLL_DVS_CD || 'ETC') as any,
+        id: o.UNI_ID, name: o.OS_NM, brand: toBrandCode(o.POLL_DVS_CD),
         isSelf: false, sido, address: o.NEW_ADR,
         lat: o.GIS_Y_COORD, lng: o.GIS_X_COORD,
         product, price: o.PRICE, tradeDate: today,
