@@ -12,6 +12,7 @@ import { RadiusAlert } from '@/components/alert/RadiusAlert';
 import { NaviConfirm } from '@/components/alert/NaviConfirm';
 import { ProductSync } from '@/components/map/ProductSync';
 import { StationPopup } from '@/components/map/StationPopup';
+import { BusinessFooter } from '@/components/legal/BusinessFooter';
 import { useMapStore, getInitialMapView, type MapView } from '@/stores/map';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -266,12 +267,17 @@ export default function HomePage() {
   const myLocation = geo.coords ?? null;
 
   return (
-    <div className="relative flex h-dvh flex-col">
-      <ProductSync />
-      <Header />
-      <FilterBar />
+    // 바깥 래퍼: 세로 스크롤 가능. 첫 뷰포트(헤더+필터바+지도)는 한 화면(h-dvh)을 채우고,
+    // 그 아래로 스크롤하면 사업자 정보 푸터가 나온다(카드사 심사: 메인 하단 사업자 정보).
+    <div className="h-dvh overflow-y-auto">
+      {/* 첫 화면: 기존 전체화면 지도 UX 유지. 지도 영역(map-container)은 한 화면을 채운다.
+          내부 absolute 요소(GPS/배너/시트/알람/전체화면)는 모두 이 묶음 내부 기준이라 동작 불변. */}
+      <div className="relative flex h-dvh flex-col">
+        <ProductSync />
+        <Header />
+        <FilterBar />
 
-      <div ref={mapContainerRef} className="map-container flex-1">
+        <div ref={mapContainerRef} className="map-container min-h-0 flex-1">
         <KakaoMap
           initialCenter={restoredView ? { lat: restoredView.lat, lng: restoredView.lng } : undefined}
           initialLevel={restoredView?.level}
@@ -384,7 +390,11 @@ export default function HomePage() {
           onNavigate={(s) => setNaviTarget(s)}
           onOpenChange={setSheetOpen}
         />
+        </div>
       </div>
+
+      {/* 메인 하단 사업자 정보 푸터 — 첫 화면(지도) 아래로 스크롤하면 노출(카드사 심사용) */}
+      <BusinessFooter />
 
       {/* PC: 마커 클릭 시 요약 정보 카드 팝업 (모바일은 상세 페이지로 직접 이동) */}
       {popupStation && (

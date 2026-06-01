@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { BUSINESS_INFO } from '@/lib/business';
 
 export const metadata: Metadata = {
   title: '사업자 정보 - 1000냥 주유소',
@@ -16,17 +17,17 @@ export default function BusinessInfoPage() {
 
       <h2>운영 사업자</h2>
       <ul>
-        <li>상호: 주니코드(Junicode)</li>
-        <li>대표자: 박순복</li>
-        <li>사업자등록번호: 574-06-02215</li>
-        <li>통신판매업 신고번호: 제2025-수원장안-0459호</li>
-        <li>사업장 주소: 경기도 수원시 장안구 영화로 71번길</li>
+        <li>상호: {BUSINESS_INFO.name}</li>
+        <li>대표자: {BUSINESS_INFO.owner}</li>
+        <li>사업자등록번호: {BUSINESS_INFO.registrationNumber}</li>
+        <li>통신판매업 신고번호: {BUSINESS_INFO.ecommerceNumber}</li>
+        <li>사업장 주소: {BUSINESS_INFO.address}</li>
       </ul>
 
       <h2>연락처</h2>
       <ul>
-        <li>고객센터: 010-3401-5201</li>
-        <li>이메일: junicode0901@gmail.com</li>
+        <li>고객센터: {BUSINESS_INFO.phone}</li>
+        <li>이메일: {BUSINESS_INFO.email}</li>
       </ul>
 
       <h2>호스팅 제공자</h2>
