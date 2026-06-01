@@ -16,3 +16,43 @@ body {
 
 /* 카카오맵 컨테이너가 부모 크기 100%를 받도록 */
 .map-container { position: relative; height: 100%; width: 100%; }
+
+/* === 전국 최저가 TOP10 "반짝이는 황금색" 강조 ===
+   지도 마커(innerHTML 문자열로 주입되는 CustomOverlay)와 목록 행에서 공용으로 쓴다.
+   inline style="animation:..."로 참조하므로 keyframes는 전역에 정의한다. */
+
+/* 골드 글로우 펄스: 핀/배지 주변이 은은하게 빛났다 잦아든다(드롭섀도 펄스). */
+@keyframes top10-gold-glow {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(245, 158, 11, .55)) drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+  50%      { filter: drop-shadow(0 0 7px rgba(250, 204, 21, .95)) drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+}
+
+/* shimmer 하이라이트: 황금 라벨 위를 흰 빛줄기가 사선으로 천천히 가로지른다(glitter). */
+@keyframes top10-gold-shimmer {
+  0%   { transform: translateX(-120%) skewX(-20deg); }
+  100% { transform: translateX(220%) skewX(-20deg); }
+}
+
+/* 목록 행 강조: 골드 배경이 은은하게 밝아졌다 가라앉는다. */
+@keyframes top10-row-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(245, 158, 11, .45); }
+  50%      { box-shadow: inset 0 0 0 1px rgba(250, 204, 21, .9), 0 0 8px rgba(245, 158, 11, .25); }
+}
+
+.top10-shimmer { position: relative; overflow: hidden; }
+.top10-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.85), transparent);
+  animation: top10-gold-shimmer 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* 모션 민감 사용자: 반짝임/펄스 중단(접근성, NFR-7). */
+@media (prefers-reduced-motion: reduce) {
+  .top10-glow,
+  .top10-row,
+  .top10-shimmer::after { animation: none !important; }
+}

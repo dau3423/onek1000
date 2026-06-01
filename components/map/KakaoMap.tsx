@@ -13,9 +13,8 @@ export type MapListTab = 'area' | 'nearby';
 // === 전국 TOP10 강조 마커 디자인 상수/헬퍼 (일반 마커와 형태부터 구분) ===
 // 색 역할은 일반 마커와 통일: 본체(안쪽)=가격 tier 색, 테두리=브랜드 색.
 // "전국 TOP10" 카테고리는 물방울 핀 형태 + 왕관(👑) + 순위 숫자로 구분하고,
-// 가격 라벨 말풍선 테두리에 앰버(HL_COLOR)를 보조 단서로 남겨 카테고리 식별을 보강한다.
-const HL_COLOR = '#F59E0B'; // 전국 카테고리 보조색(앰버) — 가격 라벨 말풍선 강조에 사용
-const HL_RING = '#B45309';  // 전국 카테고리 보조 테두리(진한 앰버)
+// 추가로 "반짝이는 황금색"(골드 글로우 펄스 + 가격 라벨 shimmer, globals.css)으로
+// 전국 최저가임을 한눈에 강조한다.
 
 // === 내 주변(10km) TOP10 강조 마커 디자인 상수 ===
 // 색 역할 통일: 배지 본체(안쪽)=가격 tier 색, 테두리=브랜드 색.
@@ -408,16 +407,22 @@ export function KakaoMap({
       const brandColor = BRAND_COLOR[t.brand] ?? '#666';
       const pinSize = showLabel ? 38 : 42; // 축소 줌에서 오히려 더 크게 → 전국에서 눈에 띔
       const pin = topPinSvg(r, pinSize, tierColor, brandColor);
+      // 핀을 골드 글로우 펄스로 감싼다(은은하게 빛났다 잦아드는 반짝임). pin SVG 자체의
+      // drop-shadow는 펄스 keyframe이 덮어쓰므로, 래퍼에 animation만 걸어 형태는 그대로 둔다.
+      const glowPin = `<div class="top10-glow" style="animation:top10-gold-glow 2.4s ease-in-out infinite">${pin}</div>`;
+      // 가격 라벨: 단색 앰버 → 황금 그라데이션 + shimmer 빛줄기로 "반짝이는 황금색" 강조.
+      const goldLabel = `
+          <div class="top10-shimmer" style="position:relative;padding:4px 8px;border-radius:10px;background:linear-gradient(135deg,#FDE68A,#F59E0B 55%,#B45309);color:#3a2a08;font-size:12px;font-weight:800;box-shadow:0 2px 6px rgba(180,83,9,.45);white-space:nowrap;border:1.5px solid #FCD34D;text-shadow:0 1px 0 rgba(255,255,255,.4)">
+            ₩${t.price.toLocaleString()}
+          </div>`;
       content.innerHTML = showLabel
         ? `
         <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:1px">
-          <div style="padding:4px 8px;border-radius:10px;background:${HL_COLOR};color:white;font-size:12px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap;border:2px solid ${HL_RING}">
-            ₩${t.price.toLocaleString()}
-          </div>
-          <div style="width:8px;height:8px;background:${HL_COLOR};border-right:2px solid ${HL_RING};border-bottom:2px solid ${HL_RING};transform:rotate(45deg);margin-top:-5px"></div>
-          <div style="margin-top:0">${pin}</div>
+          ${goldLabel}
+          <div style="width:8px;height:8px;background:#F59E0B;border-right:1.5px solid #B45309;border-bottom:1.5px solid #B45309;transform:rotate(45deg);margin-top:-5px"></div>
+          <div style="margin-top:0">${glowPin}</div>
         </div>`
-        : `<div style="position:relative;display:flex;justify-content:center">${pin}</div>`;
+        : `<div style="position:relative;display:flex;justify-content:center">${glowPin}</div>`;
 
       // 클릭 시 상세 이동(onMarkerClick과 동일 동작). top10 항목으로 최소 StationWithPrice 합성.
       // 호출부는 s.id만 사용하므로 위치/가격/순위 출처는 top10 값으로 일관.

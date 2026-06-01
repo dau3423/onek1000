@@ -26,6 +26,11 @@ interface Props {
   nearbyStations?: StationWithPrice[];
   /** 반경 조회 활성화 여부 (내 위치 권한 동의 후) */
   nearbyEnabled?: boolean;
+  /**
+   * 전국 최저가 TOP10 id→순위(1~10) 맵. 목록에 이 주유소가 보이면 "반짝이는 황금색"으로
+   * 강조하고 '전국 N위' 배지를 단다(전국 TOP10 마커와 동일한 골드 톤으로 연계).
+   */
+  nationalTop10Rank?: Map<string, number>;
   /** 반경(m) — '내 주변' 탭 라벨 표시용 */
   nearbyRadiusM?: number;
   /** 특정 주유소로 길안내(카카오내비) 시작 요청 */
@@ -46,6 +51,7 @@ export function BottomSheet({
   stations,
   onSelect,
   nearbyStations = [],
+  nationalTop10Rank,
   nearbyEnabled = false,
   nearbyRadiusM = 10000,
   onNavigate,
@@ -136,9 +142,20 @@ export function BottomSheet({
               const distanceText = s.distance != null
                 ? s.distance < 1000 ? `${Math.round(s.distance)}m` : `${(s.distance / 1000).toFixed(1)}km`
                 : null;
+              // 전국 최저가 TOP10에 든 주유소면 행을 "반짝이는 황금색"으로 강조.
+              const nationalRank = nationalTop10Rank?.get(s.id);
+              const isNationalTop = nationalRank != null;
               return (
                 <li key={s.id}>
-                  <div className="flex w-full items-center gap-3 px-5 py-3">
+                  <div
+                    className={clsx(
+                      'flex w-full items-center gap-3 px-5 py-3',
+                      isNationalTop &&
+                        // 골드 그라데이션 배경 + 펄스 테두리(top10-row-pulse). 다크모드는 톤 다운.
+                        'top10-row relative bg-gradient-to-r from-amber-50 to-amber-100/60 dark:from-amber-500/10 dark:to-amber-400/5',
+                    )}
+                    style={isNationalTop ? { animation: 'top10-row-pulse 2.4s ease-in-out infinite' } : undefined}
+                  >
                     <button onClick={() => onSelect(s)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                       <span className="w-5 text-center text-xs font-bold text-gray-500 dark:text-gray-400">{i + 1}</span>
                       <span
@@ -146,7 +163,14 @@ export function BottomSheet({
                         style={{ background: BRAND_COLOR[s.brand] ?? '#666' }}
                       />
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold text-gray-900 dark:text-gray-50">{s.name}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate text-sm font-semibold text-gray-900 dark:text-gray-50">{s.name}</span>
+                          {isNationalTop && (
+                            <span className="top10-shimmer shrink-0 rounded-full border border-amber-300 bg-gradient-to-r from-amber-300 to-amber-500 px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-amber-950 shadow-sm">
+                              👑 전국 {nationalRank}위
+                            </span>
+                          )}
+                        </div>
                         <div className="truncate text-xs text-gray-500 dark:text-gray-400">
                           {BRAND_LABEL[s.brand]}{s.isSelf ? ' · 셀프' : ''}
                           {distanceText ? ` · ${distanceText}` : ''}

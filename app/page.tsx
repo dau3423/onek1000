@@ -253,6 +253,13 @@ export default function HomePage() {
     () => (brandSet.size === 0 ? nearbyTop10 : nearbyTop10.filter((s) => matchBrand(s.brand))),
     [nearbyTop10, brandSet, matchBrand],
   );
+  // 전국 최저가 TOP10 id→순위 맵. 하단 시트 목록에서 해당 주유소 행을 "반짝이는 황금색"으로
+  // 강조하기 위해 전달한다(목록은 bbox/radius 기반이라 전국 TOP10이 보일 때만 적용됨).
+  const nationalTop10Rank = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const t of visibleNationalTop10) m.set(t.id, t.rank);
+    return m;
+  }, [visibleNationalTop10]);
   // 하단 시트 리스트도 동일 브랜드 필터 적용(표시 집합 일관성).
   // averagePrice는 1km 알람 판정(평균-50원) 기준으로 사용한다. 마커 색상은 별도로
   // 화면 표시 집합의 상대 분포(분위수)로 산정한다(KakaoMap/BottomSheet 내부).
@@ -422,6 +429,7 @@ export default function HomePage() {
         <BottomSheet
           stations={visibleStations}
           nearbyStations={visibleNearbyStations}
+          nationalTop10Rank={nationalTop10Rank}
           nearbyEnabled={geoEnabled && !!geo.coords}
           nearbyRadiusM={NEARBY_RADIUS_M}
           onSelect={(s) => router.push(`/station/${s.id}`)}
