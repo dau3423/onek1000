@@ -34,6 +34,15 @@ export default function BusinessInfoPage() {
         <li>Google Firebase (App Hosting)</li>
       </ul>
 
+      <h2>서비스 제공 시기</h2>
+      <p>
+        유료 구독(1000냥 플랜)은 온라인 디지털 서비스로, 별도 배송 없이 <strong>결제 완료 즉시 이용</strong>할 수 있습니다.
+        1개월권(단건)은 결제 즉시 이용을 시작하여 1개월(30일) 후 만료되며, 정기 구독은 가입 즉시 7일 무료 체험이 시작되어
+        체험 종료 후 매월 자동 갱신됩니다. 자세한 사항은{' '}
+        <Link href="/legal/payment" className="text-primary underline">유료 결제 이용약관 제2조(서비스 제공 시기)</Link>
+        에서 확인하실 수 있습니다.
+      </p>
+
       <h2>취소·환불 정책</h2>
       <p>
         유료 구독(1000냥 플랜)의 결제, 정기결제, 청약철회 및 취소·환불에 관한 사항은{' '}

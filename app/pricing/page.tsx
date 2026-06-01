@@ -40,6 +40,19 @@ export default function PricingPage() {
         <p className="mt-2 text-[10px] text-gray-400">* 푸시 알림은 베타 단계에서 출시 예정</p>
       </section>
 
+      <section className="px-6 pb-6">
+        <div className="rounded-lg border border-gray-100 bg-gray-50 p-4 text-xs leading-relaxed text-gray-600">
+          <p className="font-semibold text-gray-800">서비스 제공 시기: 결제 완료 즉시 이용 가능</p>
+          <p className="mt-1 text-gray-500">
+            온라인 디지털 서비스로, 별도 배송 없이 결제 완료 즉시 자동으로 적용됩니다.
+          </p>
+          <ul className="mt-2 list-disc space-y-0.5 pl-4 text-gray-500">
+            <li>1개월권(단건): 결제 즉시 이용, 이용 기간 1개월(30일) 후 만료</li>
+            <li>정기 구독: 7일 무료 체험 즉시 시작 → 체험 종료 후 첫 결제, 매월 자동 갱신</li>
+          </ul>
+        </div>
+      </section>
+
       <section className="mt-auto space-y-2 border-t border-gray-100 bg-gray-50 px-6 py-5 pb-[calc(20px+env(safe-area-inset-bottom))]">
         <SubscribeButton />
         <p className="text-center text-[11px] text-gray-500">
