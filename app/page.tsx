@@ -13,6 +13,7 @@ import { NaviConfirm } from '@/components/alert/NaviConfirm';
 import { ProductSync } from '@/components/map/ProductSync';
 import { StationPopup } from '@/components/map/StationPopup';
 import { MarkerLegend } from '@/components/ui/MarkerLegend';
+import { InstallBanner } from '@/components/pwa/InstallBanner';
 import { BusinessFooter } from '@/components/legal/BusinessFooter';
 import { useMapStore, getInitialMapView, type MapView } from '@/stores/map';
 import { useGeolocation } from '@/hooks/useGeolocation';
@@ -384,6 +385,9 @@ export default function HomePage() {
         </button>
 
         {legendOpen && <MarkerLegend onClose={() => setLegendOpen(false)} />}
+
+        {/* PWA 설치 안내 배너 — 한 번 닫으면 다시 뜨지 않는다. 설치됨/불가 환경에선 미노출. */}
+        <InstallBanner />
 
         {/* 전체화면 토글 — 지원 브라우저에서만 노출(iOS Safari 등 미지원 시 숨김).
             우측 상단(필터바 아래)에 고정해 GPS 버튼(우측 하단)과 겹치지 않게 둔다. */}

@@ -7,6 +7,7 @@ import { CancelButton } from '@/components/billing/CancelButton';
 import { SignOutButton } from '@/components/SignOutButton';
 import { EnablePushButton } from '@/components/push/EnablePushButton';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
+import { InstallButton } from '@/components/pwa/InstallButton';
 
 interface Sub {
   id: string;
@@ -167,6 +168,7 @@ export default async function MyPage() {
 
       <section className="border-t border-gray-100 px-5 py-5">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">지원</h2>
+        <InstallButton />
         <a
           href="mailto:junicode0901@gmail.com?subject=%5B1000%EB%83%A5%20%EC%A3%BC%EC%9C%A0%EC%86%8C%5D%20%EB%AC%B8%EC%9D%98"
           className="flex items-center justify-between rounded-xl bg-gray-50 p-4"
