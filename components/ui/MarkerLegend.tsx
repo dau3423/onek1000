@@ -161,11 +161,11 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
         )}
       >
         <div className="flex items-center justify-between">
-          <p className="text-sm font-bold text-gray-900">지도 색상 안내</p>
+          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">지도 색상 안내</p>
           <button
             onClick={onClose}
             aria-label="안내 닫기"
-            className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.2}>
               <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
@@ -173,17 +173,17 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
           </button>
         </div>
 
-        <div className="mt-3 space-y-3 text-xs text-gray-700">
+        <div className="mt-3 space-y-3 text-xs text-gray-700 dark:text-gray-300">
           <section>
-            <p className="font-semibold text-gray-900">마커 숫자 = 가격 순위</p>
-            <p className="text-[11px] text-gray-400">현재 목록 탭(이 지역 / 내 주변)의 가격 순위 — 1이 가장 쌈</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">마커 숫자 = 가격 순위</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">현재 목록 탭(이 지역 / 내 주변)의 가격 순위 — 1이 가장 쌈</p>
             <div className="mt-1.5 flex items-center gap-1.5">
               <NumberChip tier="cheap" n={1} />
               <NumberChip tier="normal" n={2} />
               <NumberChip tier="expensive" n={3} />
               <span>목록 항목과 같은 번호의 마커</span>
             </div>
-            <p className="mt-1.5 text-[11px] text-gray-400">목록 밖 주유소는 표정으로 가격 수준만 표시</p>
+            <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">목록 밖 주유소는 표정으로 가격 수준만 표시</p>
             <div className="mt-1 space-y-1">
               <div className="flex items-center gap-1.5">
                 <FaceChip tier="cheap" />
@@ -198,11 +198,11 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
                 <span>{TIER_FACE.expensive.mood} ({TIER_FACE.expensive.hint})</span>
               </div>
             </div>
-            <p className="mt-1 text-[11px] text-gray-400">안쪽 색 = 가격 수준(화면 내 비교, 줌·이동 시 바뀜)</p>
+            <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">안쪽 색 = 가격 수준(화면 내 비교, 줌·이동 시 바뀜)</p>
           </section>
 
           <section>
-            <p className="font-semibold text-gray-900">점 테두리 색 = 브랜드</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">점 테두리 색 = 브랜드</p>
             <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1.5">
               {BRANDS.map((b) => (
                 <div key={b.label} className="flex items-center gap-1.5">
@@ -214,8 +214,8 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
           </section>
 
           <section>
-            <p className="font-semibold text-gray-900">특별 표식</p>
-            <p className="text-[11px] text-gray-400">색은 동일(안쪽=가격, 테두리=브랜드), 형태·순위로 종류 구분</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">특별 표식</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">색은 동일(안쪽=가격, 테두리=브랜드), 형태·순위로 종류 구분</p>
             <div className="mt-1.5 space-y-1.5">
               <div className="flex items-start gap-1.5">
                 <span className="mt-0.5 flex shrink-0 gap-0.5">
@@ -224,9 +224,9 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
                 </span>
                 <span>
                   👑 + 순위 숫자(물방울 핀) = 전국 최저가 TOP 10
-                  <span className="text-gray-400"> (가격 라벨</span>
+                  <span className="text-gray-500 dark:text-gray-400"> (가격 라벨</span>
                   <span style={{ color: HL_COLOR }} className="font-semibold"> 앰버</span>
-                  <span className="text-gray-400">)</span>
+                  <span className="text-gray-500 dark:text-gray-400">)</span>
                 </span>
               </div>
               <div className="flex items-start gap-1.5">
@@ -236,9 +236,9 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
                 </span>
                 <span>
                   순위 배지 = 내 주변 10km 최저가 TOP 10
-                  <span className="text-gray-400"> (가격 라벨</span>
+                  <span className="text-gray-500 dark:text-gray-400"> (가격 라벨</span>
                   <span style={{ color: NEAR_COLOR }} className="font-semibold"> 블루</span>
-                  <span className="text-gray-400">)</span>
+                  <span className="text-gray-500 dark:text-gray-400">)</span>
                 </span>
               </div>
               <div className="flex items-center gap-1.5">

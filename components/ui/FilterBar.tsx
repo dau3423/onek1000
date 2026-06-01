@@ -40,65 +40,69 @@ export function FilterBar() {
 
   return (
     <div className="relative flex items-center gap-1.5 border-b border-gray-100 bg-white px-3 py-2 dark:border-gray-800 dark:bg-gray-900">
-      {/* 유종 버튼: 좁은 화면에서 가로 스크롤. 좌→우: 휘발유▾ · 경유 · LPG · EV(준비중) */}
-      <div className="flex flex-1 items-center gap-1.5 overflow-x-auto">
-        {/* 휘발유 드롭다운(일반/고급) — 칩 라벨은 현재 선택을 반영 */}
-        <div ref={gasRef} className="relative shrink-0">
-          <button
-            onClick={() => setGasOpen((v) => !v)}
-            aria-haspopup="menu"
-            aria-expanded={gasOpen}
-            aria-label="휘발유 유종 선택"
-            className={clsx(
-              'flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition',
-              gasSelected
-                ? 'bg-primary text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
-            )}
-          >
-            {/* 휘발유 계열이 선택돼 있으면 그 라벨(휘발유/고급휘발유), 아니면 기본 "휘발유" */}
-            <span>{gasSelected ? PRODUCT_LABEL[product] : PRODUCT_LABEL.B027}</span>
-            <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.4}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
-            </svg>
-          </button>
-
-          {gasOpen && (
-            <div
-              role="menu"
-              className="absolute left-0 top-9 z-40 w-32 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
-            >
-              {GASOLINE_OPTIONS.map((p) => {
-                const active = product === p;
-                return (
-                  <button
-                    key={p}
-                    role="menuitemradio"
-                    aria-checked={active}
-                    onClick={() => {
-                      setProduct(p);
-                      setGasOpen(false);
-                    }}
-                    className={clsx(
-                      'flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold transition',
-                      active
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
-                    )}
-                  >
-                    {PRODUCT_LABEL[p]}
-                    {active && (
-                      <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.4}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />
-                      </svg>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+      {/*
+        휘발유 드롭다운(일반/고급) — 스크롤 컨테이너 밖에 둔다.
+        overflow-x-auto 컨테이너 안에 두면 overflow-y도 자동으로 잘라(clip) 드롭다운 패널이 안 보임.
+        휘발유는 항상 첫 칩이라 스크롤 대상에서 빠져도 UX상 자연스럽다.
+      */}
+      <div ref={gasRef} className="relative z-20 shrink-0">
+        <button
+          onClick={() => setGasOpen((v) => !v)}
+          aria-haspopup="menu"
+          aria-expanded={gasOpen}
+          aria-label="휘발유 유종 선택"
+          className={clsx(
+            'flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition',
+            gasSelected
+              ? 'bg-primary text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
           )}
-        </div>
+        >
+          {/* 휘발유 계열이 선택돼 있으면 그 라벨(휘발유/고급휘발유), 아니면 기본 "휘발유" */}
+          <span>{gasSelected ? PRODUCT_LABEL[product] : PRODUCT_LABEL.B027}</span>
+          <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.4}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
 
+        {gasOpen && (
+          <div
+            role="menu"
+            className="absolute left-0 top-9 z-50 w-32 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+          >
+            {GASOLINE_OPTIONS.map((p) => {
+              const active = product === p;
+              return (
+                <button
+                  key={p}
+                  role="menuitemradio"
+                  aria-checked={active}
+                  onClick={() => {
+                    setProduct(p);
+                    setGasOpen(false);
+                  }}
+                  className={clsx(
+                    'flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold transition',
+                    active
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
+                  )}
+                >
+                  {PRODUCT_LABEL[p]}
+                  {active && (
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.4}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 나머지 유종 버튼: 좁은 화면에서 가로 스크롤. 좌→우: 경유 · LPG · EV(준비중) */}
+      <div className="flex flex-1 items-center gap-1.5 overflow-x-auto">
         {/* 경유 · LPG 단독 칩 */}
         {SIMPLE_PRODUCTS.map((p) => (
           <button
