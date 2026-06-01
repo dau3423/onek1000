@@ -7,8 +7,6 @@
 // 정기(monthly): 빌링키(CARD_BillKey) 발급 → trial(7일) 구독, charge-cron이 첫 청구.
 
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/options';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { approve, PLAN, type StdPayReturn, type PlanCode } from '@/lib/billing/inicis';
 
@@ -54,20 +52,14 @@ export async function POST(req: Request) {
     return redirectTo(req, '/billing/fail?reason=unconfigured');
   }
 
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return redirectTo(req, '/auth/sign-in?callbackUrl=/pricing');
-  }
-
+  // returnUrl POST는 KG이니시스 도메인 → 우리 도메인 cross-site POST라
+  // NextAuth 세션 쿠키(SameSite=Lax)가 실리지 않는다. 따라서 세션이 아니라
+  // subscribe 시점에 서버가 발급·기록한 billing_pending(oid → user_id)을
+  // 사용자 식별의 신뢰원으로 사용한다. 최종 확정은 아래 authToken 기반
+  // S2S 승인요청으로 검증한다.
   const sb = getSupabase();
-  const { data: user } = await sb
-    .from('users')
-    .select('id')
-    .eq('email', session.user.email)
-    .maybeSingle();
-  if (!user) return redirectTo(req, '/billing/fail?reason=nouser');
 
-  // 우리가 발급한 주문인지 검증 + 사용자 일치 + 중복 처리 방지
+  // 우리가 발급한 주문인지 검증 + 중복 처리 방지
   const oid = ret.orderNumber;
   const { data: pending } = await sb
     .from('billing_pending')
@@ -75,10 +67,12 @@ export async function POST(req: Request) {
     .eq('oid', oid)
     .maybeSingle();
   if (!pending) return redirectTo(req, '/billing/fail?reason=unknown_order');
-  if (pending.user_id !== user.id) return redirectTo(req, '/billing/fail?reason=user_mismatch');
   if (pending.status === 'consumed') {
     return redirectTo(req, '/billing/success?status=ok&plan=' + pending.plan);
   }
+
+  // 이후 모든 user 식별은 billing_pending의 user_id를 신뢰원으로 사용한다.
+  const userId = pending.user_id;
 
   const planDef = PLAN[pending.plan as PlanCode];
   if (!planDef) return redirectTo(req, '/billing/fail?reason=bad_plan');
@@ -93,7 +87,7 @@ export async function POST(req: Request) {
   }
   if (!approval.ok) {
     await sb.from('billing_events').insert({
-      user_id: user.id, kind: 'charge_fail', provider: 'inicis',
+      user_id: userId, kind: 'charge_fail', provider: 'inicis',
       amount: pending.amount, oid, tid: approval.tid ?? null,
       raw: approval.raw as Record<string, unknown>,
     });
@@ -111,7 +105,7 @@ export async function POST(req: Request) {
   await sb
     .from('subscriptions')
     .delete()
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .in('status', ['expired', 'canceled', 'past_due']);
 
   if (pending.mode === 'pay') {
@@ -119,7 +113,7 @@ export async function POST(req: Request) {
     const { data: sub, error } = await sb
       .from('subscriptions')
       .insert({
-        user_id: user.id,
+        user_id: userId,
         status: 'active',
         plan: planDef.code,
         plan_type: 'onetime',
@@ -140,7 +134,7 @@ export async function POST(req: Request) {
       return redirectTo(req, '/billing/fail?reason=db');
     }
     await sb.from('billing_events').insert({
-      subscription_id: sub.id, user_id: user.id, kind: 'charge_success', provider: 'inicis',
+      subscription_id: sub.id, user_id: userId, kind: 'charge_success', provider: 'inicis',
       amount: planDef.amount, oid, tid: approval.tid ?? null,
       raw: approval.raw as Record<string, unknown>,
     });
@@ -149,7 +143,7 @@ export async function POST(req: Request) {
     const { data: sub, error } = await sb
       .from('subscriptions')
       .insert({
-        user_id: user.id,
+        user_id: userId,
         status: 'trial',
         plan: planDef.code,
         plan_type: 'recurring',
@@ -170,7 +164,7 @@ export async function POST(req: Request) {
       return redirectTo(req, '/billing/fail?reason=db');
     }
     await sb.from('billing_events').insert({
-      subscription_id: sub.id, user_id: user.id, kind: 'subscribe', provider: 'inicis',
+      subscription_id: sub.id, user_id: userId, kind: 'subscribe', provider: 'inicis',
       amount: 0, oid, tid: approval.tid ?? null,
       raw: approval.raw as Record<string, unknown>,
     });
