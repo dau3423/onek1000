@@ -7,6 +7,7 @@ import { useSession } from 'next-auth/react';
 export function Header() {
   const { data, status } = useSession();
   const signedIn = status === 'authenticated';
+  const isPremium = Boolean(data?.user?.isPremium);
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-gray-100 bg-white px-4">
@@ -42,12 +43,17 @@ export function Header() {
         <Link
           href={signedIn ? '/my' : '/auth/sign-in'}
           className="flex h-12 w-12 items-center justify-center rounded-full"
-          aria-label={signedIn ? '마이페이지' : '로그인'}
-          title={data?.user?.email ?? '로그인'}
+          aria-label={signedIn ? (isPremium ? '마이페이지 (프리미엄 회원)' : '마이페이지') : '로그인'}
+          title={signedIn && isPremium ? '프리미엄 회원' : (data?.user?.email ?? '로그인')}
         >
           {signedIn ? (
-            // 프로필 아이콘 (로그인 상태)
-            <Image src="/icons/icon_profile.png" alt="" width={32} height={32} />
+            isPremium ? (
+              // 프리미엄 회원 아이콘 (유료 구독)
+              <Image src="/icons/icon_premium.png" alt="프리미엄 회원" width={32} height={32} />
+            ) : (
+              // 프로필 아이콘 (일반 로그인 상태)
+              <Image src="/icons/icon_profile.png" alt="" width={32} height={32} />
+            )
           ) : (
             // 로그인 아이콘 (비로그인)
             <Image src="/icons/icon_login.png" alt="" width={32} height={32} />
