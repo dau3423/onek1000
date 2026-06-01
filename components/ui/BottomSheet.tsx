@@ -173,7 +173,7 @@ export function BottomSheet({
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
                       >
                         {/* icon_transparent.png는 투명 배경이라 사각/흰배경 문제가 없어 클립 래퍼 없이 직접 표시한다. */}
-                        <Image src="/icons/icon_transparent.png" alt="" width={26} height={26} className="block" />
+                        <Image src="/icons/icon_transparent.png" alt="" width={36} height={36} className="block" />
                       </button>
                     )}
                   </div>
