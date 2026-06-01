@@ -5,6 +5,7 @@ import { loadKakao } from './loadKakao';
 import type { StationWithPrice, NationalTop10Item, ProductCode } from '@/types/station';
 import { BRAND_COLOR } from '@/types/station';
 import { priceTier, priceTierThresholds } from '@/lib/map/geo';
+import { TIER_FACE, faceMarkerSvg } from '@/lib/map/markerFace';
 
 // === 전국 TOP10 강조 마커 디자인 상수/헬퍼 (일반 마커와 형태부터 구분) ===
 // 색 역할은 일반 마커와 통일: 본체(안쪽)=가격 tier 색, 테두리=브랜드 색.
@@ -277,7 +278,7 @@ export function KakaoMap({
       if (top10Rank.has(s.id) || nearbyRank.has(s.id)) continue;
 
       const tier = priceTier(s.price, tierThresholds);
-      const tierColor = tier === 'cheap' ? '#16A34A' : tier === 'expensive' ? '#DC2626' : '#EAB308';
+      const tierColor = TIER_FACE[tier].color;
       const brandColor = BRAND_COLOR[s.brand] ?? '#666';
 
       const content = document.createElement('div');
@@ -285,9 +286,13 @@ export function KakaoMap({
       content.style.transform = 'translate(-50%, -100%)';
       content.style.position = 'relative';
 
-      // === 일반 마커: 원형 점 (색 역할 반전) ===
-      // 안쪽(채움) = 가격 tier 색(초록/노랑/빨강), 테두리 = 브랜드 색.
-      // 가격 라벨/꼬리도 안쪽과 같은 tier 색으로 통일(가격 수준이 한눈에).
+      // === 일반 마커: 얼굴 표정 원 (색 역할 통일) ===
+      // 안쪽(채움) = 가격 tier 색 + tier별 표정(😍 좋음 / 🙂 보통 / 😠 매우 나쁨),
+      // 테두리 = 브랜드 색. 표정은 인라인 SVG라 OS 무관하게 동일하게 보인다.
+      // 라벨 줌에서는 가격 라벨을 위에 함께, 축소 줌에서는 표정 원만(약간 크게)
+      // 표시해 작은 마커에서도 표정이 식별되게 한다.
+      const faceSize = showLabel ? 22 : 26;
+      const face = faceMarkerSvg(tier, faceSize, { ring: brandColor, ringWidth: 2.5 });
       content.innerHTML = showLabel
         ? `
         <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
@@ -295,11 +300,11 @@ export function KakaoMap({
             ₩${s.price.toLocaleString()}
           </div>
           <div style="width:8px;height:8px;background:${tierColor};transform:rotate(45deg);margin-top:-4px"></div>
-          <div style="width:16px;height:16px;border-radius:50%;background:${tierColor};border:3px solid ${brandColor};box-shadow:0 1px 3px rgba(0,0,0,.3);margin-top:-2px"></div>
+          <div style="margin-top:-1px">${face}</div>
         </div>`
         : `
         <div style="position:relative;display:flex;flex-direction:column;align-items:center">
-          <div style="width:18px;height:18px;border-radius:50%;background:${tierColor};border:3px solid ${brandColor};box-shadow:0 2px 4px rgba(0,0,0,.25)"></div>
+          ${face}
         </div>`;
 
       content.addEventListener('click', () => onMarkerClick?.(s));
@@ -340,7 +345,7 @@ export function KakaoMap({
       // 핀 본체=가격 tier 색, 테두리=브랜드 색(일반 마커와 색 역할 통일).
       // 카테고리는 물방울 형태 + 메달/순위 + 가격 라벨의 앰버 테두리로 구분.
       const tier = priceTier(t.price, tierThresholds);
-      const tierColor = tier === 'cheap' ? '#16A34A' : tier === 'expensive' ? '#DC2626' : '#EAB308';
+      const tierColor = TIER_FACE[tier].color;
       const brandColor = BRAND_COLOR[t.brand] ?? '#666';
       const pinSize = showLabel ? 38 : 42; // 축소 줌에서 오히려 더 크게 → 전국에서 눈에 띔
       const pin = topPinSvg(r, pinSize, tierColor, brandColor);
@@ -400,7 +405,7 @@ export function KakaoMap({
       // 카테고리는 배지 형태 + 순위 + 가격 라벨의 블루 테두리로 구분.
       // 순위 숫자는 본체(tier 색) 대비에 맞춘 텍스트색으로 원 안에 표시.
       const tier = priceTier(s.price, tierThresholds);
-      const tierColor = tier === 'cheap' ? '#16A34A' : tier === 'expensive' ? '#DC2626' : '#EAB308';
+      const tierColor = TIER_FACE[tier].color;
       const brandColor = BRAND_COLOR[s.brand] ?? '#666';
       const txt = readableText(tierColor);
       const badge = `

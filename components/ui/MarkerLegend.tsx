@@ -2,22 +2,39 @@
 
 import { useEffect, useRef } from 'react';
 import { BRAND_COLOR } from '@/types/station';
+import type { PriceTier } from '@/lib/map/geo';
+import { TIER_FACE, faceSvgInner } from '@/lib/map/markerFace';
 
 interface Props {
   onClose: () => void;
 }
 
-// 마커 색상은 KakaoMap의 렌더 상수와 일치해야 한다(시각 일관성).
-//  - 가격 tier 안쪽(채움): 화면 표시 집합의 상대 분포(분위수) 기준
-//    lib/map/geo.ts priceTierThresholds+priceTier → KakaoMap tierColor
+// 마커 색상/표정은 KakaoMap의 렌더와 일치해야 한다(시각 일관성).
+//  - 가격 tier 안쪽(채움)색·표정: lib/map/markerFace.ts TIER_FACE/faceSvgInner (단일 출처)
 //  - 브랜드 테두리: types/station.ts BRAND_COLOR
 //  - 전국 TOP10: HL_COLOR(앰버, 가격 라벨 보조 단서), 내 주변 TOP10: NEAR_COLOR(블루, 보조 단서), 내 위치: #1d4ed8
-const TIER_CHEAP = '#16A34A';
-const TIER_NORMAL = '#EAB308';
-const TIER_EXPENSIVE = '#DC2626';
+const TIER_CHEAP = TIER_FACE.cheap.color;
+const TIER_NORMAL = TIER_FACE.normal.color;
+const TIER_EXPENSIVE = TIER_FACE.expensive.color;
 const HL_COLOR = '#F59E0B';
 const NEAR_COLOR = '#2563EB';
 const MY_COLOR = '#1d4ed8';
+
+/** 가격 수준 표정 칩 — 지도 일반 마커와 동일한 색·표정(인라인 SVG). */
+function FaceChip({ tier }: { tier: PriceTier }) {
+  return (
+    <span
+      className="inline-block h-4 w-4 shrink-0"
+      // faceSvgInner는 viewBox 0 0 100 100 기준 표정 경로만 반환 → 배경 원과 함께 합성
+      dangerouslySetInnerHTML={{
+        __html: `<svg viewBox="0 0 100 100" width="16" height="16" style="display:block">
+          <circle cx="50" cy="50" r="46" fill="${TIER_FACE[tier].color}"/>
+          ${faceSvgInner(tier)}
+        </svg>`,
+      }}
+    />
+  );
+}
 
 const BRANDS: { label: string; color: string }[] = [
   { label: 'SK에너지', color: BRAND_COLOR.SKE },
@@ -130,20 +147,20 @@ export function MarkerLegend({ onClose }: Props) {
 
         <div className="mt-3 space-y-3 text-xs text-gray-700">
           <section>
-            <p className="font-semibold text-gray-900">점 안쪽 색 = 상대 가격</p>
+            <p className="font-semibold text-gray-900">표정 = 가격 수준</p>
             <p className="text-[11px] text-gray-400">화면에 보이는 주유소끼리 비교 (줌·이동 시 바뀜)</p>
             <div className="mt-1.5 space-y-1.5">
               <div className="flex items-center gap-1.5">
-                <Dot color={TIER_CHEAP} ring="#ffffff" />
-                <span>싼 편 (하위권)</span>
+                <FaceChip tier="cheap" />
+                <span>{TIER_FACE.cheap.mood} ({TIER_FACE.cheap.hint})</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <Dot color={TIER_NORMAL} ring="#ffffff" />
-                <span>보통 (중간권)</span>
+                <FaceChip tier="normal" />
+                <span>{TIER_FACE.normal.mood} ({TIER_FACE.normal.hint})</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <Dot color={TIER_EXPENSIVE} ring="#ffffff" />
-                <span>비싼 편 (상위권)</span>
+                <FaceChip tier="expensive" />
+                <span>{TIER_FACE.expensive.mood} ({TIER_FACE.expensive.hint})</span>
               </div>
             </div>
             <p className="mt-1 text-[11px] text-gray-400">가격 차이가 거의 없으면 모두 보통으로 표시</p>
