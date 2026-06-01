@@ -244,7 +244,8 @@ export default function HomePage() {
     [nearbyTop10, brandSet, matchBrand],
   );
   // 하단 시트 리스트도 동일 브랜드 필터 적용(표시 집합 일관성).
-  // 단, 마커 색상 기준이 되는 averagePrice는 화면 영역 전체 기준을 유지한다.
+  // averagePrice는 1km 알람 판정(평균-50원) 기준으로 사용한다. 마커 색상은 별도로
+  // 화면 표시 집합의 상대 분포(분위수)로 산정한다(KakaoMap/BottomSheet 내부).
   const visibleNearbyStations = useMemo(
     () => (brandSet.size === 0 ? radiusStations : radiusStations.filter((s) => matchBrand(s.brand))),
     [radiusStations, brandSet, matchBrand],
@@ -286,7 +287,6 @@ export default function HomePage() {
           nationalTop10={visibleNationalTop10}
           nearbyTop10={visibleNearbyTop10}
           product={product}
-          averagePrice={averagePrice}
           myLocation={myLocation}
           heading={geo.coords?.heading ?? null}
           recenterSignal={recenterSignal}
@@ -382,7 +382,6 @@ export default function HomePage() {
         {/* 하단 시트 */}
         <BottomSheet
           stations={visibleStations}
-          averagePrice={averagePrice}
           nearbyStations={visibleNearbyStations}
           nearbyEnabled={geoEnabled && !!geo.coords}
           nearbyRadiusM={NEARBY_RADIUS_M}

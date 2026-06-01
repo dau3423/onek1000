@@ -8,7 +8,8 @@ interface Props {
 }
 
 // 마커 색상은 KakaoMap의 렌더 상수와 일치해야 한다(시각 일관성).
-//  - 가격 tier 안쪽(채움): lib/map/geo.ts priceTier → KakaoMap tierColor
+//  - 가격 tier 안쪽(채움): 화면 표시 집합의 상대 분포(분위수) 기준
+//    lib/map/geo.ts priceTierThresholds+priceTier → KakaoMap tierColor
 //  - 브랜드 테두리: types/station.ts BRAND_COLOR
 //  - 전국 TOP10: HL_COLOR(앰버, 가격 라벨 보조 단서), 내 주변 TOP10: NEAR_COLOR(블루, 보조 단서), 내 위치: #1d4ed8
 const TIER_CHEAP = '#16A34A';
@@ -129,22 +130,23 @@ export function MarkerLegend({ onClose }: Props) {
 
         <div className="mt-3 space-y-3 text-xs text-gray-700">
           <section>
-            <p className="font-semibold text-gray-900">점 안쪽 색 = 가격 수준</p>
-            <p className="text-[11px] text-gray-400">현재 화면 평균 대비</p>
+            <p className="font-semibold text-gray-900">점 안쪽 색 = 상대 가격</p>
+            <p className="text-[11px] text-gray-400">화면에 보이는 주유소끼리 비교 (줌·이동 시 바뀜)</p>
             <div className="mt-1.5 space-y-1.5">
               <div className="flex items-center gap-1.5">
                 <Dot color={TIER_CHEAP} ring="#ffffff" />
-                <span>저렴 (평균 −30원↓)</span>
+                <span>싼 편 (하위권)</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Dot color={TIER_NORMAL} ring="#ffffff" />
-                <span>보통 (±30원)</span>
+                <span>보통 (중간권)</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Dot color={TIER_EXPENSIVE} ring="#ffffff" />
-                <span>비쌈 (평균 +30원↑)</span>
+                <span>비싼 편 (상위권)</span>
               </div>
             </div>
+            <p className="mt-1 text-[11px] text-gray-400">가격 차이가 거의 없으면 모두 보통으로 표시</p>
           </section>
 
           <section>

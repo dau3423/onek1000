@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadKakao } from './loadKakao';
 import type { StationWithPrice, NationalTop10Item, ProductCode } from '@/types/station';
 import { BRAND_COLOR } from '@/types/station';
-import { priceTier } from '@/lib/map/geo';
+import { priceTier, priceTierThresholds } from '@/lib/map/geo';
 
 // === 전국 TOP10 강조 마커 디자인 상수/헬퍼 (일반 마커와 형태부터 구분) ===
 // 색 역할은 일반 마커와 통일: 본체(안쪽)=가격 tier 색, 테두리=브랜드 색.
@@ -88,7 +88,6 @@ interface Props {
   nearbyTop10?: StationWithPrice[];
   /** 현재 선택 유종 코드. TOP10 마커 클릭 시 합성하는 StationWithPrice의 product 채움용. */
   product?: ProductCode;
-  averagePrice?: number;
   onBoundsChange?: (b: {
     swLat: number; swLng: number; neLat: number; neLng: number; zoom: number;
   }) => void;
@@ -111,7 +110,6 @@ export function KakaoMap({
   nationalTop10,
   nearbyTop10,
   product = 'B027',
-  averagePrice = 1600,
   onBoundsChange,
   onViewChange,
   onUserPan,
@@ -174,6 +172,19 @@ export function KakaoMap({
     }
     return m;
   }, [nearbyTop10, top10Rank]);
+
+  // 마커 안쪽 색(가격 tier)을 "화면 표시 집합의 상대 가격 분포"로 산출하기 위한 임계값.
+  // 고정 ±30원이 아니라 분위수(하위/상위 33%) 기준이라, 가격 폭이 좁아도 저렴/보통/비쌈이 갈린다.
+  // 표시 집합 = bbox 일반 마커 + 전국 TOP10 + 내 주변 TOP10(중복 id는 가격이 동일하므로 분포 영향 미미).
+  // 줌/이동 시 표시 집합이 바뀌면 임계값도 바뀌어 색이 상대적으로 재산정된다(상대 비교라 정상).
+  // 정렬/분위수는 렌더마다 1회만 수행(useMemo)해 마커 루프에서 재사용한다.
+  const tierThresholds = useMemo(() => {
+    const prices: number[] = [];
+    for (const s of stations) prices.push(s.price);
+    for (const t of nationalTop10 ?? []) prices.push(t.price);
+    for (const s of nearbyTop10 ?? []) prices.push(s.price);
+    return priceTierThresholds(prices);
+  }, [stations, nationalTop10, nearbyTop10]);
 
   // TOP10 핀 클릭 시 onMarkerClick에 넘길 최소 StationWithPrice 합성.
   // 호출부는 상세 이동(s.id)만 사용하지만, 시그니처 일관성을 위해 항목 값으로 채운다.
@@ -265,7 +276,7 @@ export function KakaoMap({
       // 전국 TOP10 또는 내 주변 TOP10에 포함된 주유소는 각 강조 오버레이로만 표시.
       if (top10Rank.has(s.id) || nearbyRank.has(s.id)) continue;
 
-      const tier = priceTier(s.price, averagePrice);
+      const tier = priceTier(s.price, tierThresholds);
       const tierColor = tier === 'cheap' ? '#16A34A' : tier === 'expensive' ? '#DC2626' : '#EAB308';
       const brandColor = BRAND_COLOR[s.brand] ?? '#666';
 
@@ -303,7 +314,7 @@ export function KakaoMap({
       overlay.setMap(map);
       overlaysRef.current.push(overlay);
     }
-  }, [ready, stations, top10Rank, nearbyRank, averagePrice, onMarkerClick, mapLevel]);
+  }, [ready, stations, top10Rank, nearbyRank, tierThresholds, onMarkerClick, mapLevel]);
 
   // 전국 최저가 TOP10 핀/메달 오버레이 — bbox stations 포함 여부와 무관하게 항상 렌더.
   // 위치/가격/순위는 모두 nationalTop10 항목 값을 사용한다(bbox의 비동기 타이밍 불일치 차단).
@@ -328,7 +339,7 @@ export function KakaoMap({
       // 라벨 줌에서는 가격 라벨을 핀 위에 함께, 축소 줌에서는 핀만 (단, 크게).
       // 핀 본체=가격 tier 색, 테두리=브랜드 색(일반 마커와 색 역할 통일).
       // 카테고리는 물방울 형태 + 메달/순위 + 가격 라벨의 앰버 테두리로 구분.
-      const tier = priceTier(t.price, averagePrice);
+      const tier = priceTier(t.price, tierThresholds);
       const tierColor = tier === 'cheap' ? '#16A34A' : tier === 'expensive' ? '#DC2626' : '#EAB308';
       const brandColor = BRAND_COLOR[t.brand] ?? '#666';
       const pinSize = showLabel ? 38 : 42; // 축소 줌에서 오히려 더 크게 → 전국에서 눈에 띔
@@ -361,7 +372,7 @@ export function KakaoMap({
     }
     // top10ToStation은 product/렌더마다 새로 생성되므로 product를 직접 의존성에 둔다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, nationalTop10, product, averagePrice, onMarkerClick, mapLevel]);
+  }, [ready, nationalTop10, product, tierThresholds, onMarkerClick, mapLevel]);
 
   // 내 주변(10km) TOP10 핀/배지 오버레이 — 전국 메달/일반 마커와 독립적으로 항상 렌더.
   // 위치/가격/순위는 nearbyTop10(이미 가격순) 기준. 전국 메달과 겹치는 id는 nearbyRank에서 제외됨.
@@ -388,7 +399,7 @@ export function KakaoMap({
       // 둥근 핀(원 + 아래 꼬리). 색 역할 통일: 본체=가격 tier 색, 테두리=브랜드 색.
       // 카테고리는 배지 형태 + 순위 + 가격 라벨의 블루 테두리로 구분.
       // 순위 숫자는 본체(tier 색) 대비에 맞춘 텍스트색으로 원 안에 표시.
-      const tier = priceTier(s.price, averagePrice);
+      const tier = priceTier(s.price, tierThresholds);
       const tierColor = tier === 'cheap' ? '#16A34A' : tier === 'expensive' ? '#DC2626' : '#EAB308';
       const brandColor = BRAND_COLOR[s.brand] ?? '#666';
       const txt = readableText(tierColor);
@@ -420,7 +431,7 @@ export function KakaoMap({
       overlay.setMap(map);
       nearOverlaysRef.current.push(overlay);
     }
-  }, [ready, nearbyTop10, nearbyRank, averagePrice, onMarkerClick, mapLevel]);
+  }, [ready, nearbyTop10, nearbyRank, tierThresholds, onMarkerClick, mapLevel]);
 
   // 내 위치 마커 + 1km 원
   useEffect(() => {

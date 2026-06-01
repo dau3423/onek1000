@@ -5,7 +5,7 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import type { StationWithPrice } from '@/types/station';
 import { BRAND_LABEL, BRAND_COLOR } from '@/types/station';
-import { priceTier } from '@/lib/map/geo';
+import { priceTier, priceTierThresholds } from '@/lib/map/geo';
 
 type Tab = 'area' | 'nearby';
 
@@ -20,7 +20,6 @@ export const SHEET_OPEN_VH = 70;
 
 interface Props {
   stations: StationWithPrice[];
-  averagePrice: number;
   onSelect: (s: StationWithPrice) => void;
   /** 내 GPS 반경 내 최저가(거리 포함). geo 활성화 시에만 채워짐 */
   nearbyStations?: StationWithPrice[];
@@ -39,7 +38,6 @@ const AREA_LIMIT = 30;
 
 export function BottomSheet({
   stations,
-  averagePrice,
   onSelect,
   nearbyStations = [],
   nearbyEnabled = false,
@@ -66,6 +64,12 @@ export function BottomSheet({
   const areaSorted = [...stations].sort((a, b) => a.price - b.price).slice(0, AREA_LIMIT);
   const nearbySorted = [...nearbyStations].sort((a, b) => a.price - b.price).slice(0, NEARBY_LIMIT);
   const list = activeTab === 'nearby' ? nearbySorted : areaSorted;
+
+  // 가격 텍스트 색(저렴/비쌈)도 지도 마커와 동일하게 "표시 집합의 상대 분포" 기준으로 산정.
+  // 활성 탭 모집단(이 지역 전체 stations / 내 주변 nearbyStations) 기준으로 임계값을 산출한다.
+  const tierThresholds = priceTierThresholds(
+    (activeTab === 'nearby' ? nearbyStations : stations).map((s) => s.price),
+  );
 
   const title = activeTab === 'nearby'
     ? `내 주변 ${radiusKm} 최저가 TOP ${NEARBY_LIMIT}`
@@ -114,7 +118,7 @@ export function BottomSheet({
         ) : (
           <ul className="divide-y divide-gray-100 dark:divide-gray-800">
             {list.map((s, i) => {
-              const tier = priceTier(s.price, averagePrice);
+              const tier = priceTier(s.price, tierThresholds);
               const tierColor = tier === 'cheap' ? 'text-cheap' : tier === 'expensive' ? 'text-expensive' : 'text-gray-800 dark:text-gray-100';
               const distanceText = s.distance != null
                 ? s.distance < 1000 ? `${Math.round(s.distance)}m` : `${(s.distance / 1000).toFixed(1)}km`

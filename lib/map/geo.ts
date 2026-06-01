@@ -66,11 +66,70 @@ export function topNByZoom(zoom: number): number {
   return 100;                        // 내 지역 확대(시군구)~동네 상세
 }
 
-/** 가격 색상 분류 */
-export function priceTier(price: number, avg: number): 'cheap' | 'normal' | 'expensive' {
-  const diff = price - avg;
-  if (diff <= -30) return 'cheap';
-  if (diff >= 30) return 'expensive';
+export type PriceTier = 'cheap' | 'normal' | 'expensive';
+
+/**
+ * 가격 tier 임계값(저렴/비쌈 경계 2개).
+ * - cheapMax 이하 = 저렴(초록), expensiveMin 이상 = 비쌈(빨강), 그 사이 = 보통(노랑).
+ * - null이면 "전부 보통"(억지 분류 방지 폴백).
+ */
+export interface PriceTierThresholds {
+  cheapMax: number | null;
+  expensiveMin: number | null;
+}
+
+/** 정렬된 배열에서 분위수(0~1) 값을 선형보간으로 구한다. */
+function quantile(sorted: number[], q: number): number {
+  if (sorted.length === 0) return NaN;
+  if (sorted.length === 1) return sorted[0];
+  const pos = (sorted.length - 1) * q;
+  const lo = Math.floor(pos);
+  const hi = Math.ceil(pos);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+}
+
+/**
+ * 표시 집합(화면 내 주유소)의 가격 분포로 tier 임계값을 산출한다.
+ * 고정 ±30원이 아닌 "상대 분포(분위수)" 기준이라, 가격 폭이 좁아도 저렴/보통/비쌈이 갈린다.
+ *
+ * - 기본: 하위 33%(P33) 이하 = 저렴, 상위 33%(P67) 이상 = 비쌈.
+ * - 폴백(전부 보통): 표본이 너무 적거나(MIN_SAMPLE 미만) 가격이 사실상 동일할 때
+ *   (최저~최고 폭이 MIN_SPREAD원 미만). → cheapMax/expensiveMin = null.
+ * - P33===P67(동가 다수)이면 경계가 겹쳐 모두 '보통'이 될 수 있으므로,
+ *   최저가와 같은 값은 저렴, 최고가와 같은 값은 비쌈으로 떨어지도록 경계를 보정한다.
+ */
+export function priceTierThresholds(
+  prices: number[],
+  opts: { lowQ?: number; highQ?: number; minSample?: number; minSpread?: number } = {},
+): PriceTierThresholds {
+  const { lowQ = 1 / 3, highQ = 2 / 3, minSample = 5, minSpread = 8 } = opts;
+  const valid = prices.filter((p) => Number.isFinite(p) && p > 0);
+  if (valid.length < minSample) return { cheapMax: null, expensiveMin: null };
+
+  const sorted = [...valid].sort((a, b) => a - b);
+  const min = sorted[0];
+  const max = sorted[sorted.length - 1];
+  // 가격 폭이 사실상 0(전부 동일가 수준)이면 억지 분류하지 않는다.
+  if (max - min < minSpread) return { cheapMax: null, expensiveMin: null };
+
+  let cheapMax = quantile(sorted, lowQ);
+  let expensiveMin = quantile(sorted, highQ);
+  // 분위수가 겹치면(동가 밀집) 최저/최고와 살짝 떨어뜨려 양 끝이 색을 받게 한다.
+  if (cheapMax >= expensiveMin) {
+    cheapMax = min;
+    expensiveMin = max;
+  }
+  return { cheapMax, expensiveMin };
+}
+
+/**
+ * 가격 tier 분류. 표시 집합 분포로 산출한 임계값(PriceTierThresholds)을 받아 색을 정한다.
+ * 임계값이 폴백(null)이면 모두 '보통'.
+ */
+export function priceTier(price: number, t: PriceTierThresholds): PriceTier {
+  if (t.cheapMax != null && price <= t.cheapMax) return 'cheap';
+  if (t.expensiveMin != null && price >= t.expensiveMin) return 'expensive';
   return 'normal';
 }
 
