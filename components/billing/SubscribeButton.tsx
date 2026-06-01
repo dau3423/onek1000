@@ -116,7 +116,7 @@ export function SubscribeButton() {
           ? '결제 창 여는 중...'
           : status === 'authenticated'
             ? plan === 'monthly_1000'
-              ? '7일 무료로 시작하기'
+              ? '7일 무료 후 월 ₩1,000 시작하기'
               : '₩1,000 결제하고 시작하기'
             : '로그인 후 시작하기'}
       </button>
