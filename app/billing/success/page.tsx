@@ -2,6 +2,7 @@
 // 이 페이지는 결과 안내만 담당하고 마이페이지로 이동시킨다.
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { SessionRefresher } from '@/components/billing/SessionRefresher';
 
 export default function BillingSuccessPage({
   searchParams,
@@ -15,6 +16,8 @@ export default function BillingSuccessPage({
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
+      {/* 결제 성공 직후 세션을 갱신해 프리미엄 상태를 즉시 반영 */}
+      <SessionRefresher />
       <div className="text-5xl">🎉</div>
       <h1 className="text-xl font-bold">1000냥 시작!</h1>
       <p className="text-sm text-gray-500">
