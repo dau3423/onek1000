@@ -35,7 +35,7 @@ export function PriceHistoryChart({ stationId, product }: Props) {
   return (
     <div className="h-40 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 10, right: 12, bottom: 0, left: 0 }}>
+        <LineChart data={data} margin={{ top: 10, right: 8, bottom: 0, left: 4 }}>
           <CartesianGrid strokeDasharray="2 4" stroke="#eee" />
           <XAxis
             dataKey="date"
@@ -44,6 +44,7 @@ export function PriceHistoryChart({ stationId, product }: Props) {
             interval="preserveStartEnd"
           />
           <YAxis
+            orientation="right"
             domain={[min - pad, max + pad]}
             tick={{ fontSize: 10, fill: '#9ca3af' }}
             tickFormatter={(v: number) => `${v.toLocaleString()}`}
