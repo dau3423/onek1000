@@ -55,12 +55,15 @@ function Dot({ color, ring }: { color: string; ring?: string }) {
   );
 }
 
-/** 브랜드(테두리)를 강조하는 칩 — 안쪽 회색 점 + 색 테두리 */
+/**
+ * 브랜드(테두리)를 강조하는 칩 — 실제 일반 마커와 동일하게
+ * 안쪽 회색 점(얼굴 자리) + 흰 간격 + 두꺼운 브랜드 테두리(box-shadow 링).
+ */
 function RingDot({ color }: { color: string }) {
   return (
     <span
-      className="inline-block h-3.5 w-3.5 shrink-0 rounded-full bg-gray-400"
-      style={{ border: `2.5px solid ${color}` }}
+      className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-gray-400"
+      style={{ boxShadow: `0 0 0 1.5px #fff, 0 0 0 4px ${color}` }}
     />
   );
 }
@@ -71,14 +74,15 @@ function RingDot({ color }: { color: string }) {
  * 카테고리(전국)는 물방울 형태와 안내 텍스트(앰버 가격 라벨)로 보완한다.
  */
 function TopPinChip({ body, ring }: { body: string; ring: string }) {
+  // 실제 핀과 동일 구조: 브랜드색 물방울(두꺼운 테두리 효과) → 흰 간격 원 → tier 머리 원.
   return (
     <svg viewBox="0 0 14 18" className="h-4 w-3.5 shrink-0">
       <path
         d="M7 17 C1 11 0.5 8 0.5 6 a6.5 6.5 0 1 1 13 0 C13.5 8 13 11 7 17 Z"
-        fill={body}
-        stroke={ring}
-        strokeWidth={1.6}
+        fill={ring}
       />
+      <circle cx="7" cy="6" r="5.2" fill="#fff" />
+      <circle cx="7" cy="6" r="4.3" fill={body} />
     </svg>
   );
 }
@@ -89,15 +93,16 @@ function TopPinChip({ body, ring }: { body: string; ring: string }) {
  * 카테고리(내 주변)는 배지 형태와 안내 텍스트(블루 가격 라벨)로 보완한다. 범례용으로 작게 렌더.
  */
 function NearBadgeChip({ body, ring }: { body: string; ring: string }) {
+  // 실제 배지와 동일 구조: tier 원 + 흰 간격 + 두꺼운 브랜드 테두리(box-shadow), 브랜드색 꼬리.
   return (
-    <span className="relative inline-flex h-[18px] w-3.5 shrink-0 flex-col items-center">
+    <span className="relative inline-flex h-[18px] w-4 shrink-0 flex-col items-center pt-[3px]">
       <span
-        className="h-3.5 w-3.5 rounded-full"
-        style={{ background: body, border: `2px solid ${ring}` }}
+        className="h-2.5 w-2.5 rounded-full"
+        style={{ background: body, boxShadow: `0 0 0 1.5px #fff, 0 0 0 3px ${ring}` }}
       />
       <span
-        className="-mt-[3px] h-[5px] w-[5px] rotate-45"
-        style={{ background: body }}
+        className="-z-10 -mt-[1px] h-[5px] w-[5px] rotate-45"
+        style={{ background: ring }}
       />
     </span>
   );

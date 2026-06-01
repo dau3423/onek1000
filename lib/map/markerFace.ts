@@ -63,21 +63,41 @@ export function faceSvgInner(tier: PriceTier): string {
 /**
  * tier 색 원 배경 + 표정으로 이루어진 완성된 마커 얼굴 SVG 문자열.
  * - size: 한 변(px). 작은 값에서도 표정이 식별되도록 stroke가 viewBox 기준이라 자동 스케일.
- * - ring/ringWidth: 테두리(브랜드 색). 미지정 시 테두리 없음.
+ * - ring/ringWidth: 바깥 브랜드 테두리 색/두께(viewBox 100 기준). 미지정 시 테두리 없음.
+ * - gap: 얼굴(tier 색)과 브랜드 테두리 사이 흰색 간격 두께(viewBox 100 기준). 기본 0.
+ *
+ * 구조(바깥→안): 브랜드색 원 → 흰색 간격 → tier색 얼굴 원 → 표정.
+ * 동심원을 겹쳐 그려 "얼굴 — 흰 링 — 두꺼운 브랜드 테두리"가 또렷하게 분리되어 보인다.
  */
 export function faceMarkerSvg(
   tier: PriceTier,
   size: number,
-  opts: { ring?: string; ringWidth?: number } = {},
+  opts: { ring?: string; ringWidth?: number; gap?: number } = {},
 ): string {
   const { color } = TIER_FACE[tier];
   const ring = opts.ring;
   const ringWidth = opts.ringWidth ?? 0;
-  // 테두리가 안쪽으로 먹지 않도록 반지름을 살짝 줄인다.
-  const r = 46 - ringWidth;
-  const ringAttr = ring && ringWidth > 0 ? ` stroke="${ring}" stroke-width="${ringWidth * 2}"` : '';
+  const gap = opts.gap ?? 0;
+  const hasRing = !!ring && ringWidth > 0;
+
+  // viewBox 100 기준 외곽 반지름(약간 여유). 바깥부터 브랜드 테두리 → 흰 간격 → 얼굴 순.
+  const outerR = 48;
+  // 얼굴(tier 색) 반지름: 외곽에서 브랜드 두께 + 흰 간격을 뺀 값.
+  const faceR = hasRing ? outerR - ringWidth - gap : outerR;
+  // 흰 간격 링 반지름(브랜드 안쪽). gap이 0이면 흰 링은 그리지 않는다.
+  const gapR = outerR - ringWidth;
+
+  const brandLayer = hasRing
+    ? `<circle cx="50" cy="50" r="${outerR}" fill="${ring}"/>`
+    : '';
+  const gapLayer = hasRing && gap > 0
+    ? `<circle cx="50" cy="50" r="${gapR}" fill="#ffffff"/>`
+    : '';
+
   return `<svg width="${size}" height="${size}" viewBox="0 0 100 100" style="display:block;filter:drop-shadow(0 1px 3px rgba(0,0,0,.3))">
-    <circle cx="50" cy="50" r="${r}" fill="${color}"${ringAttr}/>
+    ${brandLayer}
+    ${gapLayer}
+    <circle cx="50" cy="50" r="${faceR}" fill="${color}"/>
     ${faceSvgInner(tier)}
   </svg>`;
 }

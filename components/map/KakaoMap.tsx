@@ -51,14 +51,18 @@ function topPinSvg(rank: number, size: number, tierColor: string, brandColor: st
   const medal = rankMedal(rank);
   const headR = w * 0.5;
   const txt = readableText(tierColor);
-  // 핀 머리(원) 안 표시: 1~3위 메달 이모지, 4위 이하 순위 숫자(tier 색 대비 텍스트색)
+  // 핀 머리(원) 안 표시: 1~3위 메달 이모지, 4위 이하 순위 숫자(tier 색 대비 텍스트색).
+  // tier 얼굴 원이 흰 간격만큼 작아졌으므로, 그 안에 들어오도록 텍스트/메달 크기를 줄인다.
   const inner = medal
-    ? `<text x="${headR}" y="${headR * 1.05}" text-anchor="middle" dominant-baseline="central" font-size="${headR * 1.1}">${medal}</text>`
-    : `<text x="${headR}" y="${headR}" text-anchor="middle" dominant-baseline="central" font-size="${headR}" font-weight="800" fill="${txt}">${rank}</text>`;
-  // 물방울 경로: 위쪽 원 + 아래로 뾰족한 꼬리. 본체=tier 색, 테두리=브랜드 색.
+    ? `<text x="${headR}" y="${headR * 1.04}" text-anchor="middle" dominant-baseline="central" font-size="${headR * 0.95}">${medal}</text>`
+    : `<text x="${headR}" y="${headR}" text-anchor="middle" dominant-baseline="central" font-size="${headR * 0.82}" font-weight="800" fill="${txt}">${rank}</text>`;
+  // 물방울 경로: 위쪽 원 + 아래로 뾰족한 꼬리.
+  // 일반 마커와 동일 원칙: 머리를 브랜드색으로 채워 두꺼운 테두리처럼 보이게 한 뒤,
+  // 그 안에 흰 간격 링 → tier 색 얼굴 원을 겹쳐 "두꺼운 브랜드 테두리 — 흰 링 — tier 머리"로 분리.
   return `<svg width="${w}" height="${size}" viewBox="0 0 ${w} ${size}" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))">
-    <path d="M${headR} ${size} C${headR * 0.15} ${size * 0.62} 0 ${headR * 1.25} 0 ${headR} a${headR} ${headR} 0 1 1 ${w} 0 C${w} ${headR * 1.25} ${headR * 1.85} ${size * 0.62} ${headR} ${size} Z" fill="${tierColor}" stroke="${brandColor}" stroke-width="3"/>
-    <circle cx="${headR}" cy="${headR}" r="${headR * 0.82}" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1"/>
+    <path d="M${headR} ${size} C${headR * 0.15} ${size * 0.62} 0 ${headR * 1.25} 0 ${headR} a${headR} ${headR} 0 1 1 ${w} 0 C${w} ${headR * 1.25} ${headR * 1.85} ${size * 0.62} ${headR} ${size} Z" fill="${brandColor}"/>
+    <circle cx="${headR}" cy="${headR}" r="${headR * 0.80}" fill="#ffffff"/>
+    <circle cx="${headR}" cy="${headR}" r="${headR * 0.66}" fill="${tierColor}"/>
     ${inner}
   </svg>`;
 }
@@ -291,8 +295,11 @@ export function KakaoMap({
       // 테두리 = 브랜드 색. 표정은 인라인 SVG라 OS 무관하게 동일하게 보인다.
       // 라벨 줌에서는 가격 라벨을 위에 함께, 축소 줌에서는 표정 원만(약간 크게)
       // 표시해 작은 마커에서도 표정이 식별되게 한다.
-      const faceSize = showLabel ? 22 : 26;
-      const face = faceMarkerSvg(tier, faceSize, { ring: brandColor, ringWidth: 2.5 });
+      // 브랜드 테두리를 두껍게(viewBox 100 기준 ringWidth) + 얼굴과 테두리 사이 흰 간격(gap)을
+      // 두어 브랜드 색이 또렷하게 보이게 한다. 흰 간격+두꺼운 테두리로 얼굴이 작아진 만큼
+      // 전체 지름을 살짝 키워 작은 마커에서도 표정 식별성을 유지한다.
+      const faceSize = showLabel ? 26 : 30;
+      const face = faceMarkerSvg(tier, faceSize, { ring: brandColor, ringWidth: 8, gap: 4 });
       content.innerHTML = showLabel
         ? `
         <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
@@ -408,10 +415,13 @@ export function KakaoMap({
       const tierColor = TIER_FACE[tier].color;
       const brandColor = BRAND_COLOR[s.brand] ?? '#666';
       const txt = readableText(tierColor);
+      // 일반 마커와 동일 원칙: tier 색 얼굴 원 바깥에 흰 간격 링(2.5px) + 두꺼운 브랜드 테두리(4px)를
+      // box-shadow로 겹쳐, 두께를 키워도 얼굴 원 크기는 유지하면서 브랜드 색이 또렷하게 보이게 한다.
+      // 꼬리는 브랜드색으로 채워 브랜드 테두리 링의 아랫부분처럼 자연스럽게 이어지게 한다.
       const badge = `
-        <div style="position:relative;display:flex;flex-direction:column;align-items:center">
-          <div style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:${tierColor};border:3px solid ${brandColor};box-shadow:0 2px 4px rgba(0,0,0,.3);color:${txt};font-size:12px;font-weight:800;line-height:1">${rank}</div>
-          <div style="width:7px;height:7px;background:${tierColor};transform:rotate(45deg);margin-top:-4px"></div>
+        <div style="position:relative;display:flex;flex-direction:column;align-items:center;padding-top:6px">
+          <div style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${tierColor};box-shadow:0 0 0 2.5px #fff,0 0 0 6.5px ${brandColor},0 2px 4px rgba(0,0,0,.3);color:${txt};font-size:12px;font-weight:800;line-height:1">${rank}</div>
+          <div style="width:8px;height:8px;background:${brandColor};transform:rotate(45deg);margin-top:0px;position:relative;z-index:-1"></div>
         </div>`;
       content.innerHTML = showLabel
         ? `
