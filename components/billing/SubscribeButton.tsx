@@ -149,9 +149,27 @@ function PlanCard({ selected, onSelect, title, price, desc, badge }: PlanCardPro
           {badge}
         </span>
       )}
-      <div className="text-xs font-semibold text-gray-500 dark:text-gray-400">{title}</div>
-      <div className="mt-0.5 text-lg font-extrabold text-gray-900 dark:text-gray-100">{price}</div>
-      <div className="mt-1 text-[11px] leading-tight text-gray-500 dark:text-gray-400">{desc}</div>
+      <div
+        className={`text-xs font-semibold ${
+          selected ? 'text-gray-500' : 'text-gray-500 dark:text-gray-400'
+        }`}
+      >
+        {title}
+      </div>
+      <div
+        className={`mt-0.5 text-lg font-extrabold ${
+          selected ? 'text-gray-900' : 'text-gray-900 dark:text-gray-100'
+        }`}
+      >
+        {price}
+      </div>
+      <div
+        className={`mt-1 text-[11px] leading-tight ${
+          selected ? 'text-gray-500' : 'text-gray-500 dark:text-gray-400'
+        }`}
+      >
+        {desc}
+      </div>
     </button>
   );
 }
