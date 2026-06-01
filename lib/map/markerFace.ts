@@ -61,17 +61,28 @@ export function faceSvgInner(tier: PriceTier): string {
 }
 
 /**
- * tier 색 원 배경 + 표정으로 이루어진 완성된 마커 얼굴 SVG 문자열.
- * - size: 한 변(px). 작은 값에서도 표정이 식별되도록 stroke가 viewBox 기준이라 자동 스케일.
- * - ring/ringWidth: 바깥 브랜드 테두리 색/두께(viewBox 100 기준). 미지정 시 테두리 없음.
- * - gap: 얼굴(tier 색)과 브랜드 테두리 사이 흰색 간격 두께(viewBox 100 기준). 기본 0.
- *
- * 구조(바깥→안): 브랜드색 원 → 흰색 간격 → tier색 얼굴 원 → 표정.
- * 동심원을 겹쳐 그려 "얼굴 — 흰 링 — 두꺼운 브랜드 테두리"가 또렷하게 분리되어 보인다.
+ * 배경(채움) 색 위 텍스트 대비 — 밝은 배경(예: 노랑)엔 검정, 어두운 배경엔 흰색.
+ * hex(#RRGGBB) → 상대 휘도 근사. 숫자 마커 가독성(흰/검정 대비) 확보용.
  */
-export function faceMarkerSvg(
+export function readableTextColor(hex: string): string {
+  const h = hex.replace('#', '');
+  if (h.length !== 6) return '#ffffff';
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.6 ? '#1f2937' : '#ffffff';
+}
+
+/**
+ * faceMarkerSvg와 동일한 동심원 구조(브랜드 테두리 → 흰 간격 → tier 얼굴 원)를 그리되,
+ * 안쪽 내용(표정 또는 순위 숫자)만 inner 인자로 받아 합성하는 공통 헬퍼.
+ * - inner: viewBox 0 0 100 100 좌표계의 SVG 조각(표정 경로 또는 <text>).
+ */
+function circleMarkerSvg(
   tier: PriceTier,
   size: number,
+  inner: string,
   opts: { ring?: string; ringWidth?: number; gap?: number } = {},
 ): string {
   const { color } = TIER_FACE[tier];
@@ -98,6 +109,43 @@ export function faceMarkerSvg(
     ${brandLayer}
     ${gapLayer}
     <circle cx="50" cy="50" r="${faceR}" fill="${color}"/>
-    ${faceSvgInner(tier)}
+    ${inner}
   </svg>`;
+}
+
+/**
+ * tier 색 원 배경 + 표정으로 이루어진 완성된 마커 얼굴 SVG 문자열.
+ * - size: 한 변(px). 작은 값에서도 표정이 식별되도록 stroke가 viewBox 기준이라 자동 스케일.
+ * - ring/ringWidth: 바깥 브랜드 테두리 색/두께(viewBox 100 기준). 미지정 시 테두리 없음.
+ * - gap: 얼굴(tier 색)과 브랜드 테두리 사이 흰색 간격 두께(viewBox 100 기준). 기본 0.
+ *
+ * 구조(바깥→안): 브랜드색 원 → 흰색 간격 → tier색 얼굴 원 → 표정.
+ * 동심원을 겹쳐 그려 "얼굴 — 흰 링 — 두꺼운 브랜드 테두리"가 또렷하게 분리되어 보인다.
+ */
+export function faceMarkerSvg(
+  tier: PriceTier,
+  size: number,
+  opts: { ring?: string; ringWidth?: number; gap?: number } = {},
+): string {
+  return circleMarkerSvg(tier, size, faceSvgInner(tier), opts);
+}
+
+/**
+ * faceMarkerSvg와 동일 구조의 마커에 "표정 대신 가격 순위 숫자"를 그린 SVG 문자열.
+ * BottomSheet 활성 탭 목록의 가격순 순위(1=가장 쌈)를 지도 마커에 그대로 표시해
+ * 목록 항목과 마커를 숫자로 매칭할 수 있게 한다.
+ * - 숫자 색은 tier 색(안쪽 배경) 대비에 맞춰(흰/검정) 가독성을 확보한다.
+ * - 색·간격·테두리 구조는 faceMarkerSvg와 동일.
+ */
+export function numberMarkerSvg(
+  tier: PriceTier,
+  size: number,
+  rank: number,
+  opts: { ring?: string; ringWidth?: number; gap?: number } = {},
+): string {
+  const txt = readableTextColor(TIER_FACE[tier].color);
+  // 두 자리(10 등)는 한 자리보다 작게 그려 원 안에 들어오게 한다.
+  const fontSize = rank >= 10 ? 46 : 56;
+  const inner = `<text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-size="${fontSize}" font-weight="800" fill="${txt}" font-family="system-ui,-apple-system,sans-serif">${rank}</text>`;
+  return circleMarkerSvg(tier, size, inner, opts);
 }

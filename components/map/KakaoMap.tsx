@@ -5,11 +5,14 @@ import { loadKakao } from './loadKakao';
 import type { StationWithPrice, NationalTop10Item, ProductCode } from '@/types/station';
 import { BRAND_COLOR } from '@/types/station';
 import { priceTier, priceTierThresholds } from '@/lib/map/geo';
-import { TIER_FACE, faceMarkerSvg } from '@/lib/map/markerFace';
+import { TIER_FACE, faceMarkerSvg, numberMarkerSvg } from '@/lib/map/markerFace';
+
+/** BottomSheet와 공유하는 활성 탭 타입. 'area'=이 지역, 'nearby'=내 주변 10km. */
+export type MapListTab = 'area' | 'nearby';
 
 // === 전국 TOP10 강조 마커 디자인 상수/헬퍼 (일반 마커와 형태부터 구분) ===
 // 색 역할은 일반 마커와 통일: 본체(안쪽)=가격 tier 색, 테두리=브랜드 색.
-// "전국 TOP10" 카테고리는 물방울 핀 형태 + 메달/순위로 구분하고,
+// "전국 TOP10" 카테고리는 물방울 핀 형태 + 왕관(👑) + 순위 숫자로 구분하고,
 // 가격 라벨 말풍선 테두리에 앰버(HL_COLOR)를 보조 단서로 남겨 카테고리 식별을 보강한다.
 const HL_COLOR = '#F59E0B'; // 전국 카테고리 보조색(앰버) — 가격 라벨 말풍선 강조에 사용
 const HL_RING = '#B45309';  // 전국 카테고리 보조 테두리(진한 앰버)
@@ -26,9 +29,6 @@ const NEAR_RING = '#1D4ED8';  // 내 주변 카테고리 보조 테두리(진한
 // 내 지역 주유소가 화면에 여러 개 들어와 bbox 최저가가 자연히 보이는 수준.
 const MY_AREA_LEVEL = 6;
 
-// 순위 단서(색맹 대비: 색 외 형태/문자로도 구분). 1~3위는 메달 이모지, 4~10위는 숫자.
-const rankMedal = (r: number) => (r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : '');
-
 // 배경(브랜드 색) 위 텍스트 대비 — 밝은 배경(예: S-OIL 노랑)에는 검정, 어두운 배경엔 흰색.
 // hex(#RRGGBB) → 상대 휘도 근사. 마커가 많아도 비용이 미미한 단순 계산.
 function readableText(hex: string): string {
@@ -44,27 +44,44 @@ function readableText(hex: string): string {
 
 // TOP10 핀(물방울) 모양 마커 SVG — 일반 원형 마커와 형태부터 확연히 구분.
 // 색 역할 통일: 본체 채움=가격 tier 색(tierColor), 테두리=브랜드 색(brandColor).
-// 순위 메달/숫자는 핀 원형 머리 안에 배치하고, 텍스트색은 본체(tier 색) 대비에 맞춘다.
+// 모든 전국 TOP10 핀은 "왕관(👑) + 순위 숫자(1~10)"로 표시한다(메달 제거).
+// 왕관은 핀 머리 위에 떠 있게 두고, 순위 숫자는 머리 안에 배치(tier 색 대비 텍스트색).
 // size: 핀 전체 높이(px).
 function topPinSvg(rank: number, size: number, tierColor: string, brandColor: string) {
   const w = Math.round(size * 0.72);
-  const medal = rankMedal(rank);
   const headR = w * 0.5;
   const txt = readableText(tierColor);
-  // 핀 머리(원) 안 표시: 1~3위 메달 이모지, 4위 이하 순위 숫자(tier 색 대비 텍스트색).
-  // tier 얼굴 원이 흰 간격만큼 작아졌으므로, 그 안에 들어오도록 텍스트/메달 크기를 줄인다.
-  const inner = medal
-    ? `<text x="${headR}" y="${headR * 1.04}" text-anchor="middle" dominant-baseline="central" font-size="${headR * 0.95}">${medal}</text>`
-    : `<text x="${headR}" y="${headR}" text-anchor="middle" dominant-baseline="central" font-size="${headR * 0.82}" font-weight="800" fill="${txt}">${rank}</text>`;
+  // 두 자리(10)는 살짝 작게 그려 머리 원 안에 들어오게 한다.
+  const numFont = rank >= 10 ? headR * 0.66 : headR * 0.82;
+  const inner = `<text x="${headR}" y="${headR}" text-anchor="middle" dominant-baseline="central" font-size="${numFont}" font-weight="800" fill="${txt}">${rank}</text>`;
+  // 왕관(👑): 머리 원 위쪽에 얹어 "최저가 TOP10" 단서를 항상 노출. 작은 인라인 SVG.
+  const crownW = w * 0.62;
+  const crownH = crownW * 0.62;
+  const crownX = (w - crownW) / 2;
+  const crownY = -crownH * 0.62; // 머리 원 위로 살짝 겹쳐 올림
+  const crown = crownSvg(crownX, crownY, crownW, crownH);
   // 물방울 경로: 위쪽 원 + 아래로 뾰족한 꼬리.
   // 일반 마커와 동일 원칙: 머리를 브랜드색으로 채워 두꺼운 테두리처럼 보이게 한 뒤,
   // 그 안에 흰 간격 링 → tier 색 얼굴 원을 겹쳐 "두꺼운 브랜드 테두리 — 흰 링 — tier 머리"로 분리.
-  return `<svg width="${w}" height="${size}" viewBox="0 0 ${w} ${size}" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))">
+  // 왕관이 머리 위로 올라가므로 viewBox 상단에 여유(crownH)를 둔다.
+  return `<svg width="${w}" height="${size - crownY}" viewBox="0 ${crownY} ${w} ${size - crownY}" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))">
     <path d="M${headR} ${size} C${headR * 0.15} ${size * 0.62} 0 ${headR * 1.25} 0 ${headR} a${headR} ${headR} 0 1 1 ${w} 0 C${w} ${headR * 1.25} ${headR * 1.85} ${size * 0.62} ${headR} ${size} Z" fill="${brandColor}"/>
     <circle cx="${headR}" cy="${headR}" r="${headR * 0.80}" fill="#ffffff"/>
     <circle cx="${headR}" cy="${headR}" r="${headR * 0.66}" fill="${tierColor}"/>
     ${inner}
+    ${crown}
   </svg>`;
+}
+
+// 왕관(👑) 인라인 SVG — OS 무관 동일 모양. 골드 채움 + 흰 외곽선으로 어느 배경에서도 식별.
+// (x,y,w,h) 영역에 맞춰 path 좌표를 viewBox 0 0 24 16 기준에서 스케일/이동한다.
+function crownSvg(x: number, y: number, w: number, h: number) {
+  const sx = w / 24;
+  const sy = h / 16;
+  return `<g transform="translate(${x} ${y}) scale(${sx} ${sy})">
+    <path d="M2 13 L1 4 L8 9 L12 2 L16 9 L23 4 L22 13 Z" fill="#F59E0B" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/>
+    <rect x="2" y="13" width="20" height="2.4" rx="1" fill="#F59E0B" stroke="#ffffff" stroke-width="1.2"/>
+  </g>`;
 }
 
 interface Props {
@@ -93,6 +110,18 @@ interface Props {
   nearbyTop10?: StationWithPrice[];
   /** 현재 선택 유종 코드. TOP10 마커 클릭 시 합성하는 StationWithPrice의 product 채움용. */
   product?: ProductCode;
+  /**
+   * BottomSheet의 현재 활성 탭. 이 탭의 목록 주유소 마커를 "표정 대신 가격 순위 숫자"로 표시한다.
+   * - 'area': 이 지역(bbox stations) 목록 → 일반 마커가 숫자(가격 오름차순 순위).
+   * - 'nearby': 내 주변 10km 목록(nearbyStations) → 내 주변 마커가 숫자.
+   * 비활성 집합 마커는 기존 표정을 유지한다.
+   */
+  activeTab?: MapListTab;
+  /**
+   * '내 주변' 탭 목록 모집단(반경 내 전체). 활성 탭이 'nearby'일 때 이 집합의 가격순 순위를
+   * 일반 마커/내 주변 핀에 숫자로 표시한다. BottomSheet의 nearbyStations와 동일 배열을 받는다.
+   */
+  nearbyStations?: StationWithPrice[];
   onBoundsChange?: (b: {
     swLat: number; swLng: number; neLat: number; neLng: number; zoom: number;
   }) => void;
@@ -114,6 +143,8 @@ export function KakaoMap({
   stations,
   nationalTop10,
   nearbyTop10,
+  nearbyStations,
+  activeTab = 'area',
   product = 'B027',
   onBoundsChange,
   onViewChange,
@@ -177,6 +208,26 @@ export function KakaoMap({
     }
     return m;
   }, [nearbyTop10, top10Rank]);
+
+  // === 활성 탭 목록의 "가격순 순위" 맵 (마커에 표정 대신 숫자로 표시) ===
+  // BottomSheet 목록과 동일 기준으로 순위를 매겨 목록 항목 ↔ 지도 마커를 숫자로 매칭한다.
+  //  - 이 지역: stations를 가격 오름차순 정렬 → 상위 AREA_LIMIT(30)까지 1~N 순위.
+  //  - 내 주변: nearbyStations를 가격 오름차순 정렬 → 상위 NEARBY_LIMIT(10)까지 1~N 순위.
+  // (BottomSheet.tsx의 AREA_LIMIT/NEARBY_LIMIT와 동일 값 — 목록과 일치시키기 위함)
+  const AREA_LIMIT = 30;
+  const NEARBY_LIMIT = 10;
+  const areaListRank = useMemo(() => {
+    const m = new Map<string, number>();
+    const sorted = [...stations].sort((a, b) => a.price - b.price);
+    for (let i = 0; i < Math.min(AREA_LIMIT, sorted.length); i++) m.set(sorted[i].id, i + 1);
+    return m;
+  }, [stations]);
+  const nearbyListRank = useMemo(() => {
+    const m = new Map<string, number>();
+    const sorted = [...(nearbyStations ?? [])].sort((a, b) => a.price - b.price);
+    for (let i = 0; i < Math.min(NEARBY_LIMIT, sorted.length); i++) m.set(sorted[i].id, i + 1);
+    return m;
+  }, [nearbyStations]);
 
   // 마커 안쪽 색(가격 tier)을 "화면 표시 집합의 상대 가격 분포"로 산출하기 위한 임계값.
   // 고정 ±30원이 아니라 분위수(하위/상위 33%) 기준이라, 가격 폭이 좁아도 저렴/보통/비쌈이 갈린다.
@@ -290,16 +341,17 @@ export function KakaoMap({
       content.style.transform = 'translate(-50%, -100%)';
       content.style.position = 'relative';
 
-      // === 일반 마커: 얼굴 표정 원 (색 역할 통일) ===
-      // 안쪽(채움) = 가격 tier 색 + tier별 표정(😍 좋음 / 🙂 보통 / 😠 매우 나쁨),
-      // 테두리 = 브랜드 색. 표정은 인라인 SVG라 OS 무관하게 동일하게 보인다.
-      // 라벨 줌에서는 가격 라벨을 위에 함께, 축소 줌에서는 표정 원만(약간 크게)
-      // 표시해 작은 마커에서도 표정이 식별되게 한다.
-      // 브랜드 테두리를 두껍게(viewBox 100 기준 ringWidth) + 얼굴과 테두리 사이 흰 간격(gap)을
-      // 두어 브랜드 색이 또렷하게 보이게 한다. 흰 간격+두꺼운 테두리로 얼굴이 작아진 만큼
-      // 전체 지름을 살짝 키워 작은 마커에서도 표정 식별성을 유지한다.
+      // === 일반 마커: 동심원(색 역할 통일) ===
+      // 안쪽(채움) = 가격 tier 색, 테두리 = 브랜드 색, 그 사이 흰 간격.
+      // 활성 탭이 '이 지역'이고 이 주유소가 목록(가격순 상위 30)에 들면 안쪽을 "순위 숫자"로,
+      // 그 외에는 기존 tier별 표정(😍/🙂/😠)으로 그린다.
+      // 숫자/표정 모두 인라인 SVG라 OS 무관하게 동일하게 보이고, 라벨 줌에서는 가격 라벨을
+      // 위에 함께, 축소 줌에서는 마커만(약간 크게) 표시한다.
       const faceSize = showLabel ? 26 : 30;
-      const face = faceMarkerSvg(tier, faceSize, { ring: brandColor, ringWidth: 8, gap: 4 });
+      const areaRank = activeTab === 'area' ? areaListRank.get(s.id) : undefined;
+      const face = areaRank != null
+        ? numberMarkerSvg(tier, faceSize, areaRank, { ring: brandColor, ringWidth: 8, gap: 4 })
+        : faceMarkerSvg(tier, faceSize, { ring: brandColor, ringWidth: 8, gap: 4 });
       content.innerHTML = showLabel
         ? `
         <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
@@ -326,9 +378,9 @@ export function KakaoMap({
       overlay.setMap(map);
       overlaysRef.current.push(overlay);
     }
-  }, [ready, stations, top10Rank, nearbyRank, tierThresholds, onMarkerClick, mapLevel]);
+  }, [ready, stations, top10Rank, nearbyRank, tierThresholds, onMarkerClick, mapLevel, activeTab, areaListRank]);
 
-  // 전국 최저가 TOP10 핀/메달 오버레이 — bbox stations 포함 여부와 무관하게 항상 렌더.
+  // 전국 최저가 TOP10 핀 오버레이 — bbox stations 포함 여부와 무관하게 항상 렌더.
   // 위치/가격/순위는 모두 nationalTop10 항목 값을 사용한다(bbox의 비동기 타이밍 불일치 차단).
   useEffect(() => {
     if (!ready || !mapRef.current) return;
@@ -347,10 +399,10 @@ export function KakaoMap({
       content.style.transform = 'translate(-50%, -100%)';
       content.style.position = 'relative';
 
-      // === TOP10: 물방울 핀 + 순위 메달/숫자 (모든 줌에서 형태로 구분) ===
+      // === TOP10: 물방울 핀 + 왕관(👑) + 순위 숫자 (모든 줌에서 형태로 구분) ===
       // 라벨 줌에서는 가격 라벨을 핀 위에 함께, 축소 줌에서는 핀만 (단, 크게).
       // 핀 본체=가격 tier 색, 테두리=브랜드 색(일반 마커와 색 역할 통일).
-      // 카테고리는 물방울 형태 + 메달/순위 + 가격 라벨의 앰버 테두리로 구분.
+      // 카테고리는 물방울 형태 + 왕관 + 순위 + 가격 라벨의 앰버 테두리로 구분(메달 없이 전 순위 숫자).
       const tier = priceTier(t.price, tierThresholds);
       const tierColor = TIER_FACE[tier].color;
       const brandColor = BRAND_COLOR[t.brand] ?? '#666';
@@ -399,8 +451,11 @@ export function KakaoMap({
     const showLabel = map.getLevel() <= 5; // 줌 인 상태에서만 가격 라벨
 
     for (const s of nearbyTop10 ?? []) {
-      const rank = nearbyRank.get(s.id);
-      if (rank == null) continue; // 전국 메달과 중복(제외됨) → 내 주변에선 생략
+      // 표시 여부는 dedup용 nearbyRank로 판단(전국 메달과 중복이면 제외).
+      // 단, 배지에 그리는 숫자는 BottomSheet '내 주변' 목록과 일치하도록 nearbyListRank를 우선 사용한다
+      // (nearbyListRank는 nearbyStations 전체의 가격순 순위 = 목록 순위와 동일).
+      if (nearbyRank.get(s.id) == null) continue; // 전국 메달과 중복(제외됨) → 내 주변에선 생략
+      const rank = nearbyListRank.get(s.id) ?? nearbyRank.get(s.id)!;
 
       const content = document.createElement('div');
       content.className = 'cursor-pointer select-none';
@@ -446,7 +501,7 @@ export function KakaoMap({
       overlay.setMap(map);
       nearOverlaysRef.current.push(overlay);
     }
-  }, [ready, nearbyTop10, nearbyRank, tierThresholds, onMarkerClick, mapLevel]);
+  }, [ready, nearbyTop10, nearbyRank, nearbyListRank, tierThresholds, onMarkerClick, mapLevel]);
 
   // 내 위치 마커 + 1km 원
   useEffect(() => {

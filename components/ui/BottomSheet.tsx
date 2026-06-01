@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import clsx from 'clsx';
@@ -32,6 +32,11 @@ interface Props {
   onNavigate?: (s: StationWithPrice) => void;
   /** 열림/접힘 상태 변화 통지 (부모가 GPS 버튼 위치 등을 연동) */
   onOpenChange?: (open: boolean) => void;
+  /**
+   * 활성 탭 변화 통지 (부모가 지도 마커 숫자 표시 집합을 연동).
+   * 실제 활성 탭은 nearbyEnabled 여부를 반영한 값(area/nearby)을 전달한다.
+   */
+  onTabChange?: (tab: Tab) => void;
 }
 
 const NEARBY_LIMIT = 10;
@@ -45,6 +50,7 @@ export function BottomSheet({
   nearbyRadiusM = 10000,
   onNavigate,
   onOpenChange,
+  onTabChange,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('area');
@@ -58,6 +64,12 @@ export function BottomSheet({
   }
 
   const activeTab: Tab = nearbyEnabled ? tab : 'area';
+
+  // 실제 활성 탭(area/nearby)을 부모로 끌어올린다 — 지도 마커 숫자 표시 집합 연동.
+  // nearbyEnabled가 꺼지면(권한 미동의 등) tab이 'nearby'여도 강제로 'area'가 되므로 그 값을 전달.
+  useEffect(() => {
+    onTabChange?.(activeTab);
+  }, [activeTab, onTabChange]);
   const radiusKm = nearbyRadiusM >= 1000
     ? `${(nearbyRadiusM / 1000).toFixed(nearbyRadiusM % 1000 === 0 ? 0 : 1)}km`
     : `${nearbyRadiusM}m`;

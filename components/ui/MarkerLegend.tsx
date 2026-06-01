@@ -36,6 +36,19 @@ function FaceChip({ tier }: { tier: PriceTier }) {
   );
 }
 
+/** 순위 숫자 칩 — 지도 마커가 활성 목록일 때 표정 대신 표시하는 숫자(가격 순위). */
+function NumberChip({ tier, n }: { tier: PriceTier; n: number }) {
+  const color = TIER_FACE[tier].color;
+  return (
+    <span
+      className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-extrabold text-white"
+      style={{ background: color }}
+    >
+      {n}
+    </span>
+  );
+}
+
 const BRANDS: { label: string; color: string }[] = [
   { label: 'SK에너지', color: BRAND_COLOR.SKE },
   { label: 'GS칼텍스', color: BRAND_COLOR.GSC },
@@ -74,15 +87,16 @@ function RingDot({ color }: { color: string }) {
  * 카테고리(전국)는 물방울 형태와 안내 텍스트(앰버 가격 라벨)로 보완한다.
  */
 function TopPinChip({ body, ring }: { body: string; ring: string }) {
-  // 실제 핀과 동일 구조: 브랜드색 물방울(두꺼운 테두리 효과) → 흰 간격 원 → tier 머리 원.
+  // 실제 핀과 동일 구조: 브랜드색 물방울(두꺼운 테두리 효과) → 흰 간격 원 → tier 머리 원 + 왕관.
   return (
-    <svg viewBox="0 0 14 18" className="h-4 w-3.5 shrink-0">
-      <path
-        d="M7 17 C1 11 0.5 8 0.5 6 a6.5 6.5 0 1 1 13 0 C13.5 8 13 11 7 17 Z"
-        fill={ring}
-      />
-      <circle cx="7" cy="6" r="5.2" fill="#fff" />
-      <circle cx="7" cy="6" r="4.3" fill={body} />
+    <svg viewBox="0 0 14 21" className="h-[21px] w-3.5 shrink-0">
+      {/* 왕관(골드) — 머리 위에 얹어 전국 TOP10 단서 표시 */}
+      <g transform="translate(3.2 0)">
+        <path d="M0.4 4 L0 1.4 L2.2 3 L3.8 0.6 L5.4 3 L7.6 1.4 L7.2 4 Z" fill="#F59E0B" stroke="#fff" strokeWidth="0.5" strokeLinejoin="round" />
+      </g>
+      <path d="M7 20 C1 14 0.5 11 0.5 9 a6.5 6.5 0 1 1 13 0 C13.5 11 13 14 7 20 Z" fill={ring} />
+      <circle cx="7" cy="9" r="5.2" fill="#fff" />
+      <circle cx="7" cy="9" r="4.3" fill={body} />
     </svg>
   );
 }
@@ -152,9 +166,16 @@ export function MarkerLegend({ onClose }: Props) {
 
         <div className="mt-3 space-y-3 text-xs text-gray-700">
           <section>
-            <p className="font-semibold text-gray-900">표정 = 가격 수준</p>
-            <p className="text-[11px] text-gray-400">화면에 보이는 주유소끼리 비교 (줌·이동 시 바뀜)</p>
-            <div className="mt-1.5 space-y-1.5">
+            <p className="font-semibold text-gray-900">마커 숫자 = 가격 순위</p>
+            <p className="text-[11px] text-gray-400">현재 목록 탭(이 지역 / 내 주변)의 가격 순위 — 1이 가장 쌈</p>
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <NumberChip tier="cheap" n={1} />
+              <NumberChip tier="normal" n={2} />
+              <NumberChip tier="expensive" n={3} />
+              <span>목록 항목과 같은 번호의 마커</span>
+            </div>
+            <p className="mt-1.5 text-[11px] text-gray-400">목록 밖 주유소는 표정으로 가격 수준만 표시</p>
+            <div className="mt-1 space-y-1">
               <div className="flex items-center gap-1.5">
                 <FaceChip tier="cheap" />
                 <span>{TIER_FACE.cheap.mood} ({TIER_FACE.cheap.hint})</span>
@@ -168,7 +189,7 @@ export function MarkerLegend({ onClose }: Props) {
                 <span>{TIER_FACE.expensive.mood} ({TIER_FACE.expensive.hint})</span>
               </div>
             </div>
-            <p className="mt-1 text-[11px] text-gray-400">가격 차이가 거의 없으면 모두 보통으로 표시</p>
+            <p className="mt-1 text-[11px] text-gray-400">안쪽 색 = 가격 수준(화면 내 비교, 줌·이동 시 바뀜)</p>
           </section>
 
           <section>
@@ -193,7 +214,7 @@ export function MarkerLegend({ onClose }: Props) {
                   <TopPinChip body={TIER_NORMAL} ring={BRAND_COLOR.GSC} />
                 </span>
                 <span>
-                  물방울 핀 + 메달(🥇🥈🥉)·숫자 = 전국 최저가 TOP 10
+                  👑 + 순위 숫자(물방울 핀) = 전국 최저가 TOP 10
                   <span className="text-gray-400"> (가격 라벨</span>
                   <span style={{ color: HL_COLOR }} className="font-semibold"> 앰버</span>
                   <span className="text-gray-400">)</span>

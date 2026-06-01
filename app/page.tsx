@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/ui/Header';
 import { FilterBar } from '@/components/ui/FilterBar';
@@ -83,6 +83,11 @@ export default function HomePage() {
 
   // 하단 시트 펼침 여부 — GPS 버튼이 시트에 가려지지 않게 위치를 연동한다.
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  // 하단 시트 활성 탭 — 지도 마커에 어느 목록(이 지역/내 주변)을 "순위 숫자"로 표시할지 결정.
+  // BottomSheet에서 끌어올린 값. onTabChange는 BottomSheet effect 의존성이므로 안정 참조로 둔다.
+  const [activeTab, setActiveTab] = useState<'area' | 'nearby'>('area');
+  const handleTabChange = useCallback((t: 'area' | 'nearby') => setActiveTab(t), []);
 
   // 배너(광고 OFF CTA / AdSense)가 실제로 노출되는지 — BannerAd와 동일한 표시 조건을 공유.
   const bannerVisible = useBannerVisible();
@@ -291,6 +296,8 @@ export default function HomePage() {
           stations={visibleStations}
           nationalTop10={visibleNationalTop10}
           nearbyTop10={visibleNearbyTop10}
+          nearbyStations={visibleNearbyStations}
+          activeTab={activeTab}
           product={product}
           myLocation={myLocation}
           heading={geo.coords?.heading ?? null}
@@ -393,6 +400,7 @@ export default function HomePage() {
           onSelect={(s) => router.push(`/station/${s.id}`)}
           onNavigate={(s) => setNaviTarget(s)}
           onOpenChange={setSheetOpen}
+          onTabChange={handleTabChange}
         />
         </div>
       </div>
