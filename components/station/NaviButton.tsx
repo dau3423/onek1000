@@ -46,9 +46,9 @@ export function NaviButton({ name, lat, lng }: Props) {
     <button
       onClick={handleClick}
       disabled={starting}
-      className="block w-full rounded-xl bg-primary py-3.5 text-center font-bold text-white shadow-md hover:bg-primary-dark disabled:opacity-60"
+      className="w-full rounded-xl bg-primary py-3.5 text-center font-bold text-white shadow-md hover:bg-primary-dark disabled:opacity-60"
     >
-      {starting ? '길찾기 여는 중…' : '🧭 카카오맵으로 길찾기'}
+      {starting ? '길찾기 여는 중…' : '카카오맵으로 길찾기'}
     </button>
   );
 }

@@ -77,7 +77,7 @@ export function NaviConfirm({ station, origin, onClose }: Props) {
             disabled={starting}
             className="flex-1 rounded-xl bg-primary py-3 text-sm font-bold text-white shadow-md hover:bg-primary-dark disabled:opacity-60"
           >
-            {starting ? '실행 중…' : '🧭 길안내 시작'}
+            {starting ? '실행 중…' : '길안내 시작'}
           </button>
         </div>
       </div>

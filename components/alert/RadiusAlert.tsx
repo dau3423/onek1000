@@ -42,7 +42,7 @@ export function RadiusAlert({ station, averagePrice, onClick, onDismiss, onNavig
           title="카카오내비 길안내"
           className="shrink-0 rounded-lg bg-white/20 px-2.5 py-2 text-sm font-bold text-white hover:bg-white/30"
         >
-          🧭 길안내
+          길안내
         </button>
       )}
       <button

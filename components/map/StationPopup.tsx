@@ -99,9 +99,9 @@ export function StationPopup({ station, onClose, onDetail, onNavigate }: Props) 
         <div className="mt-4 flex gap-2">
           <button
             onClick={onNavigate}
-            className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+            className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
           >
-            🧭 길안내
+            길안내
           </button>
           <button
             onClick={onDetail}

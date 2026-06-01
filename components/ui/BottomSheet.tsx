@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import clsx from 'clsx';
 import type { StationWithPrice } from '@/types/station';
 import { BRAND_LABEL, BRAND_COLOR } from '@/types/station';
@@ -157,9 +158,9 @@ export function BottomSheet({
                         onClick={() => onNavigate(s)}
                         aria-label={`${s.name} 길안내`}
                         title="카카오내비 길안내"
-                        className="shrink-0 rounded-lg border border-gray-200 px-2.5 py-2 text-base hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                        className="flex shrink-0 items-center justify-center rounded-lg border border-gray-200 px-2.5 py-2 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
                       >
-                        🧭
+                        <Image src="/icons/icon_run.png" alt="" width={20} height={20} />
                       </button>
                     )}
                   </div>
