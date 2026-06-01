@@ -110,7 +110,7 @@ export function BottomSheet({
 
       {/* 탭: 내 위치 권한 동의 후에만 '내 주변' 노출 */}
       {nearbyEnabled && (
-        <div className="flex gap-1 px-5 pb-2">
+        <div className="flex gap-1 px-5 pb-3.5">
           <TabButton active={activeTab === 'area'} onClick={() => setTab('area')}>
             이 지역
           </TabButton>
