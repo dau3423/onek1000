@@ -7,17 +7,19 @@ import { BRAND_COLOR } from '@/types/station';
 import { priceTier } from '@/lib/map/geo';
 
 // === 전국 TOP10 강조 마커 디자인 상수/헬퍼 (일반 마커와 형태부터 구분) ===
-// 핀 "본체"는 브랜드 색(BRAND_COLOR)으로 칠해 어느 브랜드인지 드러내고,
-// 테두리(앰버)와 물방울 형태로 "전국 TOP10" 카테고리를 유지한다.
-const HL_COLOR = '#F59E0B'; // 전국 카테고리 색(앰버) — 핀 테두리/가격 라벨에 사용
-const HL_RING = '#B45309';  // 전국 강조 테두리(진한 앰버)
+// 색 역할은 일반 마커와 통일: 본체(안쪽)=가격 tier 색, 테두리=브랜드 색.
+// "전국 TOP10" 카테고리는 물방울 핀 형태 + 메달/순위로 구분하고,
+// 가격 라벨 말풍선 테두리에 앰버(HL_COLOR)를 보조 단서로 남겨 카테고리 식별을 보강한다.
+const HL_COLOR = '#F59E0B'; // 전국 카테고리 보조색(앰버) — 가격 라벨 말풍선 강조에 사용
+const HL_RING = '#B45309';  // 전국 카테고리 보조 테두리(진한 앰버)
 
 // === 내 주변(10km) TOP10 강조 마커 디자인 상수 ===
-// 배지 "본체"는 브랜드 색으로 칠하고, 파란 링(NEAR)으로 "내 주변" 카테고리를 유지.
-// 내 위치(파란 점)와 톤을 맞춘 파란 계열로 묶어 "내 근처 저렴한 곳"임을 전달.
-// 전국 메달(앰버 물방울 핀)과는 형태(원형 배지)와 링 색으로 구분.
-const NEAR_COLOR = '#2563EB'; // 내 주변 카테고리 색(블루) — 링/가격 라벨에 사용
-const NEAR_RING = '#1D4ED8';  // 내 주변 테두리(진한 블루)
+// 색 역할 통일: 배지 본체(안쪽)=가격 tier 색, 테두리=브랜드 색.
+// "내 주변" 카테고리는 원형 배지(+아래 꼬리) 형태 + 순위로 구분하고,
+// 가격 라벨 말풍선에 블루(NEAR_COLOR)를 보조 단서로 남긴다(내 위치 파란 점과 톤 연계).
+// 전국 메달(물방울 핀)과는 형태(원형 배지)로 구분.
+const NEAR_COLOR = '#2563EB'; // 내 주변 카테고리 보조색(블루) — 가격 라벨 말풍선 강조에 사용
+const NEAR_RING = '#1D4ED8';  // 내 주변 카테고리 보조 테두리(진한 블루)
 
 // 내 위치로 자동 줌인할 카카오 level (zoom = 15 - level). level 6 = zoom 9(시군구 단위).
 // 내 지역 주유소가 화면에 여러 개 들어와 bbox 최저가가 자연히 보이는 수준.
@@ -40,21 +42,22 @@ function readableText(hex: string): string {
 }
 
 // TOP10 핀(물방울) 모양 마커 SVG — 일반 원형 마커와 형태부터 확연히 구분.
-// 본체 채움은 브랜드 색(brandColor), 테두리는 전국 카테고리 색(앰버 HL_RING)으로 고정.
-// size: 핀 전체 높이(px). 순위 메달/숫자를 핀 원형 머리 안에 배치.
-function topPinSvg(rank: number, size: number, brandColor: string) {
+// 색 역할 통일: 본체 채움=가격 tier 색(tierColor), 테두리=브랜드 색(brandColor).
+// 순위 메달/숫자는 핀 원형 머리 안에 배치하고, 텍스트색은 본체(tier 색) 대비에 맞춘다.
+// size: 핀 전체 높이(px).
+function topPinSvg(rank: number, size: number, tierColor: string, brandColor: string) {
   const w = Math.round(size * 0.72);
   const medal = rankMedal(rank);
   const headR = w * 0.5;
-  const txt = readableText(brandColor);
-  // 핀 머리(원) 안 표시: 1~3위 메달 이모지, 4위 이하 순위 숫자(브랜드 색 대비 텍스트색)
+  const txt = readableText(tierColor);
+  // 핀 머리(원) 안 표시: 1~3위 메달 이모지, 4위 이하 순위 숫자(tier 색 대비 텍스트색)
   const inner = medal
     ? `<text x="${headR}" y="${headR * 1.05}" text-anchor="middle" dominant-baseline="central" font-size="${headR * 1.1}">${medal}</text>`
     : `<text x="${headR}" y="${headR}" text-anchor="middle" dominant-baseline="central" font-size="${headR}" font-weight="800" fill="${txt}">${rank}</text>`;
-  // 물방울 경로: 위쪽 원 + 아래로 뾰족한 꼬리. 본체=브랜드 색, 테두리=앰버(전국 단서).
+  // 물방울 경로: 위쪽 원 + 아래로 뾰족한 꼬리. 본체=tier 색, 테두리=브랜드 색.
   return `<svg width="${w}" height="${size}" viewBox="0 0 ${w} ${size}" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))">
-    <path d="M${headR} ${size} C${headR * 0.15} ${size * 0.62} 0 ${headR * 1.25} 0 ${headR} a${headR} ${headR} 0 1 1 ${w} 0 C${w} ${headR * 1.25} ${headR * 1.85} ${size * 0.62} ${headR} ${size} Z" fill="${brandColor}" stroke="${HL_COLOR}" stroke-width="3"/>
-    <circle cx="${headR}" cy="${headR}" r="${headR * 0.82}" fill="none" stroke="${HL_RING}" stroke-width="1" opacity="0.5"/>
+    <path d="M${headR} ${size} C${headR * 0.15} ${size * 0.62} 0 ${headR * 1.25} 0 ${headR} a${headR} ${headR} 0 1 1 ${w} 0 C${w} ${headR * 1.25} ${headR * 1.85} ${size * 0.62} ${headR} ${size} Z" fill="${tierColor}" stroke="${brandColor}" stroke-width="3"/>
+    <circle cx="${headR}" cy="${headR}" r="${headR * 0.82}" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1"/>
     ${inner}
   </svg>`;
 }
@@ -271,7 +274,9 @@ export function KakaoMap({
       content.style.transform = 'translate(-50%, -100%)';
       content.style.position = 'relative';
 
-      // === 일반 마커: 기존 원형 점 유지 ===
+      // === 일반 마커: 원형 점 (색 역할 반전) ===
+      // 안쪽(채움) = 가격 tier 색(초록/노랑/빨강), 테두리 = 브랜드 색.
+      // 가격 라벨/꼬리도 안쪽과 같은 tier 색으로 통일(가격 수준이 한눈에).
       content.innerHTML = showLabel
         ? `
         <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
@@ -279,11 +284,11 @@ export function KakaoMap({
             ₩${s.price.toLocaleString()}
           </div>
           <div style="width:8px;height:8px;background:${tierColor};transform:rotate(45deg);margin-top:-4px"></div>
-          <div style="width:16px;height:16px;border-radius:50%;background:${brandColor};border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,.3);margin-top:-2px"></div>
+          <div style="width:16px;height:16px;border-radius:50%;background:${tierColor};border:3px solid ${brandColor};box-shadow:0 1px 3px rgba(0,0,0,.3);margin-top:-2px"></div>
         </div>`
         : `
         <div style="position:relative;display:flex;flex-direction:column;align-items:center">
-          <div style="width:18px;height:18px;border-radius:50%;background:${brandColor};border:3px solid ${tierColor};box-shadow:0 2px 4px rgba(0,0,0,.25)"></div>
+          <div style="width:18px;height:18px;border-radius:50%;background:${tierColor};border:3px solid ${brandColor};box-shadow:0 2px 4px rgba(0,0,0,.25)"></div>
         </div>`;
 
       content.addEventListener('click', () => onMarkerClick?.(s));
@@ -321,10 +326,13 @@ export function KakaoMap({
 
       // === TOP10: 물방울 핀 + 순위 메달/숫자 (모든 줌에서 형태로 구분) ===
       // 라벨 줌에서는 가격 라벨을 핀 위에 함께, 축소 줌에서는 핀만 (단, 크게).
-      // 핀 본체는 브랜드 색, 테두리는 앰버(전국 단서). 브랜드 구분 + 카테고리 구분 동시 충족.
+      // 핀 본체=가격 tier 색, 테두리=브랜드 색(일반 마커와 색 역할 통일).
+      // 카테고리는 물방울 형태 + 메달/순위 + 가격 라벨의 앰버 테두리로 구분.
+      const tier = priceTier(t.price, averagePrice);
+      const tierColor = tier === 'cheap' ? '#16A34A' : tier === 'expensive' ? '#DC2626' : '#EAB308';
       const brandColor = BRAND_COLOR[t.brand] ?? '#666';
       const pinSize = showLabel ? 38 : 42; // 축소 줌에서 오히려 더 크게 → 전국에서 눈에 띔
-      const pin = topPinSvg(r, pinSize, brandColor);
+      const pin = topPinSvg(r, pinSize, tierColor, brandColor);
       content.innerHTML = showLabel
         ? `
         <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:1px">
@@ -353,7 +361,7 @@ export function KakaoMap({
     }
     // top10ToStation은 product/렌더마다 새로 생성되므로 product를 직접 의존성에 둔다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, nationalTop10, product, onMarkerClick, mapLevel]);
+  }, [ready, nationalTop10, product, averagePrice, onMarkerClick, mapLevel]);
 
   // 내 주변(10km) TOP10 핀/배지 오버레이 — 전국 메달/일반 마커와 독립적으로 항상 렌더.
   // 위치/가격/순위는 nearbyTop10(이미 가격순) 기준. 전국 메달과 겹치는 id는 nearbyRank에서 제외됨.
@@ -377,14 +385,17 @@ export function KakaoMap({
       content.style.position = 'relative';
 
       // === 내 주변 TOP10: 원형 배지 + 순위 숫자 (전국 물방울 핀과 형태로 구분) ===
-      // 둥근 핀(원 + 아래 꼬리). 본체=브랜드 색, 바깥 링=블루(NEAR, 내 주변 단서).
-      // 순위 숫자는 브랜드 색 대비에 맞춘 텍스트색으로 원 안에 표시.
+      // 둥근 핀(원 + 아래 꼬리). 색 역할 통일: 본체=가격 tier 색, 테두리=브랜드 색.
+      // 카테고리는 배지 형태 + 순위 + 가격 라벨의 블루 테두리로 구분.
+      // 순위 숫자는 본체(tier 색) 대비에 맞춘 텍스트색으로 원 안에 표시.
+      const tier = priceTier(s.price, averagePrice);
+      const tierColor = tier === 'cheap' ? '#16A34A' : tier === 'expensive' ? '#DC2626' : '#EAB308';
       const brandColor = BRAND_COLOR[s.brand] ?? '#666';
-      const txt = readableText(brandColor);
+      const txt = readableText(tierColor);
       const badge = `
         <div style="position:relative;display:flex;flex-direction:column;align-items:center">
-          <div style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:${brandColor};border:3px solid ${NEAR_COLOR};box-shadow:0 2px 4px rgba(0,0,0,.3);color:${txt};font-size:12px;font-weight:800;line-height:1">${rank}</div>
-          <div style="width:7px;height:7px;background:${NEAR_COLOR};transform:rotate(45deg);margin-top:-4px"></div>
+          <div style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:${tierColor};border:3px solid ${brandColor};box-shadow:0 2px 4px rgba(0,0,0,.3);color:${txt};font-size:12px;font-weight:800;line-height:1">${rank}</div>
+          <div style="width:7px;height:7px;background:${tierColor};transform:rotate(45deg);margin-top:-4px"></div>
         </div>`;
       content.innerHTML = showLabel
         ? `
@@ -409,7 +420,7 @@ export function KakaoMap({
       overlay.setMap(map);
       nearOverlaysRef.current.push(overlay);
     }
-  }, [ready, nearbyTop10, nearbyRank, onMarkerClick, mapLevel]);
+  }, [ready, nearbyTop10, nearbyRank, averagePrice, onMarkerClick, mapLevel]);
 
   // 내 위치 마커 + 1km 원
   useEffect(() => {

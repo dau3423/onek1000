@@ -8,9 +8,9 @@ interface Props {
 }
 
 // 마커 색상은 KakaoMap의 렌더 상수와 일치해야 한다(시각 일관성).
-//  - 브랜드 점 안쪽: types/station.ts BRAND_COLOR
-//  - 가격 tier 테두리: lib/map/geo.ts priceTier → KakaoMap tierColor
-//  - 전국 TOP10: HL_COLOR(앰버), 내 주변 TOP10: NEAR_COLOR(블루), 내 위치: #1d4ed8
+//  - 가격 tier 안쪽(채움): lib/map/geo.ts priceTier → KakaoMap tierColor
+//  - 브랜드 테두리: types/station.ts BRAND_COLOR
+//  - 전국 TOP10: HL_COLOR(앰버, 가격 라벨 보조 단서), 내 주변 TOP10: NEAR_COLOR(블루, 보조 단서), 내 위치: #1d4ed8
 const TIER_CHEAP = '#16A34A';
 const TIER_NORMAL = '#EAB308';
 const TIER_EXPENSIVE = '#DC2626';
@@ -37,7 +37,7 @@ function Dot({ color, ring }: { color: string; ring?: string }) {
   );
 }
 
-/** 테두리(가격 tier)를 강조하는 칩 — 안쪽 회색 점 + 색 테두리 */
+/** 브랜드(테두리)를 강조하는 칩 — 안쪽 회색 점 + 색 테두리 */
 function RingDot({ color }: { color: string }) {
   return (
     <span
@@ -48,17 +48,17 @@ function RingDot({ color }: { color: string }) {
 }
 
 /**
- * 전국 TOP10 칩 — 물방울 핀 형태(전국 단서) + 본체는 브랜드 색(가변), 테두리는 앰버.
- * 본체 색은 "브랜드별로 달라짐"을 알리려 대표 브랜드 색으로 그라데이션 표현 대신
- * 안내 텍스트로 보완하고, 칩 자체는 형태/테두리(앰버)로 카테고리를 나타낸다.
+ * 전국 TOP10 칩 — 물방울 핀 형태(전국 단서) + 본체는 가격 tier 색(채움), 테두리는 브랜드 색(가변).
+ * 실제 지도 마커와 색 역할 일치: 본체=가격 tier 색, 테두리=브랜드 색.
+ * 카테고리(전국)는 물방울 형태와 안내 텍스트(앰버 가격 라벨)로 보완한다.
  */
-function TopPinChip({ body }: { body: string }) {
+function TopPinChip({ body, ring }: { body: string; ring: string }) {
   return (
     <svg viewBox="0 0 14 18" className="h-4 w-3.5 shrink-0">
       <path
         d="M7 17 C1 11 0.5 8 0.5 6 a6.5 6.5 0 1 1 13 0 C13.5 8 13 11 7 17 Z"
         fill={body}
-        stroke={HL_COLOR}
+        stroke={ring}
         strokeWidth={1.6}
       />
     </svg>
@@ -67,19 +67,19 @@ function TopPinChip({ body }: { body: string }) {
 
 /**
  * 내 주변 TOP10 칩 — 실제 지도 마커와 동일한 핀 형태(원형 배지 + 아래 꼬리).
- * KakaoMap.tsx 배지 마커와 일치: 원형 배지(본체=브랜드 색, 링=블루) + 아래 회전 사각형 꼬리(블루).
- * 본체=브랜드 색(body), 링/꼬리=블루(NEAR_COLOR). 범례용으로 작게 렌더.
+ * 색 역할 일치: 본체=가격 tier 색(body), 테두리=브랜드 색(ring), 꼬리=가격 tier 색.
+ * 카테고리(내 주변)는 배지 형태와 안내 텍스트(블루 가격 라벨)로 보완한다. 범례용으로 작게 렌더.
  */
-function NearBadgeChip({ body }: { body: string }) {
+function NearBadgeChip({ body, ring }: { body: string; ring: string }) {
   return (
     <span className="relative inline-flex h-[18px] w-3.5 shrink-0 flex-col items-center">
       <span
         className="h-3.5 w-3.5 rounded-full"
-        style={{ background: body, border: `2px solid ${NEAR_COLOR}` }}
+        style={{ background: body, border: `2px solid ${ring}` }}
       />
       <span
         className="-mt-[3px] h-[5px] w-[5px] rotate-45"
-        style={{ background: NEAR_COLOR }}
+        style={{ background: body }}
       />
     </span>
   );
@@ -129,11 +129,30 @@ export function MarkerLegend({ onClose }: Props) {
 
         <div className="mt-3 space-y-3 text-xs text-gray-700">
           <section>
-            <p className="font-semibold text-gray-900">점 안쪽 색 = 브랜드</p>
+            <p className="font-semibold text-gray-900">점 안쪽 색 = 가격 수준</p>
+            <p className="text-[11px] text-gray-400">현재 화면 평균 대비</p>
+            <div className="mt-1.5 space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <Dot color={TIER_CHEAP} ring="#ffffff" />
+                <span>저렴 (평균 −30원↓)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Dot color={TIER_NORMAL} ring="#ffffff" />
+                <span>보통 (±30원)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Dot color={TIER_EXPENSIVE} ring="#ffffff" />
+                <span>비쌈 (평균 +30원↑)</span>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <p className="font-semibold text-gray-900">점 테두리 색 = 브랜드</p>
             <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1.5">
               {BRANDS.map((b) => (
                 <div key={b.label} className="flex items-center gap-1.5">
-                  <Dot color={b.color} ring="#ffffff" />
+                  <RingDot color={b.color} />
                   <span>{b.label}</span>
                 </div>
               ))}
@@ -141,46 +160,31 @@ export function MarkerLegend({ onClose }: Props) {
           </section>
 
           <section>
-            <p className="font-semibold text-gray-900">점 테두리 색 = 가격 수준</p>
-            <p className="text-[11px] text-gray-400">현재 화면 평균 대비</p>
-            <div className="mt-1.5 space-y-1.5">
-              <div className="flex items-center gap-1.5">
-                <RingDot color={TIER_CHEAP} />
-                <span>저렴 (평균 −30원↓)</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <RingDot color={TIER_NORMAL} />
-                <span>보통 (±30원)</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <RingDot color={TIER_EXPENSIVE} />
-                <span>비쌈 (평균 +30원↑)</span>
-              </div>
-            </div>
-          </section>
-
-          <section>
             <p className="font-semibold text-gray-900">특별 표식</p>
-            <p className="text-[11px] text-gray-400">본체 색은 브랜드, 테두리·형태는 종류 구분</p>
+            <p className="text-[11px] text-gray-400">색은 동일(안쪽=가격, 테두리=브랜드), 형태·순위로 종류 구분</p>
             <div className="mt-1.5 space-y-1.5">
               <div className="flex items-start gap-1.5">
                 <span className="mt-0.5 flex shrink-0 gap-0.5">
-                  <TopPinChip body={BRAND_COLOR.SKE} />
-                  <TopPinChip body={BRAND_COLOR.GSC} />
+                  <TopPinChip body={TIER_CHEAP} ring={BRAND_COLOR.SKE} />
+                  <TopPinChip body={TIER_NORMAL} ring={BRAND_COLOR.GSC} />
                 </span>
                 <span>
-                  앰버 테두리 물방울 핀 + 메달(🥇🥈🥉)·숫자 = 전국 최저가 TOP 10
-                  <span className="text-gray-400"> (본체=브랜드 색)</span>
+                  물방울 핀 + 메달(🥇🥈🥉)·숫자 = 전국 최저가 TOP 10
+                  <span className="text-gray-400"> (가격 라벨</span>
+                  <span style={{ color: HL_COLOR }} className="font-semibold"> 앰버</span>
+                  <span className="text-gray-400">)</span>
                 </span>
               </div>
               <div className="flex items-start gap-1.5">
                 <span className="mt-0.5 flex shrink-0 gap-0.5">
-                  <NearBadgeChip body={BRAND_COLOR.HDO} />
-                  <NearBadgeChip body={BRAND_COLOR.RTE} />
+                  <NearBadgeChip body={TIER_CHEAP} ring={BRAND_COLOR.HDO} />
+                  <NearBadgeChip body={TIER_EXPENSIVE} ring={BRAND_COLOR.RTE} />
                 </span>
                 <span>
-                  파란 테두리 순위 배지 = 내 주변 10km 최저가 TOP 10
-                  <span className="text-gray-400"> (본체=브랜드 색)</span>
+                  순위 배지 = 내 주변 10km 최저가 TOP 10
+                  <span className="text-gray-400"> (가격 라벨</span>
+                  <span style={{ color: NEAR_COLOR }} className="font-semibold"> 블루</span>
+                  <span className="text-gray-400">)</span>
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
