@@ -12,6 +12,7 @@ import { RadiusAlert } from '@/components/alert/RadiusAlert';
 import { NaviConfirm } from '@/components/alert/NaviConfirm';
 import { ProductSync } from '@/components/map/ProductSync';
 import { StationPopup } from '@/components/map/StationPopup';
+import { MarkerLegend } from '@/components/ui/MarkerLegend';
 import { BusinessFooter } from '@/components/legal/BusinessFooter';
 import { useMapStore, getInitialMapView, type MapView } from '@/stores/map';
 import { useGeolocation } from '@/hooks/useGeolocation';
@@ -105,6 +106,9 @@ export default function HomePage() {
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   // PC에서 마커 클릭 시 노출할 정보 카드 팝업 대상 (모바일은 사용 안 함)
   const [popupStation, setPopupStation] = useState<StationWithPrice | null>(null);
+
+  // 지도 색상 안내(ⓘ) 팝오버 열림 여부 — 지도 우측 상단 버튼에서 토글
+  const [legendOpen, setLegendOpen] = useState(false);
 
   // 지도 영역 전체화면 토글. 대상은 map-container(지도 + 버튼/배너/시트 포함).
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -361,6 +365,25 @@ export default function HomePage() {
                 />
               )}
         </button>
+
+        {/* 지도 색상 안내(ⓘ) — 지도 우측 상단. 테두리·배경 없이 아이콘만.
+            전체화면 버튼(right-3)이 있으면 그 왼쪽으로 비켜 배치(겹침 방지). */}
+        <button
+          onClick={() => setLegendOpen((v) => !v)}
+          aria-label="지도 색상 안내"
+          aria-expanded={legendOpen}
+          title="지도 색상 안내"
+          style={{ top: '12px', right: fullscreen.supported ? '60px' : '12px' }}
+          className="absolute z-30 flex h-11 w-11 items-center justify-center text-gray-600 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+        >
+          <svg viewBox="0 0 24 24" className="h-6 w-6 drop-shadow" fill="none" stroke="currentColor" strokeWidth={2}>
+            <circle cx="12" cy="12" r="9.5" />
+            <path strokeLinecap="round" d="M12 11v5" />
+            <circle cx="12" cy="7.8" r="0.1" strokeWidth={2.6} />
+          </svg>
+        </button>
+
+        {legendOpen && <MarkerLegend onClose={() => setLegendOpen(false)} />}
 
         {/* 전체화면 토글 — 지원 브라우저에서만 노출(iOS Safari 등 미지원 시 숨김).
             우측 상단(필터바 아래)에 고정해 GPS 버튼(우측 하단)과 겹치지 않게 둔다. */}

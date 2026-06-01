@@ -1,12 +1,18 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import clsx from 'clsx';
 import { BRAND_COLOR } from '@/types/station';
 import type { PriceTier } from '@/lib/map/geo';
 import { TIER_FACE, faceSvgInner } from '@/lib/map/markerFace';
 
 interface Props {
   onClose: () => void;
+  /**
+   * 팝오버 카드 위치 클래스(오버레이 기준 absolute). 트리거 위치에 맞춰 조정한다.
+   * 기본값은 지도 우측 상단 버튼(약 top-14 right-3) 아래에 자연스럽게 붙도록 한다.
+   */
+  cardClassName?: string;
 }
 
 // 마커 색상/표정은 KakaoMap의 렌더와 일치해야 한다(시각 일관성).
@@ -126,7 +132,7 @@ function NearBadgeChip({ body, ring }: { body: string; ring: string }) {
  * 지도 마커 색상/표식 의미 안내 팝오버.
  * FilterBar 우측 info 버튼에서 띄운다. ESC/바깥클릭으로 닫힌다.
  */
-export function MarkerLegend({ onClose }: Props) {
+export function MarkerLegend({ onClose, cardClassName }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -149,7 +155,10 @@ export function MarkerLegend({ onClose }: Props) {
         aria-label="색상 안내"
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className="absolute right-3 top-12 w-[min(20rem,calc(100vw-1.5rem))] rounded-2xl border border-gray-100 bg-white p-4 shadow-2xl outline-none"
+        className={clsx(
+          'absolute w-[min(20rem,calc(100vw-1.5rem))] rounded-2xl border border-gray-100 bg-white p-4 shadow-2xl outline-none dark:border-gray-700 dark:bg-gray-800',
+          cardClassName ?? 'right-3 top-[152px]',
+        )}
       >
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold text-gray-900">지도 색상 안내</p>
