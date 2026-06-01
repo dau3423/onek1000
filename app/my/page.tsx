@@ -26,6 +26,8 @@ export default async function MyPage() {
 
   let sub: Sub | null = null;
   let favCount = 0;
+  let vehicleCount = 0;
+  let regionCount = 0;
   let nickname: string | null = session.user.nickname ?? null;
   let image: string | null = session.user.image ?? null;
 
@@ -47,11 +49,14 @@ export default async function MyPage() {
         .limit(1)
         .maybeSingle();
       sub = s as Sub | null;
-      const { count } = await sb
-        .from('favorites')
-        .select('station_id', { count: 'exact', head: true })
-        .eq('user_id', user.id);
-      favCount = count ?? 0;
+      const [{ count: favC }, { count: vehC }, { count: regC }] = await Promise.all([
+        sb.from('favorites').select('station_id', { count: 'exact', head: true }).eq('user_id', user.id),
+        sb.from('vehicles').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+        sb.from('interest_regions').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+      ]);
+      favCount = favC ?? 0;
+      vehicleCount = vehC ?? 0;
+      regionCount = regC ?? 0;
     }
   }
 
@@ -135,7 +140,11 @@ export default async function MyPage() {
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">내 차량</h2>
         <Link href="/my/vehicles" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
           <span className="text-sm text-gray-700">🚗 차량 / 기름 종류</span>
-          <span className="text-sm text-primary">관리 →</span>
+          {vehicleCount > 0 ? (
+            <span className="text-sm font-bold text-gray-900">{vehicleCount}개</span>
+          ) : (
+            <span className="text-sm text-primary">관리 →</span>
+          )}
         </Link>
       </section>
 
@@ -143,7 +152,11 @@ export default async function MyPage() {
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">관심 지역</h2>
         <Link href="/my/interest-regions" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
           <span className="text-sm text-gray-700">📍 관심 지역 최저가 알림</span>
-          <span className="text-sm text-primary">관리 →</span>
+          {regionCount > 0 ? (
+            <span className="text-sm font-bold text-gray-900">{regionCount}개</span>
+          ) : (
+            <span className="text-sm text-primary">관리 →</span>
+          )}
         </Link>
       </section>
 
