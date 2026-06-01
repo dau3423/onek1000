@@ -11,20 +11,30 @@ import { useSession } from 'next-auth/react';
 const STORAGE_KEY = '1000n_interstitial_last';
 
 export function InterstitialAd() {
-  const { data } = useSession();
+  const { data, status } = useSession();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [counter, setCounter] = useState(4);
 
   useEffect(() => {
+    // 세션이 확정될 때까지(로딩 중)는 아무 동작도 하지 않는다.
+    // 로딩 중 isPremium을 false로 오판해 프리미엄 회원에게 광고가 뜨거나
+    // localStorage 일일 플래그가 잘못 기록되는 race를 방지한다.
+    if (status === 'loading') return;
+
     const isPremium = Boolean(data?.user?.isPremium);
-    if (isPremium) return;
+    // 프리미엄이면 열지 않고, 이미 열려 있던 광고(로딩 중 → 결제로 프리미엄 전환 등)는 즉시 닫는다.
+    if (isPremium) {
+      setOpen(false);
+      return;
+    }
+
     const last = Number(localStorage.getItem(STORAGE_KEY) || '0');
     const now = Date.now();
     if (now - last < 24 * 60 * 60 * 1000) return;
     localStorage.setItem(STORAGE_KEY, String(now));
     setOpen(true);
-  }, [data]);
+  }, [data, status]);
 
   useEffect(() => {
     if (!open) return;
