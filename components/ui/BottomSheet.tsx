@@ -170,9 +170,9 @@ export function BottomSheet({
                         onClick={() => onNavigate(s)}
                         aria-label={`${s.name} 길안내`}
                         title="카카오내비 길안내"
-                        className="flex shrink-0 items-center justify-center rounded-lg border border-gray-200 px-2.5 py-2 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-transparent hover:bg-gray-50/60 dark:hover:bg-gray-800/60"
                       >
-                        <Image src="/icons/icon_run.png" alt="" width={20} height={20} />
+                        <Image src="/icons/icon_run.png" alt="" width={32} height={32} />
                       </button>
                     )}
                   </div>
