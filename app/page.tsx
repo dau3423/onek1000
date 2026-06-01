@@ -290,7 +290,7 @@ export default function HomePage() {
 
         {/* overflow-hidden: 접힘 시 시트 본체가 translate-y로 컨테이너 하단(=첫 화면 경계) 밖으로
             삐져나가 그 아래 사업자 정보 푸터를 가리는 것을 막는다. 시트는 이 컨테이너(relative) 기준
-            absolute bottom-0이라 경계에서 클립되어 접힘 시 72px peek만 남는다. 펼침 상태(translate-y-0,
+            absolute bottom-0이라 경계에서 클립되어 접힘 시 SHEET_PEEK_PX(96px) peek만 남는다. 펼침 상태(translate-y-0,
             ≤70vh)는 컨테이너 내부에 들어와 클립되지 않고, GPS/전체화면/알람/배너 등 다른 absolute 요소도
             모두 컨테이너 내부 좌표라 영향받지 않는다. */}
         <div ref={mapContainerRef} className="map-container min-h-0 flex-1 overflow-hidden">

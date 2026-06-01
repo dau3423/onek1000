@@ -14,8 +14,8 @@ type Tab = 'area' | 'nearby';
  * 바텀시트 레이아웃 상수 (단일 출처).
  * GPS 버튼 등 시트와 연동되는 요소가 동일 값을 참조해 겹침/오정렬을 방지한다.
  */
-/** 접힘 상태에서 노출되는 손잡이 영역 높이(px) */
-export const SHEET_PEEK_PX = 72;
+/** 접힘 상태에서 노출되는 손잡이/탭 영역 높이(px). 헤더(~48) + 탭(~34) + 탭 아래 여백(~14) */
+export const SHEET_PEEK_PX = 96;
 /** 펼침 상태의 시트 높이(뷰포트 비율) */
 export const SHEET_OPEN_VH = 70;
 
@@ -92,8 +92,8 @@ export function BottomSheet({
     <div
       className={clsx(
         'pointer-events-auto absolute inset-x-0 bottom-0 z-20 rounded-t-2xl bg-white shadow-sheet transition-transform duration-300 dark:bg-gray-900',
-        // 접힘 시 SHEET_PEEK_PX(72px)만 노출. Tailwind JIT가 정적으로 스캔하도록 리터럴 유지.
-        open ? 'translate-y-0' : 'translate-y-[calc(100%-72px)]',
+        // 접힘 시 SHEET_PEEK_PX(96px)만 노출. Tailwind JIT가 정적으로 스캔하도록 리터럴 유지.
+        open ? 'translate-y-0' : 'translate-y-[calc(100%-96px)]',
       )}
       style={{ maxHeight: `${SHEET_OPEN_VH}vh` }}
     >
@@ -120,7 +120,7 @@ export function BottomSheet({
         </div>
       )}
 
-      {/* 시트 높이(SHEET_OPEN_VH=70vh)에서 손잡이/탭 영역(~96px)을 뺀 스크롤 영역 */}
+      {/* 시트 높이(SHEET_OPEN_VH=70vh)에서 손잡이/탭 영역(SHEET_PEEK_PX=96px)을 뺀 스크롤 영역 */}
       <div className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
         {list.length === 0 ? (
           <p className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
