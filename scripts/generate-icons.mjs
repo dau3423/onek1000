@@ -10,8 +10,8 @@
 //       favicon.png를 fit:'contain' + 투명 배경으로 각 크기에 맞춰 다운스케일.
 //   - maskable 아이콘(icon-512-maskable.png):
 //       안드로이드 mask에서 가장자리가 잘리지 않도록 안전영역(safe zone)을 확보.
-//       원본을 512의 약 80%(410px)로 축소해 중앙 배치하고, 여백은 테마색(#FF6B00)
-//       불투명 배경으로 채워 512×512로 출력.
+//       원본을 512의 약 80%(410px)로 축소해 중앙 배치하고, 여백은 흰색(#ffffff)
+//       불투명 배경으로 채워 512×512로 출력. (manifest background_color와 일치)
 //
 // 의존성: sharp (devDependencies). macOS는 prebuilt 바이너리라 추가 설치 불필요.
 
@@ -30,7 +30,8 @@ const FAVICON_OUT  = resolve(ROOT, 'public/favicon.ico');
 // maskable 안전영역 설정
 const MASKABLE_SIZE = 512;
 const MASKABLE_INNER = 410; // 약 80% — 가장자리 mask 대비 여백 확보
-const THEME_COLOR = { r: 0xff, g: 0x6b, b: 0x00, alpha: 1 }; // #FF6B00 (manifest theme_color)
+const THEME_COLOR = { r: 0xff, g: 0x6b, b: 0x00, alpha: 1 }; // #FF6B00 (manifest theme_color, 상태바/스플래시용)
+const MASKABLE_BG = { r: 255, g: 255, b: 255, alpha: 1 }; // #ffffff (maskable 여백 배경, manifest background_color와 일치)
 
 mkdirSync(OUT_DIR, { recursive: true });
 
@@ -55,11 +56,12 @@ for (const t of targets) {
   console.log(`  ✓ ${t.name.padEnd(28)} (${t.size}×${t.size})`);
 }
 
-// maskable — 안전영역 확보: 410px로 축소 후 512 테마색 캔버스 중앙 합성
+// maskable — 안전영역 확보: 410px로 축소 후 512 흰색 캔버스 중앙 합성
+// 여백은 흰색(#ffffff) 배경으로 채움 (manifest background_color와 일치, seam 없음)
 {
   const out = resolve(OUT_DIR, 'icon-512-maskable.png');
   const inner = await sharp(SRC)
-    .resize(MASKABLE_INNER, MASKABLE_INNER, { fit: 'contain', background: { ...THEME_COLOR, alpha: 0 } })
+    .resize(MASKABLE_INNER, MASKABLE_INNER, { fit: 'contain', background: { ...MASKABLE_BG, alpha: 0 } })
     .png()
     .toBuffer();
   await sharp({
@@ -67,13 +69,13 @@ for (const t of targets) {
       width: MASKABLE_SIZE,
       height: MASKABLE_SIZE,
       channels: 4,
-      background: THEME_COLOR,
+      background: MASKABLE_BG,
     },
   })
     .composite([{ input: inner, gravity: 'center' }])
     .png({ compressionLevel: 9 })
     .toFile(out);
-  console.log(`  ✓ ${'icon-512-maskable.png'.padEnd(28)} (${MASKABLE_SIZE}×${MASKABLE_SIZE}, safe-zone ${MASKABLE_INNER}px + #FF6B00 배경)`);
+  console.log(`  ✓ ${'icon-512-maskable.png'.padEnd(28)} (${MASKABLE_SIZE}×${MASKABLE_SIZE}, safe-zone ${MASKABLE_INNER}px + #ffffff 배경)`);
 }
 
 // favicon.ico — sharp는 ico를 직접 못 만들어서 32×32 PNG를 favicon.ico로 출력 (모던 브라우저는 PNG ico도 인식)
