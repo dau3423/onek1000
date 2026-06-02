@@ -10,9 +10,14 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
   return new Uint8Array([...raw].map((c) => c.charCodeAt(0)));
 }
 
-export function EnablePushButton() {
+/**
+ * @param isPremium 서버에서 검증한 구독 상태(SEC-5: 서버 검증 우선).
+ *   넘기면 클라 세션 갱신 타이밍과 무관하게 즉시 정확하다.
+ *   미지정 시 useSession() 값으로 폴백(다른 위치 재사용 대비).
+ */
+export function EnablePushButton({ isPremium: isPremiumProp }: { isPremium?: boolean } = {}) {
   const { data } = useSession();
-  const isPremium = Boolean(data?.user?.isPremium);
+  const isPremium = isPremiumProp ?? Boolean(data?.user?.isPremium);
   const [subscribed, setSubscribed] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
 

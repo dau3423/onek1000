@@ -164,7 +164,9 @@ export default async function MyPage() {
 
       <section className="border-t border-gray-100 px-5 py-5">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">알림</h2>
-        <EnablePushButton />
+        {/* 프리미엄 판정은 서버에서 DB로 검증한 isActive를 그대로 전달(SEC-5).
+            클라 세션(useSession) 갱신 타이밍과 무관하게 결제 직후 즉시 정확하게 반영된다. */}
+        <EnablePushButton isPremium={isActive} />
       </section>
 
       <section className="border-t border-gray-100 px-5 py-5">
