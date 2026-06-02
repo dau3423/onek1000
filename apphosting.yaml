@@ -156,16 +156,16 @@ env:
       - RUNTIME
   - variable: REVIEWER_PASSWORD
     secret: REVIEWER_PASSWORD
+  - variable: PORTONE_API_SECRET
+    secret: PORTONE_API_SECRET
+  - variable: PORTONE_WEBHOOK_SECRET
+    secret: PORTONE_WEBHOOK_SECRET
   # ─── 포트원(PortOne) v2 결제 ───
   # storeId/channelKey는 공개값(클라 노출 OK) → 미설정 시 코드 폴백 상수 사용.
   # 필요 시 NEXT_PUBLIC_PORTONE_STORE_ID / NEXT_PUBLIC_PORTONE_CHANNEL_* 를 value로 등록.
-  # API Secret / Webhook Secret 은 서버 전용 시크릿:
+  # API Secret / Webhook Secret 은 서버 전용 시크릿(위에서 활성화됨):
   #   firebase apphosting:secrets:set PORTONE_API_SECRET
   #   firebase apphosting:secrets:set PORTONE_WEBHOOK_SECRET
-  # - variable: PORTONE_API_SECRET
-  #   secret: PORTONE_API_SECRET
-  # - variable: PORTONE_WEBHOOK_SECRET
-  #   secret: PORTONE_WEBHOOK_SECRET
 
   # ─── 아래는 발급/등록되는 대로 주석 해제 ───
   #
