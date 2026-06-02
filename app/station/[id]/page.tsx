@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { fetchStationDetail } from '@/lib/opinet/client';
-import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL, type ProductCode } from '@/types/station';
+import { queryStationDetail } from '@/lib/db/queries';
+import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL, type ProductCode, type StationDetail } from '@/types/station';
 import { InterstitialAd } from '@/components/ads/InterstitialAd';
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { PriceHistoryChart } from '@/components/charts/PriceHistoryChart';
@@ -13,7 +13,17 @@ interface Props { params: { id: string } }
 const PRODUCT_ORDER: ProductCode[] = ['B027', 'B034', 'D047', 'K015', 'C004'];
 
 export default async function StationDetailPage({ params }: Props) {
-  const detail = await fetchStationDetail(params.id);
+  // 상세는 우리 DB 단독 조회(Opinet 실시간 미사용).
+  // Opinet은 1일 1회 sync에서만 호출하고, 상세는 prices_latest/stations만 본다.
+  let detail: StationDetail | null = null;
+  try {
+    detail = await queryStationDetail(params.id);
+  } catch {
+    // Supabase 장애/네트워크 오류 → 데이터 없음으로 처리
+    detail = null;
+  }
+
+  // DB에 없으면 찾을 수 없음
   if (!detail) notFound();
 
   return (
@@ -36,7 +46,7 @@ export default async function StationDetailPage({ params }: Props) {
             style={{ background: BRAND_COLOR[detail.brand] }}
           />
           <span className="text-sm font-semibold text-gray-700">
-            {BRAND_LABEL[detail.brand]}{detail.isSelf ? ' · 셀프' : ''}
+            {BRAND_LABEL[detail.brand]}
           </span>
         </div>
         <p className="mt-2 text-sm text-gray-600">📍 {detail.address}</p>
@@ -77,15 +87,13 @@ export default async function StationDetailPage({ params }: Props) {
       {/* 리뷰 */}
       <ReviewSection stationId={detail.id} />
 
-      {/* 부가서비스 */}
+      {/* 부가서비스 — 현재 데이터 소스(일 1회 가격 동기화)에는 셀프/세차/편의점/정비
+          정보가 포함되지 않아 보유 여부를 단정할 수 없다. "없음" 오표시 방지를 위해 안내로 대체. */}
       <section className="border-t border-gray-100 px-5 py-4">
         <h2 className="mb-3 text-sm font-bold text-gray-800">부가서비스</h2>
-        <div className="flex flex-wrap gap-2 text-xs">
-          <Badge on={detail.isSelf}>셀프</Badge>
-          <Badge on={detail.hasCarwash}>세차장</Badge>
-          <Badge on={detail.hasCvs}>편의점</Badge>
-          <Badge on={detail.hasMaintenance}>정비소</Badge>
-        </div>
+        <p className="rounded-lg bg-gray-50 px-3 py-2.5 text-xs leading-snug text-gray-500">
+          부가서비스(셀프·세차·편의점·정비) 정보가 제공되지 않습니다.
+        </p>
       </section>
 
       {/* CTA */}
@@ -105,19 +113,5 @@ export default async function StationDetailPage({ params }: Props) {
         데이터 제공: 한국석유공사 오피넷
       </footer>
     </main>
-  );
-}
-
-function Badge({ on, children }: { on?: boolean; children: React.ReactNode }) {
-  return (
-    <span
-      className={
-        on
-          ? 'rounded-full bg-cheap/10 px-3 py-1 font-semibold text-cheap'
-          : 'rounded-full bg-gray-100 px-3 py-1 text-gray-400 line-through'
-      }
-    >
-      {on ? '✅ ' : '❌ '}{children}
-    </span>
   );
 }
