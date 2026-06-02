@@ -19,28 +19,50 @@ import { createHash } from 'crypto';
 
 // ─── 자격증명 (테스트 기본값 → 실키는 env로 교체) ───
 // 공식 공개 테스트 상점 값. 실연동 시 INICIS_MID / INICIS_SIGN_KEY / INICIS_API_KEY로 덮어쓴다.
+//
+// ※ 중요: 일반결제(단건)와 빌링키발급은 MID가 다르다.
+//   - 단건결제(INIStdPay): INIpayTest (일반결제 전용 테스트 상점)
+//   - 빌링키발급(BILLAUTH): INIBillTst (빌링 전용 테스트 상점)
+//   INIpayTest로 빌링키발급(BILLAUTH(Card))을 요청하면 결제창이 뜨기 전에 거부된다.
+//   운영에서도 '자동결제(빌링) 계약이 된 별도 MID'가 필요하며, 일반결제 MID로는
+//   빌링키 발급이 불가하다. → 빌링 전용 env(INICIS_BILL_*)로 분리한다.
 const TEST_MID = 'INIpayTest';
 const TEST_SIGN_KEY = 'SU5JTElURV9UUklQTEVERVNfS0VZU1RS';
 const TEST_API_KEY = 'ItEQKi3rY7uvDS8l';
 
-/** 가맹점 ID (클라이언트 결제창에도 필요한 값) */
-export function getMid(): string {
+// 빌링 전용 공개 테스트 상점. signKey는 단건과 동일한 공개 테스트 키.
+const TEST_BILL_MID = 'INIBillTst';
+const TEST_BILL_SIGN_KEY = 'SU5JTElURV9UUklQTEVERVNfS0VZU1RS';
+const TEST_BILL_API_KEY = 'ItEQKi3rY7uvDS8l';
+
+/**
+ * 가맹점 ID (클라이언트 결제창에도 필요한 값).
+ * billing 모드는 빌링 전용 MID를 사용한다(미설정 시 INICIS_MID로,
+ * 그래도 없으면 빌링 테스트 상점 INIBillTst로 폴백).
+ */
+export function getMid(mode: 'pay' | 'billing' = 'pay'): string {
+  if (mode === 'billing') {
+    return process.env.INICIS_BILL_MID || process.env.INICIS_MID || TEST_BILL_MID;
+  }
   return process.env.INICIS_MID || TEST_MID;
 }
 
-/** 표준결제창 서명용 signKey (서버 전용) */
-function getSignKey(): string {
+/** 표준결제창 서명용 signKey (서버 전용). 모드별 MID와 매칭되는 키를 쓴다. */
+function getSignKey(mode: 'pay' | 'billing' = 'pay'): string {
+  if (mode === 'billing') {
+    return process.env.INICIS_BILL_SIGN_KEY || process.env.INICIS_SIGN_KEY || TEST_BILL_SIGN_KEY;
+  }
   return process.env.INICIS_SIGN_KEY || TEST_SIGN_KEY;
 }
 
-/** 빌링 결제승인(INIAPI)용 API Key (서버 전용) */
+/** 빌링 결제승인(INIAPI)용 API Key (서버 전용). 빌링 MID와 매칭되는 키. */
 function getApiKey(): string {
-  return process.env.INICIS_API_KEY || TEST_API_KEY;
+  return process.env.INICIS_BILL_API_KEY || process.env.INICIS_API_KEY || TEST_BILL_API_KEY;
 }
 
 /** 테스트 자격증명으로 동작 중인지 여부 (운영 가드/로깅용) */
 export function isInicisTestMode(): boolean {
-  return getMid() === TEST_MID;
+  return getMid('pay') === TEST_MID || getMid('billing') === TEST_BILL_MID;
 }
 
 function sha256(input: string): string {
@@ -120,8 +142,8 @@ export interface StdPayFormFields {
  *   ※ 파라미터는 키 알파벳 오름차순 NVP 문자열.
  */
 export function buildStdPayFields(p: StdPayInitParams): StdPayFormFields {
-  const mid = getMid();
-  const signKey = getSignKey();
+  const mid = getMid(p.mode);
+  const signKey = getSignKey(p.mode);
   const timestamp = String(Date.now());
   const price = String(p.price);
 
@@ -129,12 +151,17 @@ export function buildStdPayFields(p: StdPayInitParams): StdPayFormFields {
   const verification = sha256(`oid=${p.oid}&price=${price}&signKey=${signKey}&timestamp=${timestamp}`);
   const mKey = sha256(signKey);
 
-  // 단건: 카드/계좌이체 + 간편결제 노출. 빌링: 신용카드 빌링키발급.
-  // acceptmethod 옵션은 KG이니시스 표준결제창 규격을 따른다.
+  // 단건: 카드/계좌이체 + 간편결제 노출.
+  // 빌링: gopaymethod는 빈값(공식 규격), acceptmethod에 BILLAUTH(Card)로
+  //       신용카드 빌링키발급 지정. acceptmethod 옵션 구분자는 ':'.
+  //   - BILLAUTH(Card): 신용카드 빌링키발급(빌링 핵심 옵션)
+  //   - below1000: 1,000원 이하 소액 인증결제 허용(빌링 인증액이 1,000원이라 필수)
+  //   ※ centerCd(Y)는 빌링키발급 흐름에서 불필요해 제거(returnUrl에서 idc_name을
+  //     쓰지 않으므로 충돌 가능성만 남김).
   const gopaymethod = p.mode === 'billing' ? '' : 'Card:DirectBank:onlinepay';
   const acceptmethod =
     p.mode === 'billing'
-      ? 'BILLAUTH(Card):below1000:centerCd(Y)'
+      ? 'BILLAUTH(Card):below1000'
       : 'below1000:centerCd(Y):onlytrans:kakaopay:payco:tosspay';
 
   return {
@@ -195,7 +222,10 @@ export interface ApprovalResult {
  * authUrl은 KG이니시스가 내려준 값만 사용하되, 도메인을 검증해 SSRF를 방지한다.
  */
 export async function approve(ret: StdPayReturn): Promise<ApprovalResult> {
-  const signKey = getSignKey();
+  // 승인 서명은 결제창을 띄운 MID와 매칭되는 signKey로 만들어야 한다.
+  // 빌링 MID로 시작된 거래면 빌링 signKey를 쓴다(ret.mid로 판별).
+  const mode: 'pay' | 'billing' = ret.mid === getMid('billing') ? 'billing' : 'pay';
+  const signKey = getSignKey(mode);
   const timestamp = String(Date.now());
   const signature = sha256(`authToken=${ret.authToken}&timestamp=${timestamp}`);
   const verification = sha256(`authToken=${ret.authToken}&signKey=${signKey}&timestamp=${timestamp}`);
@@ -265,7 +295,8 @@ export interface BillingChargeResult {
 
 /** 빌링키로 정기결제 청구. 성공 시 resultCode === '00'. */
 export async function chargeBilling(args: BillingChargeArgs): Promise<BillingChargeResult> {
-  const mid = getMid();
+  // 빌링 청구는 빌링키를 발급한 빌링 MID/INIAPI Key로 수행한다.
+  const mid = getMid('billing');
   const apiKey = getApiKey();
   const type = 'Billing';
   const paymethod = 'Card';
