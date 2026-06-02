@@ -111,9 +111,15 @@ function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }
         <Link href="/legal/payment" className="underline">유료 결제 이용약관</Link>
         에 동의한 것으로 간주됩니다.
       </p>
-      <p className="mt-3 text-center text-[11px] text-gray-400">
-        <Link href="/legal/business" className="underline">사업자 정보</Link>
-      </p>
+
+      <a
+        href="http://pf.kakao.com/_dcnGX/chat"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-4 text-center text-[12px] text-gray-500 underline hover:text-gray-700"
+      >
+        로그인에 문제가 있나요? 1:1 문의 (카카오톡 채널)
+      </a>
     </main>
   );
 }

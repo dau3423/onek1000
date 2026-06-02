@@ -49,7 +49,6 @@ export function BusinessFooter() {
           <Link href="/legal/terms" className="hover:underline">이용약관</Link>
           <Link href="/legal/privacy" className="hover:underline">개인정보처리방침</Link>
           <Link href="/legal/payment" className="hover:underline">유료 결제 이용약관</Link>
-          <Link href="/legal/business" className="hover:underline">사업자 정보</Link>
         </nav>
 
         {/* 오피넷 출처 표기 (SRS §데이터 출처) */}
