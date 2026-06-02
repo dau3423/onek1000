@@ -13,10 +13,23 @@ import { generateUniqueNickname } from '@/lib/nickname-db';
 
 const PREMIUM_CACHE_MS = 60_000;
 
+// 심사 계정 정규화 헬퍼.
+// secret(env)에 줄바꿈/공백이 섞이거나, 모바일 키보드가 이메일 첫 글자를 자동
+// 대문자로 바꾸는 경우에도 매칭이 깨지지 않도록 입력/secret 양쪽을 동일하게 정규화한다.
+//  - normPassword: trim만(비밀번호 대소문자는 보존). secret 끝 공백/줄바꿈 대비.
+//  - normEmail: trim + 소문자화(이메일은 본래 대소문자 구분 없음 → 모바일 자동 대문자 대비).
+function normPassword(v: string | undefined | null): string {
+  return (v ?? '').trim();
+}
+function normEmail(v: string | undefined | null): string {
+  return (v ?? '').trim().toLowerCase();
+}
+
 // 심사용 로그인 활성 여부(서버 전용 판단). 두 env가 모두 있어야 활성.
+// trim 후 truthy 판정(공백/줄바꿈만 든 secret은 미설정으로 취급).
 // 클라이언트엔 절대 값을 내리지 않고, 이 boolean만 별도 경로로 전달한다.
 export function isReviewerLoginEnabled(): boolean {
-  return Boolean(process.env.REVIEWER_EMAIL && process.env.REVIEWER_PASSWORD);
+  return Boolean(normEmail(process.env.REVIEWER_EMAIL) && normPassword(process.env.REVIEWER_PASSWORD));
 }
 
 // 타이밍 안전 문자열 비교(길이 노출 방지를 위해 양쪽을 SHA-256 후 고정 길이로 비교)
@@ -41,8 +54,9 @@ function buildProviders(): NextAuthOptions['providers'] {
   // 심사용 단일 계정 로그인: env가 모두 설정된 경우에만 providers에 추가.
   // 미설정이면 provider 자체가 없어 일반 사용자에게 노출/위험이 없다.
   if (isReviewerLoginEnabled()) {
-    const reviewerEmail = process.env.REVIEWER_EMAIL as string;
-    const reviewerPassword = process.env.REVIEWER_PASSWORD as string;
+    // secret도 입력과 동일하게 정규화해 둔다(끝 공백/줄바꿈, 이메일 대문자 대비).
+    const reviewerEmail = normEmail(process.env.REVIEWER_EMAIL);
+    const reviewerPassword = normPassword(process.env.REVIEWER_PASSWORD);
     providers.push(
       CredentialsProvider({
         id: 'credentials',
@@ -52,8 +66,9 @@ function buildProviders(): NextAuthOptions['providers'] {
           password: { label: '비밀번호', type: 'password' },
         },
         async authorize(credentials) {
-          const email = credentials?.email ?? '';
-          const password = credentials?.password ?? '';
+          // 입력값도 secret과 동일 규칙으로 정규화 후 비교한다.
+          const email = normEmail(credentials?.email);
+          const password = normPassword(credentials?.password);
           // env 단일 심사 계정과 정확히 일치할 때만 허용(타이밍 안전 비교).
           if (!email || !password) return null;
           if (!safeEqual(email, reviewerEmail)) return null;
