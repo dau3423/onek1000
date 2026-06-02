@@ -1,67 +1,12 @@
-'use client';
+// 로그인 페이지(서버 컴포넌트) — 심사용 로그인 폼 노출 여부만 서버에서 판단해 전달.
+// REVIEWER_EMAIL/PASSWORD env 값 자체는 절대 클라이언트로 내려보내지 않는다(boolean만 전달).
 
-import { signIn } from 'next-auth/react';
-import Image from 'next/image';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { isReviewerLoginEnabled } from '@/lib/auth/options';
+import SignInClient from './SignInClient';
 
-function SignInInner() {
-  const params = useSearchParams();
-  const callbackUrl = params.get('callbackUrl') ?? '/';
-
-  return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-6">
-      <Image
-        src="/icons/app_icon.png"
-        alt="1000냥 주유소"
-        width={64}
-        height={64}
-        className="rounded-2xl"
-        priority
-      />
-      <h1 className="mt-4 text-xl font-bold text-gray-900">1000냥 주유소</h1>
-      <p className="mt-1 text-sm text-gray-500">소셜 계정으로 1초만에 시작</p>
-
-      <div className="mt-8 w-full space-y-2">
-        <button
-          onClick={() => signIn('kakao', { callbackUrl })}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FEE500] py-3.5 font-bold text-[#191919] hover:opacity-90"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/kakao.png" alt="" width={20} height={20} className="h-5 w-5 object-contain" />
-          카카오로 시작하기
-        </button>
-        <button
-          onClick={() => signIn('google', { callbackUrl })}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-3.5 font-semibold text-gray-700 hover:bg-gray-50"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/google.png" alt="" width={20} height={20} className="h-5 w-5 object-contain" />
-          구글로 시작하기
-        </button>
-      </div>
-
-      <p className="mt-8 text-center text-[11px] text-gray-400">
-        로그인하면{' '}
-        <Link href="/legal/terms" className="underline">이용약관</Link>
-        {', '}
-        <Link href="/legal/privacy" className="underline">개인정보처리방침</Link>
-        {' '}및{' '}
-        <Link href="/legal/payment" className="underline">유료 결제 이용약관</Link>
-        에 동의한 것으로 간주됩니다.
-      </p>
-      <p className="mt-3 text-center text-[11px] text-gray-400">
-        <Link href="/legal/business" className="underline">사업자 정보</Link>
-      </p>
-    </main>
-  );
-}
+// 런타임 env(REVIEWER_*)에 따라 폼 노출이 갈리므로 동적 렌더링으로 평가한다.
+export const dynamic = 'force-dynamic';
 
 export default function SignInPage() {
-  return (
-    <Suspense fallback={<div className="flex min-h-dvh items-center justify-center text-sm text-gray-500">로딩 중...</div>}>
-      <SignInInner />
-    </Suspense>
-  );
+  return <SignInClient reviewerLoginEnabled={isReviewerLoginEnabled()} />;
 }
