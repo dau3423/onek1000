@@ -150,7 +150,7 @@ env:
     secret: OPINET_API_KEY
   # ─── 심사용 로그인 (심사 종료 후 제거) ───
   - variable: REVIEWER_EMAIL
-    value: "review@onek1000.com"
+    value: "test@onek1000.kr"
     availability:
       - BUILD
       - RUNTIME
