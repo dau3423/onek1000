@@ -140,18 +140,8 @@ export function SubscribeButton() {
 
       {/* 결제 수단(PG) 선택 */}
       <div className="grid grid-cols-2 gap-2">
-        <PgCard
-          selected={pg === 'inicis'}
-          onSelect={() => setPg('inicis')}
-          title="카드 결제"
-          desc="신용·체크카드"
-        />
-        <PgCard
-          selected={pg === 'kakaopay'}
-          onSelect={() => setPg('kakaopay')}
-          title="카카오페이"
-          desc="간편결제"
-        />
+        <CardPgButton selected={pg === 'inicis'} onSelect={() => setPg('inicis')} />
+        <KakaoPgButton selected={pg === 'kakaopay'} onSelect={() => setPg('kakaopay')} />
       </div>
 
       <button
@@ -180,14 +170,17 @@ interface PlanCardProps {
   badge?: string;
 }
 
+// 요금제 카드: 가격 강조형. 선택 시 주황 테두리 + 연한 주황 배경.
+// 다크모드에서도 텍스트가 묻히지 않도록 selected에 dark: 텍스트 색을 명시한다.
 function PlanCard({ selected, onSelect, title, price, desc, badge }: PlanCardProps) {
   return (
     <button
       type="button"
       onClick={onSelect}
+      aria-pressed={selected}
       className={`relative rounded-xl border p-3 text-left transition ${
         selected
-          ? 'border-primary bg-primary/5 ring-1 ring-primary'
+          ? 'border-primary bg-primary/5 ring-1 ring-primary dark:bg-primary/15'
           : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'
       }`}
     >
@@ -198,21 +191,21 @@ function PlanCard({ selected, onSelect, title, price, desc, badge }: PlanCardPro
       )}
       <div
         className={`text-xs font-semibold ${
-          selected ? 'text-gray-500' : 'text-gray-500 dark:text-gray-400'
+          selected
+            ? 'text-primary dark:text-primary'
+            : 'text-gray-500 dark:text-gray-400'
         }`}
       >
         {title}
       </div>
-      <div
-        className={`mt-0.5 text-lg font-extrabold ${
-          selected ? 'text-gray-900' : 'text-gray-900 dark:text-gray-100'
-        }`}
-      >
+      <div className="mt-0.5 text-lg font-extrabold text-gray-900 dark:text-gray-100">
         {price}
       </div>
       <div
         className={`mt-1 text-[11px] leading-tight ${
-          selected ? 'text-gray-500' : 'text-gray-500 dark:text-gray-400'
+          selected
+            ? 'text-gray-600 dark:text-gray-300'
+            : 'text-gray-500 dark:text-gray-400'
         }`}
       >
         {desc}
@@ -221,28 +214,88 @@ function PlanCard({ selected, onSelect, title, price, desc, badge }: PlanCardPro
   );
 }
 
-interface PgCardProps {
+interface PgButtonProps {
   selected: boolean;
   onSelect: () => void;
-  title: string;
-  desc: string;
 }
 
-function PgCard({ selected, onSelect, title, desc }: PgCardProps) {
+// 결제수단: 카드(이니시스). 중립 톤 + 카드 아이콘으로 요금제 카드와 구분.
+function CardPgButton({ selected, onSelect }: PgButtonProps) {
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={`rounded-xl border px-3 py-2.5 text-left transition ${
+      aria-pressed={selected}
+      className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition ${
         selected
-          ? 'border-primary bg-primary/5 ring-1 ring-primary'
+          ? 'border-primary bg-primary/5 ring-1 ring-primary dark:bg-primary/15'
           : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'
       }`}
     >
-      <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</div>
-      <div className="mt-0.5 text-[11px] leading-tight text-gray-500 dark:text-gray-400">
-        {desc}
-      </div>
+      <span
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+          selected
+            ? 'bg-primary text-white'
+            : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300'
+        }`}
+        aria-hidden
+      >
+        {/* 카드 아이콘 */}
+        <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+          <rect x="2.5" y="5" width="19" height="14" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+          <path d="M2.5 9.5h19" stroke="currentColor" strokeWidth="1.8" />
+          <path d="M6 14.5h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
+          카드 결제
+        </span>
+        <span className="block text-[11px] leading-tight text-gray-500 dark:text-gray-400">
+          신용·체크카드
+        </span>
+      </span>
+    </button>
+  );
+}
+
+// 결제수단: 카카오페이. 카카오 브랜드 노란색(#FEE500) + 다크 텍스트(#191919).
+// 노란 배경+검정 텍스트는 라이트/다크 모드 모두 가독성을 유지한다.
+function KakaoPgButton({ selected, onSelect }: PgButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      style={{ backgroundColor: '#FEE500' }}
+      className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition ${
+        selected ? 'border-[#191919] ring-1 ring-[#191919]' : 'border-[#FEE500]'
+      }`}
+    >
+      <span
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+        style={{ backgroundColor: 'rgba(0,0,0,0.08)' }}
+        aria-hidden
+      >
+        {/* 말풍선(카카오 심볼 느낌) 아이콘 */}
+        <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" style={{ color: '#191919' }}>
+          <path
+            d="M12 4.5c-4.6 0-8.3 2.9-8.3 6.5 0 2.3 1.6 4.3 4 5.5-.2.6-.7 2.2-.8 2.6 0 0 0 .2.1.2.1.1.2 0 .2 0 .3-.2 2.6-1.7 3.4-2.3.4 0 .7.1 1.1.1 4.6 0 8.3-2.9 8.3-6.6S16.6 4.5 12 4.5Z"
+            fill="currentColor"
+          />
+        </svg>
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-bold" style={{ color: '#191919' }}>
+          카카오페이
+        </span>
+        <span
+          className="block text-[11px] font-medium leading-tight"
+          style={{ color: 'rgba(0,0,0,0.6)' }}
+        >
+          간편결제
+        </span>
+      </span>
     </button>
   );
 }
