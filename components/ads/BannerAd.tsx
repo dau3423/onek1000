@@ -14,6 +14,12 @@ declare global {
 interface Props {
   /** 부모에서 강제로 숨기고 싶을 때 (예: 구독자 즉시 OFF) */
   hide?: boolean;
+  /**
+   * 하단 시트가 펼쳐진 상태 — 배너가 시트 콘텐츠 위에 떠 거슬리지 않도록 임시로 숨긴다.
+   * GPS 버튼과 동일한 sheetOpen 상태 소스를 공유해 fade-out + 클릭 차단으로 처리한다.
+   * (구독자/hide와 달리 DOM은 유지하고 opacity로만 숨겨 접히면 부드럽게 재등장한다.)
+   */
+  sheetOpen?: boolean;
 }
 
 /**
@@ -41,9 +47,12 @@ export function useBannerVisible(hide?: boolean): boolean {
   return !hide && !isPremium;
 }
 
-export function BannerAd({ hide }: Props) {
+export function BannerAd({ hide, sheetOpen }: Props) {
   const { data } = useSession();
   const isPremium = Boolean(data?.user?.isPremium);
+
+  // 시트 펼침 시 fade-out + 클릭 차단(GPS 버튼과 동일 톤). 접히면 다시 보인다.
+  const sheetHiddenCls = sheetOpen ? 'pointer-events-none opacity-0' : 'opacity-100';
 
   const client = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
   const slot = process.env.NEXT_PUBLIC_ADSENSE_BANNER_SLOT;
@@ -66,8 +75,9 @@ export function BannerAd({ hide }: Props) {
   if (!client || !slot) {
     return (
       <div
-        className="pointer-events-auto absolute inset-x-0 z-30 flex justify-center px-3 pb-2"
+        className={`pointer-events-auto absolute inset-x-0 z-30 flex justify-center px-3 pb-2 transition-opacity duration-300 ${sheetHiddenCls}`}
         style={{ bottom: `calc(${BANNER_BOTTOM_PX}px + env(safe-area-inset-bottom))` }}
+        aria-hidden={sheetOpen}
       >
         <Link
           href="/pricing"
@@ -85,8 +95,9 @@ export function BannerAd({ hide }: Props) {
 
   return (
     <div
-      className="pointer-events-auto absolute inset-x-0 z-30 flex justify-center px-3 pb-2"
+      className={`pointer-events-auto absolute inset-x-0 z-30 flex justify-center px-3 pb-2 transition-opacity duration-300 ${sheetHiddenCls}`}
       style={{ bottom: `calc(${BANNER_BOTTOM_PX}px + env(safe-area-inset-bottom))` }}
+      aria-hidden={sheetOpen}
     >
       <ins
         ref={ref}

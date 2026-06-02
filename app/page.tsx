@@ -422,8 +422,9 @@ export default function HomePage() {
           />
         )}
 
-        {/* 배너 광고 (무료 사용자만 — MVP는 전부 무료) */}
-        <BannerAd />
+        {/* 배너 광고 (무료 사용자만 — MVP는 전부 무료).
+            시트 펼침 시에는 GPS 버튼과 동일하게 fade-out + 클릭 차단으로 숨긴다. */}
+        <BannerAd sheetOpen={sheetOpen} />
 
         {/* 하단 시트 */}
         <BottomSheet
