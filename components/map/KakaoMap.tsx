@@ -51,11 +51,11 @@ function readableText(hex: string): string {
 function topPinSvg(rank: number, size: number, tierColor: string, brandColor: string, golden = false) {
   const w = Math.round(size * 0.72);
   const headR = w * 0.5;
-  // 황금 마커: 본체=골드, 테두리=진한 골드. 일반: 본체=tier 색, 테두리=브랜드 색.
-  const bodyColor = golden ? '#FDE68A' : tierColor; // 머리 안쪽 채움(밝은 골드)
-  const ringColor = golden ? '#B45309' : brandColor; // 물방울 외곽(진한 골드)
-  const headTopColor = golden ? '#FBBF24' : tierColor; // 머리 상단 하이라이트(골드 그라데이션용)
-  const txt = golden ? '#3a2a08' : readableText(tierColor);
+  // 황금 마커: 본체=메탈릭 골드, 테두리=브랜드 색(금색 몸통과 분리되도록 흰 외곽선 한 겹 추가).
+  // 일반: 본체=tier 색, 테두리=브랜드 색. 골드는 머리 안쪽 다단계 그라데이션으로 금속 광택을 낸다.
+  const bodyColor = golden ? '#F5C518' : tierColor; // 머리 안쪽 코어(메탈릭 골드)
+  const ringColor = golden ? '#9A6B12' : brandColor; // 머리 외곽 링(golden은 진한 골드 음영 유지)
+  const txt = golden ? '#4a3208' : readableText(tierColor);
   // 두 자리(10)는 살짝 작게 그려 머리 원 안에 들어오게 한다.
   const numFont = rank >= 10 ? headR * 0.66 : headR * 0.82;
   const inner = `<text x="${headR}" y="${headR}" text-anchor="middle" dominant-baseline="central" font-size="${numFont}" font-weight="800" fill="${txt}">${rank}</text>`;
@@ -64,24 +64,58 @@ function topPinSvg(rank: number, size: number, tierColor: string, brandColor: st
   const crownH = crownW * 0.62;
   const crownX = (w - crownW) / 2;
   const crownY = -crownH * 0.62; // 머리 원 위로 살짝 겹쳐 올림
-  const crown = crownSvg(crownX, crownY, crownW, crownH);
+  const crown = crownSvg(crownX, crownY, crownW, crownH, golden);
   // 물방울 경로: 위쪽 원 + 아래로 뾰족한 꼬리.
   // 일반 마커와 동일 원칙: 머리를 ringColor로 채워 두꺼운 테두리처럼 보이게 한 뒤,
   // 그 안에 흰 간격 링 → bodyColor 얼굴 원을 겹쳐 "두꺼운 테두리 — 흰 링 — 본체 머리"로 분리.
-  // golden=true면 본체를 위(밝은 골드)→아래(골드) 그라데이션으로 칠해 황금 광택을 준다.
+  // golden=true면 본체를 다단계 메탈릭 골드 그라데이션(밝은 하이라이트→코어→음영)으로 칠해
+  // 금속 광택을 낸다. 추가로 머리 상단에 작은 흰색 하이라이트 점을 얹어 광택 반사를 표현한다.
   // 왕관이 머리 위로 올라가므로 viewBox 상단에 여유(crownH)를 둔다.
-  const gid = `g${rank}-${golden ? 'au' : 'n'}-${Math.round(size)}`; // 그라데이션 id 충돌 방지
+  const gid = `g${rank}-${golden ? 'au' : 'n'}-${Math.round(size)}`; // 머리 코어 그라데이션 id 충돌 방지
+  const bid = `b${rank}-${golden ? 'au' : 'n'}-${Math.round(size)}`; // 물방울 몸통 그라데이션 id 충돌 방지
   const headFill = golden ? `url(#${gid})` : bodyColor;
+  // golden=true면 물방울 몸통 전체를 밝은 메탈릭 골드 세로 그라데이션으로 채워(머리→꼬리) 균일하게
+  // 반짝이게 한다. 외곽선(stroke)은 진한 골드 대신 "브랜드 색"으로 칠해, 일반 마커와 동일하게
+  // 브랜드를 테두리로 구분한다(앱 마커 규칙: 브랜드=테두리 색, MarkerLegend 참고).
+  // golden=false면 기존처럼 ringColor(브랜드) 단색 채움 + stroke 없음 — 동작 불변.
+  const bodyFill = golden ? `url(#${bid})` : ringColor;
+  // 브랜드 색 테두리: 또렷하게 보이도록 두께를 키운다(기존 w*0.03 → w*0.06).
+  const brandStrokeW = w * 0.06;
+  const bodyStroke = golden ? ` stroke="${brandColor}" stroke-width="${brandStrokeW}"` : '';
+  // S-OIL(노랑)·현대(주황) 등 금색과 명도가 가까운 브랜드 색은 금색 몸통에 묻힐 수 있다.
+  // 브랜드 테두리 바깥에 아주 얇은 흰색 외곽선을 한 겹 더 둬(같은 path를 더 굵은 흰 stroke로
+  // 먼저 그림) 어떤 브랜드 색이든 금색 몸통과 분리돼 보이게 한다. golden일 때만 그린다.
+  const bodyDropPath = `M${headR} ${size} C${headR * 0.15} ${size * 0.62} 0 ${headR * 1.25} 0 ${headR} a${headR} ${headR} 0 1 1 ${w} 0 C${w} ${headR * 1.25} ${headR * 1.85} ${size * 0.62} ${headR} ${size} Z`;
+  const bodyOutline = golden
+    ? `<path d="${bodyDropPath}" fill="none" stroke="#ffffff" stroke-width="${brandStrokeW + w * 0.045}" stroke-linejoin="round"/>`
+    : '';
+  // 머리 코어 다단계 골드: #FFF7CC(밝은 하이라이트)→#FDE68A→#F5C518(코어)→#E6B800→#C8941A(음영)
+  // 몸통 세로 골드: 위(머리)는 밝게(#FDE68A) → 아래(꼬리)는 약간 진하게(#D6A019)로 입체감.
   const goldGrad = golden
-    ? `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="${headTopColor}"/><stop offset="1" stop-color="${bodyColor}"/>
+    ? `<defs><linearGradient id="${gid}" x1="0.25" y1="0" x2="0.75" y2="1">
+        <stop offset="0" stop-color="#FFF7CC"/>
+        <stop offset="0.28" stop-color="#FDE68A"/>
+        <stop offset="0.55" stop-color="#F5C518"/>
+        <stop offset="0.8" stop-color="#E6B800"/>
+        <stop offset="1" stop-color="#C8941A"/>
+      </linearGradient>
+      <linearGradient id="${bid}" x1="0.5" y1="0" x2="0.5" y2="1">
+        <stop offset="0" stop-color="#FDE68A"/>
+        <stop offset="0.45" stop-color="#F5C518"/>
+        <stop offset="1" stop-color="#D6A019"/>
       </linearGradient></defs>`
+    : '';
+  // 금속 광택 반사 하이라이트(머리 좌상단의 작은 흰 점) — 골드 마커에만.
+  const gloss = golden
+    ? `<ellipse cx="${headR * 0.66}" cy="${headR * 0.6}" rx="${headR * 0.26}" ry="${headR * 0.18}" fill="#ffffff" opacity="0.7"/>`
     : '';
   return `<svg width="${w}" height="${size - crownY}" viewBox="0 ${crownY} ${w} ${size - crownY}" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))">
     ${goldGrad}
-    <path d="M${headR} ${size} C${headR * 0.15} ${size * 0.62} 0 ${headR * 1.25} 0 ${headR} a${headR} ${headR} 0 1 1 ${w} 0 C${w} ${headR * 1.25} ${headR * 1.85} ${size * 0.62} ${headR} ${size} Z" fill="${ringColor}"/>
+    ${bodyOutline}
+    <path d="${bodyDropPath}" fill="${bodyFill}"${bodyStroke}/>
     <circle cx="${headR}" cy="${headR}" r="${headR * 0.80}" fill="#ffffff"/>
     <circle cx="${headR}" cy="${headR}" r="${headR * 0.66}" fill="${headFill}"/>
+    ${gloss}
     ${inner}
     ${crown}
   </svg>`;
@@ -89,12 +123,23 @@ function topPinSvg(rank: number, size: number, tierColor: string, brandColor: st
 
 // 왕관(👑) 인라인 SVG — OS 무관 동일 모양. 골드 채움 + 흰 외곽선으로 어느 배경에서도 식별.
 // (x,y,w,h) 영역에 맞춰 path 좌표를 viewBox 0 0 24 16 기준에서 스케일/이동한다.
-function crownSvg(x: number, y: number, w: number, h: number) {
+// golden=true면 핀 본체와 같은 메탈릭 골드 그라데이션(밝은 하이라이트→음영)으로 통일감을 준다.
+function crownSvg(x: number, y: number, w: number, h: number, golden = false) {
   const sx = w / 24;
   const sy = h / 16;
+  const cid = `cg-${Math.round(x)}-${Math.round(w)}`; // 그라데이션 id 충돌 방지
+  const fill = golden ? `url(#${cid})` : '#F59E0B';
+  const grad = golden
+    ? `<defs><linearGradient id="${cid}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#FFF3B0"/>
+        <stop offset="0.5" stop-color="#F5C518"/>
+        <stop offset="1" stop-color="#D6A019"/>
+      </linearGradient></defs>`
+    : '';
   return `<g transform="translate(${x} ${y}) scale(${sx} ${sy})">
-    <path d="M2 13 L1 4 L8 9 L12 2 L16 9 L23 4 L22 13 Z" fill="#F59E0B" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/>
-    <rect x="2" y="13" width="20" height="2.4" rx="1" fill="#F59E0B" stroke="#ffffff" stroke-width="1.2"/>
+    ${grad}
+    <path d="M2 13 L1 4 L8 9 L12 2 L16 9 L23 4 L22 13 Z" fill="${fill}" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/>
+    <rect x="2" y="13" width="20" height="2.4" rx="1" fill="${fill}" stroke="#ffffff" stroke-width="1.2"/>
   </g>`;
 }
 
@@ -423,9 +468,17 @@ export function KakaoMap({
       const pinSize = showLabel ? 38 : 42; // 축소 줌에서 오히려 더 크게 → 전국에서 눈에 띔
       // 전국 TOP10은 핀 본체를 황금색으로(golden). tier/brand 색은 무시되지만 시그니처 유지.
       const pin = topPinSvg(r, pinSize, tierColor, brandColor, true);
-      // 핀을 골드 글로우 펄스로 감싼다(은은하게 빛났다 잦아드는 반짝임). pin SVG 자체의
-      // drop-shadow는 펄스 keyframe이 덮어쓰므로, 래퍼에 animation만 걸어 형태는 그대로 둔다.
-      const glowPin = `<div class="top10-glow" style="animation:top10-gold-glow 2.4s ease-in-out infinite">${pin}</div>`;
+      // 핀을 골드 글로우 펄스로 감싸고(강한 금빛이 빛났다 잦아듦), 그 안쪽 래퍼에는
+      // 하이라이트 스윕(sheen: 빛이 핀을 훑고 지나감)과 작은 반짝이 별(sparkle) 2개를 얹어
+      // "반짝이는 황금색"을 확실히 살린다. 모션 민감 시 globals.css에서 모두 중단된다.
+      // pin SVG 자체 drop-shadow는 글로우 keyframe이 덮어쓰므로 형태에는 영향 없음.
+      const glowPin = `<div class="top10-glow" style="animation:top10-gold-glow 2.4s ease-in-out infinite">
+        <div class="top10-pin">
+          ${pin}
+          <span class="top10-sparkle top10-sparkle--a">✦</span>
+          <span class="top10-sparkle top10-sparkle--b">✦</span>
+        </div>
+      </div>`;
       // 가격 라벨: 단색 앰버 → 황금 그라데이션 + shimmer 빛줄기로 "반짝이는 황금색" 강조.
       const goldLabel = `
           <div class="top10-shimmer" style="position:relative;padding:4px 8px;border-radius:10px;background:linear-gradient(135deg,#FDE68A,#F59E0B 55%,#B45309);color:#3a2a08;font-size:12px;font-weight:800;box-shadow:0 2px 6px rgba(180,83,9,.45);white-space:nowrap;border:1.5px solid #FCD34D;text-shadow:0 1px 0 rgba(255,255,255,.4)">

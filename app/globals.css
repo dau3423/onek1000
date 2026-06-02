@@ -21,10 +21,11 @@ body {
    지도 마커(innerHTML 문자열로 주입되는 CustomOverlay의 황금 핀/라벨)와 목록의 '전국 N위'
    배지에서 공용으로 쓴다. inline style="animation:..."로 참조하므로 keyframes는 전역에 둔다. */
 
-/* 골드 글로우 펄스: 핀/배지 주변이 은은하게 빛났다 잦아든다(드롭섀도 펄스). */
+/* 골드 글로우 펄스: 핀/배지 주변을 더 강하게 금빛으로 빛냈다 잦아든다(드롭섀도 2단 펄스).
+   주변 일반 핀들 사이에서 확실히 도드라지도록 반경/세기를 키웠다. */
 @keyframes top10-gold-glow {
-  0%, 100% { filter: drop-shadow(0 0 2px rgba(245, 158, 11, .55)) drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
-  50%      { filter: drop-shadow(0 0 7px rgba(250, 204, 21, .95)) drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+  0%, 100% { filter: drop-shadow(0 0 3px rgba(245, 197, 24, .75)) drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+  50%      { filter: drop-shadow(0 0 10px rgba(255, 223, 70, 1)) drop-shadow(0 0 18px rgba(245, 197, 24, .65)) drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
 }
 
 /* shimmer 하이라이트: 황금 라벨 위를 흰 빛줄기가 사선으로 천천히 가로지른다(glitter). */
@@ -44,8 +45,45 @@ body {
   pointer-events: none;
 }
 
-/* 모션 민감 사용자: 반짝임/글로우 중단(접근성, NFR-7). */
+/* 핀 본체 위 하이라이트 스윕(sheen): 밝은 금빛이 핀 머리를 사선으로 훑고 지나간다.
+   .top10-pin 래퍼(핀 SVG 감싸는 div)에 ::after로 얹어 "반짝 빛이 훑는" 느낌을 준다. */
+.top10-pin { position: relative; }
+.top10-pin::after {
+  content: '';
+  position: absolute;
+  top: 6%; left: 12%;
+  width: 76%; height: 60%;
+  border-radius: 50%;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.92) 48%, transparent 64%);
+  background-size: 260% 260%;
+  mix-blend-mode: screen;
+  animation: top10-gold-sheen 3s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes top10-gold-sheen {
+  0%, 70%, 100% { background-position: 150% 150%; opacity: 0; }
+  18%           { opacity: 1; }
+  35%           { background-position: -50% -50%; opacity: 0; }
+}
+
+/* 작은 반짝이 별(sparkle): 핀 머리 주변에서 점멸하며 "글리터링 골드" 단서를 더한다.
+   ✦ 글리프 2개를 위상차를 두고 깜빡여 고급스러운 금빛 반짝임을 낸다(과하지 않게). */
+.top10-sparkle { position: absolute; pointer-events: none; color: #FFF3B0;
+  text-shadow: 0 0 4px rgba(255, 223, 70, .95); font-size: 9px; line-height: 1;
+  opacity: 0; }
+.top10-sparkle--a { top: 2%; right: 8%; animation: top10-sparkle 2.6s ease-in-out infinite; }
+.top10-sparkle--b { top: 34%; left: 4%; font-size: 7px; animation: top10-sparkle 2.6s ease-in-out 1.3s infinite; }
+@keyframes top10-sparkle {
+  0%, 60%, 100% { opacity: 0; transform: scale(.5) rotate(0deg); }
+  20%           { opacity: 1; transform: scale(1) rotate(45deg); }
+  40%           { opacity: 0; transform: scale(.5) rotate(90deg); }
+}
+
+/* 모션 민감 사용자: 반짝임/글로우/스윕/스파클 중단(접근성, NFR-7). */
 @media (prefers-reduced-motion: reduce) {
   .top10-glow,
-  .top10-shimmer::after { animation: none !important; }
+  .top10-shimmer::after,
+  .top10-pin::after,
+  .top10-sparkle { animation: none !important; }
+  .top10-sparkle { display: none; }
 }
