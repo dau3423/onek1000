@@ -156,25 +156,16 @@ env:
       - RUNTIME
   - variable: REVIEWER_PASSWORD
     secret: REVIEWER_PASSWORD
-  # ─── KG이니시스 결제 ───
-  # 미설정 시 코드의 공개 테스트값(INIpayTest)으로 동작. 실연동 시 아래를 등록.
-  # MID는 클라이언트 결제창에도 노출되는 값이라 value로 둬도 무방.
-  # - variable: INICIS_MID
-  #   value: "INIpayTest"
-  #   availability:
-  #     - BUILD
-  #     - RUNTIME
-  # signKey / API Key / 서버 IP는 시크릿(서버 전용):
-  #   firebase apphosting:secrets:set INICIS_SIGN_KEY
-  #   firebase apphosting:secrets:set INICIS_API_KEY
-  # - variable: INICIS_SIGN_KEY
-  #   secret: INICIS_SIGN_KEY
-  # - variable: INICIS_API_KEY
-  #   secret: INICIS_API_KEY
-  # - variable: INICIS_CLIENT_IP
-  #   value: "1.2.3.4"   # 빌링 REST API 호출용 고정 IP(이니시스 화이트리스트 등록)
-  #   availability:
-  #     - RUNTIME
+  # ─── 포트원(PortOne) v2 결제 ───
+  # storeId/channelKey는 공개값(클라 노출 OK) → 미설정 시 코드 폴백 상수 사용.
+  # 필요 시 NEXT_PUBLIC_PORTONE_STORE_ID / NEXT_PUBLIC_PORTONE_CHANNEL_* 를 value로 등록.
+  # API Secret / Webhook Secret 은 서버 전용 시크릿:
+  #   firebase apphosting:secrets:set PORTONE_API_SECRET
+  #   firebase apphosting:secrets:set PORTONE_WEBHOOK_SECRET
+  # - variable: PORTONE_API_SECRET
+  #   secret: PORTONE_API_SECRET
+  # - variable: PORTONE_WEBHOOK_SECRET
+  #   secret: PORTONE_WEBHOOK_SECRET
 
   # ─── 아래는 발급/등록되는 대로 주석 해제 ───
   #
@@ -219,8 +210,8 @@ env:
   # - variable: GOOGLE_CLIENT_SECRET
   #   secret: GOOGLE_CLIENT_SECRET
   #
-  # KG이니시스(실연동 발급 후): 위 'KG이니시스 결제' 블록 주석 해제.
-  #   INICIS_MID(value) / INICIS_SIGN_KEY(secret) / INICIS_API_KEY(secret) / INICIS_CLIENT_IP(value)
+  # 포트원(PortOne) 발급 후: 위 '포트원 v2 결제' 블록 주석 해제.
+  #   PORTONE_API_SECRET(secret) / PORTONE_WEBHOOK_SECRET(secret) + (선택) NEXT_PUBLIC_PORTONE_*(value)
   #
   # Web Push (VAPID):
   # - variable: NEXT_PUBLIC_VAPID_PUBLIC_KEY

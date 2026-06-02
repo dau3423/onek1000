@@ -12,6 +12,7 @@
     "vapid:gen": "node -e \"const w=require('web-push');const k=w.generateVAPIDKeys();console.log('NEXT_PUBLIC_VAPID_PUBLIC_KEY='+k.publicKey);console.log('VAPID_PRIVATE_KEY='+k.privateKey);\""
   },
   "dependencies": {
+    "@portone/browser-sdk": "^0.1.8",
     "@supabase/supabase-js": "2.45.1",
     "@tanstack/react-query": "5.51.1",
     "clsx": "2.1.1",

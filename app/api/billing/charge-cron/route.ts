@@ -1,10 +1,13 @@
-// Cron(매시간) — trial 만료 또는 next_charge_at 도래한 "정기(빌링)" 구독을 KG이니시스 빌링 API로 청구.
+// Cron(매시간) — trial 만료 또는 next_charge_at 도래한 "정기(빌링)" 구독을 포트원 v2 빌링키 결제로 청구.
 // 단건(onetime, billing_key 없음)은 대상이 아니다(만료 시 자연 expire).
 // Authorization: Bearer ${CRON_SECRET}
+//
+// 빌링키 결제: POST /payments/{paymentId}/billing-key. 채널은 빌링키 자체로 결정되므로 channelKey 생략.
+// 기존 trial/past_due/재시도(3회) 로직 그대로 유지. tid 는 inicis_tid 컬럼 재사용(포트원 paymentId/txId).
 
 import { NextResponse } from 'next/server';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
-import { chargeBilling, PLAN, makeOid } from '@/lib/billing/inicis';
+import { payWithBillingKey, isPortoneConfigured, PLAN, makePaymentId } from '@/lib/billing/portone';
 import { randomUUID } from 'crypto';
 
 export const runtime = 'nodejs';
@@ -22,12 +25,13 @@ export async function POST(req: Request) {
   if (!isSupabaseConfigured()) {
     return NextResponse.json({ skipped: true, reason: 'supabase not configured' });
   }
+  if (!isPortoneConfigured()) {
+    return NextResponse.json({ skipped: true, reason: 'portone not configured' });
+  }
 
   const sb = getSupabase();
   const now = new Date();
   const nowIso = now.toISOString();
-  const merchantUrl = (process.env.NEXTAUTH_URL || 'https://onek1000.kr').replace(/^https?:\/\//, '');
-  const clientIp = process.env.INICIS_CLIENT_IP || '127.0.0.1';
 
   // 1) 단건(onetime) 만료 처리: 결제 없이 expired 마킹
   await sb
@@ -52,29 +56,34 @@ export async function POST(req: Request) {
   const plan = PLAN.monthly_1000;
 
   for (const s of due ?? []) {
-    const oid = makeOid('RC');
+    const paymentId = makePaymentId('rc');
     // 구매자 정보(이메일) — 영수증/식별용
-    const { data: u } = await sb.from('users').select('email, nickname, name').eq('id', s.user_id).maybeSingle();
+    const { data: u } = await sb
+      .from('users')
+      .select('email, nickname, name')
+      .eq('id', s.user_id)
+      .maybeSingle();
     try {
-      const charge = await chargeBilling({
-        billKey: s.billing_key!,
-        oid,
-        price: plan.amount,
-        goodName: plan.name,
-        buyerName: (u?.nickname as string) || (u?.name as string) || '1000냥 회원',
-        buyerEmail: (u?.email as string) || '',
-        clientIp,
-        url: merchantUrl,
+      const charge = await payWithBillingKey({
+        paymentId,
+        billingKey: s.billing_key!,
+        amount: plan.amount,
+        orderName: plan.name,
+        customer: {
+          id: String(s.user_id),
+          email: (u?.email as string) || undefined,
+          name: (u?.nickname as string) || (u?.name as string) || '1000냥 회원',
+        },
       });
 
-      if (!charge.ok) throw new Error(`${charge.resultMsg ?? ''} (${charge.resultCode})`);
+      if (!charge.ok) throw new Error(`${charge.message ?? ''} (${charge.status ?? 'fail'})`);
 
       const next = new Date(now.getTime() + plan.intervalDays * 86400000);
       await sb
         .from('subscriptions')
         .update({
           status: 'active',
-          inicis_tid: charge.tid ?? null,
+          inicis_tid: charge.pgTxId ?? charge.paymentId, // 포트원 paymentId/txId 재사용
           last_payment_at: nowIso,
           current_period_start: nowIso,
           current_period_end: next.toISOString(),
@@ -85,8 +94,13 @@ export async function POST(req: Request) {
         .eq('id', s.id);
 
       await sb.from('billing_events').insert({
-        subscription_id: s.id, user_id: s.user_id, kind: 'charge_success', provider: 'inicis',
-        amount: plan.amount, oid, tid: charge.tid ?? null,
+        subscription_id: s.id,
+        user_id: s.user_id,
+        kind: 'charge_success',
+        provider: 'portone',
+        amount: plan.amount,
+        oid: paymentId,
+        tid: charge.pgTxId ?? charge.paymentId,
         raw: charge.raw as Record<string, unknown>,
       });
       results.push({ id: s.id, ok: true });
@@ -104,8 +118,13 @@ export async function POST(req: Request) {
         .eq('id', s.id);
 
       await sb.from('billing_events').insert({
-        subscription_id: s.id, user_id: s.user_id, kind: 'charge_fail', provider: 'inicis',
-        amount: plan.amount, oid, raw: { error: String(e) },
+        subscription_id: s.id,
+        user_id: s.user_id,
+        kind: 'charge_fail',
+        provider: 'portone',
+        amount: plan.amount,
+        oid: paymentId,
+        raw: { error: String(e) },
       });
       results.push({ id: s.id, ok: false, error: String(e) });
     }

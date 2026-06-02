@@ -37,7 +37,7 @@ export async function POST() {
     .eq('id', sub.id);
 
   await sb.from('billing_events').insert({
-    subscription_id: sub.id, user_id: user.id, kind: 'cancel', provider: 'inicis', amount: 0,
+    subscription_id: sub.id, user_id: user.id, kind: 'cancel', provider: 'portone', amount: 0,
   });
 
   return NextResponse.json({ ok: true });

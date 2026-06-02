@@ -57,7 +57,7 @@ export default function PricingPage() {
       <section className="mt-auto space-y-2 border-t border-gray-100 bg-gray-50 px-6 py-5 pb-[calc(20px+env(safe-area-inset-bottom))]">
         <SubscribeButton />
         <p className="text-center text-[11px] text-gray-500">
-          정기: 7일 무료 후 매월 ₩1,000 자동결제 · 1개월권: ₩1,000 단건(1개월 후 만료) · 결제 KG이니시스
+          정기: 7일 무료 후 매월 ₩1,000 자동결제 · 1개월권: ₩1,000 단건(1개월 후 만료) · 카드·카카오페이 결제
         </p>
         <p className="text-center text-[11px] text-gray-400">
           결제 진행 시{' '}

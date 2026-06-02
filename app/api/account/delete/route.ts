@@ -63,7 +63,7 @@ export async function POST() {
         subscription_id: sub.id,
         user_id: userId,
         kind: 'cancel',
-        provider: 'inicis',
+        provider: 'portone',
         amount: 0,
       });
     }
