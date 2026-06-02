@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { SHEET_PEEK_PX } from '@/components/ui/BottomSheet';
 
 declare global {
   interface Window {
@@ -19,8 +20,14 @@ interface Props {
  * 배너 레이아웃 상수 (단일 출처).
  * GPS 버튼 등 배너 위치에 맞춰 떠야 하는 요소가 동일 값을 참조한다.
  */
-/** 배너 컨테이너의 맵 하단 기준 bottom 오프셋(px) — 시트 peek 위에 얹힌다 */
-export const BANNER_BOTTOM_PX = 72;
+/** 배너와 시트 peek 사이 시각적 간격(px) */
+const BANNER_SHEET_GAP_PX = 8;
+/**
+ * 배너 컨테이너의 맵 하단 기준 bottom 오프셋(px) — 접힌 시트 peek 바로 위에 얹힌다.
+ * 시트 peek 높이(SHEET_PEEK_PX)에 연동되므로 peek가 바뀌어도 배너가 시트에 가려지지 않는다.
+ * (safe-area는 컨테이너 className의 px/pb로 보정하지 않고, 부모 page의 GPS 위치 계산에서 별도 반영)
+ */
+export const BANNER_BOTTOM_PX = SHEET_PEEK_PX + BANNER_SHEET_GAP_PX;
 /** 배너 컨테이너의 시각적 높이(px) — minHeight(50) + pb-2(8) 여유 포함 */
 export const BANNER_HEIGHT_PX = 58;
 
@@ -58,7 +65,10 @@ export function BannerAd({ hide }: Props) {
   // bottom-[72px] = BANNER_BOTTOM_PX. Tailwind JIT 정적 스캔을 위해 리터럴 유지(상수와 동일).
   if (!client || !slot) {
     return (
-      <div className="pointer-events-auto absolute inset-x-0 bottom-[72px] z-10 flex justify-center px-3 pb-2">
+      <div
+        className="pointer-events-auto absolute inset-x-0 z-30 flex justify-center px-3 pb-2"
+        style={{ bottom: `calc(${BANNER_BOTTOM_PX}px + env(safe-area-inset-bottom))` }}
+      >
         <Link
           href="/pricing"
           className="flex w-full max-w-md items-center justify-between rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2.5 text-white shadow-lg"
@@ -74,7 +84,10 @@ export function BannerAd({ hide }: Props) {
   }
 
   return (
-    <div className="pointer-events-auto absolute inset-x-0 bottom-[72px] z-10 flex justify-center px-3 pb-2">
+    <div
+      className="pointer-events-auto absolute inset-x-0 z-30 flex justify-center px-3 pb-2"
+      style={{ bottom: `calc(${BANNER_BOTTOM_PX}px + env(safe-area-inset-bottom))` }}
+    >
       <ins
         ref={ref}
         className="adsbygoogle block w-full max-w-md"
