@@ -18,8 +18,8 @@ body {
 .map-container { position: relative; height: 100%; width: 100%; }
 
 /* === 전국 최저가 TOP10 "반짝이는 황금색" 강조 ===
-   지도 마커(innerHTML 문자열로 주입되는 CustomOverlay)와 목록 행에서 공용으로 쓴다.
-   inline style="animation:..."로 참조하므로 keyframes는 전역에 정의한다. */
+   지도 마커(innerHTML 문자열로 주입되는 CustomOverlay의 황금 핀/라벨)와 목록의 '전국 N위'
+   배지에서 공용으로 쓴다. inline style="animation:..."로 참조하므로 keyframes는 전역에 둔다. */
 
 /* 골드 글로우 펄스: 핀/배지 주변이 은은하게 빛났다 잦아든다(드롭섀도 펄스). */
 @keyframes top10-gold-glow {
@@ -33,12 +33,6 @@ body {
   100% { transform: translateX(220%) skewX(-20deg); }
 }
 
-/* 목록 행 강조: 골드 배경이 은은하게 밝아졌다 가라앉는다. */
-@keyframes top10-row-pulse {
-  0%, 100% { box-shadow: inset 0 0 0 1px rgba(245, 158, 11, .45); }
-  50%      { box-shadow: inset 0 0 0 1px rgba(250, 204, 21, .9), 0 0 8px rgba(245, 158, 11, .25); }
-}
-
 .top10-shimmer { position: relative; overflow: hidden; }
 .top10-shimmer::after {
   content: '';
@@ -50,9 +44,8 @@ body {
   pointer-events: none;
 }
 
-/* 모션 민감 사용자: 반짝임/펄스 중단(접근성, NFR-7). */
+/* 모션 민감 사용자: 반짝임/글로우 중단(접근성, NFR-7). */
 @media (prefers-reduced-motion: reduce) {
   .top10-glow,
-  .top10-row,
   .top10-shimmer::after { animation: none !important; }
 }

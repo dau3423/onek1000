@@ -142,20 +142,12 @@ export function BottomSheet({
               const distanceText = s.distance != null
                 ? s.distance < 1000 ? `${Math.round(s.distance)}m` : `${(s.distance / 1000).toFixed(1)}km`
                 : null;
-              // 전국 최저가 TOP10에 든 주유소면 행을 "반짝이는 황금색"으로 강조.
+              // 전국 최저가 TOP10에 든 주유소면 '전국 N위' 배지만 단다(행 배경/테두리 강조는 없음).
               const nationalRank = nationalTop10Rank?.get(s.id);
               const isNationalTop = nationalRank != null;
               return (
                 <li key={s.id}>
-                  <div
-                    className={clsx(
-                      'flex w-full items-center gap-3 px-5 py-3',
-                      isNationalTop &&
-                        // 골드 그라데이션 배경 + 펄스 테두리(top10-row-pulse). 다크모드는 톤 다운.
-                        'top10-row relative bg-gradient-to-r from-amber-50 to-amber-100/60 dark:from-amber-500/10 dark:to-amber-400/5',
-                    )}
-                    style={isNationalTop ? { animation: 'top10-row-pulse 2.4s ease-in-out infinite' } : undefined}
-                  >
+                  <div className="flex w-full items-center gap-3 px-5 py-3">
                     <button onClick={() => onSelect(s)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                       <span className="w-5 text-center text-xs font-bold text-gray-500 dark:text-gray-400">{i + 1}</span>
                       <span

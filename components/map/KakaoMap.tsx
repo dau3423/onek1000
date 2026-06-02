@@ -42,14 +42,20 @@ function readableText(hex: string): string {
 }
 
 // TOP10 핀(물방울) 모양 마커 SVG — 일반 원형 마커와 형태부터 확연히 구분.
-// 색 역할 통일: 본체 채움=가격 tier 색(tierColor), 테두리=브랜드 색(brandColor).
+// golden=true(전국 TOP10): 핀 본체 자체를 "황금색"으로 칠한다. 머리(테두리)=진한 골드,
+// 흰 링 → 머리 안쪽=밝은 골드 그라데이션으로 한눈에 황금 마커로 보이게 한다(글로우/shimmer는
+// 호출부에서 래퍼/라벨에 덧입힘). golden=false(내 주변 등): 본체=tier 색, 테두리=brandColor.
 // 모든 전국 TOP10 핀은 "왕관(👑) + 순위 숫자(1~10)"로 표시한다(메달 제거).
-// 왕관은 핀 머리 위에 떠 있게 두고, 순위 숫자는 머리 안에 배치(tier 색 대비 텍스트색).
+// 왕관은 핀 머리 위에 떠 있게 두고, 순위 숫자는 머리 안에 배치(본체 색 대비 텍스트색).
 // size: 핀 전체 높이(px).
-function topPinSvg(rank: number, size: number, tierColor: string, brandColor: string) {
+function topPinSvg(rank: number, size: number, tierColor: string, brandColor: string, golden = false) {
   const w = Math.round(size * 0.72);
   const headR = w * 0.5;
-  const txt = readableText(tierColor);
+  // 황금 마커: 본체=골드, 테두리=진한 골드. 일반: 본체=tier 색, 테두리=브랜드 색.
+  const bodyColor = golden ? '#FDE68A' : tierColor; // 머리 안쪽 채움(밝은 골드)
+  const ringColor = golden ? '#B45309' : brandColor; // 물방울 외곽(진한 골드)
+  const headTopColor = golden ? '#FBBF24' : tierColor; // 머리 상단 하이라이트(골드 그라데이션용)
+  const txt = golden ? '#3a2a08' : readableText(tierColor);
   // 두 자리(10)는 살짝 작게 그려 머리 원 안에 들어오게 한다.
   const numFont = rank >= 10 ? headR * 0.66 : headR * 0.82;
   const inner = `<text x="${headR}" y="${headR}" text-anchor="middle" dominant-baseline="central" font-size="${numFont}" font-weight="800" fill="${txt}">${rank}</text>`;
@@ -60,13 +66,22 @@ function topPinSvg(rank: number, size: number, tierColor: string, brandColor: st
   const crownY = -crownH * 0.62; // 머리 원 위로 살짝 겹쳐 올림
   const crown = crownSvg(crownX, crownY, crownW, crownH);
   // 물방울 경로: 위쪽 원 + 아래로 뾰족한 꼬리.
-  // 일반 마커와 동일 원칙: 머리를 브랜드색으로 채워 두꺼운 테두리처럼 보이게 한 뒤,
-  // 그 안에 흰 간격 링 → tier 색 얼굴 원을 겹쳐 "두꺼운 브랜드 테두리 — 흰 링 — tier 머리"로 분리.
+  // 일반 마커와 동일 원칙: 머리를 ringColor로 채워 두꺼운 테두리처럼 보이게 한 뒤,
+  // 그 안에 흰 간격 링 → bodyColor 얼굴 원을 겹쳐 "두꺼운 테두리 — 흰 링 — 본체 머리"로 분리.
+  // golden=true면 본체를 위(밝은 골드)→아래(골드) 그라데이션으로 칠해 황금 광택을 준다.
   // 왕관이 머리 위로 올라가므로 viewBox 상단에 여유(crownH)를 둔다.
+  const gid = `g${rank}-${golden ? 'au' : 'n'}-${Math.round(size)}`; // 그라데이션 id 충돌 방지
+  const headFill = golden ? `url(#${gid})` : bodyColor;
+  const goldGrad = golden
+    ? `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="${headTopColor}"/><stop offset="1" stop-color="${bodyColor}"/>
+      </linearGradient></defs>`
+    : '';
   return `<svg width="${w}" height="${size - crownY}" viewBox="0 ${crownY} ${w} ${size - crownY}" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))">
-    <path d="M${headR} ${size} C${headR * 0.15} ${size * 0.62} 0 ${headR * 1.25} 0 ${headR} a${headR} ${headR} 0 1 1 ${w} 0 C${w} ${headR * 1.25} ${headR * 1.85} ${size * 0.62} ${headR} ${size} Z" fill="${brandColor}"/>
+    ${goldGrad}
+    <path d="M${headR} ${size} C${headR * 0.15} ${size * 0.62} 0 ${headR * 1.25} 0 ${headR} a${headR} ${headR} 0 1 1 ${w} 0 C${w} ${headR * 1.25} ${headR * 1.85} ${size * 0.62} ${headR} ${size} Z" fill="${ringColor}"/>
     <circle cx="${headR}" cy="${headR}" r="${headR * 0.80}" fill="#ffffff"/>
-    <circle cx="${headR}" cy="${headR}" r="${headR * 0.66}" fill="${tierColor}"/>
+    <circle cx="${headR}" cy="${headR}" r="${headR * 0.66}" fill="${headFill}"/>
     ${inner}
     ${crown}
   </svg>`;
@@ -406,7 +421,8 @@ export function KakaoMap({
       const tierColor = TIER_FACE[tier].color;
       const brandColor = BRAND_COLOR[t.brand] ?? '#666';
       const pinSize = showLabel ? 38 : 42; // 축소 줌에서 오히려 더 크게 → 전국에서 눈에 띔
-      const pin = topPinSvg(r, pinSize, tierColor, brandColor);
+      // 전국 TOP10은 핀 본체를 황금색으로(golden). tier/brand 색은 무시되지만 시그니처 유지.
+      const pin = topPinSvg(r, pinSize, tierColor, brandColor, true);
       // 핀을 골드 글로우 펄스로 감싼다(은은하게 빛났다 잦아드는 반짝임). pin SVG 자체의
       // drop-shadow는 펄스 keyframe이 덮어쓰므로, 래퍼에 animation만 걸어 형태는 그대로 둔다.
       const glowPin = `<div class="top10-glow" style="animation:top10-gold-glow 2.4s ease-in-out infinite">${pin}</div>`;
