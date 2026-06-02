@@ -38,7 +38,9 @@ env:
       - RUNTIME
 
   - variable: NEXT_PUBLIC_SUPABASE_ANON_KEY
-    value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhc3p0ZW9hZHR5a3V6anpxdWttIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NzA3MzEsImV4cCI6MjA5NTU0NjczMX0.REkhfvPicGWLAGYyiQhy_CPgSrtr8XEImvZxAxerv2Q"
+    value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6In\
+      Fhc3p0ZW9hZHR5a3V6anpxdWttIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5NzA3MzEsImV\
+      4cCI6MjA5NTU0NjczMX0.REkhfvPicGWLAGYyiQhy_CPgSrtr8XEImvZxAxerv2Q"
     availability:
       - BUILD
       - RUNTIME
@@ -134,7 +136,8 @@ env:
   # ─── Web Push (VAPID) ───
   # 공개키는 클라이언트에 노출되는 값이라 value로 둠
   - variable: NEXT_PUBLIC_VAPID_PUBLIC_KEY
-    value: "BMlQ4UqKwd1vTAbgRbTQc2dDp-qI4AcleUbenpSt-M9V_tKMkZsErE64ke2rX6y1KnJiiGGO4t-bxtH3rujV6ME"
+    value: "BMlQ4UqKwd1vTAbgRbTQc2dDp-qI4AcleUbenpSt-M9V_tKMkZsErE64ke2rX6y1KnJiiGG\
+      O4t-bxtH3rujV6ME"
     availability:
       - BUILD
       - RUNTIME
@@ -145,7 +148,14 @@ env:
   # ─── Opinet API 키 ───
   - variable: OPINET_API_KEY
     secret: OPINET_API_KEY
-
+  # ─── 심사용 로그인 (심사 종료 후 제거) ───
+  - variable: REVIEWER_EMAIL
+    value: "review@onek1000.com"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: REVIEWER_PASSWORD
+    secret: REVIEWER_PASSWORD
   # ─── KG이니시스 결제 ───
   # 미설정 시 코드의 공개 테스트값(INIpayTest)으로 동작. 실연동 시 아래를 등록.
   # MID는 클라이언트 결제창에도 노출되는 값이라 value로 둬도 무방.
