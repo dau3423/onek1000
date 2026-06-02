@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="380" viewBox="0 0 1280 380" font-family="'Apple SD Gothic Neo','Noto Sans KR','Helvetica Neue',sans-serif">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FCD34D"/><stop offset="1" stop-color="#F59E0B"/>
+    </linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#B45309" flood-opacity="0.16"/>
+    </filter>
+    <marker id="arr" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#D97706"/>
+    </marker>
+  </defs>
+
+  <rect width="1280" height="380" fill="#FFFDF7"/>
+  <rect x="0" y="0" width="1280" height="7" fill="#F59E0B"/>
+
+  <text x="60" y="58" font-size="27" font-weight="800" fill="#1F2937">서비스 이용 시나리오</text>
+
+  <!-- 4 steps -->
+  <g filter="url(#sh)"><rect x="60" y="110" width="260" height="120" rx="16" fill="#FFFFFF" stroke="#F0E2C0" stroke-width="1.5"/></g>
+  <circle cx="95" cy="145" r="18" fill="url(#gold)"/><text x="95" y="151" font-size="17" font-weight="800" fill="#7C2D12" text-anchor="middle">1</text>
+  <text x="125" y="151" font-size="17" font-weight="700" fill="#1F2937">앱 접속 · 위치 동의</text>
+  <text x="84" y="188" font-size="13.5" fill="#4B5563">지도와 내 주변이</text>
+  <text x="84" y="210" font-size="13.5" fill="#4B5563">자동으로 표시</text>
+
+  <g filter="url(#sh)"><rect x="360" y="110" width="260" height="120" rx="16" fill="#FFFFFF" stroke="#F0E2C0" stroke-width="1.5"/></g>
+  <circle cx="395" cy="145" r="18" fill="url(#gold)"/><text x="395" y="151" font-size="17" font-weight="800" fill="#7C2D12" text-anchor="middle">2</text>
+  <text x="425" y="151" font-size="17" font-weight="700" fill="#1F2937">최저가 확인</text>
+  <text x="384" y="188" font-size="13.5" fill="#4B5563">지도에서 주변</text>
+  <text x="384" y="210" font-size="13.5" fill="#4B5563">최저가 주유소 탐색</text>
+
+  <g filter="url(#sh)"><rect x="660" y="110" width="260" height="120" rx="16" fill="#FFFFFF" stroke="#F0E2C0" stroke-width="1.5"/></g>
+  <circle cx="695" cy="145" r="18" fill="url(#gold)"/><text x="695" y="151" font-size="17" font-weight="800" fill="#7C2D12" text-anchor="middle">3</text>
+  <text x="725" y="151" font-size="17" font-weight="700" fill="#1F2937">1km 최저가 알림</text>
+  <text x="684" y="188" font-size="13.5" fill="#4B5563">반경 내 더 싼 곳을</text>
+  <text x="684" y="210" font-size="13.5" fill="#4B5563">배너로 알림</text>
+
+  <g filter="url(#sh)"><rect x="960" y="110" width="260" height="120" rx="16" fill="#FFFFFF" stroke="#F0E2C0" stroke-width="1.5"/></g>
+  <circle cx="995" cy="145" r="18" fill="url(#gold)"/><text x="995" y="151" font-size="17" font-weight="800" fill="#7C2D12" text-anchor="middle">4</text>
+  <text x="1025" y="151" font-size="17" font-weight="700" fill="#1F2937">길찾기 · 주유</text>
+  <text x="984" y="188" font-size="13.5" fill="#4B5563">카카오맵 길찾기로</text>
+  <text x="984" y="210" font-size="13.5" fill="#4B5563">방문 · 주유</text>
+
+  <line x1="325" y1="170" x2="355" y2="170" stroke="#D97706" stroke-width="2.5" marker-end="url(#arr)"/>
+  <line x1="625" y1="170" x2="655" y2="170" stroke="#D97706" stroke-width="2.5" marker-end="url(#arr)"/>
+  <line x1="925" y1="170" x2="955" y2="170" stroke="#D97706" stroke-width="2.5" marker-end="url(#arr)"/>
+
+  <!-- BM line -->
+  <rect x="60" y="280" width="1160" height="60" rx="14" fill="#FFFBEB" stroke="#FCD34D" stroke-width="1.5"/>
+  <text x="84" y="316" font-size="14.5" fill="#92400E"><tspan font-weight="800">수익 모델  ·  </tspan>무료 = 광고 포함, 핵심 기능 무제한    /    1000냥 플랜(₩1,000/월) = 광고 제거 · 즐겨찾기 · 가격 푸시 (7일 무료체험)</text>
+</svg>
