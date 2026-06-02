@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { SubscribeButton } from '@/components/billing/SubscribeButton';
+import { BUSINESS_INFO } from '@/lib/business';
 
 export default function PricingPage() {
   return (
@@ -69,11 +70,11 @@ export default function PricingPage() {
         </div>
 
         <div className="mt-2 space-y-0.5 border-t border-gray-200 pt-3 text-[10px] leading-relaxed text-gray-400">
-          <p>상호: 주니코드(Junicode) · 대표자: 박순복</p>
-          <p>사업자등록번호: 574-06-02215</p>
-          <p>통신판매업 신고번호: 제2025-수원장안-0459호</p>
-          <p>주소: 경기도 수원시 장안구 영화로 71번길</p>
-          <p>고객센터: 010-3401-5201 · 이메일: junicode0901@gmail.com</p>
+          <p>상호: {BUSINESS_INFO.name} · 대표자: {BUSINESS_INFO.owner}</p>
+          <p>사업자등록번호: {BUSINESS_INFO.registrationNumber}</p>
+          <p>통신판매업 신고번호: {BUSINESS_INFO.ecommerceNumber}</p>
+          <p>주소: {BUSINESS_INFO.address}</p>
+          <p>고객센터: {BUSINESS_INFO.phone} · 이메일: {BUSINESS_INFO.email}</p>
         </div>
       </section>
     </main>
