@@ -161,8 +161,25 @@ env:
   - variable: PORTONE_WEBHOOK_SECRET
     secret: PORTONE_WEBHOOK_SECRET
   # ─── 포트원(PortOne) v2 결제 ───
-  # storeId/channelKey는 공개값(클라 노출 OK) → 미설정 시 코드 폴백 상수 사용.
-  # 필요 시 NEXT_PUBLIC_PORTONE_STORE_ID / NEXT_PUBLIC_PORTONE_CHANNEL_* 를 value로 등록.
+  # storeId/channelKey는 공개값(클라 노출 OK). 실연동(라이브) 채널을 명시 등록해
+  # 코드 폴백(테스트 채널) 대신 라이브 채널을 쓰게 한다. signKey/INAPIKEY/IV/hashKey 등
+  # 이니시스 PG 자격증명은 우리 코드가 아니라 PortOne 콘솔 채널 설정에 입력한다.
+  - variable: NEXT_PUBLIC_PORTONE_STORE_ID
+    value: "store-767bba6f-ea67-438c-afe4-8a9df0ace9a8"
+    availability:
+      - BUILD
+      - RUNTIME
+  # 이니시스 라이브 채널 — 단건/정기 공용
+  - variable: NEXT_PUBLIC_PORTONE_CHANNEL_INICIS_ONETIME
+    value: "channel-key-8262d492-f921-4b05-b83d-607b1cb070b6"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_PORTONE_CHANNEL_INICIS_RECURRING
+    value: "channel-key-8262d492-f921-4b05-b83d-607b1cb070b6"
+    availability:
+      - BUILD
+      - RUNTIME
   # API Secret / Webhook Secret 은 서버 전용 시크릿(위에서 활성화됨):
   #   firebase apphosting:secrets:set PORTONE_API_SECRET
   #   firebase apphosting:secrets:set PORTONE_WEBHOOK_SECRET
