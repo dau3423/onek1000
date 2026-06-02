@@ -1,9 +1,9 @@
 // 포트원(PortOne) v2 결제 연동 — 서버 전용 로직 + 공개 config.
 //
 // 구조:
-//   포트원 v2
-//    ├─ 이니시스 (단건 CARD / 정기 빌링키)
-//    └─ 카카오페이 (단건 EASY_PAY / 정기 빌링키)
+//   포트원 v2 → 이니시스(KG이니시스) 단일 (단건 CARD / 정기 빌링키)
+//   - 카카오페이 등 간편결제는 이니시스 통합결제창 안에서 제공되므로 별도 PG 채널을 두지 않는다.
+//   - kakaopay 채널키 상수/PgKind는 미래 재도입 여지 + 폴백 안전을 위해 남겨두되, 현재 사용처는 없다.
 //
 // 결제 흐름:
 //   단건: 클라 PortOne.requestPayment → complete/return → 서버 GET /payments/{paymentId}로

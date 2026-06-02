@@ -1,18 +1,20 @@
 'use client';
 
 // 포트원(PortOne) v2 결제창 호출.
-// 1) PG(이니시스 카드 / 카카오페이) + 단건/정기 선택 → /api/billing/subscribe 가
+// 1) 요금제(단건/정기) 선택 → /api/billing/subscribe 가
 //    paymentId(단건)/issueId(정기) 발급 + storeId/channelKey 반환(billing_pending 기록).
 // 2) 단건=PortOne.requestPayment / 정기=PortOne.requestIssueBillingKey 호출.
 //    - PC: Promise 로 결과 수신(code 있으면 실패) → /api/billing/complete 로 확정.
 //    - 모바일: redirectUrl(/api/billing/return)로 이동해 서버가 확정.
+//
+// 결제수단: 이니시스(KG이니시스) 카드 통합결제창 단일. 카카오페이 간편결제는
+// 이니시스 통합창 안에서 제공되므로 별도 PG 선택을 두지 않는다(pg=inicis 고정, CARD).
 
 import { useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import * as PortOne from '@portone/browser-sdk/v2';
 
 type PlanCode = 'onetime_1000' | 'monthly_1000';
-type PgKind = 'inicis' | 'kakaopay';
 
 interface SubscribeResponse {
   ok: boolean;
@@ -30,8 +32,9 @@ interface SubscribeResponse {
 export function SubscribeButton() {
   const { status } = useSession();
   const [plan, setPlan] = useState<PlanCode>('monthly_1000');
-  const [pg, setPg] = useState<PgKind>('inicis');
   const [loading, setLoading] = useState(false);
+  // 결제수단은 이니시스 카드 단일 고정.
+  const pg = 'inicis' as const;
 
   const startPay = async () => {
     if (status !== 'authenticated') {
@@ -55,8 +58,7 @@ export function SubscribeButton() {
       };
 
       if (!data.recurring) {
-        // ── 단건 결제 ──
-        const payMethod = pg === 'kakaopay' ? 'EASY_PAY' : 'CARD';
+        // ── 단건 결제 (이니시스 카드 통합창) ──
         const response = await PortOne.requestPayment({
           storeId: data.storeId,
           channelKey: data.channelKey,
@@ -64,7 +66,7 @@ export function SubscribeButton() {
           orderName: data.orderName,
           totalAmount: data.amount,
           currency: 'KRW',
-          payMethod,
+          payMethod: 'CARD',
           redirectUrl: `${origin}/api/billing/return`,
           customer,
         });
@@ -74,14 +76,13 @@ export function SubscribeButton() {
         }
         await completeAndRedirect({ paymentId: response?.paymentId ?? data.paymentId! });
       } else {
-        // ── 정기(빌링키 발급) ──
-        const billingKeyMethod = pg === 'kakaopay' ? 'EASY_PAY' : 'CARD';
+        // ── 정기(빌링키 발급, 이니시스 카드) ──
         // 모바일 redirect 시 issueId 가 쿼리로 돌아오지 않으므로 redirectUrl 에 직접 실어 보낸다.
         const redirectUrl = `${origin}/api/billing/return?issueId=${encodeURIComponent(data.issueId!)}`;
         const response = await PortOne.requestIssueBillingKey({
           storeId: data.storeId,
           channelKey: data.channelKey,
-          billingKeyMethod,
+          billingKeyMethod: 'CARD',
           issueId: data.issueId!,
           issueName: data.orderName,
           redirectUrl,
@@ -138,11 +139,8 @@ export function SubscribeButton() {
         />
       </div>
 
-      {/* 결제 수단(PG) 선택 */}
-      <div className="grid grid-cols-2 gap-2">
-        <CardPgButton selected={pg === 'inicis'} onSelect={() => setPg('inicis')} />
-        <KakaoPgButton selected={pg === 'kakaopay'} onSelect={() => setPg('kakaopay')} />
-      </div>
+      {/* 결제 수단 안내: 이니시스 카드 통합결제창 단일(선택 토글 없음) */}
+      <PayMethodNotice />
 
       <button
         onClick={startPay}
@@ -170,8 +168,10 @@ interface PlanCardProps {
   badge?: string;
 }
 
-// 요금제 카드: 가격 강조형. 선택 시 주황 테두리 + 연한 주황 배경.
-// 다크모드에서도 텍스트가 묻히지 않도록 selected에 dark: 텍스트 색을 명시한다.
+// 요금제 카드: 가격 강조형. 선택 강조는 "텍스트 색"이 아니라
+// 테두리(primary ring/border) + 배지 + 체크 아이콘으로 표현한다.
+// 연한 주황 배경(bg-primary/5) 위에 주황 글씨를 올리면 대비가 깨지므로,
+// 제목/가격/설명은 selected 여부와 무관하게 항상 본문 가독 색을 쓴다.
 function PlanCard({ selected, onSelect, title, price, desc, badge }: PlanCardProps) {
   return (
     <button
@@ -180,8 +180,8 @@ function PlanCard({ selected, onSelect, title, price, desc, badge }: PlanCardPro
       aria-pressed={selected}
       className={`relative rounded-xl border p-3 text-left transition ${
         selected
-          ? 'border-primary bg-primary/5 ring-1 ring-primary dark:bg-primary/15'
-          : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'
+          ? 'border-primary bg-primary/5 ring-1 ring-primary'
+          : 'border-gray-200 bg-white'
       }`}
     >
       {badge && (
@@ -189,55 +189,40 @@ function PlanCard({ selected, onSelect, title, price, desc, badge }: PlanCardPro
           {badge}
         </span>
       )}
-      <div
-        className={`text-xs font-semibold ${
-          selected
-            ? 'text-primary dark:text-primary'
-            : 'text-gray-500 dark:text-gray-400'
-        }`}
-      >
-        {title}
+      <div className="flex items-center gap-1">
+        {/* 선택 강조는 색이 아닌 체크 아이콘으로 — 색각 의존 회피 */}
+        {selected && (
+          <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-primary" aria-hidden>
+            <path
+              fillRule="evenodd"
+              d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 9.7a1 1 0 0 1 1.4-1.4l3.8 3.8 6.8-6.8a1 1 0 0 1 1.4 0Z"
+              clipRule="evenodd"
+            />
+          </svg>
+        )}
+        <span className="text-xs font-semibold text-gray-700">{title}</span>
       </div>
-      <div className="mt-0.5 text-lg font-extrabold text-gray-900 dark:text-gray-100">
+      <div className="mt-0.5 text-lg font-extrabold text-gray-900">
         {price}
       </div>
-      <div
-        className={`mt-1 text-[11px] leading-tight ${
-          selected
-            ? 'text-gray-600 dark:text-gray-300'
-            : 'text-gray-500 dark:text-gray-400'
-        }`}
-      >
+      <div className="mt-1 text-[11px] leading-tight text-gray-600">
         {desc}
       </div>
     </button>
   );
 }
 
-interface PgButtonProps {
-  selected: boolean;
-  onSelect: () => void;
-}
-
-// 결제수단: 카드(이니시스). 중립 톤 + 카드 아이콘으로 요금제 카드와 구분.
-function CardPgButton({ selected, onSelect }: PgButtonProps) {
+// 결제수단 안내(비대화형): 이니시스 카드 통합결제창 단일.
+// 선택지가 하나뿐이라 토글 대신 고정 안내로 표시한다.
+// 카카오페이 등 간편결제는 이니시스 통합창 안에서 제공된다.
+function PayMethodNotice() {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={selected}
-      className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition ${
-        selected
-          ? 'border-primary bg-primary/5 ring-1 ring-primary dark:bg-primary/15'
-          : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'
-      }`}
+    <div
+      className="flex items-center gap-2.5 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5"
+      role="note"
     >
       <span
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-          selected
-            ? 'bg-primary text-white'
-            : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300'
-        }`}
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-white"
         aria-hidden
       >
         {/* 카드 아이콘 */}
@@ -248,54 +233,13 @@ function CardPgButton({ selected, onSelect }: PgButtonProps) {
         </svg>
       </span>
       <span className="min-w-0">
-        <span className="block text-sm font-semibold text-gray-900 dark:text-gray-100">
+        <span className="block text-sm font-semibold text-gray-900">
           카드 결제
         </span>
-        <span className="block text-[11px] leading-tight text-gray-500 dark:text-gray-400">
-          신용·체크카드
+        <span className="block text-[11px] leading-tight text-gray-500">
+          신용·체크카드 · 카카오페이 등 간편결제
         </span>
       </span>
-    </button>
-  );
-}
-
-// 결제수단: 카카오페이. 카카오 브랜드 노란색(#FEE500) + 다크 텍스트(#191919).
-// 노란 배경+검정 텍스트는 라이트/다크 모드 모두 가독성을 유지한다.
-function KakaoPgButton({ selected, onSelect }: PgButtonProps) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={selected}
-      style={{ backgroundColor: '#FEE500' }}
-      className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition ${
-        selected ? 'border-[#191919] ring-1 ring-[#191919]' : 'border-[#FEE500]'
-      }`}
-    >
-      <span
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-        style={{ backgroundColor: 'rgba(0,0,0,0.08)' }}
-        aria-hidden
-      >
-        {/* 말풍선(카카오 심볼 느낌) 아이콘 */}
-        <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" style={{ color: '#191919' }}>
-          <path
-            d="M12 4.5c-4.6 0-8.3 2.9-8.3 6.5 0 2.3 1.6 4.3 4 5.5-.2.6-.7 2.2-.8 2.6 0 0 0 .2.1.2.1.1.2 0 .2 0 .3-.2 2.6-1.7 3.4-2.3.4 0 .7.1 1.1.1 4.6 0 8.3-2.9 8.3-6.6S16.6 4.5 12 4.5Z"
-            fill="currentColor"
-          />
-        </svg>
-      </span>
-      <span className="min-w-0">
-        <span className="block text-sm font-bold" style={{ color: '#191919' }}>
-          카카오페이
-        </span>
-        <span
-          className="block text-[11px] font-medium leading-tight"
-          style={{ color: 'rgba(0,0,0,0.6)' }}
-        >
-          간편결제
-        </span>
-      </span>
-    </button>
+    </div>
   );
 }
