@@ -87,13 +87,18 @@ export default async function StationDetailPage({ params }: Props) {
       {/* 리뷰 */}
       <ReviewSection stationId={detail.id} />
 
-      {/* 부가서비스 — 현재 데이터 소스(일 1회 가격 동기화)에는 셀프/세차/편의점/정비
-          정보가 포함되지 않아 보유 여부를 단정할 수 없다. "없음" 오표시 방지를 위해 안내로 대체. */}
+      {/* 부가서비스 — 우리 DB(stations)만 조회. 값은 일 1회 sync의 회전 보강(detailById)으로 채워진다.
+          amenitiesUpdatedAt이 null이면 아직 한 번도 보강되지 않은 주유소이므로
+          "없음" 오표시 대신 안내 문구로 대체한다. */}
       <section className="border-t border-gray-100 px-5 py-4">
         <h2 className="mb-3 text-sm font-bold text-gray-800">부가서비스</h2>
-        <p className="rounded-lg bg-gray-50 px-3 py-2.5 text-xs leading-snug text-gray-500">
-          부가서비스(셀프·세차·편의점·정비) 정보가 제공되지 않습니다.
-        </p>
+        {detail.amenitiesUpdatedAt ? (
+          <AmenityList detail={detail} />
+        ) : (
+          <p className="rounded-lg bg-gray-50 px-3 py-2.5 text-xs leading-snug text-gray-500">
+            부가서비스 정보가 아직 수집되지 않았습니다.
+          </p>
+        )}
       </section>
 
       {/* CTA */}
@@ -113,5 +118,39 @@ export default async function StationDetailPage({ params }: Props) {
         데이터 제공: 한국석유공사 오피넷
       </footer>
     </main>
+  );
+}
+
+/** 부가서비스 배지 목록 — 보유 항목만 노출, 하나도 없으면 안내 문구. */
+function AmenityList({ detail }: { detail: StationDetail }) {
+  const items: Array<{ key: string; label: string; on: boolean }> = [
+    { key: 'self', label: '셀프', on: detail.isSelf },
+    { key: 'carwash', label: '세차장', on: !!detail.hasCarwash },
+    { key: 'cvs', label: '편의점', on: !!detail.hasCvs },
+    { key: 'maint', label: '경정비', on: !!detail.hasMaintenance },
+    { key: 'lpg', label: 'LPG 충전', on: !!detail.hasLpg },
+    { key: 'kpetro', label: '품질인증', on: !!detail.isKpetro },
+  ];
+  const owned = items.filter((i) => i.on);
+
+  if (owned.length === 0) {
+    return (
+      <p className="rounded-lg bg-gray-50 px-3 py-2.5 text-xs leading-snug text-gray-500">
+        제공되는 부가서비스가 없습니다.
+      </p>
+    );
+  }
+
+  return (
+    <ul className="flex flex-wrap gap-2">
+      {owned.map((i) => (
+        <li
+          key={i.key}
+          className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+        >
+          {i.label}
+        </li>
+      ))}
+    </ul>
   );
 }

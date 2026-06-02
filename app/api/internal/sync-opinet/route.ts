@@ -76,6 +76,12 @@ async function opinetAreaCodes(sido: SidoCode): Promise<Array<{ code: string; na
     .filter((a) => a.code.length === 4);
 }
 
+// 부가서비스 회전 보강 예산 — detailById.do는 주유소 1건당 1콜이라 전 주유소를 매일 보강할 수 없다.
+// 가격 sync(areaCode 17 + lowTop10 ~1,000 + avg 4 ≈ ~1,020콜) 뒤 남는 일일 한도 안에서
+// amenities_updated_at이 가장 오래된(또는 미보강) 주유소부터 이만큼만 보강해 며칠에 걸쳐 전체를 순회한다.
+// 한도(1,500) - 가격 sync(~1,020) - 안전 여유(~80) ≈ 400 수준으로 잡되, 환경변수로 조정 가능.
+const AMENITY_REFRESH_BUDGET = Number(process.env.OPINET_AMENITY_BUDGET ?? 400);
+
 // lowTop10.do(area=시군구4자리) → 그 시군구 최저가 TOP10.
 async function opinetLowTop10(area: string, prod: ProductCode, cnt = TOP_CNT) {
   const key = process.env.OPINET_API_KEY;
@@ -110,6 +116,33 @@ async function opinetAvgSido(prod: ProductCode) {
   const data = await res.json();
   return data?.RESULT?.OIL ?? [];
 }
+
+// detailById.do(id) → 주유소 1건 상세(부가서비스 포함). 가격 API에는 없는
+// CAR_WASH_YN/CVS_YN/MAINT_YN/KPETRO_YN/LPG_YN 를 여기서만 얻는다.
+interface OpinetDetailOil {
+  UNI_ID?: string;
+  CAR_WASH_YN?: string;
+  CVS_YN?: string;
+  MAINT_YN?: string;
+  KPETRO_YN?: string;
+  LPG_YN?: string;
+}
+async function opinetDetailById(id: string): Promise<OpinetDetailOil | null> {
+  const key = process.env.OPINET_API_KEY;
+  if (!key) throw new Error('OPINET_API_KEY missing');
+  const url = `${OPINET_BASE}/detailById.do?out=json&code=${key}&id=${encodeURIComponent(id)}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`opinet ${res.status}`);
+  const data = await res.json();
+  return (data?.RESULT?.OIL?.[0] as OpinetDetailOil | undefined) ?? null;
+}
+
+const isY = (v?: string) => String(v ?? '').trim().toUpperCase() === 'Y';
+// LPG_YN 은 업종구분(N:주유소, Y:충전소, C:겸업) — Y/C 면 LPG 취급으로 본다.
+const hasLpgFrom = (v?: string) => {
+  const t = String(v ?? '').trim().toUpperCase();
+  return t === 'Y' || t === 'C';
+};
 
 export async function GET(req: Request) { return POST(req); }
 
@@ -275,6 +308,56 @@ export async function POST(req: Request) {
     );
   }
 
+  // ─── 부가서비스 회전 보강 (detailById.do) ───
+  // 가격 sync 응답(lowTop10)에는 부가서비스 필드가 없다. 부가서비스는 detailById.do(주유소 1건당 1콜)에서만
+  // 오므로, 전 주유소를 매일 보강하면 Opinet 일일 한도(~1,500)를 넘는다.
+  // → amenities_updated_at이 가장 오래된(또는 미보강 null) 주유소부터 AMENITY_REFRESH_BUDGET 건만
+  //   순차 보강한다(동시성 제한). 며칠에 걸쳐 전체 DB를 한 바퀴 돌고, 이후엔 가장 오래된 것부터 재순회한다.
+  //   상세보기는 이 컬럼(stations)만 읽으므로 상세 접근 시 Opinet 호출은 0건이다.
+  let amenityRefreshed = 0;
+  let amenityFailed = 0;
+  if (AMENITY_REFRESH_BUDGET > 0) {
+    try {
+      const { data: targets, error: tErr } = await sb
+        .from('stations')
+        .select('id')
+        .order('amenities_updated_at', { ascending: true, nullsFirst: true })
+        .limit(AMENITY_REFRESH_BUDGET);
+      if (tErr) throw new Error(tErr.message);
+
+      const ids = (targets ?? []).map((t) => t.id as string);
+      const amenityRows: Array<Record<string, unknown>> = [];
+      await mapWithConcurrency(ids, CONCURRENCY, async (id) => {
+        opinetCalls++;
+        try {
+          const d = await opinetDetailById(id);
+          // 응답이 없어도 보강 시각은 갱신해(아래 upsert) 같은 주유소를 매번 다시 시도하지 않게 한다.
+          amenityRows.push({
+            id,
+            has_carwash: d ? isY(d.CAR_WASH_YN) : false,
+            has_cvs: d ? isY(d.CVS_YN) : false,
+            has_maintenance: d ? isY(d.MAINT_YN) : false,
+            is_kpetro: d ? isY(d.KPETRO_YN) : false,
+            has_lpg: d ? hasLpgFrom(d.LPG_YN) : false,
+            amenities_updated_at: now,
+          });
+        } catch (e) {
+          amenityFailed++;
+          fetchErrors.push(`amenity ${id}: ${(e as Error).message}`);
+        }
+        await sleep(REQUEST_DELAY_MS);
+      });
+
+      // upsert(onConflict id) — 기존 행의 부가서비스 컬럼만 갱신. price/geom 등은 건드리지 않는다.
+      await inChunks(amenityRows, UPSERT_CHUNK,
+        async (chunk) => await sb.from('stations').upsert(chunk, { onConflict: 'id' }),
+        'amenities upsert');
+      amenityRefreshed = amenityRows.length;
+    } catch (e) {
+      fetchErrors.push(`amenity refresh: ${(e as Error).message}`);
+    }
+  }
+
   // ─── 가격 변동 감지 → 프리미엄 사용자에게 푸시 ───
   // 즐겨찾기 주유소 중 직전 가격 대비 30원/L 이상 떨어진 항목을 사용자별로 모음
   let pushSent = 0;
@@ -427,9 +510,12 @@ export async function POST(req: Request) {
     sidos: SIDOS.length, products: PRODUCTS.length,
     sigungus: sigungus.length, areaFetchFailed,
     topJobs: jobs.length, topFetchFailed,
-    opinetCalls, // areaCode(17) + lowTop10(~1,000) + avg(4) ≈ ~1,020회 (일일 한도 1,500 이내)
+    // areaCode(17) + lowTop10(~1,000) + avg(4) ≈ ~1,020 + 부가서비스 회전 보강(최대 BUDGET)
+    // ≈ ~1,420 (일일 한도 1,500 이내). BUDGET은 OPINET_AMENITY_BUDGET 로 조정.
+    opinetCalls,
     concurrency: CONCURRENCY,
     stationUpserts, priceUpserts, staleDeleted, staleSkipped,
+    amenityBudget: AMENITY_REFRESH_BUDGET, amenityRefreshed, amenityFailed,
     pushSent, pushFailed,
     regionPushSent, regionPushFailed,
     fetchErrors: fetchErrors.length ? fetchErrors : undefined,

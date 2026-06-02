@@ -144,6 +144,11 @@ export function getMockStationDetail(id: string) {
     lng: r.lng,
     hasCarwash: r.hasCarwash,
     hasCvs: r.hasCvs,
+    // Mock에선 셀프=경정비 보유로 가정해 부가서비스 UI를 의미있게 노출.
+    hasMaintenance: r.isSelf,
+    hasLpg: false,
+    isKpetro: r.isSelf,
+    amenitiesUpdatedAt: today,
     prices: {
       B027: { price: r.priceB027, tradeDate: today },
       B034: { price: r.priceB027 + 250, tradeDate: today },

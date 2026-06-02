@@ -62,6 +62,12 @@ export interface StationBase {
   hasCarwash?: boolean;
   hasCvs?: boolean;
   hasMaintenance?: boolean;
+  /** LPG 겸업 여부 (Opinet LPG_YN='Y'/'C') */
+  hasLpg?: boolean;
+  /** 품질인증주유소 여부 (Opinet KPETRO_YN='Y') */
+  isKpetro?: boolean;
+  /** 부가서비스 마지막 보강 시각(ISO). null/undefined면 미보강 */
+  amenitiesUpdatedAt?: string | null;
   lat: number;
   lng: number;
 }
