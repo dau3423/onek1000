@@ -99,9 +99,11 @@ export default function HomePage() {
   //  - 배너 표시: 배너 상단 기준 20px 위(bottom 고정).
   //  - 배너 없음: 시트 peek 바로 위(+safe-area).
   const GPS_BANNER_GAP_PX = 20; // 배너 상단과의 간격
+  // 배너/시트 peek는 모두 safe-area 미가산 좌표(컨테이너 bottom-0 기준)에 얹힌다.
+  // GPS 버튼도 같은 좌표계를 써야 iOS(home indicator)에서만 간격이 벌어지지 않는다.
   const gpsPosition: { top?: string; bottom?: string } = bannerVisible
-    ? { top: 'auto', bottom: `calc(${BANNER_BOTTOM_PX}px + ${BANNER_HEIGHT_PX}px + ${GPS_BANNER_GAP_PX}px + env(safe-area-inset-bottom))` }
-    : { top: 'auto', bottom: `calc(${SHEET_PEEK_PX}px + 12px + env(safe-area-inset-bottom))` };
+    ? { top: 'auto', bottom: `${BANNER_BOTTOM_PX + BANNER_HEIGHT_PX + GPS_BANNER_GAP_PX}px` }
+    : { top: 'auto', bottom: `${SHEET_PEEK_PX + 12}px` };
 
   // PC(데스크톱) 판별: lg(1024px) 이상. 마운트 후 클라이언트에서 판별(SSR/CSR 일관성).
   const isDesktop = useMediaQuery('(min-width: 1024px)');

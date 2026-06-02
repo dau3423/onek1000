@@ -31,7 +31,12 @@ const BANNER_SHEET_GAP_PX = 8;
 /**
  * 배너 컨테이너의 맵 하단 기준 bottom 오프셋(px) — 접힌 시트 peek 바로 위에 얹힌다.
  * 시트 peek 높이(SHEET_PEEK_PX)에 연동되므로 peek가 바뀌어도 배너가 시트에 가려지지 않는다.
- * (safe-area는 컨테이너 className의 px/pb로 보정하지 않고, 부모 page의 GPS 위치 계산에서 별도 반영)
+ *
+ * 시트는 컨테이너 하단(bottom-0)에서 translate-y로만 peek(SHEET_PEEK_PX)를 노출하며
+ * peek 위치 자체에는 safe-area를 더하지 않는다(home indicator는 시트 내부 pb로만 보정).
+ * 따라서 배너 bottom에도 safe-area를 더하면 안 된다 — 더하면 iOS(home indicator ~34px)에서만
+ * 배너와 시트 peek 사이 간격이 BANNER_SHEET_GAP_PX + safe-area로 벌어진다. peek와 동일한
+ * 좌표계(safe-area 미가산)를 써서 기기 무관하게 BANNER_SHEET_GAP_PX 고정 간격을 유지한다.
  */
 export const BANNER_BOTTOM_PX = SHEET_PEEK_PX + BANNER_SHEET_GAP_PX;
 /** 배너 컨테이너의 시각적 높이(px) — minHeight(50) + pb-2(8) 여유 포함 */
@@ -71,12 +76,12 @@ export function BannerAd({ hide, sheetOpen }: Props) {
   if (hide || isPremium) return null;
 
   // AdSense 미설정 → 자체 CTA 폴백
-  // bottom-[72px] = BANNER_BOTTOM_PX. Tailwind JIT 정적 스캔을 위해 리터럴 유지(상수와 동일).
+  // bottom은 BANNER_BOTTOM_PX(=시트 peek + 간격) 고정. safe-area는 더하지 않아 기기 무관 동일 간격.
   if (!client || !slot) {
     return (
       <div
         className={`pointer-events-auto absolute inset-x-0 z-30 flex justify-center px-3 pb-2 transition-opacity duration-300 ${sheetHiddenCls}`}
-        style={{ bottom: `calc(${BANNER_BOTTOM_PX}px + env(safe-area-inset-bottom))` }}
+        style={{ bottom: `${BANNER_BOTTOM_PX}px` }}
         aria-hidden={sheetOpen}
       >
         <Link
