@@ -118,7 +118,7 @@ function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }
         rel="noopener noreferrer"
         className="mt-4 text-center text-[12px] text-gray-500 underline hover:text-gray-700"
       >
-        로그인에 문제가 있나요? 1:1 문의 (카카오톡 채널)
+        1:1 문의 (카카오톡 채널)
       </a>
     </main>
   );
