@@ -1,6 +1,6 @@
 // Supabase 기반 도메인 쿼리 — Supabase 미설정 시 mock 폴백
 import { getSupabase, isSupabaseConfigured } from './supabase';
-import type { StationWithPrice, ProductCode, SidoCode, BrandCode, NationalTop10Item } from '@/types/station';
+import type { StationWithPrice, ProductCode, SidoCode, BrandCode, NationalTop10Item, StationDetail } from '@/types/station';
 import type { Bbox } from '@/lib/map/geo';
 import { getMockStations, getMockStationDetail } from '@/lib/mock/stations';
 import { distanceMeters, inBbox, topPriceRankMap } from '@/lib/map/geo';
@@ -146,8 +146,8 @@ export async function queryNationalTop10(
   });
 }
 
-export async function queryStationDetail(id: string) {
-  if (!isSupabaseConfigured()) return getMockStationDetail(id);
+export async function queryStationDetail(id: string): Promise<StationDetail | null> {
+  if (!isSupabaseConfigured()) return getMockStationDetail(id) as StationDetail | null;
   const sb = getSupabase();
   const { data: s, error: e1 } = await sb
     .from('stations')
@@ -159,11 +159,13 @@ export async function queryStationDetail(id: string) {
     .from('prices_latest')
     .select('product, price, trade_dt')
     .eq('station_id', id);
-  const priceMap: Record<string, { price: number; tradeDate: string } | null> = {
+  const priceMap: StationDetail['prices'] = {
     B027: null, B034: null, D047: null, K015: null, C004: null,
   };
   for (const p of prices ?? []) {
-    priceMap[p.product] = { price: p.price, tradeDate: p.trade_dt };
+    if ((p.product as ProductCode) in priceMap) {
+      priceMap[p.product as ProductCode] = { price: p.price, tradeDate: p.trade_dt };
+    }
   }
   return {
     id: s.id, name: s.name, brand: (s.brand_code as BrandCode) ?? 'ETC',
@@ -171,6 +173,6 @@ export async function queryStationDetail(id: string) {
     address: s.address ?? '', tel: s.tel ?? undefined,
     hasCarwash: !!s.has_carwash, hasCvs: !!s.has_cvs, hasMaintenance: !!s.has_maintenance,
     lat: s.lat ?? 0, lng: s.lng ?? 0,
-    prices: priceMap as any,
+    prices: priceMap,
   };
 }
