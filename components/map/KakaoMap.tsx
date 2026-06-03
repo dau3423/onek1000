@@ -8,6 +8,7 @@ import { priceTier, priceTierThresholds } from '@/lib/map/geo';
 import { TIER_FACE, faceMarkerSvg, numberMarkerSvg } from '@/lib/map/markerFace';
 import type { EvStationMarker } from '@/types/ev';
 import { buildEvMarkerContent } from '@/lib/map/evMarker';
+import { GRAY_DOTS_ENABLED } from '@/lib/flags';
 
 /** BottomSheet와 공유하는 활성 탭 타입. 'area'=이 지역, 'nearby'=내 주변 10km. */
 export type MapListTab = 'area' | 'nearby';
@@ -711,8 +712,8 @@ export function KakaoMap({
     grayOverlaysRef.current.forEach((o) => o.setMap(null));
     grayOverlaysRef.current = [];
 
-    // EV 레이어이거나 줌아웃 상태(level이 임계보다 큼)면 그리지 않는다.
-    if (layer === 'ev' || map.getLevel() > GRAY_DOT_MAX_LEVEL) return;
+    // 회색 점 기능 비활성(플래그)이거나, EV 레이어이거나, 줌아웃 상태(level이 임계보다 큼)면 그리지 않는다.
+    if (!GRAY_DOTS_ENABLED || layer === 'ev' || map.getLevel() > GRAY_DOT_MAX_LEVEL) return;
 
     // 하이라이트(이미 다른 마커로 그려진) 주유소 id 집합 — 전국 TOP10 + 내 주변 TOP10 + 일반 bbox 마커.
     const highlighted = new Set<string>();

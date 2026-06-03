@@ -6,6 +6,7 @@ import { BRAND_COLOR } from '@/types/station';
 import type { PriceTier } from '@/lib/map/geo';
 import { TIER_FACE, faceSvgInner } from '@/lib/map/markerFace';
 import { useMapStore } from '@/stores/map';
+import { GRAY_DOTS_ENABLED } from '@/lib/flags';
 
 // EV 마커 색(단일 출처는 lib/map/evMarker.ts — 범례는 시각 일관성을 위해 동일 값을 사용).
 const EV_AVAILABLE_COLOR = '#16A34A'; // 초록 — 사용가능
@@ -326,10 +327,12 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
                   <span className="text-gray-500 dark:text-gray-400">)</span>
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <GrayDotChip />
-                <span>회색 점 = 그 외 주유소(확대 시 표시)</span>
-              </div>
+              {GRAY_DOTS_ENABLED && (
+                <div className="flex items-center gap-1.5">
+                  <GrayDotChip />
+                  <span>회색 점 = 그 외 주유소(확대 시 표시)</span>
+                </div>
+              )}
               <div className="flex items-center gap-1.5">
                 <Dot color={MY_COLOR} ring="#ffffff" />
                 <span>파란 점 = 내 현재 위치</span>

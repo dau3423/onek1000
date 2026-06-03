@@ -22,6 +22,7 @@ import { useGeolocation } from '@/hooks/useGeolocation';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { quantize, distanceMeters } from '@/lib/map/geo';
+import { GRAY_DOTS_ENABLED } from '@/lib/flags';
 import type { BboxResponse, RadiusResponse, StationWithPrice, NationalTop10Item, NationalTop10Response, StationPoint, StationsInBboxResponse } from '@/types/station';
 import type { EvBboxResponse, EvStationMarker } from '@/types/ev';
 
@@ -245,6 +246,11 @@ export default function HomePage() {
   // 회색 점(비하이라이트 주유소) 조회 — gas 레이어 + 일정 줌 이상 확대(zoom ≥ GRAY_DOT_MIN_ZOOM)일 때만.
   // 줌아웃 상태에서는 호출하지 않고 기존 점도 비운다(밀도 폭주/불필요 호출 방지).
   function fetchAllStations(b: { swLat: number; swLng: number; neLat: number; neLng: number; zoom: number }) {
+    // 회색 점 기능 비활성(플래그) 시: 조회하지 않고 잔여 점도 비운다(불필요 요청 0).
+    if (!GRAY_DOTS_ENABLED) {
+      if (allStations.length) setAllStations([]);
+      return;
+    }
     if (b.zoom < GRAY_DOT_MIN_ZOOM) {
       if (allStations.length) setAllStations([]);
       return;
