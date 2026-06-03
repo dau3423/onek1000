@@ -121,6 +121,7 @@ async function opinetAvgSido(prod: ProductCode) {
 // CAR_WASH_YN/CVS_YN/MAINT_YN/KPETRO_YN/LPG_YN 를 여기서만 얻는다.
 interface OpinetDetailOil {
   UNI_ID?: string;
+  OS_NM?: string;
   CAR_WASH_YN?: string;
   CVS_YN?: string;
   MAINT_YN?: string;
@@ -135,6 +136,18 @@ async function opinetDetailById(id: string): Promise<OpinetDetailOil | null> {
   if (!res.ok) throw new Error(`opinet ${res.status}`);
   const data = await res.json();
   return (data?.RESULT?.OIL?.[0] as OpinetDetailOil | undefined) ?? null;
+}
+
+// detailById 응답이 "정상 데이터"인지 판정.
+// Opinet 할당량 소진/일시오류 시 HTTP 200 이지만 RESULT.OIL=[] (빈 배열)을 준다.
+// 이 경우 opinetDetailById 는 null 을 반환한다(OIL[0] 없음).
+// 또한 OIL[0] 이 있어도 핵심 식별 필드(UNI_ID / OS_NM)가 비면 신뢰할 수 없는 응답으로 본다.
+// 정상 응답일 때만 부가서비스 플래그 매핑 + amenities_updated_at 기록을 허용한다.
+function isValidDetail(d: OpinetDetailOil | null): d is OpinetDetailOil {
+  if (!d) return false;
+  const hasId = String(d.UNI_ID ?? '').trim().length > 0;
+  const hasName = String(d.OS_NM ?? '').trim().length > 0;
+  return hasId && hasName;
 }
 
 const isY = (v?: string) => String(v ?? '').trim().toUpperCase() === 'Y';
@@ -316,6 +329,13 @@ export async function POST(req: Request) {
   //   상세보기는 이 컬럼(stations)만 읽으므로 상세 접근 시 Opinet 호출은 0건이다.
   let amenityRefreshed = 0;
   let amenityFailed = 0;
+  // 빈 응답(할당량 소진/일시오류)으로 보강을 건너뛴 건수. amenities_updated_at 을 갱신하지 않아
+  // 다음 sync 에서 다시 보강 대상이 된다(영구 오염 방지).
+  let amenitySkipped = 0;
+  let amenityAborted = false; // 연속 빈 응답 다수로 조기 중단했는지
+  // Opinet 할당량 소진 신호: 빈 응답(또는 호출 실패)이 연속으로 이만큼 누적되면
+  // 남은 호출은 어차피 빈 응답일 가능성이 높으므로 그 회차 보강을 조기 중단한다(호출 낭비 방지).
+  const AMENITY_ABORT_AFTER_CONSECUTIVE_EMPTY = 20;
   if (AMENITY_REFRESH_BUDGET > 0) {
     try {
       const { data: targets, error: tErr } = await sb
@@ -326,6 +346,7 @@ export async function POST(req: Request) {
       if (tErr) throw new Error(tErr.message);
 
       const ids = (targets ?? []).map((t) => t.id as string);
+      let consecutiveEmpty = 0; // 연속 빈 응답/실패 카운터(조기 중단 판정용)
       // 보강은 "이미 존재하는 stations 행"의 부가서비스 컬럼만 UPDATE 한다.
       // (가격 sync가 생성·UPSERT한 행이 대상이다. 보강 대상도 stations에서 뽑았으니 항상 존재한다.)
       //
@@ -335,26 +356,49 @@ export async function POST(req: Request) {
       // "null value in column brand_code violates not-null" 으로 실패했다(amenityRefreshed=0).
       // → id 기준 UPDATE 로 바꿔 부가서비스 컬럼만 갱신한다(NOT NULL 컬럼 미관여).
       await mapWithConcurrency(ids, CONCURRENCY, async (id) => {
+        // 조기 중단 후 큐에 남은 잔여 작업은 호출하지 않고 즉시 반환(Opinet 호출 절약).
+        if (amenityAborted) return;
         opinetCalls++;
         let d: OpinetDetailOil | null = null;
         try {
           d = await opinetDetailById(id);
         } catch (e) {
-          // detailById 호출 실패 — 이 건은 보강 시각도 갱신하지 않아 다음 회차에 재시도된다.
+          // detailById 호출 실패 — 보강 시각을 갱신하지 않아 다음 회차에 재시도된다.
           amenityFailed++;
+          consecutiveEmpty++;
           fetchErrors.push(`amenity ${id}: ${(e as Error).message}`);
+          if (consecutiveEmpty >= AMENITY_ABORT_AFTER_CONSECUTIVE_EMPTY) amenityAborted = true;
           await sleep(REQUEST_DELAY_MS);
           return;
         }
-        // 응답이 없어도(부가서비스 미상) 보강 시각은 갱신해 같은 주유소를 매번 다시 시도하지 않게 한다.
+
+        // 빈/비정상 응답(할당량 소진·일시오류로 RESULT.OIL=[] 또는 식별 필드 결손)이면 SKIP.
+        // 절대 all-false 로 기록하지 않고 amenities_updated_at 도 건드리지 않는다.
+        // → 이 주유소는 다음 sync 에서 다시 보강 대상(amenities_updated_at 여전히 null/과거)이 된다.
+        if (!isValidDetail(d)) {
+          amenitySkipped++;
+          consecutiveEmpty++;
+          if (consecutiveEmpty >= AMENITY_ABORT_AFTER_CONSECUTIVE_EMPTY) {
+            amenityAborted = true;
+            fetchErrors.push(
+              `amenity refresh aborted: ${consecutiveEmpty} consecutive empty responses (likely Opinet quota exhausted)`,
+            );
+          }
+          await sleep(REQUEST_DELAY_MS);
+          return;
+        }
+
+        // 여기부터는 정상 응답이다. 연속 빈 응답 카운터를 리셋한다.
+        // (정상 응답에서 모든 부가서비스가 N 이면 all-false + 보강시각 기록이 올바른 결과다.)
+        consecutiveEmpty = 0;
         const { error: uErr } = await sb
           .from('stations')
           .update({
-            has_carwash: d ? isY(d.CAR_WASH_YN) : false,
-            has_cvs: d ? isY(d.CVS_YN) : false,
-            has_maintenance: d ? isY(d.MAINT_YN) : false,
-            is_kpetro: d ? isY(d.KPETRO_YN) : false,
-            has_lpg: d ? hasLpgFrom(d.LPG_YN) : false,
+            has_carwash: isY(d.CAR_WASH_YN),
+            has_cvs: isY(d.CVS_YN),
+            has_maintenance: isY(d.MAINT_YN),
+            is_kpetro: isY(d.KPETRO_YN),
+            has_lpg: hasLpgFrom(d.LPG_YN),
             amenities_updated_at: now,
           })
           .eq('id', id);
@@ -530,7 +574,7 @@ export async function POST(req: Request) {
     opinetCalls,
     concurrency: CONCURRENCY,
     stationUpserts, priceUpserts, staleDeleted, staleSkipped,
-    amenityBudget: AMENITY_REFRESH_BUDGET, amenityRefreshed, amenityFailed,
+    amenityBudget: AMENITY_REFRESH_BUDGET, amenityRefreshed, amenityFailed, amenitySkipped, amenityAborted,
     pushSent, pushFailed,
     regionPushSent, regionPushFailed,
     fetchErrors: fetchErrors.length ? fetchErrors : undefined,
