@@ -31,6 +31,7 @@ declare global {
       getBounds(): LatLngBounds;
       panTo(latlng: LatLng): void;
       relayout(): void;
+      setBounds(bounds: LatLngBounds): void;
     }
 
     interface MapOptions {
@@ -58,6 +59,19 @@ declare global {
       });
       setMap(map: Map | null): void;
       setPosition(latlng: LatLng): void;
+    }
+
+    class Polyline {
+      constructor(options: {
+        path: LatLng[];
+        map?: Map;
+        strokeWeight?: number;
+        strokeColor?: string;
+        strokeOpacity?: number;
+        strokeStyle?: string;
+      });
+      setMap(map: Map | null): void;
+      setPath(path: LatLng[]): void;
     }
 
     class Circle {

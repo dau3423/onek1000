@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadKakao } from './loadKakao';
-import type { StationWithPrice, NationalTop10Item, ProductCode, StationPoint } from '@/types/station';
+import type { StationWithPrice, NationalTop10Item, ProductCode, StationPoint, RoutePlan } from '@/types/station';
 import { BRAND_COLOR } from '@/types/station';
 import { priceTier, priceTierThresholds } from '@/lib/map/geo';
 import { TIER_FACE, faceMarkerSvg, numberMarkerSvg } from '@/lib/map/markerFace';
@@ -34,6 +34,16 @@ const MY_AREA_LEVEL = 6;
 // 그 이상 줌아웃하면 숨긴다(점이 화면을 가득 메우는 것 방지, 클러스터링 미사용).
 // level 5 = zoom 10(주변 동네가 보이는 수준)부터 노출 — 가격 라벨 노출 기준(level≤5)과 일치.
 const GRAY_DOT_MAX_LEVEL = 5;
+
+// HTML 문자열에 삽입할 사용자 입력(장소명 등) 이스케이프 — innerHTML XSS 방어.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 // 배경(브랜드 색) 위 텍스트 대비 — 밝은 배경(예: S-OIL 노랑)에는 검정, 어두운 배경엔 흰색.
 // hex(#RRGGBB) → 상대 휘도 근사. 마커가 많아도 비용이 미미한 단순 계산.
@@ -208,6 +218,14 @@ interface Props {
   evStations?: EvStationMarker[];
   /** 충전소 마커 클릭 콜백(layer='ev'). */
   onEvMarkerClick?: (s: EvStationMarker) => void;
+  /**
+   * 경로별 최저가 계획. 설정되면 출발→도착 직선 Polyline + 출발/도착 핀 +
+   * 경로 최저가 주유소 마커를 지도에 그리고, 출발~도착이 모두 보이도록 fit한다.
+   * null이면 경로 오버레이를 그리지 않는다(일반 지도).
+   */
+  routePlan?: RoutePlan | null;
+  /** 경로 최저가 주유소 마커 클릭 콜백(routePlan 표시 중). 미지정 시 onMarkerClick 사용. */
+  onRouteStationClick?: (s: StationWithPrice) => void;
   onBoundsChange?: (b: {
     swLat: number; swLng: number; neLat: number; neLng: number; zoom: number;
   }) => void;
@@ -236,6 +254,8 @@ export function KakaoMap({
   layer = 'gas',
   evStations,
   onEvMarkerClick,
+  routePlan,
+  onRouteStationClick,
   onBoundsChange,
   onViewChange,
   onUserPan,
@@ -255,6 +275,14 @@ export function KakaoMap({
   const evOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
   const onEvMarkerClickRef = useRef(onEvMarkerClick);
   useEffect(() => { onEvMarkerClickRef.current = onEvMarkerClick; }, [onEvMarkerClick]);
+  // 경로(직선) Polyline — 경로 모드일 때만 그린다(독립 관리, 해제 시 제거).
+  const routeLineRef = useRef<kakao.maps.Polyline | null>(null);
+  // 경로 오버레이(출발/도착 핀 + 경로 최저가 주유소 마커) — Polyline과 함께 관리.
+  const routeOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
+  const onRouteStationClickRef = useRef(onRouteStationClick);
+  useEffect(() => { onRouteStationClickRef.current = onRouteStationClick; }, [onRouteStationClick]);
+  const onMarkerClickRef = useRef(onMarkerClick);
+  useEffect(() => { onMarkerClickRef.current = onMarkerClick; }, [onMarkerClick]);
   const myOverlayRef = useRef<kakao.maps.CustomOverlay | null>(null);
   const myCircleRef = useRef<kakao.maps.Circle | null>(null);
   // 내 위치 마커 내부의 회전 대상 엘리먼트 — heading 변경 시 위치 effect 재실행 없이 회전만 갱신.
@@ -718,6 +746,98 @@ export function KakaoMap({
     // pointToStation은 product/렌더마다 새로 생성되므로 product를 직접 의존성에 둔다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, allStations, stations, top10Rank, nearbyRank, mapLevel, layer, product, onMarkerClick]);
+
+  // 경로별 최저가 오버레이 — routePlan이 있으면 출발→도착 직선 Polyline +
+  // 출발/도착 핀 + 경로 최저가 주유소 마커를 그리고, 출발~도착이 모두 보이도록 fit한다.
+  // routePlan이 null이면 모두 제거(경로 모드 해제 → 일반 지도).
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    const map = mapRef.current;
+
+    // 기존 경로 오버레이/라인 제거
+    if (routeLineRef.current) { routeLineRef.current.setMap(null); routeLineRef.current = null; }
+    routeOverlaysRef.current.forEach((o) => o.setMap(null));
+    routeOverlaysRef.current = [];
+
+    if (!routePlan) return;
+
+    const { from, to, stations: routeStations } = routePlan;
+    const fromPos = new window.kakao.maps.LatLng(from.lat, from.lng);
+    const toPos = new window.kakao.maps.LatLng(to.lat, to.lng);
+
+    // (a) 출발→도착 직선 Polyline (카카오모빌리티 미사용 — 직선만)
+    const line = new window.kakao.maps.Polyline({
+      path: [fromPos, toPos],
+      strokeWeight: 5,
+      strokeColor: '#2563EB',
+      strokeOpacity: 0.85,
+      strokeStyle: 'solid',
+    });
+    line.setMap(map);
+    routeLineRef.current = line;
+
+    // (b) 출발/도착 핀 — 구분되는 라벨 핀(출발=초록, 도착=빨강)
+    const endpoint = (pos: kakao.maps.LatLng, label: string, name: string | undefined, color: string) => {
+      const el = document.createElement('div');
+      el.className = 'select-none';
+      el.style.transform = 'translate(-50%, -100%)';
+      el.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <div style="padding:3px 8px;border-radius:9px;background:${color};color:#fff;font-size:11px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
+            ${label}${name ? ` · ${escapeHtml(name)}` : ''}
+          </div>
+          <div style="width:9px;height:9px;background:${color};transform:rotate(45deg);margin-top:-5px"></div>
+        </div>`;
+      const ov = new window.kakao.maps.CustomOverlay({
+        position: pos, content: el, yAnchor: 1, zIndex: 20,
+      });
+      ov.setMap(map);
+      routeOverlaysRef.current.push(ov);
+    };
+    endpoint(fromPos, '출발', from.name, '#16A34A');
+    endpoint(toPos, '도착', to.name, '#DC2626');
+
+    // (c) 경로 최저가 주유소 마커 — 기존 마커 톤(가격 라벨 + 동심원)을 활용.
+    //     가격이 쌀수록 위(낮은 순위 숫자). 클릭 시 onRouteStationClick(없으면 onMarkerClick).
+    const thresholds = priceTierThresholds(routeStations.map((s) => s.price));
+    routeStations.forEach((s, i) => {
+      const rank = i + 1; // routeStations는 가격 오름차순(API 정렬)
+      const tier = priceTier(s.price, thresholds);
+      const tierColor = TIER_FACE[tier].color;
+      const brandColor = BRAND_COLOR[s.brand] ?? '#666';
+      const content = document.createElement('div');
+      content.className = 'cursor-pointer select-none';
+      content.style.transform = 'translate(-50%, -100%)';
+      content.style.position = 'relative';
+      const badge = numberMarkerSvg(tier, 28, rank, { ring: brandColor, ringWidth: 8, gap: 4 });
+      content.innerHTML = `
+        <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
+          <div style="padding:4px 8px;border-radius:10px;background:${tierColor};color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
+            ₩${s.price.toLocaleString()}
+          </div>
+          <div style="width:8px;height:8px;background:${tierColor};transform:rotate(45deg);margin-top:-4px"></div>
+          <div style="margin-top:-1px">${badge}</div>
+        </div>`;
+      content.addEventListener('click', () => {
+        (onRouteStationClickRef.current ?? onMarkerClickRef.current)?.(s);
+      });
+      const ov = new window.kakao.maps.CustomOverlay({
+        position: new window.kakao.maps.LatLng(s.lat, s.lng),
+        content, yAnchor: 1, clickable: true, zIndex: 15,
+      });
+      ov.setMap(map);
+      routeOverlaysRef.current.push(ov);
+    });
+
+    // (d) 출발~도착(+주유소)이 모두 보이게 bounds fit
+    const bounds = new window.kakao.maps.LatLngBounds();
+    bounds.extend(fromPos);
+    bounds.extend(toPos);
+    for (const s of routeStations) bounds.extend(new window.kakao.maps.LatLng(s.lat, s.lng));
+    map.setBounds(bounds);
+    // setBounds는 idle을 유발 → onBoundsChange로 bbox 재조회가 이어진다(정상).
+    // routePlan은 마운트/변경 시 1회만 fit하면 되므로 의존성에서 stations 등 다른 데이터는 제외.
+  }, [ready, routePlan]);
 
   // 내 위치 마커 + 1km 원
   useEffect(() => {

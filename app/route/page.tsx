@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useSession, signIn } from 'next-auth/react';
 import { loadKakao } from '@/components/map/loadKakao';
+import { useMapStore } from '@/stores/map';
 import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL, type BrandCode, type ProductCode, type StationWithPrice } from '@/types/station';
 
 type Point = { lat: number; lng: number; name?: string };
@@ -75,6 +77,8 @@ function RouteSignInGate() {
 }
 
 function RouteCheapestInner() {
+  const router = useRouter();
+  const setRoutePlan = useMapStore((s) => s.setRoutePlan);
   const [from, setFrom] = useState<Point | null>(null);
   const [to, setTo] = useState<Point | null>(null);
   const [product, setProduct] = useState<ProductCode>('B027');
@@ -109,7 +113,21 @@ function RouteCheapestInner() {
       const res = await fetch(`/api/route-cheapest?${q}`);
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? '검색 실패');
-      setResults(j.stations ?? []);
+      const stations: StationWithPrice[] = j.stations ?? [];
+      setResults(stations);
+      if (stations.length === 0) {
+        // 경로 주변에 주유소가 없으면 지도로 보낼 게 없으므로 페이지에 머물며 안내.
+        setError('경로(직선) 반경 2km 내 주유소를 찾지 못했어요. 출발/도착을 조정해보세요.');
+        return;
+      }
+      // 결과를 store에 담아 메인 지도로 이동 → 직선 Polyline + 출발/도착/최저가 마커 표시.
+      setRoutePlan({
+        from: { lat: from.lat, lng: from.lng, name: from.name },
+        to: { lat: to.lat, lng: to.lng, name: to.name },
+        product,
+        stations,
+      });
+      router.push('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

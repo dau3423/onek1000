@@ -9,6 +9,7 @@ import { FilterBar } from '@/components/ui/FilterBar';
 import { BottomSheet, SHEET_PEEK_PX } from '@/components/ui/BottomSheet';
 import { BannerAd, BANNER_BOTTOM_PX, BANNER_HEIGHT_PX, useBannerVisible } from '@/components/ads/BannerAd';
 import { RadiusAlert } from '@/components/alert/RadiusAlert';
+import { RouteAlert } from '@/components/alert/RouteAlert';
 import { NaviConfirm } from '@/components/alert/NaviConfirm';
 import { ProductSync } from '@/components/map/ProductSync';
 import { StationPopup } from '@/components/map/StationPopup';
@@ -16,11 +17,11 @@ import { EvStationPopup } from '@/components/map/EvStationPopup';
 import { MarkerLegend } from '@/components/ui/MarkerLegend';
 import { InstallBanner } from '@/components/pwa/InstallBanner';
 import { BusinessFooter } from '@/components/legal/BusinessFooter';
-import { useMapStore, getInitialMapView, type MapView } from '@/stores/map';
+import { useMapStore, getInitialMapView, getInitialRoutePlan, type MapView } from '@/stores/map';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useFullscreen } from '@/hooks/useFullscreen';
-import { quantize } from '@/lib/map/geo';
+import { quantize, distanceMeters } from '@/lib/map/geo';
 import type { BboxResponse, RadiusResponse, StationWithPrice, NationalTop10Item, NationalTop10Response, StationPoint, StationsInBboxResponse } from '@/types/station';
 import type { EvBboxResponse, EvStationMarker } from '@/types/ev';
 
@@ -32,6 +33,8 @@ const KakaoMap = dynamic(
 
 const ALERT_THRESHOLD = 50; // 평균 대비 -50원 이상 저렴할 때 알람
 const ALERT_RADIUS_M = 1000; // 알람 판정 반경 (FR-2.3)
+// 경로 주행 중 '경로상 최저가 주유소' 근접 알림 판정 반경 (내 주변 알람과 동일 1km, 조정 가능)
+const ROUTE_ALERT_RADIUS_M = 1000;
 const NEARBY_RADIUS_M = 10000; // '내 주변' 표시 반경 (현재 위치 기준 10km)
 // 반경 응답 최대 개수. 내 주변 TOP10(가격 정렬) + 1km 알람 산출(거리 기반)을 한 응답에서
 // 모두 뽑아내려면 충분히 커야 한다(10km 내 주유소가 많아도 1km 내 최저가가 잘리지 않게).
@@ -46,7 +49,7 @@ const GRAY_DOT_LIMIT = 500;
 
 export default function HomePage() {
   const router = useRouter();
-  const { product, brands, alertDismissed, dismissAlert, resetAlert, setLastView, layer } = useMapStore();
+  const { product, brands, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, clearRoutePlan } = useMapStore();
 
   // 최신 유종을 항상 참조하기 위한 ref. fetchStations/fetchAllStations 같은 콜백이
   // (지도 idle의 onBoundsChange 등에서) 옛 렌더의 클로저로 호출되더라도, 실제 요청은
@@ -403,6 +406,54 @@ export default function HomePage() {
 
   const myLocation = geo.coords ?? null;
 
+  // === 경로별 최저가: 새로고침 견고성을 위한 store hydrate ===
+  // route 페이지 → '/' SPA 네비에서는 zustand 메모리 상태(routePlan)가 그대로 유지되지만,
+  // 새로고침 시엔 store가 비므로 sessionStorage(getInitialRoutePlan)에서 1회 복원한다.
+  useEffect(() => {
+    if (useMapStore.getState().routePlan) return; // 이미 메모리에 있으면(네비 직후) 그대로 사용
+    const restored = getInitialRoutePlan();
+    if (restored) useMapStore.getState().setRoutePlan(restored);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 경로 모드에서 '경로상 최저가 주유소' 근접 알림 대상.
+  // routePlan이 있고 GPS 주행 중일 때, 그 주유소 중 1km 이내로 접근한 가장 가까운 곳을 1회 알린다.
+  const [routeAlert, setRouteAlert] = useState<{ station: StationWithPrice; distanceM: number } | null>(null);
+  // 이미 알린(근접 트리거된) 주유소 id 집합 — 한 주유소는 1회만 알린다(중복 알림 방지).
+  const alertedRouteIdsRef = useRef<Set<string>>(new Set());
+  // 사용자가 닫은 알림은 다시 띄우지 않기 위한 닫힘 플래그(현재 표시 대상 기준).
+  const routeAlertDismissedRef = useRef<string | null>(null);
+
+  // routePlan이 바뀌면(새 경로 검색/해제) 알림 상태를 리셋한다.
+  useEffect(() => {
+    alertedRouteIdsRef.current = new Set();
+    routeAlertDismissedRef.current = null;
+    setRouteAlert(null);
+  }, [routePlan]);
+
+  // GPS 위치 변경 시 경로 최저가 주유소 근접 감지(포그라운드 전제, 웹 한계로 백그라운드 제외).
+  // 좌표 양자화 게이트(lastRadiusKeyRef와 별개)로 과한 재계산을 피하되, 거리 계산 자체는 가벼우므로
+  // 위치 갱신마다 평가한다. 1km 이내 미알림 주유소 중 가장 가까운 곳을 1회 알린다.
+  useEffect(() => {
+    if (!routePlan || !geo.coords || layer !== 'gas') return;
+    const { lat, lng } = geo.coords;
+    let nearest: { station: StationWithPrice; distanceM: number } | null = null;
+    for (const s of routePlan.stations) {
+      if (alertedRouteIdsRef.current.has(s.id)) continue; // 이미 알린 주유소는 건너뜀
+      const d = distanceMeters(lat, lng, s.lat, s.lng);
+      if (d <= ROUTE_ALERT_RADIUS_M && (!nearest || d < nearest.distanceM)) {
+        nearest = { station: s, distanceM: d };
+      }
+    }
+    if (nearest) {
+      alertedRouteIdsRef.current.add(nearest.station.id); // 1회만 — 멀어졌다 재접근해도 재알림 안 함
+      routeAlertDismissedRef.current = null;
+      setRouteAlert(nearest);
+    }
+    // 위경도 변화에만 반응(heading/accuracy 변경에는 재평가 불필요)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geo.coords?.lat, geo.coords?.lng, routePlan, layer]);
+
   // 충전소 정렬/거리 기준 좌표: 내 위치 우선, 없으면 화면 중심(마지막 bounds 중심)으로 폴백.
   // (위치 없으면 거리는 화면 중심 기준 — 정렬은 사용가능→급속→거리, 거리 폴백은 합리적 근사)
   const evOrigin = useMemo(() => {
@@ -449,6 +500,8 @@ export default function HomePage() {
             if (isDesktop) setEvPopup(s);
             else router.push(`/ev/${s.statId}`);
           }}
+          routePlan={layer === 'gas' ? routePlan : null}
+          onRouteStationClick={handleMarkerClick}
           myLocation={myLocation}
           heading={geo.coords?.heading ?? null}
           recenterSignal={recenterSignal}
@@ -551,14 +604,54 @@ export default function HomePage() {
           </button>
         )}
 
-        {/* 1km 알람 — 주유소 레이어에서만(충전소는 가격 알람 대상 아님) */}
-        {layer === 'gas' && alertStation && !alertDismissed && (
+        {/* 경로 모드 표시줄 — routePlan이 있을 때 지도 상단(필터바 아래)에 노출.
+            출발→도착 요약 + 경로 해제(닫기) 컨트롤. 닫으면 일반 지도로 돌아간다. */}
+        {layer === 'gas' && routePlan && (
+          <div className="pointer-events-auto absolute inset-x-2 top-[calc(56px+44px+8px+env(safe-area-inset-top))] z-30 flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 shadow-lg backdrop-blur dark:bg-gray-800/95">
+            <span className="text-base">🛣️</span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-xs font-bold text-gray-900 dark:text-gray-100">
+                {routePlan.from.name ?? '출발'} → {routePlan.to.name ?? '도착'}
+              </div>
+              <div className="truncate text-[11px] text-gray-500 dark:text-gray-400">
+                경로 위 최저가 {routePlan.stations.length}곳
+              </div>
+            </div>
+            <button
+              onClick={() => clearRoutePlan()}
+              aria-label="경로 표시 해제"
+              title="경로 표시 해제"
+              className="shrink-0 rounded-full p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* 1km 알람 — 주유소 레이어에서만(충전소는 가격 알람 대상 아님).
+            경로 모드일 때는 경로 표시줄과 겹치므로 내 주변 알람 대신 경로 알림(RouteAlert)을 우선한다. */}
+        {layer === 'gas' && !routePlan && alertStation && !alertDismissed && (
           <RadiusAlert
             station={alertStation}
             averagePrice={averagePrice}
             onClick={() => router.push(`/station/${alertStation.id}`)}
             onDismiss={dismissAlert}
             onNavigate={() => setNaviTarget(alertStation)}
+          />
+        )}
+
+        {/* 경로 주행 중 '경로상 최저가 주유소' 근접 알림 — 1km 이내 접근 시 1회 노출(인앱 팝업 + 효과음).
+            경로 표시줄과 같은 상단 위치를 쓰지만, 알림은 z-40으로 그 위에 겹쳐 표시한다. */}
+        {layer === 'gas' && routePlan && routeAlert && routeAlertDismissedRef.current !== routeAlert.station.id && (
+          <RouteAlert
+            station={routeAlert.station}
+            distanceM={routeAlert.distanceM}
+            onClick={() => router.push(`/station/${routeAlert.station.id}`)}
+            onDismiss={() => {
+              routeAlertDismissedRef.current = routeAlert.station.id;
+              setRouteAlert(null);
+            }}
+            onNavigate={() => setNaviTarget(routeAlert.station)}
           />
         )}
 

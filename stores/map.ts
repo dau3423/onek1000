@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ProductCode, BrandCode } from '@/types/station';
+import type { ProductCode, BrandCode, RoutePlan } from '@/types/station';
 
 /** 마지막으로 보던 지도 시점(중심 좌표 + 카카오 level). 상세보기 왕복 시 복원에 사용. */
 export interface MapView {
@@ -39,6 +39,42 @@ function writeLastView(v: MapView | null) {
   }
 }
 
+const ROUTE_PLAN_KEY = 'onek:routePlan';
+
+/**
+ * 경로 계획(RoutePlan)을 sessionStorage에서 읽는다.
+ * route 페이지 → 메인 지도 이동(SPA 네비)에는 메모리 상태로 충분하나,
+ * 새로고침 견고성을 위해 sessionStorage도 병행한다(lastView와 동일 패턴).
+ */
+function readRoutePlan(): RoutePlan | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(ROUTE_PLAN_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as Partial<RoutePlan>;
+    if (
+      v.from && typeof v.from.lat === 'number' && typeof v.from.lng === 'number'
+      && v.to && typeof v.to.lat === 'number' && typeof v.to.lng === 'number'
+      && Array.isArray(v.stations)
+    ) {
+      return v as RoutePlan;
+    }
+  } catch {
+    // 손상된 값은 무시
+  }
+  return null;
+}
+
+function writeRoutePlan(v: RoutePlan | null) {
+  if (typeof window === 'undefined') return;
+  try {
+    if (v) window.sessionStorage.setItem(ROUTE_PLAN_KEY, JSON.stringify(v));
+    else window.sessionStorage.removeItem(ROUTE_PLAN_KEY);
+  } catch {
+    // sessionStorage 불가 환경은 메모리 상태로만 동작
+  }
+}
+
 /** 지도 레이어 — 'gas'=주유소(기존 기본), 'ev'=전기차 충전소. */
 export type MapLayer = 'gas' | 'ev';
 
@@ -73,6 +109,15 @@ interface MapState {
   /** 마지막 지도 시점(중심/줌). 지도 idle 시 갱신, 홈 마운트 시 복원에 사용. */
   lastView: MapView | null;
   setLastView: (v: MapView) => void;
+
+  /**
+   * 경로별 최저가 계획. route 페이지에서 '찾기' 후 설정하면 메인 지도가 이를 읽어
+   * 직선 Polyline + 출발/도착/최저가 마커를 표시하고, 주행 중 근접 알림 대상으로 쓴다.
+   * null이면 일반 지도 모드.
+   */
+  routePlan: RoutePlan | null;
+  setRoutePlan: (p: RoutePlan | null) => void;
+  clearRoutePlan: () => void;
 }
 
 export const useMapStore = create<MapState>((set) => ({
@@ -105,9 +150,24 @@ export const useMapStore = create<MapState>((set) => ({
     writeLastView(v);
     set({ lastView: v });
   },
+
+  routePlan: null,
+  setRoutePlan: (p) => {
+    writeRoutePlan(p);
+    set({ routePlan: p });
+  },
+  clearRoutePlan: () => {
+    writeRoutePlan(null);
+    set({ routePlan: null });
+  },
 }));
 
 /** 홈 마운트 시점에 1회 호출 — 메모리 또는 sessionStorage에 저장된 마지막 시점을 반환. */
 export function getInitialMapView(): MapView | null {
   return useMapStore.getState().lastView ?? readLastView();
+}
+
+/** 홈 마운트 시점에 1회 호출 — 메모리 또는 sessionStorage에 저장된 경로 계획을 반환. */
+export function getInitialRoutePlan(): RoutePlan | null {
+  return useMapStore.getState().routePlan ?? readRoutePlan();
 }

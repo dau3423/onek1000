@@ -144,3 +144,23 @@ export interface AvgPriceResponse {
   sido: Array<{ code: SidoCode; name: string; price: number }>;
   asOf: string;
 }
+
+/** 경로(직선) 끝점 — 출발/도착 지점 */
+export interface RoutePoint {
+  lat: number;
+  lng: number;
+  name?: string;
+}
+
+/**
+ * 경로별 최저가 결과 — route 페이지에서 찾은 뒤 메인 지도로 전달해
+ * 직선 Polyline + 출발/도착 마커 + 최저가 주유소 마커를 표시하고,
+ * 주행 중 근접 알림 대상으로 사용한다.
+ */
+export interface RoutePlan {
+  from: RoutePoint;
+  to: RoutePoint;
+  product: ProductCode;
+  /** 경로(직선) buffer 내 최저가 주유소들(가격 오름차순). distance=경로(선)로부터의 거리(m). */
+  stations: StationWithPrice[];
+}
