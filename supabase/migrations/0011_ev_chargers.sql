@@ -94,3 +94,15 @@ returns table (
   order by available_chargers desc, total_chargers desc
   limit p_limit;
 $$;
+
+-- ─── zcode별 마지막 sync 시각 (sync-ev 전국 모드의 resume 순서 결정용) ───
+-- 시간예산으로 한 호출에 전국을 다 못 돌 수 있어, 가장 오래된(또는 미적재) 시도부터 처리한다.
+-- 17개 시도를 17번 쿼리하는 대신 단일 집계로 가볍게 조회한다.
+create or replace function rpc_ev_zcode_synced_at()
+returns table (zcode text, last_synced_at timestamptz)
+language sql stable as $$
+  select c.zcode, max(c.synced_at) as last_synced_at
+  from ev_chargers c
+  where c.zcode is not null
+  group by c.zcode;
+$$;
