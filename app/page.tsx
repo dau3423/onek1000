@@ -173,20 +173,35 @@ export default function HomePage() {
 
   // 유종 변경 시 전국 최저가 TOP10 재조회 (마운트 1회 + product 변경 시).
   // 화면 영역과 무관하므로 bbox 패닝/줌에는 재호출하지 않는다(캐시/rate limit 보호).
+  //
+  // 유종 전환 경쟁 방어(bbox fetchStations와 동일 패턴):
+  //  - effect 시작 시 이전 요청을 abort하고, cleanup에서도 abort해 빠른 연속 전환/언마운트 시
+  //    진행 중 요청이 확실히 취소되게 한다.
+  //  - 요청한 유종(reqProduct)을 캡처해, 응답이 abort 직전에 이미 수신을 마쳐 out-of-order로
+  //    resolve되더라도 "현재 선택 유종"과 다르면 무시한다(옛 유종 TOP10이 화면에 박히는 것 차단).
+  //    실증상: 경유→LPG 전환 직후에도 크라운 핀 가격이 경유 값으로 남던 버그(setNationalTop10가
+  //    옛 유종 응답으로 덮이는 순서 문제) 차단.
+  //  - 응답 캐시 헤더(stale-while-revalidate)로 옛 값이 즉시 반환되어 유종 데이터가 어긋나지 않도록
+  //    no-store로 항상 신선한 TOP10을 받는다(전국 1건/유종이라 비용 미미, NFR-3 부합).
   useEffect(() => {
     if (top10Abort.current) top10Abort.current.abort();
-    top10Abort.current = new AbortController();
-    fetch(`/api/stations/top10?product=${product}`, { signal: top10Abort.current.signal })
+    const ac = new AbortController();
+    top10Abort.current = ac;
+    const reqProduct = product;
+    fetch(`/api/stations/top10?product=${reqProduct}`, { signal: ac.signal, cache: 'no-store' })
       .then(async (r) => {
         if (!r.ok) throw new Error(`top10 ${r.status}`);
         return (await r.json()) as NationalTop10Response;
       })
       .then((data) => {
+        // 요청 유종이 현재 유종과 다르면 무시(out-of-order 방어).
+        if (reqProduct !== productRef.current) return;
         setNationalTop10(Array.isArray(data?.stations) ? data.stations : []);
       })
       .catch((e) => {
         if (e.name !== 'AbortError') console.error('top10 fetch fail', e);
       });
+    return () => ac.abort();
   }, [product]);
 
   function fetchStations(b: { swLat: number; swLng: number; neLat: number; neLng: number; zoom: number }) {
