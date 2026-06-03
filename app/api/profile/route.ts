@@ -1,7 +1,8 @@
-// 프로필(닉네임/프로필 사진) — 로그인 필요, 본인 스코프
-// GET: 현재 닉네임/사진 + (선택) 닉네임 사용 가능 여부 확인(?check=...)
+// 프로필(닉네임/프로필 사진/알림톡 동의) — 로그인 필요, 본인 스코프
+// GET: 현재 닉네임/사진/알림톡 동의 + (선택) 닉네임 사용 가능 여부 확인(?check=...)
 // PATCH: 닉네임 변경(형식 검증 + 중복 검사 → 409). DB 유니크 인덱스로 최종 방어.
 //        또는 { resetImage: true }로 프로필 사진을 소셜 기본값으로 되돌림.
+//        또는 { alimtalkOptIn: boolean }로 카카오 알림톡 수신 동의 토글.
 // POST: 프로필 사진 업로드(multipart/form-data, field 'avatar') → users.image_url 저장.
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -38,6 +39,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       nickname: session.user.nickname ?? null,
       image: session.user.image ?? null,
+      alimtalkOptIn: false,
     });
   }
 
@@ -55,11 +57,22 @@ export async function GET(req: Request) {
   }
 
   const sb = getSupabase();
-  const { data } = await sb.from('users').select('nickname, image_url').eq('id', userId).maybeSingle();
-  return NextResponse.json({
-    nickname: (data?.nickname as string | null) ?? null,
-    image: (data?.image_url as string | null) ?? null,
-  });
+  // alimtalk_opt_in 컬럼은 0017 마이그레이션 적용 후에만 존재한다.
+  // 미적용 환경에서도 닉네임/사진 조회가 깨지지 않도록, 컬럼 없음(42703) 시 컬럼 제외로 재조회한다.
+  let nickname: string | null = null;
+  let image: string | null = null;
+  let alimtalkOptIn = false;
+  const full = await sb.from('users').select('nickname, image_url, alimtalk_opt_in').eq('id', userId).maybeSingle();
+  if (full.error?.code === '42703') {
+    const fallback = await sb.from('users').select('nickname, image_url').eq('id', userId).maybeSingle();
+    nickname = (fallback.data?.nickname as string | null) ?? null;
+    image = (fallback.data?.image_url as string | null) ?? null;
+  } else {
+    nickname = (full.data?.nickname as string | null) ?? null;
+    image = (full.data?.image_url as string | null) ?? null;
+    alimtalkOptIn = Boolean(full.data?.alimtalk_opt_in);
+  }
+  return NextResponse.json({ nickname, image, alimtalkOptIn });
 }
 
 export async function PATCH(req: Request) {
@@ -67,7 +80,30 @@ export async function PATCH(req: Request) {
   if (!session?.user?.email) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   if (!isSupabaseConfigured()) return NextResponse.json({ error: 'db not configured' }, { status: 503 });
 
-  const body = (await req.json()) as { nickname?: string; resetImage?: boolean };
+  const body = (await req.json()) as {
+    nickname?: string;
+    resetImage?: boolean;
+    alimtalkOptIn?: boolean;
+  };
+
+  // 카카오 알림톡 수신 동의 토글(본인 스코프). 발송 연동은 후속이며 여기선 동의 플래그만 저장.
+  if (typeof body.alimtalkOptIn === 'boolean') {
+    const userId = await getUserId(session.user.email);
+    if (!userId) return NextResponse.json({ error: 'user not found' }, { status: 404 });
+    const sb = getSupabase();
+    const { error } = await sb
+      .from('users')
+      .update({ alimtalk_opt_in: body.alimtalkOptIn })
+      .eq('id', userId);
+    if (error) {
+      // 0017 미적용 환경: 컬럼 없음(42703) → 마이그레이션 안내
+      if (error.code === '42703') {
+        return NextResponse.json({ error: '알림톡 설정 준비 중이에요. 잠시 후 다시 시도해 주세요.' }, { status: 503 });
+      }
+      return NextResponse.json({ error: '변경에 실패했어요.' }, { status: 500 });
+    }
+    return NextResponse.json({ alimtalkOptIn: body.alimtalkOptIn });
+  }
 
   // 프로필 사진 되돌리기: image_url을 비워 다음 로그인 시 소셜 이미지로 백필되게 함.
   if (body.resetImage) {

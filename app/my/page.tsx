@@ -9,6 +9,8 @@ import { DeleteAccountButton } from '@/components/account/DeleteAccountButton';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { InstallButton } from '@/components/pwa/InstallButton';
 import {
+  AlimtalkSection,
+  AlimtalkSkeleton,
   BadgeSkeleton,
   FavoriteCount,
   FuelLogCount,
@@ -133,9 +135,16 @@ export default async function MyPage() {
         {/* 프리미엄 판정은 서버에서 DB로 검증한 isActive를 그대로 전달(SEC-5).
             클라 세션(useSession) 갱신 타이밍과 무관하게 결제 직후 즉시 정확하게 반영된다. */}
         {canQuery && userId ? (
-          <Suspense fallback={<PushSkeleton />}>
-            <PushSection userId={userId} />
-          </Suspense>
+          <>
+            <Suspense fallback={<PushSkeleton />}>
+              <PushSection userId={userId} />
+            </Suspense>
+            <div className="mt-3">
+              <Suspense fallback={<AlimtalkSkeleton />}>
+                <AlimtalkSection userId={userId} />
+              </Suspense>
+            </div>
+          </>
         ) : (
           <p className="text-xs text-gray-400">푸시 알림은 1000냥 플랜 전용 기능입니다.</p>
         )}

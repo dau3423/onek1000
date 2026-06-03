@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { CancelButton } from '@/components/billing/CancelButton';
 import { EnablePushButton } from '@/components/push/EnablePushButton';
+import { AlimtalkToggle } from '@/components/profile/AlimtalkToggle';
 
 interface Sub {
   id: string;
@@ -121,6 +122,29 @@ export async function PushSection({ userId }: { userId: string }) {
   const sub = await fetchSubscription(userId);
   const { isActive } = deriveStatus(sub);
   return <EnablePushButton isPremium={isActive} />;
+}
+
+/** 알림톡 토글 스켈레톤(카드 높이 유지). */
+export function AlimtalkSkeleton() {
+  return <div className="h-[88px] animate-pulse rounded-xl bg-gray-100" />;
+}
+
+/**
+ * 카카오 알림톡 수신 동의 영역. 서버에서 현재 동의 값을 DB로 조회해 토글 초기값으로 전달한다.
+ * 0017 미적용 환경(컬럼 없음, 42703)에서는 false로 폴백해 마이페이지가 깨지지 않게 한다.
+ */
+export async function AlimtalkSection({ userId }: { userId: string }) {
+  let optIn = false;
+  if (isSupabaseConfigured()) {
+    const sb = getSupabase();
+    const { data, error } = await sb
+      .from('users')
+      .select('alimtalk_opt_in')
+      .eq('id', userId)
+      .maybeSingle();
+    if (!error) optIn = Boolean((data as { alimtalk_opt_in?: boolean } | null)?.alimtalk_opt_in);
+  }
+  return <AlimtalkToggle initialOptIn={optIn} />;
 }
 
 /** 카운트 단건 조회(에러 시 0 폴백). */
