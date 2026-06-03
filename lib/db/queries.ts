@@ -1,9 +1,10 @@
 // Supabase 기반 도메인 쿼리 — Supabase 미설정 시 mock 폴백
 import { getSupabase, isSupabaseConfigured } from './supabase';
-import type { StationWithPrice, ProductCode, SidoCode, BrandCode, NationalTop10Item, StationDetail } from '@/types/station';
+import type { StationWithPrice, ProductCode, SidoCode, BrandCode, NationalTop10Item, StationDetail, StationPoint } from '@/types/station';
 import type { Bbox } from '@/lib/map/geo';
 import { getMockStations, getMockStationDetail } from '@/lib/mock/stations';
 import { distanceMeters, inBbox, topPriceRankMap } from '@/lib/map/geo';
+import { fetchStationDetail } from '@/lib/opinet/client';
 
 interface RpcRow {
   id: string; name: string; brand_code: string; is_self: boolean;
@@ -33,6 +34,40 @@ export async function queryStationsByBbox(
     isSelf: r.is_self, sido: '01' as SidoCode, address: '',
     lat: r.lat, lng: r.lng,
     product, price: r.price, tradeDate: r.trade_dt,
+  }));
+}
+
+interface PointRpcRow {
+  id: string; name: string; brand_code: string; is_self: boolean;
+  lat: number; lng: number;
+}
+
+/**
+ * 화면 영역(bbox) 내 "전체 주유소"(가격 유무 무관) — 회색 점(비하이라이트) 렌더용.
+ * queryStationsByBbox 는 prices_latest inner join 이라 가격 있는 주유소만 반환하므로,
+ * 가격 없는 주유소까지 포함하려면 이 함수(가격 join 없는 RPC)를 쓴다.
+ * 줌 게이팅으로 확대 시에만 호출되고 limit 으로 상한을 둔다. Supabase 미설정 시 mock 폴백.
+ */
+export async function queryStationsInBbox(
+  bbox: Bbox, limit: number,
+): Promise<StationPoint[]> {
+  if (!isSupabaseConfigured()) {
+    // mock 에는 유종별 풀만 있으므로 휘발유(B027) 풀의 좌표/브랜드만 점으로 사용한다.
+    return getMockStations('B027')
+      .filter((s) => inBbox(s.lat, s.lng, bbox))
+      .slice(0, limit)
+      .map((s) => ({ id: s.id, name: s.name, brand: s.brand, isSelf: s.isSelf, lat: s.lat, lng: s.lng }));
+  }
+  const sb = getSupabase();
+  const { data, error } = await sb.rpc('rpc_stations_in_bbox', {
+    p_sw_lng: bbox.swLng, p_sw_lat: bbox.swLat,
+    p_ne_lng: bbox.neLng, p_ne_lat: bbox.neLat,
+    p_limit: limit,
+  });
+  if (error) throw new Error(`stations in bbox query failed: ${error.message}`);
+  return (data as PointRpcRow[]).map((r) => ({
+    id: r.id, name: r.name, brand: (r.brand_code as BrandCode) ?? 'ETC',
+    isSelf: r.is_self, lat: r.lat, lng: r.lng,
   }));
 }
 
@@ -177,4 +212,85 @@ export async function queryStationDetail(id: string): Promise<StationDetail | nu
     lat: s.lat ?? 0, lng: s.lng ?? 0,
     prices: priceMap,
   };
+}
+
+/** detail.prices 안에 실제 가격(유종 1개라도)이 있는지 */
+function hasAnyPrice(detail: StationDetail): boolean {
+  return Object.values(detail.prices).some((v) => v != null);
+}
+
+/** Promise에 타임아웃을 거는 헬퍼 — 초과 시 reject. (Opinet 지연/할당량 소진 대비) */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timeout ${ms}ms`)), ms);
+    p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
+  });
+}
+
+// 전체 적재 시 가격이 아직 없는 주유소는 상세 진입 시 Opinet detailById 1회로 가격을 채운다.
+// "상세=DB only" 원칙을 가격이 전무할 때에만 완화하고, 받은 가격은 DB(prices_latest)에 캐시해
+// 다음 진입부터는 DB만으로 표시되게 한다(재호출 최소화). Opinet 호출은 짧은 타임아웃으로 보호하고,
+// 실패/할당량 소진/빈 응답이면 DB 스냅샷(가격 없으면 '정보 없음')으로 폴백해 페이지가 깨지지 않게 한다.
+const DETAIL_OPINET_TIMEOUT_MS = 7000;
+
+/**
+ * 상세 페이지용 주유소 조회. DB 우선 조회 후, 가격이 하나도 없으면(전체 적재로 새로
+ * 들어온 주유소 등) Opinet detailById를 1회 실시간 호출해 가격(+부가서비스)을 채우고
+ * DB에 캐시한다. 가격이 이미 있으면 Opinet을 호출하지 않아 기존 동작/속도가 불변이다.
+ */
+export async function queryStationDetailWithPriceFallback(id: string): Promise<StationDetail | null> {
+  const base = await queryStationDetail(id);
+  if (!base) return null;
+
+  // 가격이 이미 있거나, Supabase 미설정(mock 모드)이면 그대로 반환 — Opinet 미호출.
+  if (!isSupabaseConfigured() || hasAnyPrice(base)) return base;
+
+  // 가격 전무 → Opinet detailById 1회 실시간 조회(짧은 타임아웃). 실패/빈 응답이면 DB 스냅샷 폴백.
+  let live: StationDetail | null = null;
+  try {
+    live = await withTimeout(fetchStationDetail(id), DETAIL_OPINET_TIMEOUT_MS, 'opinet detail');
+  } catch {
+    return base; // 타임아웃/네트워크/할당량 → DB값으로 폴백(가격 미표시)
+  }
+  if (!live || !hasAnyPrice(live)) return base; // 빈 응답(OIL[])도 폴백
+
+  // 받은 가격을 base에 머지(부가서비스는 Opinet 응답이 더 신선하면 보강).
+  const merged: StationDetail = {
+    ...base,
+    prices: { ...base.prices, ...live.prices },
+    hasCarwash: live.hasCarwash ?? base.hasCarwash,
+    hasCvs: live.hasCvs ?? base.hasCvs,
+    hasMaintenance: live.hasMaintenance ?? base.hasMaintenance,
+  };
+
+  // DB 캐시(prices_latest upsert). 실패해도 표시에는 영향 없게 best-effort.
+  await cacheStationPrices(id, live).catch(() => {});
+
+  return merged;
+}
+
+/** Opinet detailById로 받은 가격을 prices_latest에 upsert(+stations 부가서비스 보강). best-effort. */
+async function cacheStationPrices(id: string, live: StationDetail): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  const sb = getSupabase();
+  const now = new Date().toISOString();
+  const rows = (Object.entries(live.prices) as Array<[ProductCode, { price: number; tradeDate: string } | null]>)
+    .filter(([, v]) => v != null)
+    .map(([product, v]) => ({
+      station_id: id,
+      product,
+      price: v!.price,
+      trade_dt: v!.tradeDate || now.slice(0, 10),
+      updated_at: now,
+    }));
+  if (rows.length === 0) return;
+  await sb.from('prices_latest').upsert(rows, { onConflict: 'station_id,product' });
+
+  // 부가서비스도 한 번 받은 김에 보강(아직 미보강이면 채워두면 다음 진입에 안내문구 대신 노출).
+  await sb.from('stations').update({
+    has_carwash: live.hasCarwash ?? null,
+    has_cvs: live.hasCvs ?? null,
+    has_maintenance: live.hasMaintenance ?? null,
+    amenities_updated_at: now,
+  }).eq('id', id);
 }

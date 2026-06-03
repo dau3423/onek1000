@@ -59,6 +59,8 @@ export const keys = {
   avgNation: () => `avg:nation`,
   avgSido: (prod: string) => `avg:sido:${prod}`,
   evBbox: (q: string) => `ev:bbox:${q}`,
+  // 화면 영역 내 전체 주유소(회색 점) — 가격/유종 무관, 좌표만. 줌(z)+격자로 분리.
+  stationsInBbox: (z: number, q: string) => `allstn:z${z}:${q}`,
 };
 
 /** 좌표 양자화: precision=3 → 약 110m 격자, 4 → 11m */

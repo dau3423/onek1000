@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadKakao } from './loadKakao';
-import type { StationWithPrice, NationalTop10Item, ProductCode } from '@/types/station';
+import type { StationWithPrice, NationalTop10Item, ProductCode, StationPoint } from '@/types/station';
 import { BRAND_COLOR } from '@/types/station';
 import { priceTier, priceTierThresholds } from '@/lib/map/geo';
 import { TIER_FACE, faceMarkerSvg, numberMarkerSvg } from '@/lib/map/markerFace';
@@ -29,6 +29,11 @@ const NEAR_RING = '#1D4ED8';  // 내 주변 카테고리 보조 테두리(진한
 // 내 위치로 자동 줌인할 카카오 level (zoom = 15 - level). level 6 = zoom 9(시군구 단위).
 // 내 지역 주유소가 화면에 여러 개 들어와 bbox 최저가가 자연히 보이는 수준.
 const MY_AREA_LEVEL = 6;
+
+// 회색 점(비하이라이트 주유소) 표시 임계 카카오 level. 이 값 이하로 확대했을 때만 표시하고,
+// 그 이상 줌아웃하면 숨긴다(점이 화면을 가득 메우는 것 방지, 클러스터링 미사용).
+// level 5 = zoom 10(주변 동네가 보이는 수준)부터 노출 — 가격 라벨 노출 기준(level≤5)과 일치.
+const GRAY_DOT_MAX_LEVEL = 5;
 
 // 배경(브랜드 색) 위 텍스트 대비 — 밝은 배경(예: S-OIL 노랑)에는 검정, 어두운 배경엔 흰색.
 // hex(#RRGGBB) → 상대 휘도 근사. 마커가 많아도 비용이 미미한 단순 계산.
@@ -170,6 +175,12 @@ interface Props {
   /** 따라가기 모드. true면 myLocation 갱신 시마다 지도 중심을 내 위치로 자동 이동(panTo). */
   follow?: boolean;
   stations: StationWithPrice[];
+  /**
+   * 화면 영역 내 "전체 주유소"(가격 유무 무관). 이 중 하이라이트(전국 TOP/지역 최저가/내 주변/
+   * 일반 마커로 이미 그려진 stations)에 안 든 주유소를 작은 회색 점으로 렌더한다.
+   * 일정 줌 이상 확대(level ≤ GRAY_DOT_MAX_LEVEL)일 때만 표시한다(줌 게이팅).
+   */
+  allStations?: StationPoint[];
   /** 전국 최저가 TOP10(화면 영역 무관). 이 목록을 핀/메달 오버레이로 항상 직접 렌더한다. */
   nationalTop10?: NationalTop10Item[];
   /**
@@ -216,6 +227,7 @@ export function KakaoMap({
   suppressAutoCenter = false,
   follow = false,
   stations,
+  allStations,
   nationalTop10,
   nearbyTop10,
   nearbyStations,
@@ -237,6 +249,8 @@ export function KakaoMap({
   const topOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
   // 내 주변(10km) TOP10 핀 오버레이 — bbox 마커/전국 메달과 독립적으로 관리.
   const nearOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
+  // 회색 점(비하이라이트 주유소) 오버레이 — 일반/강조 마커와 독립 관리.
+  const grayOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
   // 전기차 충전소 마커 오버레이 — 주유소 마커와 독립 관리(레이어 전환 시 서로 간섭 없게).
   const evOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
   const onEvMarkerClickRef = useRef(onEvMarkerClick);
@@ -338,6 +352,23 @@ export function KakaoMap({
     lng: t.lng,
     product,
     price: t.price,
+    tradeDate: '',
+  });
+
+  // 회색 점 클릭 시 onMarkerClick에 넘길 최소 StationWithPrice 합성.
+  // 호출부(handleMarkerClick)는 상세 이동(s.id)만 사용하지만, 시그니처 일관성을 위해 점 값으로 채운다.
+  // 가격/거래일은 없으므로 0/빈값(상세 페이지에서 Opinet 실시간 조회로 채워진다).
+  const pointToStation = (p: StationPoint): StationWithPrice => ({
+    id: p.id,
+    name: p.name,
+    brand: p.brand,
+    isSelf: p.isSelf,
+    sido: '01',
+    address: '',
+    lat: p.lat,
+    lng: p.lng,
+    product,
+    price: 0,
     tradeDate: '',
   });
 
@@ -639,6 +670,54 @@ export function KakaoMap({
       evOverlaysRef.current.push(overlay);
     }
   }, [ready, layer, evStations, mapLevel]);
+
+  // 회색 점(비하이라이트 주유소) 오버레이 — 일정 줌 이상 확대(level ≤ GRAY_DOT_MAX_LEVEL)일 때만.
+  // allStations(화면 내 전체 주유소) 중, 이미 강조/일반 마커로 그려진 id를 제외한 나머지를
+  // 작은 회색 원으로 그린다(브랜드색/금액/라벨 없음). 탭하면 기존 마커와 동일하게 상세로 이동.
+  // EV 레이어/줌아웃 상태에서는 그리지 않는다(클러스터링 미사용 — 줌 게이팅으로 밀도만 제어).
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    const map = mapRef.current;
+
+    // 기존 회색 점 제거
+    grayOverlaysRef.current.forEach((o) => o.setMap(null));
+    grayOverlaysRef.current = [];
+
+    // EV 레이어이거나 줌아웃 상태(level이 임계보다 큼)면 그리지 않는다.
+    if (layer === 'ev' || map.getLevel() > GRAY_DOT_MAX_LEVEL) return;
+
+    // 하이라이트(이미 다른 마커로 그려진) 주유소 id 집합 — 전국 TOP10 + 내 주변 TOP10 + 일반 bbox 마커.
+    const highlighted = new Set<string>();
+    for (const s of stations) highlighted.add(s.id);
+    for (const id of top10Rank.keys()) highlighted.add(id);
+    for (const id of nearbyRank.keys()) highlighted.add(id);
+
+    for (const p of allStations ?? []) {
+      if (highlighted.has(p.id)) continue; // 하이라이트는 기존 마커로만 표시
+
+      const content = document.createElement('div');
+      content.className = 'cursor-pointer select-none';
+      content.style.transform = 'translate(-50%, -50%)';
+      // 작은 회색 원(가격/브랜드색/라벨 없음). 흰 외곽으로 지도 위에서 구분.
+      content.innerHTML =
+        '<div style="width:9px;height:9px;border-radius:50%;background:#9ca3af;'
+        + 'border:1.5px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.3)"></div>';
+      content.addEventListener('click', () => onMarkerClick?.(pointToStation(p)));
+
+      const overlay = new window.kakao.maps.CustomOverlay({
+        position: new window.kakao.maps.LatLng(p.lat, p.lng),
+        content,
+        yAnchor: 0.5,
+        xAnchor: 0.5,
+        clickable: true,
+        zIndex: 0, // 일반 마커(1)/강조 마커 아래에 깔린다.
+      });
+      overlay.setMap(map);
+      grayOverlaysRef.current.push(overlay);
+    }
+    // pointToStation은 product/렌더마다 새로 생성되므로 product를 직접 의존성에 둔다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, allStations, stations, top10Rank, nearbyRank, mapLevel, layer, product, onMarkerClick]);
 
   // 내 위치 마커 + 1km 원
   useEffect(() => {

@@ -86,6 +86,23 @@ export interface StationDetail extends StationBase {
   prices: Record<ProductCode, { price: number; tradeDate: string } | null>;
 }
 
+/** 가격 없이 위치/브랜드만 가진 주유소 점 — 지도 회색 점(비하이라이트) 렌더용 */
+export interface StationPoint {
+  id: string;
+  name: string;
+  brand: BrandCode;
+  isSelf: boolean;
+  lat: number;
+  lng: number;
+}
+
+export interface StationsInBboxResponse {
+  stations: StationPoint[];
+  bbox: { sw: [number, number]; ne: [number, number] };
+  cachedAt: string;
+  ttlSec: number;
+}
+
 export interface BboxResponse {
   stations: StationWithPrice[];
   bbox: { sw: [number, number]; ne: [number, number] };

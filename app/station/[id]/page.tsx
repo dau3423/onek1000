@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { queryStationDetail } from '@/lib/db/queries';
+import { queryStationDetailWithPriceFallback } from '@/lib/db/queries';
 import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL, type ProductCode, type StationDetail } from '@/types/station';
 import { InterstitialAd } from '@/components/ads/InterstitialAd';
 import { FavoriteButton } from '@/components/FavoriteButton';
@@ -11,14 +11,20 @@ import { FuelLogButton } from '@/components/station/FuelLogButton';
 
 interface Props { params: { id: string } }
 
+// 가격 없는 주유소는 진입 시 Opinet 실시간 조회 + DB 캐시가 일어나므로 정적 캐싱하지 않는다.
+// (가격 있는 주유소는 어차피 Opinet 미호출 — DB 조회만)
+export const dynamic = 'force-dynamic';
+
 const PRODUCT_ORDER: ProductCode[] = ['B027', 'B034', 'D047', 'K015', 'C004'];
 
 export default async function StationDetailPage({ params }: Props) {
-  // 상세는 우리 DB 단독 조회(Opinet 실시간 미사용).
-  // Opinet은 1일 1회 sync에서만 호출하고, 상세는 prices_latest/stations만 본다.
+  // 상세는 우리 DB를 우선 조회한다(Opinet은 1일 1회 sync에서만 호출). 단, 전체 적재로
+  // 새로 들어온 "가격이 아직 없는 주유소"는 진입 시 1회만 Opinet detailById로 가격을 받아
+  // 표시 + DB 캐시한다(다음 진입부터는 DB만 사용). 가격이 이미 있으면 Opinet 미호출(동작/속도 불변).
+  // Opinet 실패/할당량 소진/빈 응답 시엔 DB 스냅샷(가격 미표시)으로 폴백해 페이지가 깨지지 않는다.
   let detail: StationDetail | null = null;
   try {
-    detail = await queryStationDetail(params.id);
+    detail = await queryStationDetailWithPriceFallback(params.id);
   } catch {
     // Supabase 장애/네트워크 오류 → 데이터 없음으로 처리
     detail = null;
