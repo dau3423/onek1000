@@ -7,7 +7,6 @@ import Link from 'next/link';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { CancelButton } from '@/components/billing/CancelButton';
 import { EnablePushButton } from '@/components/push/EnablePushButton';
-import { AlimtalkToggle } from '@/components/profile/AlimtalkToggle';
 
 interface Sub {
   id: string;
@@ -124,41 +123,10 @@ export async function PushSection({ userId }: { userId: string }) {
   return <EnablePushButton isPremium={isActive} />;
 }
 
-/** 알림 설정(알림톡 토글 + 휴대폰번호) 스켈레톤(카드 높이 유지). */
-export function AlimtalkSkeleton() {
-  return <div className="h-[200px] animate-pulse rounded-xl bg-gray-100" />;
-}
-
-/**
- * 알림 설정 영역(카카오 알림톡 수신 동의 + 휴대폰번호).
- * 서버에서 현재 값을 DB로 조회해 초기값으로 전달한다.
- * 0017(alimtalk_opt_in)/0018(phone) 미적용 환경(컬럼 없음, 42703)에서는
- * 기본값(false/null)으로 폴백해 마이페이지가 깨지지 않게 한다.
- */
-export async function AlimtalkSection({ userId }: { userId: string }) {
-  let optIn = false;
-  let phone: string | null = null;
-  if (isSupabaseConfigured()) {
-    const sb = getSupabase();
-    const full = await sb
-      .from('users')
-      .select('alimtalk_opt_in, phone')
-      .eq('id', userId)
-      .maybeSingle();
-    if (full.error?.code === '42703') {
-      // 한쪽 컬럼만 있는 환경 대비: 알림톡 동의만 단독 재조회(없으면 false 유지).
-      const fallback = await sb.from('users').select('alimtalk_opt_in').eq('id', userId).maybeSingle();
-      if (!fallback.error) {
-        optIn = Boolean((fallback.data as { alimtalk_opt_in?: boolean } | null)?.alimtalk_opt_in);
-      }
-    } else if (!full.error) {
-      const row = full.data as { alimtalk_opt_in?: boolean; phone?: string | null } | null;
-      optIn = Boolean(row?.alimtalk_opt_in);
-      phone = row?.phone ?? null;
-    }
-  }
-  return <AlimtalkToggle initialOptIn={optIn} initialPhone={phone} />;
-}
+// NOTE: 카카오 알림톡 수신 토글 + 휴대폰번호 입력 카드(AlimtalkSection/AlimtalkSkeleton)는
+// 사용자 대상 알림톡이 유료라 당분간 마이페이지 UI에서 제거했다.
+// 백엔드(users.alimtalk_opt_in / users.phone 컬럼, /api/profile 필드)와
+// components/profile/AlimtalkToggle.tsx는 재노출 대비로 보존한다.
 
 /** 카운트 단건 조회(에러 시 0 폴백). */
 async function countRows(table: string, column: string, userId: string): Promise<number> {
