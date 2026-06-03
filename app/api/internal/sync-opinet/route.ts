@@ -326,33 +326,48 @@ export async function POST(req: Request) {
       if (tErr) throw new Error(tErr.message);
 
       const ids = (targets ?? []).map((t) => t.id as string);
-      const amenityRows: Array<Record<string, unknown>> = [];
+      // 보강은 "이미 존재하는 stations 행"의 부가서비스 컬럼만 UPDATE 한다.
+      // (가격 sync가 생성·UPSERT한 행이 대상이다. 보강 대상도 stations에서 뽑았으니 항상 존재한다.)
+      //
+      // 과거엔 upsert(onConflict:'id')로 썼는데, Supabase upsert = INSERT ... ON CONFLICT 라
+      // 충돌(=기존 행 갱신)이어도 INSERT 절이 stations의 NOT NULL(brand_code 등)을 만족해야 한다.
+      // payload엔 부가서비스 컬럼만 담겨 brand_code가 빠지므로 전 건이
+      // "null value in column brand_code violates not-null" 으로 실패했다(amenityRefreshed=0).
+      // → id 기준 UPDATE 로 바꿔 부가서비스 컬럼만 갱신한다(NOT NULL 컬럼 미관여).
       await mapWithConcurrency(ids, CONCURRENCY, async (id) => {
         opinetCalls++;
+        let d: OpinetDetailOil | null = null;
         try {
-          const d = await opinetDetailById(id);
-          // 응답이 없어도 보강 시각은 갱신해(아래 upsert) 같은 주유소를 매번 다시 시도하지 않게 한다.
-          amenityRows.push({
-            id,
+          d = await opinetDetailById(id);
+        } catch (e) {
+          // detailById 호출 실패 — 이 건은 보강 시각도 갱신하지 않아 다음 회차에 재시도된다.
+          amenityFailed++;
+          fetchErrors.push(`amenity ${id}: ${(e as Error).message}`);
+          await sleep(REQUEST_DELAY_MS);
+          return;
+        }
+        // 응답이 없어도(부가서비스 미상) 보강 시각은 갱신해 같은 주유소를 매번 다시 시도하지 않게 한다.
+        const { error: uErr } = await sb
+          .from('stations')
+          .update({
             has_carwash: d ? isY(d.CAR_WASH_YN) : false,
             has_cvs: d ? isY(d.CVS_YN) : false,
             has_maintenance: d ? isY(d.MAINT_YN) : false,
             is_kpetro: d ? isY(d.KPETRO_YN) : false,
             has_lpg: d ? hasLpgFrom(d.LPG_YN) : false,
             amenities_updated_at: now,
-          });
-        } catch (e) {
+          })
+          .eq('id', id);
+        // 한 건 update 실패가 다음 건을 막지 않도록 개별 처리. 매칭 행이 없으면(이론상 없음)
+        // 에러 없이 0행 갱신되며, 그 경우 refreshed로 세지 않는다.
+        if (uErr) {
           amenityFailed++;
-          fetchErrors.push(`amenity ${id}: ${(e as Error).message}`);
+          fetchErrors.push(`amenity update ${id}: ${uErr.message}`);
+        } else {
+          amenityRefreshed++;
         }
         await sleep(REQUEST_DELAY_MS);
       });
-
-      // upsert(onConflict id) — 기존 행의 부가서비스 컬럼만 갱신. price/geom 등은 건드리지 않는다.
-      await inChunks(amenityRows, UPSERT_CHUNK,
-        async (chunk) => await sb.from('stations').upsert(chunk, { onConflict: 'id' }),
-        'amenities upsert');
-      amenityRefreshed = amenityRows.length;
     } catch (e) {
       fetchErrors.push(`amenity refresh: ${(e as Error).message}`);
     }
