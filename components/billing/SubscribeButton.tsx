@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import * as PortOne from '@portone/browser-sdk/v2';
+import { normalizePhone, isValidPhone } from '@/lib/phone';
 
 type PlanCode = 'onetime_1000' | 'monthly_1000';
 
@@ -29,14 +30,8 @@ interface SubscribeResponse {
   error?: string;
 }
 
-// 휴대폰 번호: 하이픈/공백 제거 후 숫자만 추출. 010으로 시작하는 10~11자리만 허용.
+// 휴대폰 번호 정규화·검증은 공용 유틸(@/lib/phone)을 사용한다.
 // (이니시스 V2 일반결제·빌링키 발급 모두 customer.phoneNumber 필수)
-function normalizePhone(raw: string): string {
-  return raw.replace(/[^0-9]/g, '');
-}
-function isValidPhone(digits: string): boolean {
-  return /^01[016789][0-9]{7,8}$/.test(digits);
-}
 
 // 모바일(redirect 결제) 환경 판정. PortOne v2는 모바일에서 redirectUrl로 페이지 이동하므로
 // requestPayment 호출 후 정상 흐름이면 이 컴포넌트로 돌아오지 않는다(=Promise 미반환).

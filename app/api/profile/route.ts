@@ -10,6 +10,7 @@ import { authOptions } from '@/lib/auth/options';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { validateNickname } from '@/lib/nickname';
 import { isNicknameTaken } from '@/lib/nickname-db';
+import { normalizePhone, isValidPhone } from '@/lib/phone';
 import { uploadAvatar } from '@/lib/storage/avatars';
 import { REVIEW_PHOTO_BYTE_MAX } from '@/types/review';
 
@@ -40,6 +41,7 @@ export async function GET(req: Request) {
       nickname: session.user.nickname ?? null,
       image: session.user.image ?? null,
       alimtalkOptIn: false,
+      phone: null,
     });
   }
 
@@ -57,12 +59,17 @@ export async function GET(req: Request) {
   }
 
   const sb = getSupabase();
-  // alimtalk_opt_in 컬럼은 0017 마이그레이션 적용 후에만 존재한다.
-  // 미적용 환경에서도 닉네임/사진 조회가 깨지지 않도록, 컬럼 없음(42703) 시 컬럼 제외로 재조회한다.
+  // alimtalk_opt_in(0017)·phone(0018) 컬럼은 각 마이그레이션 적용 후에만 존재한다.
+  // 미적용 환경에서도 닉네임/사진 조회가 깨지지 않도록, 컬럼 없음(42703) 시 기본 컬럼만으로 재조회한다.
   let nickname: string | null = null;
   let image: string | null = null;
   let alimtalkOptIn = false;
-  const full = await sb.from('users').select('nickname, image_url, alimtalk_opt_in').eq('id', userId).maybeSingle();
+  let phone: string | null = null;
+  const full = await sb
+    .from('users')
+    .select('nickname, image_url, alimtalk_opt_in, phone')
+    .eq('id', userId)
+    .maybeSingle();
   if (full.error?.code === '42703') {
     const fallback = await sb.from('users').select('nickname, image_url').eq('id', userId).maybeSingle();
     nickname = (fallback.data?.nickname as string | null) ?? null;
@@ -71,8 +78,9 @@ export async function GET(req: Request) {
     nickname = (full.data?.nickname as string | null) ?? null;
     image = (full.data?.image_url as string | null) ?? null;
     alimtalkOptIn = Boolean(full.data?.alimtalk_opt_in);
+    phone = (full.data?.phone as string | null) ?? null;
   }
-  return NextResponse.json({ nickname, image, alimtalkOptIn });
+  return NextResponse.json({ nickname, image, alimtalkOptIn, phone });
 }
 
 export async function PATCH(req: Request) {
@@ -84,7 +92,31 @@ export async function PATCH(req: Request) {
     nickname?: string;
     resetImage?: boolean;
     alimtalkOptIn?: boolean;
+    phone?: string;
   };
+
+  // 휴대폰번호 저장(본인 스코프). 알림톡 발송·결제 프리필 용도.
+  // 빈 문자열은 삭제(null)로 처리, 그 외엔 정규화(숫자만) 후 형식 검증.
+  if (typeof body.phone === 'string') {
+    const digits = normalizePhone(body.phone);
+    const value = digits === '' ? null : digits;
+    if (value !== null && !isValidPhone(value)) {
+      return NextResponse.json({ error: '휴대폰 번호를 정확히 입력해 주세요.' }, { status: 400 });
+    }
+    const userId = await getUserId(session.user.email);
+    if (!userId) return NextResponse.json({ error: 'user not found' }, { status: 404 });
+    const sb = getSupabase();
+    const { error } = await sb.from('users').update({ phone: value }).eq('id', userId);
+    if (error) {
+      // 0018 미적용 환경: 컬럼 없음(42703) → 마이그레이션 안내
+      if (error.code === '42703') {
+        return NextResponse.json({ error: '휴대폰번호 저장 준비 중이에요. 잠시 후 다시 시도해 주세요.' }, { status: 503 });
+      }
+      // 개인정보이므로 입력값을 로깅하지 않는다.
+      return NextResponse.json({ error: '저장에 실패했어요.' }, { status: 500 });
+    }
+    return NextResponse.json({ phone: value });
+  }
 
   // 카카오 알림톡 수신 동의 토글(본인 스코프). 발송 연동은 후속이며 여기선 동의 플래그만 저장.
   if (typeof body.alimtalkOptIn === 'boolean') {
