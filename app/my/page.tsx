@@ -1,80 +1,39 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/options';
-import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
-import { CancelButton } from '@/components/billing/CancelButton';
+import { isSupabaseConfigured } from '@/lib/db/supabase';
 import { SignOutButton } from '@/components/SignOutButton';
 import { DeleteAccountButton } from '@/components/account/DeleteAccountButton';
-import { EnablePushButton } from '@/components/push/EnablePushButton';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { InstallButton } from '@/components/pwa/InstallButton';
+import {
+  BadgeSkeleton,
+  FavoriteCount,
+  FuelLogCount,
+  PushSection,
+  PushSkeleton,
+  RegionCount,
+  SubscriptionSection,
+  SubscriptionSkeleton,
+  VehicleCount,
+} from './sections';
 
-interface Sub {
-  id: string;
-  status: string;
-  plan: string;
-  plan_type: string | null;
-  current_period_end: string | null;
-  trial_end: string | null;
-  expires_at: string | null;
-  next_charge_at: string | null;
-  canceled_at: string | null;
-}
-
+// 마이페이지는 세션 체크만 한 뒤 골격을 즉시 렌더한다.
+// 데이터가 필요한 영역(구독/카운트/알림)은 각각 async 서버 컴포넌트로 분리하고
+// <Suspense>로 감싸 영역별로 스트리밍한다 → 한 영역이 느려도 골격/다른 영역은 안 막힌다.
+// user.id는 세션 토큰(session.user.id)에서 바로 쓰므로 users 조회 라운드트립이 없다.
 export default async function MyPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) redirect('/auth/sign-in?callbackUrl=/my');
 
-  let sub: Sub | null = null;
-  let favCount = 0;
-  let vehicleCount = 0;
-  let regionCount = 0;
-  let fuelLogCount = 0;
-  let nickname: string | null = session.user.nickname ?? null;
-  let image: string | null = session.user.image ?? null;
-
-  if (isSupabaseConfigured()) {
-    const sb = getSupabase();
-    const { data: user } = await sb
-      .from('users')
-      .select('id, nickname, image_url')
-      .eq('email', session.user.email)
-      .maybeSingle();
-    if (user) {
-      nickname = (user.nickname as string | null) ?? nickname;
-      image = (user.image_url as string | null) ?? image;
-      const { data: s } = await sb
-        .from('subscriptions')
-        .select('id, status, plan, plan_type, current_period_end, trial_end, expires_at, next_charge_at, canceled_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      sub = s as Sub | null;
-      const [{ count: favC }, { count: vehC }, { count: regC }, { count: fuelC }] = await Promise.all([
-        sb.from('favorites').select('station_id', { count: 'exact', head: true }).eq('user_id', user.id),
-        sb.from('vehicles').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-        sb.from('interest_regions').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-        sb.from('fuel_logs').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-      ]);
-      favCount = favC ?? 0;
-      vehicleCount = vehC ?? 0;
-      regionCount = regC ?? 0;
-      fuelLogCount = fuelC ?? 0;
-    }
-  }
-
-  const isOnetime = sub?.plan_type === 'onetime';
-  const periodEnd = sub?.expires_at ?? sub?.current_period_end ?? sub?.trial_end;
-  const periodEndValid = periodEnd ? new Date(periodEnd).getTime() > Date.now() : false;
-  const periodEndStr = periodEnd ? new Date(periodEnd).toLocaleDateString('ko-KR') : null;
-  // 정기(trial/active)는 항상, canceled여도 만료 전이면 프리미엄 유지
-  const isActive =
-    sub?.status === 'active' ||
-    sub?.status === 'trial' ||
-    (sub?.status === 'canceled' && periodEndValid);
-  const isCanceled = sub?.status === 'canceled';
+  const userId = session.user.id;
+  // 닉네임/이미지는 세션 토큰에 캐시됨 → 별도 DB 대기 없이 즉시 표시.
+  const nickname = session.user.nickname ?? null;
+  const image = session.user.image ?? null;
+  // DB 미설정(또는 세션에 userId 없음) 시엔 데이터 영역 스트리밍을 생략하고 무료 플랜 골격만.
+  const canQuery = Boolean(userId) && isSupabaseConfigured();
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
@@ -96,30 +55,10 @@ export default async function MyPage() {
 
       <section className="border-t border-gray-100 px-5 py-5">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">구독</h2>
-        {sub && isActive ? (
-          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-            <div className="flex items-center justify-between">
-              <span className="rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-white">
-                {sub.status === 'trial'
-                  ? '무료 체험 중'
-                  : isOnetime
-                    ? '1개월권'
-                    : isCanceled
-                      ? '해지 예정'
-                      : '정기 구독'}
-              </span>
-              <span className="text-xs text-gray-500">{isOnetime ? '₩1,000 / 1개월' : '월 ₩1,000'}</span>
-            </div>
-            <div className="mt-3 text-sm text-gray-700">
-              {isOnetime || isCanceled ? '이용 만료' : '다음 결제'}: <strong>{periodEndStr ?? '-'}</strong>
-            </div>
-            {/* 단건/해지건은 끊을 자동결제가 없으므로 해지 버튼 미노출 */}
-            {!isOnetime && !isCanceled && (
-              <div className="mt-4">
-                <CancelButton />
-              </div>
-            )}
-          </div>
+        {canQuery && userId ? (
+          <Suspense fallback={<SubscriptionSkeleton />}>
+            <SubscriptionSection userId={userId} />
+          </Suspense>
         ) : (
           <div className="rounded-xl bg-gray-50 p-4">
             <div className="text-sm text-gray-700">현재 무료 플랜이에요.</div>
@@ -137,7 +76,13 @@ export default async function MyPage() {
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">즐겨찾기</h2>
         <Link href="/my/favorites" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
           <span className="text-sm text-gray-700">♡ 저장한 주유소</span>
-          <span className="text-sm font-bold text-gray-900">{favCount}개</span>
+          {canQuery && userId ? (
+            <Suspense fallback={<BadgeSkeleton />}>
+              <FavoriteCount userId={userId} />
+            </Suspense>
+          ) : (
+            <span className="text-sm font-bold text-gray-900">0개</span>
+          )}
         </Link>
       </section>
 
@@ -145,8 +90,10 @@ export default async function MyPage() {
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">내 기록</h2>
         <Link href="/my/fuel-logs" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
           <span className="text-sm text-gray-700">⛽⚡ 주유 · 충전 기록</span>
-          {fuelLogCount > 0 ? (
-            <span className="text-sm font-bold text-gray-900">{fuelLogCount}개</span>
+          {canQuery && userId ? (
+            <Suspense fallback={<BadgeSkeleton />}>
+              <FuelLogCount userId={userId} />
+            </Suspense>
           ) : (
             <span className="text-sm text-primary">보기 →</span>
           )}
@@ -157,8 +104,10 @@ export default async function MyPage() {
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">내 차량</h2>
         <Link href="/my/vehicles" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
           <span className="text-sm text-gray-700">🚗 차량 / 기름 종류</span>
-          {vehicleCount > 0 ? (
-            <span className="text-sm font-bold text-gray-900">{vehicleCount}개</span>
+          {canQuery && userId ? (
+            <Suspense fallback={<BadgeSkeleton />}>
+              <VehicleCount userId={userId} />
+            </Suspense>
           ) : (
             <span className="text-sm text-primary">관리 →</span>
           )}
@@ -169,8 +118,10 @@ export default async function MyPage() {
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">관심 지역</h2>
         <Link href="/my/interest-regions" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
           <span className="text-sm text-gray-700">📍 관심 지역 최저가 알림</span>
-          {regionCount > 0 ? (
-            <span className="text-sm font-bold text-gray-900">{regionCount}개</span>
+          {canQuery && userId ? (
+            <Suspense fallback={<BadgeSkeleton />}>
+              <RegionCount userId={userId} />
+            </Suspense>
           ) : (
             <span className="text-sm text-primary">관리 →</span>
           )}
@@ -181,7 +132,13 @@ export default async function MyPage() {
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">알림</h2>
         {/* 프리미엄 판정은 서버에서 DB로 검증한 isActive를 그대로 전달(SEC-5).
             클라 세션(useSession) 갱신 타이밍과 무관하게 결제 직후 즉시 정확하게 반영된다. */}
-        <EnablePushButton isPremium={isActive} />
+        {canQuery && userId ? (
+          <Suspense fallback={<PushSkeleton />}>
+            <PushSection userId={userId} />
+          </Suspense>
+        ) : (
+          <p className="text-xs text-gray-400">푸시 알림은 1000냥 플랜 전용 기능입니다.</p>
+        )}
       </section>
 
       <section className="border-t border-gray-100 px-5 py-5">
