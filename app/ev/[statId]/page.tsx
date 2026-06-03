@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { queryEvStationDetail } from '@/lib/db/ev';
+import { refreshAndQueryEvStationDetail } from '@/lib/db/ev';
 import { NaviButton } from '@/components/station/NaviButton';
-import { relativeFromNow } from '@/lib/ev/format';
+import { relativeFromNow, liveRelativeFromNow } from '@/lib/ev/format';
 import {
   chargerTypeLabel,
   chargerStatLabel,
@@ -13,6 +13,9 @@ import {
 
 interface Props { params: { statId: string } }
 
+// 상세 진입 시 그 충전소만 data.go.kr에서 라이브 갱신하므로 항상 동적 렌더(캐시 금지).
+export const dynamic = 'force-dynamic';
+
 const TONE_CLASS: Record<'available' | 'busy' | 'off', string> = {
   available: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
   busy: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
@@ -20,10 +23,11 @@ const TONE_CLASS: Record<'available' | 'busy' | 'off', string> = {
 };
 
 export default async function EvStationDetailPage({ params }: Props) {
-  // 상세는 우리 DB(ev_chargers) 단독 조회. data.go.kr는 1일 1회 sync에서만 호출.
+  // 상세 진입 시 그 충전소(statId) 1곳만 라이브 갱신 → ev_chargers upsert → DB값으로 표시(준실시간).
+  // 라이브 호출 실패/지연·최근 갱신(debounce) 시 DB 스냅샷으로 폴백한다. "표시는 항상 우리 DB."
   let detail: EvStationDetail | null = null;
   try {
-    detail = await queryEvStationDetail(params.statId);
+    detail = await refreshAndQueryEvStationDetail(params.statId);
   } catch {
     detail = null;
   }
@@ -61,16 +65,43 @@ export default async function EvStationDetailPage({ params }: Props) {
         </div>
       </section>
 
-      {/* 사용 가능 요약 */}
+      {/* 사용 가능 요약 (실시간) */}
       <section className="border-t border-gray-100 px-5 py-4 dark:border-gray-800">
         <div className="flex items-baseline justify-between">
           <h2 className="text-sm font-bold text-gray-800 dark:text-gray-100">충전기 현황</h2>
-          <span className="text-xs text-gray-400 dark:text-gray-500">상태 갱신 {relativeFromNow(detail.latestStatUpdAt)}</span>
+          {/* 라이브 갱신 시각: synced_at(우리 DB에 막 반영된 시각) 기준 "방금 갱신 / N초 전". */}
+          <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" aria-hidden />
+            {liveRelativeFromNow(detail.syncedAt)}
+          </span>
         </div>
         <p className="mt-1 text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">
           {detail.availableChargers}
           <span className="ml-1 text-sm font-medium text-gray-400 dark:text-gray-500">/ {detail.totalChargers}대 사용 가능</span>
         </p>
+        {/* 상태별 요약 배지 (사용가능/충전중/그 외). 충전기 여러 대일 때 한눈에 보기. */}
+        {(() => {
+          const available = detail.chargers.filter((c) => c.stat === '2').length;
+          const busy = detail.chargers.filter((c) => c.stat === '3').length;
+          const other = detail.chargers.length - available - busy;
+          return (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                사용가능 {available}
+              </span>
+              {busy > 0 && (
+                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                  충전중 {busy}
+                </span>
+              )}
+              {other > 0 && (
+                <span className="rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                  기타 {other}
+                </span>
+              )}
+            </div>
+          );
+        })()}
       </section>
 
       {/* 충전기 목록 */}
@@ -116,7 +147,7 @@ export default async function EvStationDetailPage({ params }: Props) {
       </section>
 
       <footer className="border-t border-gray-100 bg-white px-5 py-3 text-center text-[10px] text-gray-400 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-500">
-        충전소 정보 제공: 한국환경공단(공공데이터포털) · 상태는 1일 1회 갱신 스냅샷입니다.
+        충전소 정보 제공: 한국환경공단(공공데이터포털) · 충전기 상태는 상세 진입 시 실시간 갱신됩니다.
       </footer>
     </main>
   );

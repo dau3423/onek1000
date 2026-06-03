@@ -140,8 +140,40 @@ export async function evGetChargerInfo(opts: {
   });
   const url = `${EV_BASE}/getChargerInfo?${params.toString()}`;
 
+  return fetchChargerInfo(url, opts.timeoutMs ?? 30_000);
+}
+
+/**
+ * 특정 충전소(statId) 1곳의 충전기 행만 라이브 조회 — 상세 진입 시 준실시간 갱신용.
+ *
+ * getChargerInfo는 statId 단독 필터를 지원한다(실측: statId만 줘도 그 충전소의 충전기들만,
+ * 정상이면 totalCount=충전기 대수로 응답. zcode 불필요). 단일 충전소라 응답이 작고 빨라
+ * 짧은 타임아웃(기본 8초)으로 호출한다. 실패 시 호출부에서 DB 스냅샷으로 폴백한다.
+ */
+export async function evGetChargerInfoByStatId(opts: {
+  statId: string;
+  timeoutMs?: number;
+}): Promise<EvChargerInfoItem[]> {
+  const key = process.env.EV_CHARGER_API_KEY;
+  if (!key) throw new Error('EV_CHARGER_API_KEY missing');
+
+  const params = new URLSearchParams({
+    serviceKey: key,
+    pageNo: '1',
+    // 한 충전소의 충전기 대수는 많아야 수십 대 — 넉넉히 200으로 한 페이지에 모두 수신.
+    numOfRows: '200',
+    statId: opts.statId,
+    dataType: 'JSON',
+  });
+  const url = `${EV_BASE}/getChargerInfo?${params.toString()}`;
+  const page = await fetchChargerInfo(url, opts.timeoutMs ?? 8_000);
+  return page.items;
+}
+
+/** getChargerInfo 응답 파싱 + 에러 판정 + 타임아웃 처리 공통부. */
+async function fetchChargerInfo(url: string, timeoutMs: number): Promise<EvChargerInfoPage> {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 30_000);
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const res = await fetch(url, { cache: 'no-store', signal: ctrl.signal });
     if (!res.ok) throw new Error(`EvCharger ${res.status}`);

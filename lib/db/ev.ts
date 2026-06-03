@@ -4,6 +4,8 @@ import type { Bbox } from '@/lib/map/geo';
 import { distanceMeters } from '@/lib/map/geo';
 import type { EvChargerUnit, EvStationDetail, EvStationMarker } from '@/types/ev';
 import { chargerSpeed } from '@/types/ev';
+import { evGetChargerInfoByStatId } from '@/lib/ev/client';
+import { toRow } from '@/lib/ev/row';
 import {
   getMockEvChargersByBbox,
   getMockEvChargersByRadius,
@@ -146,4 +148,60 @@ export async function queryEvStationDetail(statId: string): Promise<EvStationDet
     parkingFree: first.parking_free,
     chargers,
   };
+}
+
+// 같은 충전소를 이 시간(ms) 이내에 라이브 갱신했으면 data.go.kr 재호출을 스킵한다.
+// 새로고침 연타로 외부 API를 때리지 않게 하는 과호출 방지(debounce). (기준=synced_at)
+const LIVE_REFRESH_DEBOUNCE_MS = 45_000;
+
+/**
+ * 상세 진입 시 그 충전소(statId) 1곳만 라이브 갱신 후 DB값으로 반환 — 준실시간.
+ *
+ * 흐름:
+ *  1) DB 상세를 먼저 조회(없으면 null). "상세=DB only" 원칙: 표시는 항상 우리 DB에서.
+ *  2) 최근(LIVE_REFRESH_DEBOUNCE_MS 이내) 갱신됐으면 라이브 호출 스킵 → DB값 그대로(과호출 방지).
+ *  3) 아니면 getChargerInfo(statId) 라이브 호출 → ev_chargers upsert → DB 재조회.
+ *  4) 라이브 호출/upsert 실패·지연(타임아웃)이면 1)의 DB 스냅샷으로 폴백(페이지가 깨지지 않게).
+ *
+ * Mock 모드(Supabase 미설정)는 외부 호출 없이 mock 상세를 반환한다.
+ */
+export async function refreshAndQueryEvStationDetail(statId: string): Promise<EvStationDetail | null> {
+  if (!isSupabaseConfigured()) return getMockEvStationDetail(statId);
+  if (!process.env.EV_CHARGER_API_KEY) return queryEvStationDetail(statId);
+
+  // 1) 폴백용 DB 스냅샷 먼저 확보.
+  let snapshot: EvStationDetail | null = null;
+  try {
+    snapshot = await queryEvStationDetail(statId);
+  } catch {
+    snapshot = null;
+  }
+
+  // 2) debounce: 방금 갱신했으면 라이브 호출 생략.
+  if (snapshot?.syncedAt) {
+    const age = Date.now() - Date.parse(snapshot.syncedAt);
+    if (Number.isFinite(age) && age >= 0 && age < LIVE_REFRESH_DEBOUNCE_MS) {
+      return snapshot;
+    }
+  }
+
+  // 3) 라이브 호출 + upsert. 실패/지연이면 스냅샷으로 폴백.
+  try {
+    const items = await evGetChargerInfoByStatId({ statId, timeoutMs: 8_000 });
+    if (items.length === 0) return snapshot; // 응답 없음 → 기존값 유지.
+
+    const now = new Date().toISOString();
+    const rows = items.map((it) => toRow(it, now)).filter((r): r is NonNullable<typeof r> => r != null);
+    if (rows.length === 0) return snapshot;
+
+    const sb = getSupabase();
+    const { error } = await sb.from('ev_chargers').upsert(rows, { onConflict: 'stat_id,chger_id' });
+    if (error) return snapshot; // upsert 실패 → 기존값 유지.
+
+    // 갱신된 값으로 재조회. 재조회 실패 시 스냅샷 폴백.
+    const fresh = await queryEvStationDetail(statId);
+    return fresh ?? snapshot;
+  } catch {
+    return snapshot;
+  }
 }
