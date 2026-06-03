@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect } from 'react';
 import type { StationWithPrice } from '@/types/station';
 import { BRAND_LABEL } from '@/types/station';
+import { playAlertChime } from '@/lib/sound';
 
 interface Props {
   station: StationWithPrice;
@@ -13,6 +15,13 @@ interface Props {
 }
 
 export function RadiusAlert({ station, averagePrice, onClick, onDismiss, onNavigate }: Props) {
+  // 알람 배너가 새로 뜰 때(대상 주유소가 바뀔 때 포함) 짧은 효과음.
+  // 이 컴포넌트는 알람 노출 조건에서만 마운트되므로, 마운트=배너 등장이다.
+  // autoplay 차단 시 playAlertChime이 조용히 무시한다.
+  useEffect(() => {
+    playAlertChime();
+  }, [station.id]);
+
   const diff = station.price - averagePrice;
   const distanceText = station.distance != null
     ? station.distance < 1000 ? `${Math.round(station.distance)}m` : `${(station.distance / 1000).toFixed(1)}km`
