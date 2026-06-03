@@ -4,8 +4,9 @@
 // 누르면 인라인 입력 영역(리터/금액 단축칩 + 직접입력)을 펼친다.
 // 단축칩을 누르면 그 값과 함께 즉시 저장, 직접입력 후 "저장"도 가능. 값 없이 "그냥 저장"도 유지.
 // 비로그인 시 signIn 유도. 단가/유종/시각은 서버가 보강한다(클라는 stationId + 선택값만 전송).
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
+import type { FuelLog } from '@/types/fuel-log';
 
 interface Props {
   stationId: string;
@@ -26,6 +27,42 @@ export function FuelLogButton({ stationId, className }: Props) {
   // 직접입력 필드(둘 중 입력한 값만 저장에 사용)
   const [liters, setLiters] = useState('');
   const [amount, setAmount] = useState('');
+  // 최근 기록 기반 기본값(가장 최근 gas 1건). 단축칩에 있으면 칩 선택 강조, 없으면 직접입력에 프리필.
+  const [recentLiters, setRecentLiters] = useState<number | null>(null);
+  const [recentAmount, setRecentAmount] = useState<number | null>(null);
+  const prefilled = useRef(false); // 사용자가 만지기 전 1회만 프리필
+
+  // 마운트 시 1회: 가장 최근 gas 기록을 가벼운 limit=1로 조회해 기본값 준비.
+  // 비로그인 시 조회하지 않음(401 회피). 기록 없으면 빈 상태 유지.
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    let alive = true;
+    void (async () => {
+      try {
+        const res = await fetch('/api/fuel-logs?kind=gas&limit=1');
+        if (!res.ok) return;
+        const d = (await res.json()) as { logs?: FuelLog[] };
+        const last = d.logs?.[0];
+        if (!alive || !last) return;
+        setRecentLiters(last.liters);
+        setRecentAmount(last.amountWon);
+        // 단축칩에 없는 값이면 직접입력 필드에 프리필(칩에 있으면 칩 강조로 표현).
+        if (!prefilled.current) {
+          prefilled.current = true;
+          if (last.amountWon != null && !(AMOUNT_PRESETS as readonly number[]).includes(last.amountWon)) {
+            setAmount(String(last.amountWon));
+          } else if (last.liters != null && !(LITER_PRESETS as readonly number[]).includes(last.liters)) {
+            setLiters(String(last.liters));
+          }
+        }
+      } catch {
+        /* 프리필은 베스트에포트 — 실패해도 무시 */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [status]);
 
   // 저장: payload에 liters/amountWon 포함(빈값은 미포함 → 서버는 null 처리).
   const save = async (payload: { liters?: number; amountWon?: number }) => {
@@ -43,6 +80,9 @@ export function FuelLogButton({ stationId, className }: Props) {
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? '저장에 실패했어요.');
+      // 방금 저장한 값으로 최근값 갱신(다음에 열 때도 같은 칩이 강조되도록). 값 없는 저장은 유지.
+      if (payload.liters != null) setRecentLiters(payload.liters);
+      if (payload.amountWon != null) setRecentAmount(payload.amountWon);
       setState('done');
       setOpen(false);
       setLiters('');
@@ -80,6 +120,10 @@ export function FuelLogButton({ stationId, className }: Props) {
 
   const chip =
     'rounded-full border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:border-primary hover:text-primary disabled:opacity-60';
+  // 최근 기록과 일치하는 칩 강조(이전에 고른 값을 미리 선택해 보이게).
+  const chipActive = 'border-primary bg-primary/10 text-primary';
+  const literChipCls = (l: number) => (recentLiters === l ? `${chip} ${chipActive}` : chip);
+  const amountChipCls = (a: number) => (recentAmount === a ? `${chip} ${chipActive}` : chip);
 
   return (
     <div>
@@ -100,7 +144,13 @@ export function FuelLogButton({ stationId, className }: Props) {
           <p className="text-xs font-semibold text-gray-700">주유량(L)</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {LITER_PRESETS.map((l) => (
-              <button key={l} className={chip} disabled={state === 'busy'} onClick={() => void save({ liters: l })}>
+              <button
+                key={l}
+                className={literChipCls(l)}
+                aria-pressed={recentLiters === l}
+                disabled={state === 'busy'}
+                onClick={() => void save({ liters: l })}
+              >
                 {l}L
               </button>
             ))}
@@ -112,7 +162,13 @@ export function FuelLogButton({ stationId, className }: Props) {
           <p className="mt-3 text-xs font-semibold text-gray-700">금액(원)</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {AMOUNT_PRESETS.map((a) => (
-              <button key={a} className={chip} disabled={state === 'busy'} onClick={() => void save({ amountWon: a })}>
+              <button
+                key={a}
+                className={amountChipCls(a)}
+                aria-pressed={recentAmount === a}
+                disabled={state === 'busy'}
+                onClick={() => void save({ amountWon: a })}
+              >
                 ₩{a.toLocaleString()}
               </button>
             ))}

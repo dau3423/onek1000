@@ -4,8 +4,9 @@
 // 누르면 인라인 입력 영역(kWh/금액 단축칩 + 직접입력)을 펼친다.
 // 단축칩을 누르면 그 값과 함께 즉시 저장, 직접입력 후 "저장"도 가능. 값 없이 "그냥 저장"도 유지.
 // 비로그인 시 signIn 유도. 충전소/시각은 서버가 보강한다(클라는 statId + 선택값만 전송).
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
+import type { FuelLog } from '@/types/fuel-log';
 
 interface Props {
   statId: string;
@@ -25,6 +26,41 @@ export function EvChargeLogButton({ statId, className }: Props) {
   const [err, setErr] = useState<string | null>(null);
   const [kwh, setKwh] = useState('');
   const [amount, setAmount] = useState('');
+  // 최근 기록 기반 기본값(가장 최근 ev 1건). 단축칩에 있으면 칩 강조, 없으면 직접입력에 프리필.
+  const [recentKwh, setRecentKwh] = useState<number | null>(null);
+  const [recentAmount, setRecentAmount] = useState<number | null>(null);
+  const prefilled = useRef(false); // 사용자가 만지기 전 1회만 프리필
+
+  // 마운트 시 1회: 가장 최근 ev 기록을 가벼운 limit=1로 조회해 기본값 준비.
+  // 비로그인 시 조회하지 않음. 기록 없으면 빈 상태 유지.
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    let alive = true;
+    void (async () => {
+      try {
+        const res = await fetch('/api/fuel-logs?kind=ev&limit=1');
+        if (!res.ok) return;
+        const d = (await res.json()) as { logs?: FuelLog[] };
+        const last = d.logs?.[0];
+        if (!alive || !last) return;
+        setRecentKwh(last.kwh);
+        setRecentAmount(last.amountWon);
+        if (!prefilled.current) {
+          prefilled.current = true;
+          if (last.amountWon != null && !(AMOUNT_PRESETS as readonly number[]).includes(last.amountWon)) {
+            setAmount(String(last.amountWon));
+          } else if (last.kwh != null && !(KWH_PRESETS as readonly number[]).includes(last.kwh)) {
+            setKwh(String(last.kwh));
+          }
+        }
+      } catch {
+        /* 프리필은 베스트에포트 — 실패해도 무시 */
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [status]);
 
   const save = async (payload: { kwh?: number; amountWon?: number }) => {
     if (status !== 'authenticated') {
@@ -41,6 +77,9 @@ export function EvChargeLogButton({ statId, className }: Props) {
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? '저장에 실패했어요.');
+      // 방금 저장한 값으로 최근값 갱신(다음에 열 때도 같은 칩이 강조되도록).
+      if (payload.kwh != null) setRecentKwh(payload.kwh);
+      if (payload.amountWon != null) setRecentAmount(payload.amountWon);
       setState('done');
       setOpen(false);
       setKwh('');
@@ -77,6 +116,10 @@ export function EvChargeLogButton({ statId, className }: Props) {
 
   const chip =
     'rounded-full border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:border-emerald-600 hover:text-emerald-700 disabled:opacity-60';
+  // 최근 기록과 일치하는 칩 강조(이전에 고른 값을 미리 선택해 보이게).
+  const chipActive = 'border-emerald-600 bg-emerald-600/10 text-emerald-700';
+  const kwhChipCls = (k: number) => (recentKwh === k ? `${chip} ${chipActive}` : chip);
+  const amountChipCls = (a: number) => (recentAmount === a ? `${chip} ${chipActive}` : chip);
 
   return (
     <div>
@@ -97,7 +140,13 @@ export function EvChargeLogButton({ statId, className }: Props) {
           <p className="text-xs font-semibold text-gray-700">충전량(kWh)</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {KWH_PRESETS.map((k) => (
-              <button key={k} className={chip} disabled={state === 'busy'} onClick={() => void save({ kwh: k })}>
+              <button
+                key={k}
+                className={kwhChipCls(k)}
+                aria-pressed={recentKwh === k}
+                disabled={state === 'busy'}
+                onClick={() => void save({ kwh: k })}
+              >
                 {k}kWh
               </button>
             ))}
@@ -106,7 +155,13 @@ export function EvChargeLogButton({ statId, className }: Props) {
           <p className="mt-3 text-xs font-semibold text-gray-700">금액(원)</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {AMOUNT_PRESETS.map((a) => (
-              <button key={a} className={chip} disabled={state === 'busy'} onClick={() => void save({ amountWon: a })}>
+              <button
+                key={a}
+                className={amountChipCls(a)}
+                aria-pressed={recentAmount === a}
+                disabled={state === 'busy'}
+                onClick={() => void save({ amountWon: a })}
+              >
                 ₩{a.toLocaleString()}
               </button>
             ))}

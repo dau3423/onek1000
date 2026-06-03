@@ -84,17 +84,45 @@ export async function GET(req: Request) {
   const userId = await getUserId(session.user.email);
   if (!userId) return NextResponse.json({ logs: [], hasMore: false });
 
-  const page = Math.max(0, Number(new URL(req.url).searchParams.get('page') ?? '0') || 0);
+  const sp = new URL(req.url).searchParams;
+
+  // kind 필터(선택): 'gas'|'ev'. 단축버튼 프리필처럼 특정 종류만 필요할 때 사용.
+  const kindParam = sp.get('kind');
+  const kind = kindParam === 'gas' || kindParam === 'ev' ? kindParam : null;
+
+  // limit(선택): 1~PAGE_SIZE. 지정 시 페이지네이션 없이 가볍게 최근 N건만 반환(hasMore=false).
+  //   단축버튼 프리필은 limit=1로 최근 1건만 조회해 과한 로드를 피한다.
+  const limitParam = Number(sp.get('limit') ?? '');
+  const limit =
+    Number.isFinite(limitParam) && limitParam >= 1 ? Math.min(Math.floor(limitParam), PAGE_SIZE) : null;
+
+  const sb = getSupabase();
+
+  if (limit !== null) {
+    let q = sb
+      .from('fuel_logs')
+      .select(SELECT_COLS)
+      .eq('user_id', userId)
+      .order('logged_at', { ascending: false })
+      .limit(limit);
+    if (kind) q = q.eq('kind', kind);
+    const { data } = await q;
+    const logs = ((data ?? []) as FuelLogRow[]).map(toFuelLog);
+    return NextResponse.json({ logs, hasMore: false });
+  }
+
+  const page = Math.max(0, Number(sp.get('page') ?? '0') || 0);
   const from = page * PAGE_SIZE;
   const to = from + PAGE_SIZE; // 1건 더 받아 다음 페이지 존재 여부 판단
 
-  const sb = getSupabase();
-  const { data } = await sb
+  let q = sb
     .from('fuel_logs')
     .select(SELECT_COLS)
     .eq('user_id', userId)
     .order('logged_at', { ascending: false })
     .range(from, to);
+  if (kind) q = q.eq('kind', kind);
+  const { data } = await q;
 
   const rows = (data ?? []) as FuelLogRow[];
   const hasMore = rows.length > PAGE_SIZE;
