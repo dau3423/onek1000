@@ -700,7 +700,7 @@ export function KakaoMap({
       content.style.transform = 'translate(-50%, -50%)';
       // 작은 회색 원(가격/브랜드색/라벨 없음). 흰 외곽으로 지도 위에서 구분.
       content.innerHTML =
-        '<div style="width:9px;height:9px;border-radius:50%;background:#9ca3af;'
+        '<div style="width:12px;height:12px;border-radius:50%;background:#9ca3af;'
         + 'border:1.5px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.3)"></div>';
       content.addEventListener('click', () => onMarkerClick?.(pointToStation(p)));
 

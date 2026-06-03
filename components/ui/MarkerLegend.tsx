@@ -94,6 +94,19 @@ function RingDot({ color }: { color: string }) {
 }
 
 /**
+ * 비하이라이트(그 외) 주유소 칩 — 작은 회색 점 + 흰 외곽.
+ * 실제 지도의 회색 점 마커(KakaoMap, #9ca3af + 흰 외곽)와 색·형태 일치.
+ */
+function GrayDotChip() {
+  return (
+    <span
+      className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+      style={{ background: '#9ca3af', boxShadow: '0 0 0 1.5px #fff' }}
+    />
+  );
+}
+
+/**
  * 전국 TOP10 칩 — 물방울 핀 형태(전국 단서) + 본체는 가격 tier 색(채움), 테두리는 브랜드 색(가변).
  * 실제 지도 마커와 색 역할 일치: 본체=가격 tier 색, 테두리=브랜드 색.
  * 카테고리(전국)는 물방울 형태와 안내 텍스트(앰버 가격 라벨)로 보완한다.
@@ -312,6 +325,10 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
                   <span style={{ color: NEAR_COLOR }} className="font-semibold"> 블루</span>
                   <span className="text-gray-500 dark:text-gray-400">)</span>
                 </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <GrayDotChip />
+                <span>회색 점 = 그 외 주유소(확대 시 표시)</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Dot color={MY_COLOR} ring="#ffffff" />
