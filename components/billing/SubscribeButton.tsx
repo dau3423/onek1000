@@ -29,10 +29,21 @@ interface SubscribeResponse {
   error?: string;
 }
 
+// 휴대폰 번호: 하이픈/공백 제거 후 숫자만 추출. 010으로 시작하는 10~11자리만 허용.
+// (이니시스 V2 일반결제·빌링키 발급 모두 customer.phoneNumber 필수)
+function normalizePhone(raw: string): string {
+  return raw.replace(/[^0-9]/g, '');
+}
+function isValidPhone(digits: string): boolean {
+  return /^01[016789][0-9]{7,8}$/.test(digits);
+}
+
 export function SubscribeButton() {
   const { status } = useSession();
   const [plan, setPlan] = useState<PlanCode>('monthly_1000');
   const [loading, setLoading] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   // 결제수단은 이니시스 카드 단일 고정.
   const pg = 'inicis' as const;
 
@@ -41,6 +52,13 @@ export function SubscribeButton() {
       signIn(undefined, { callbackUrl: '/pricing' });
       return;
     }
+    // 이니시스 V2는 구매자 휴대폰 번호가 필수 → 결제창 호출 전에 검증/차단.
+    const phoneDigits = normalizePhone(phone);
+    if (!isValidPhone(phoneDigits)) {
+      setPhoneError('휴대폰 번호를 정확히 입력해 주세요. (예: 010-1234-5678)');
+      return;
+    }
+    setPhoneError('');
     setLoading(true);
     try {
       const res = await fetch('/api/billing/subscribe', {
@@ -55,6 +73,8 @@ export function SubscribeButton() {
       const customer = {
         fullName: data.customer.name,
         email: data.customer.email || undefined,
+        // 이니시스 V2 필수: 하이픈 없는 숫자 형식(01012345678).
+        phoneNumber: phoneDigits,
       };
 
       if (!data.recurring) {
@@ -141,6 +161,40 @@ export function SubscribeButton() {
 
       {/* 결제 수단 안내: 이니시스 카드 통합결제창 단일(선택 토글 없음) */}
       <PayMethodNotice />
+
+      {/* 휴대폰 번호 입력: 이니시스 V2 결제 필수 항목.
+          소셜로그인에선 번호를 받지 못하므로 결제 직전에 입력받는다. */}
+      <div>
+        <label htmlFor="billing-phone" className="mb-1 block text-xs font-semibold text-gray-700">
+          휴대폰 번호 <span className="text-primary">*</span>
+        </label>
+        <input
+          id="billing-phone"
+          type="tel"
+          inputMode="numeric"
+          autoComplete="tel"
+          value={phone}
+          onChange={(e) => {
+            setPhone(e.target.value);
+            if (phoneError) setPhoneError('');
+          }}
+          placeholder="010-1234-5678"
+          maxLength={13}
+          aria-invalid={phoneError ? true : undefined}
+          className={`w-full rounded-xl border px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 ${
+            phoneError
+              ? 'border-red-400 focus:border-red-400 focus:ring-red-400'
+              : 'border-gray-200 focus:border-primary focus:ring-primary'
+          }`}
+        />
+        {phoneError ? (
+          <p className="mt-1 text-[11px] leading-tight text-red-500">{phoneError}</p>
+        ) : (
+          <p className="mt-1 text-[11px] leading-tight text-gray-500">
+            결제 진행을 위해 필요합니다. 결제 외 용도로 사용하지 않습니다.
+          </p>
+        )}
+      </div>
 
       <button
         onClick={startPay}
