@@ -5,6 +5,12 @@ import clsx from 'clsx';
 import { BRAND_COLOR } from '@/types/station';
 import type { PriceTier } from '@/lib/map/geo';
 import { TIER_FACE, faceSvgInner } from '@/lib/map/markerFace';
+import { useMapStore } from '@/stores/map';
+
+// EV 마커 색(단일 출처는 lib/map/evMarker.ts — 범례는 시각 일관성을 위해 동일 값을 사용).
+const EV_AVAILABLE_COLOR = '#16A34A'; // 초록 — 사용가능
+const EV_BUSY_COLOR = '#9CA3AF'; // 회색 — 사용불가(충전중/점검)
+const EV_FAST_COLOR = '#F59E0B'; // 앰버 — 급속 보유 뱃지
 
 interface Props {
   onClose: () => void;
@@ -129,10 +135,34 @@ function NearBadgeChip({ body, ring }: { body: string; ring: string }) {
 }
 
 /**
+ * EV 충전소 마커 칩 — 번개 핀(사용가능=초록 / 불가=회색). hasFast=급속 뱃지 표시.
+ * 실제 지도 마커(lib/map/evMarker.ts)와 색·형태 일치(번개 아이콘 + 급속 앰버 뱃지).
+ */
+function EvPinChip({ color, hasFast }: { color: string; hasFast?: boolean }) {
+  return (
+    <svg viewBox="0 -3 17 24" className="h-[21px] w-[14px] shrink-0" style={{ display: 'block' }}>
+      {/* 물방울 핀 + 머리 흰 간격 + 안쪽 색 + 번개 */}
+      <path d="M7 20 C1 14 0.5 11 0.5 9 a6.5 6.5 0 1 1 13 0 C13.5 11 13 14 7 20 Z" fill={color} />
+      <circle cx="7" cy="9" r="5" fill="#fff" />
+      <circle cx="7" cy="9" r="4.1" fill={color} />
+      <path d="M7.6 5.5 L4.4 9.6 L6.8 9.6 L6.1 12.5 L9.6 8 L7.1 8 Z" fill="#fff" />
+      {hasFast && (
+        <g>
+          <circle cx="12.5" cy="3" r="2.6" fill={EV_FAST_COLOR} stroke="#fff" strokeWidth="0.7" />
+          <path d="M12.9 1.4 L11.4 3.4 L12.5 3.4 L12.2 4.8 L13.8 2.7 L12.6 2.7 Z" fill="#fff" />
+        </g>
+      )}
+    </svg>
+  );
+}
+
+/**
  * 지도 마커 색상/표식 의미 안내 팝오버.
  * FilterBar 우측 info 버튼에서 띄운다. ESC/바깥클릭으로 닫힌다.
+ * 레이어(주유소/충전소)에 따라 안내 내용을 전환한다(useMapStore.layer).
  */
 export function MarkerLegend({ onClose, cardClassName }: Props) {
+  const layer = useMapStore((s) => s.layer);
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -161,7 +191,9 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
         )}
       >
         <div className="flex items-center justify-between">
-          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">지도 색상 안내</p>
+          <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
+            {layer === 'ev' ? '충전소 마커 안내' : '지도 색상 안내'}
+          </p>
           <button
             onClick={onClose}
             aria-label="안내 닫기"
@@ -174,6 +206,46 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
         </div>
 
         <div className="mt-3 space-y-3 text-xs text-gray-700 dark:text-gray-300">
+          {layer === 'ev' ? (
+          <>
+          <section>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">충전기 사용 상태 = 핀 색</p>
+            <div className="mt-1.5 space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <EvPinChip color={EV_AVAILABLE_COLOR} />
+                <span><b className="font-semibold text-gray-900 dark:text-gray-100">초록</b> = 사용가능 충전기 있음</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <EvPinChip color={EV_BUSY_COLOR} />
+                <span><b className="font-semibold text-gray-900 dark:text-gray-100">회색</b> = 사용불가(전부 충전중·점검·통신이상)</span>
+              </div>
+            </div>
+            <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">사용가능 핀은 조금 크게, 불가 핀은 작게 표시돼요.</p>
+          </section>
+
+          <section>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">급속 충전 = 번개 뱃지</p>
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <EvPinChip color={EV_AVAILABLE_COLOR} hasFast />
+              <span>핀 우상단 <span style={{ color: EV_FAST_COLOR }} className="font-semibold">앰버 번개</span> 뱃지 = 급속 충전기 보유</span>
+            </div>
+          </section>
+
+          <section>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">줌인 시 라벨</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">핀 위 라벨은 <b>사용가능/전체</b> 대수 · 급속 보유 여부를 함께 보여줘요.</p>
+          </section>
+
+          <section>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">내 위치</p>
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <Dot color={MY_COLOR} ring="#ffffff" />
+              <span>파란 점 = 내 현재 위치</span>
+            </div>
+          </section>
+          </>
+          ) : (
+          <>
           <section>
             <p className="font-semibold text-gray-900 dark:text-gray-100">마커 숫자 = 가격 순위</p>
             <p className="text-[11px] text-gray-500 dark:text-gray-400">현재 목록 탭(이 지역 / 내 주변)의 가격 순위 — 1이 가장 쌈</p>
@@ -247,6 +319,8 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
               </div>
             </div>
           </section>
+          </>
+          )}
         </div>
       </div>
     </div>
