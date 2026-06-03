@@ -243,11 +243,11 @@ env:
   #   secret: VAPID_PRIVATE_KEY
   #
   # AdSense:
-  # - variable: NEXT_PUBLIC_ADSENSE_CLIENT
-  #   value: "ca-pub-..."
-  #   availability:
-  #     - BUILD
-  #     - RUNTIME
+  - variable: NEXT_PUBLIC_ADSENSE_CLIENT
+    value: "ca-pub-6206539456344377"
+    availability:
+      - BUILD
+      - RUNTIME
   # - variable: NEXT_PUBLIC_ADSENSE_BANNER_SLOT
   #   value: "1234567890"
   #   availability:
