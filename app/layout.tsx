@@ -13,10 +13,17 @@ const pretendard = localFont({
   weight: '45 920',
 });
 
+// Google AdSense 사이트 소유 확인용 publisher ID (env 우선, 없으면 하드코딩 폴백)
+const ADSENSE_ACCOUNT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT || 'ca-pub-6206539456344377';
+
 export const metadata: Metadata = {
   title: '1000냥 주유소 - 내 주변 최저가 주유소',
   description: '전국 주유소 실시간 가격을 지도에서 확인하세요. 월 1,000원 광고 제거.',
   manifest: '/manifest.json',
+  // AdSense 사이트 소유 확인 meta (로그인/프리미엄 여부와 무관하게 모든 페이지 head에 노출)
+  other: {
+    'google-adsense-account': ADSENSE_ACCOUNT,
+  },
   icons: {
     icon: [
       { url: '/icons/favicon-32.png', sizes: '32x32', type: 'image/png' },
