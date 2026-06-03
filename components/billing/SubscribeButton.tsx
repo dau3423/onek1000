@@ -10,7 +10,7 @@
 // 결제수단: 이니시스(KG이니시스) 카드 통합결제창 단일. 카카오페이 간편결제는
 // 이니시스 통합창 안에서 제공되므로 별도 PG 선택을 두지 않는다(pg=inicis 고정, CARD).
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import * as PortOne from '@portone/browser-sdk/v2';
 
@@ -38,16 +38,32 @@ function isValidPhone(digits: string): boolean {
   return /^01[016789][0-9]{7,8}$/.test(digits);
 }
 
+// 모바일(redirect 결제) 환경 판정. PortOne v2는 모바일에서 redirectUrl로 페이지 이동하므로
+// requestPayment 호출 후 정상 흐름이면 이 컴포넌트로 돌아오지 않는다(=Promise 미반환).
+// UA 기반 best-effort 판정(서버 추측 없이 클라에서만 사용).
+function detectMobile(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
 export function SubscribeButton() {
   const { status } = useSession();
   const [plan, setPlan] = useState<PlanCode>('monthly_1000');
   const [loading, setLoading] = useState(false);
   const [phone, setPhone] = useState('');
   const [phoneError, setPhoneError] = useState('');
+  // 결제창 호출 자체가 실패했을 때(예: 모바일 redirect 미발생) 화면에 노출할 메시지.
+  const [payError, setPayError] = useState('');
+  const [isMobile, setIsMobile] = useState(false);
   // 결제수단은 이니시스 카드 단일 고정.
   const pg = 'inicis' as const;
 
+  useEffect(() => {
+    setIsMobile(detectMobile());
+  }, []);
+
   const startPay = async () => {
+    setPayError('');
     if (status !== 'authenticated') {
       signIn(undefined, { callbackUrl: '/pricing' });
       return;
@@ -79,6 +95,9 @@ export function SubscribeButton() {
 
       if (!data.recurring) {
         // ── 단건 결제 (이니시스 카드 통합창) ──
+        // 모바일은 redirectUrl로 페이지 이동(redirect)된다. forceRedirect:true 로
+        // 모바일에서 popup/inline 시도(팝업 차단 위험) 대신 확실히 redirect 하도록 강제한다.
+        // PC는 forceRedirect 무관하게 통합창(popup/iframe) → Promise 로 결과 수신.
         const response = await PortOne.requestPayment({
           storeId: data.storeId,
           channelKey: data.channelKey,
@@ -88,11 +107,16 @@ export function SubscribeButton() {
           currency: 'KRW',
           payMethod: 'CARD',
           redirectUrl: `${origin}/api/billing/return`,
+          ...(isMobile ? { forceRedirect: true } : {}),
           customer,
         });
-        // 모바일은 redirect 되어 이 줄에 도달하지 않는다. PC만 여기로.
+        // 모바일은 redirect 되어 이 줄에 도달하지 않는다(정상). PC만 여기로.
+        // 모바일에서 redirect 없이 여기 도달하면(=결제창 미진입) 아래 가드가 메시지를 노출한다.
         if (response?.code) {
           throw new Error(response.message || '결제가 취소되었거나 실패했습니다.');
+        }
+        if (!response?.paymentId && !data.paymentId) {
+          throw new Error('결제창을 열지 못했습니다. 잠시 후 다시 시도해 주세요.');
         }
         await completeAndRedirect({ paymentId: response?.paymentId ?? data.paymentId! });
       } else {
@@ -106,6 +130,7 @@ export function SubscribeButton() {
           issueId: data.issueId!,
           issueName: data.orderName,
           redirectUrl,
+          ...(isMobile ? { forceRedirect: true } : {}),
           customer,
         });
         if (response?.code) {
@@ -115,7 +140,11 @@ export function SubscribeButton() {
         await completeAndRedirect({ billingKey: response.billingKey, issueId: data.issueId! });
       }
     } catch (e) {
-      alert('결제 실패: ' + (e instanceof Error ? e.message : String(e)));
+      // 모바일에서 redirect가 정상 발생하면 이 코드는 실행되지 않는다(페이지 이동).
+      // 여기 도달했다는 건 결제창 진입 전/직후 실패 → 화면에 원인을 노출(모바일은 alert가
+      // 가려지거나 빠르게 사라질 수 있으므로 인라인 메시지를 함께 둔다).
+      const msg = e instanceof Error ? e.message : String(e);
+      setPayError(msg);
       setLoading(false);
     }
   };
@@ -206,6 +235,16 @@ export function SubscribeButton() {
               : '₩1,000 결제하고 시작하기'
             : '로그인 후 시작하기'}
       </button>
+
+      {/* 결제창 진입 실패 메시지(모바일에서 alert가 가려질 수 있어 인라인으로도 노출) */}
+      {payError && (
+        <p
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs leading-tight text-red-600"
+        >
+          결제를 시작하지 못했어요: {payError}
+        </p>
+      )}
     </div>
   );
 }
