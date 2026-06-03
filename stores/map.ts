@@ -39,7 +39,14 @@ function writeLastView(v: MapView | null) {
   }
 }
 
+/** 지도 레이어 — 'gas'=주유소(기존 기본), 'ev'=전기차 충전소. */
+export type MapLayer = 'gas' | 'ev';
+
 interface MapState {
+  /** 현재 지도 레이어(주유소/충전소 토글). */
+  layer: MapLayer;
+  setLayer: (l: MapLayer) => void;
+
   product: ProductCode;
   /** 사용자가 필터바에서 직접 유종을 바꿨는지 — 차량 기본 유종 자동 선택보다 우선 */
   productUserSet: boolean;
@@ -69,6 +76,9 @@ interface MapState {
 }
 
 export const useMapStore = create<MapState>((set) => ({
+  layer: 'gas',
+  setLayer: (l) => set({ layer: l }),
+
   product: 'B027',
   productUserSet: false,
   setProduct: (p) => set({ product: p, productUserSet: true, alertDismissed: false }),

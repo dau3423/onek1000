@@ -6,6 +6,8 @@ import type { StationWithPrice, NationalTop10Item, ProductCode } from '@/types/s
 import { BRAND_COLOR } from '@/types/station';
 import { priceTier, priceTierThresholds } from '@/lib/map/geo';
 import { TIER_FACE, faceMarkerSvg, numberMarkerSvg } from '@/lib/map/markerFace';
+import type { EvStationMarker } from '@/types/ev';
+import { buildEvMarkerContent } from '@/lib/map/evMarker';
 
 /** BottomSheet와 공유하는 활성 탭 타입. 'area'=이 지역, 'nearby'=내 주변 10km. */
 export type MapListTab = 'area' | 'nearby';
@@ -109,7 +111,15 @@ function topPinSvg(rank: number, size: number, tierColor: string, brandColor: st
   const gloss = golden
     ? `<ellipse cx="${headR * 0.66}" cy="${headR * 0.6}" rx="${headR * 0.26}" ry="${headR * 0.18}" fill="#ffffff" opacity="0.7"/>`
     : '';
-  return `<svg width="${w}" height="${size - crownY}" viewBox="0 ${crownY} ${w} ${size - crownY}" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))">
+  // 좌우 여백(viewBox 패딩): 물방울 path 좌우 끝(x=0, x=w)에서 골드 외곽선/브랜드 stroke가
+  // path 중심선 기준 양쪽으로 번지므로(외곽선 두께 약 w*0.105 → 절반 w*0.0525), 그만큼이
+  // viewBox(0~w) 밖으로 잘렸다. 좌우에 대칭 패딩을 둬 stroke가 온전히 보이게 한다.
+  // 좌우 동일하게 더하므로 핀 꼬리(x=headR=w/2)는 박스 가로 중앙을 유지 → anchor 불변.
+  const padX = Math.ceil(w * 0.07);
+  // 실제 픽셀 폭/viewBox 모두 좌우 padX만큼 확장. 높이/세로 anchor는 기존 그대로.
+  const vbW = w + padX * 2;
+  const drawW = w + padX * 2; // SVG 표시 폭(px) — viewBox와 1:1로 키워 도형 크기 불변
+  return `<svg width="${drawW}" height="${size - crownY}" viewBox="${-padX} ${crownY} ${vbW} ${size - crownY}" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))">
     ${goldGrad}
     ${bodyOutline}
     <path d="${bodyDropPath}" fill="${bodyFill}"${bodyStroke}/>
@@ -181,6 +191,12 @@ interface Props {
    * 일반 마커/내 주변 핀에 숫자로 표시한다. BottomSheet의 nearbyStations와 동일 배열을 받는다.
    */
   nearbyStations?: StationWithPrice[];
+  /** 지도 레이어. 'ev'면 주유소 마커 대신 충전소 마커를 그린다. 기본 'gas'(주유소). */
+  layer?: 'gas' | 'ev';
+  /** 충전소 마커 목록(layer='ev'일 때만 렌더). */
+  evStations?: EvStationMarker[];
+  /** 충전소 마커 클릭 콜백(layer='ev'). */
+  onEvMarkerClick?: (s: EvStationMarker) => void;
   onBoundsChange?: (b: {
     swLat: number; swLng: number; neLat: number; neLng: number; zoom: number;
   }) => void;
@@ -205,6 +221,9 @@ export function KakaoMap({
   nearbyStations,
   activeTab = 'area',
   product = 'B027',
+  layer = 'gas',
+  evStations,
+  onEvMarkerClick,
   onBoundsChange,
   onViewChange,
   onUserPan,
@@ -218,6 +237,10 @@ export function KakaoMap({
   const topOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
   // 내 주변(10km) TOP10 핀 오버레이 — bbox 마커/전국 메달과 독립적으로 관리.
   const nearOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
+  // 전기차 충전소 마커 오버레이 — 주유소 마커와 독립 관리(레이어 전환 시 서로 간섭 없게).
+  const evOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
+  const onEvMarkerClickRef = useRef(onEvMarkerClick);
+  useEffect(() => { onEvMarkerClickRef.current = onEvMarkerClick; }, [onEvMarkerClick]);
   const myOverlayRef = useRef<kakao.maps.CustomOverlay | null>(null);
   const myCircleRef = useRef<kakao.maps.Circle | null>(null);
   // 내 위치 마커 내부의 회전 대상 엘리먼트 — heading 변경 시 위치 effect 재실행 없이 회전만 갱신.
@@ -384,6 +407,9 @@ export function KakaoMap({
     overlaysRef.current.forEach((o) => o.setMap(null));
     overlaysRef.current = [];
 
+    // EV 레이어에서는 주유소 일반 마커를 그리지 않는다(위에서 제거만 하고 종료).
+    if (layer === 'ev') return;
+
     const showLabel = map.getLevel() <= 5; // 줌 인 상태에서만 가격 라벨
 
     for (const s of stations) {
@@ -437,7 +463,7 @@ export function KakaoMap({
       overlay.setMap(map);
       overlaysRef.current.push(overlay);
     }
-  }, [ready, stations, top10Rank, nearbyRank, tierThresholds, onMarkerClick, mapLevel, activeTab, areaListRank]);
+  }, [ready, stations, top10Rank, nearbyRank, tierThresholds, onMarkerClick, mapLevel, activeTab, areaListRank, layer]);
 
   // 전국 최저가 TOP10 핀 오버레이 — bbox stations 포함 여부와 무관하게 항상 렌더.
   // 위치/가격/순위는 모두 nationalTop10 항목 값을 사용한다(bbox의 비동기 타이밍 불일치 차단).
@@ -448,6 +474,9 @@ export function KakaoMap({
     // 기존 TOP10 오버레이 제거
     topOverlaysRef.current.forEach((o) => o.setMap(null));
     topOverlaysRef.current = [];
+
+    // EV 레이어에서는 전국 TOP10 메달을 그리지 않는다.
+    if (layer === 'ev') return;
 
     const showLabel = map.getLevel() <= 5; // 줌 인 상태에서만 가격 라벨
 
@@ -510,7 +539,7 @@ export function KakaoMap({
     }
     // top10ToStation은 product/렌더마다 새로 생성되므로 product를 직접 의존성에 둔다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, nationalTop10, product, tierThresholds, onMarkerClick, mapLevel]);
+  }, [ready, nationalTop10, product, tierThresholds, onMarkerClick, mapLevel, layer]);
 
   // 내 주변(10km) TOP10 핀/배지 오버레이 — 전국 메달/일반 마커와 독립적으로 항상 렌더.
   // 위치/가격/순위는 nearbyTop10(이미 가격순) 기준. 전국 메달과 겹치는 id는 nearbyRank에서 제외됨.
@@ -521,6 +550,9 @@ export function KakaoMap({
     // 기존 내 주변 오버레이 제거
     nearOverlaysRef.current.forEach((o) => o.setMap(null));
     nearOverlaysRef.current = [];
+
+    // EV 레이어에서는 내 주변 TOP10 핀을 그리지 않는다.
+    if (layer === 'ev') return;
 
     const showLabel = map.getLevel() <= 5; // 줌 인 상태에서만 가격 라벨
 
@@ -575,7 +607,35 @@ export function KakaoMap({
       overlay.setMap(map);
       nearOverlaysRef.current.push(overlay);
     }
-  }, [ready, nearbyTop10, nearbyRank, nearbyListRank, tierThresholds, onMarkerClick, mapLevel]);
+  }, [ready, nearbyTop10, nearbyRank, nearbyListRank, tierThresholds, onMarkerClick, mapLevel, layer]);
+
+  // 전기차 충전소 마커 — layer='ev'일 때만 렌더(주유소 마커와 독립 오버레이).
+  // 충전소(statId) 단위 1마커. 색=사용가능 충전기 유무, 라벨=사용가능/전체 + 급속 여부.
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    const map = mapRef.current;
+
+    // 기존 EV 오버레이 제거
+    evOverlaysRef.current.forEach((o) => o.setMap(null));
+    evOverlaysRef.current = [];
+
+    if (layer !== 'ev') return;
+
+    const showLabel = map.getLevel() <= 6; // 충전소는 가격이 없어 조금 더 일찍 라벨 노출
+    for (const s of evStations ?? []) {
+      const content = buildEvMarkerContent(s, showLabel);
+      content.addEventListener('click', () => onEvMarkerClickRef.current?.(s));
+      const overlay = new window.kakao.maps.CustomOverlay({
+        position: new window.kakao.maps.LatLng(s.lat, s.lng),
+        content,
+        yAnchor: 1,
+        clickable: true,
+        zIndex: 2,
+      });
+      overlay.setMap(map);
+      evOverlaysRef.current.push(overlay);
+    }
+  }, [ready, layer, evStations, mapLevel]);
 
   // 내 위치 마커 + 1km 원
   useEffect(() => {

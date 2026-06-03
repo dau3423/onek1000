@@ -12,14 +12,14 @@ const GASOLINE_OPTIONS: ProductCode[] = ['B027', 'B034'];
 const SIMPLE_PRODUCTS: ProductCode[] = ['D047', 'C004'];
 
 export function FilterBar() {
-  const { product, setProduct } = useMapStore();
+  const { product, setProduct, layer, setLayer } = useMapStore();
   // 휘발유 드롭다운 열림 여부
   const [gasOpen, setGasOpen] = useState(false);
   const gasRef = useRef<HTMLDivElement>(null);
 
+  const isEv = layer === 'ev';
   // 현재 선택이 휘발유 계열(일반/고급)인지 — 칩 활성/라벨 판정에 사용
-  const gasSelected = (GASOLINE_OPTIONS as ProductCode[]).includes(product);
-  // EV는 유효 ProductCode가 아니므로 store에 넣지 않고 준비중으로만 처리.
+  const gasSelected = !isEv && (GASOLINE_OPTIONS as ProductCode[]).includes(product);
 
   // 바깥 클릭 / ESC로 휘발유 드롭다운 닫기
   useEffect(() => {
@@ -40,6 +40,39 @@ export function FilterBar() {
 
   return (
     <div className="relative flex items-center gap-1.5 border-b border-gray-100 bg-white px-3 py-2 dark:border-gray-800 dark:bg-gray-900">
+      {/* 레이어 토글: 주유소 / 충전소. 충전소 선택 시 유종 칩은 의미가 없어 숨긴다. */}
+      <div className="flex shrink-0 items-center rounded-full bg-gray-100 p-0.5 dark:bg-gray-800" role="tablist" aria-label="지도 레이어">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={!isEv}
+          onClick={() => setLayer('gas')}
+          className={clsx(
+            'rounded-full px-3 py-1 text-xs font-bold transition',
+            !isEv ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-50' : 'text-gray-500 dark:text-gray-400',
+          )}
+        >
+          주유소
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={isEv}
+          onClick={() => setLayer('ev')}
+          className={clsx(
+            'flex items-center gap-0.5 rounded-full px-3 py-1 text-xs font-bold transition',
+            isEv ? 'bg-white text-emerald-600 shadow-sm dark:bg-gray-700 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400',
+          )}
+        >
+          ⚡ 충전소
+        </button>
+      </div>
+
+      {/* 충전소 레이어에서는 유종 필터/브랜드 필터가 무의미하므로 미노출. */}
+      {isEv ? (
+        <span className="ml-1 truncate text-xs text-gray-400 dark:text-gray-500">전기차 충전소 표시 중</span>
+      ) : (
+      <>
       {/*
         휘발유 드롭다운(일반/고급) — 스크롤 컨테이너 밖에 둔다.
         overflow-x-auto 컨테이너 안에 두면 overflow-y도 자동으로 잘라(clip) 드롭다운 패널이 안 보임.
@@ -101,7 +134,7 @@ export function FilterBar() {
         )}
       </div>
 
-      {/* 나머지 유종 버튼: 좁은 화면에서 가로 스크롤. 좌→우: 경유 · LPG · EV(준비중) */}
+      {/* 나머지 유종 버튼: 좁은 화면에서 가로 스크롤. 좌→우: 경유 · LPG */}
       <div className="flex flex-1 items-center gap-1.5 overflow-x-auto">
         {/* 경유 · LPG 단독 칩 */}
         {SIMPLE_PRODUCTS.map((p) => (
@@ -118,24 +151,12 @@ export function FilterBar() {
             {PRODUCT_LABEL[p]}
           </button>
         ))}
-
-        {/* EV — 데이터 소스 없음(준비 중). 비활성 처리로 앱이 깨지지 않게 한다. */}
-        <button
-          type="button"
-          disabled
-          aria-disabled="true"
-          title="전기차 충전소는 준비 중입니다"
-          className="flex shrink-0 cursor-not-allowed items-center gap-1 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-400 dark:bg-gray-800 dark:text-gray-500"
-        >
-          <span>EV</span>
-          <span className="rounded-full bg-gray-200 px-1.5 py-0.5 text-[9px] font-bold text-gray-500 dark:bg-gray-700 dark:text-gray-400">
-            준비중
-          </span>
-        </button>
       </div>
 
       {/* 브랜드별 보기(회원 전용) — 맨 뒤(우측)에 고정 */}
       <BrandFilter />
+      </>
+      )}
     </div>
   );
 }

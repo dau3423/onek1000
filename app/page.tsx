@@ -12,6 +12,7 @@ import { RadiusAlert } from '@/components/alert/RadiusAlert';
 import { NaviConfirm } from '@/components/alert/NaviConfirm';
 import { ProductSync } from '@/components/map/ProductSync';
 import { StationPopup } from '@/components/map/StationPopup';
+import { EvStationPopup } from '@/components/map/EvStationPopup';
 import { MarkerLegend } from '@/components/ui/MarkerLegend';
 import { InstallBanner } from '@/components/pwa/InstallBanner';
 import { BusinessFooter } from '@/components/legal/BusinessFooter';
@@ -21,6 +22,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { quantize } from '@/lib/map/geo';
 import type { BboxResponse, RadiusResponse, StationWithPrice, NationalTop10Item, NationalTop10Response } from '@/types/station';
+import type { EvBboxResponse, EvStationMarker } from '@/types/ev';
 
 // KakaoMap은 window 의존 + SDK 외부 스크립트라 SSR 비활성
 const KakaoMap = dynamic(
@@ -39,7 +41,7 @@ const NEARBY_TOP_N = 10;
 
 export default function HomePage() {
   const router = useRouter();
-  const { product, brands, alertDismissed, dismissAlert, resetAlert, setLastView } = useMapStore();
+  const { product, brands, alertDismissed, dismissAlert, resetAlert, setLastView, layer } = useMapStore();
 
   // 마운트 시점에 1회 고정: 직전에 보던 지도 시점(상세 왕복/새로고침 복원).
   // 있으면 그 시점을 초기값으로 쓰고, 자동 위치 센터링을 억제한다.
@@ -54,6 +56,12 @@ export default function HomePage() {
   const top10Abort = useRef<AbortController | null>(null);
   const lastBoundsRef = useRef<{ swLat: number; swLng: number; neLat: number; neLng: number; zoom: number } | null>(null);
   const bboxAbort = useRef<AbortController | null>(null);
+
+  // 전기차 충전소(layer='ev') — 지도 영역 내 충전소 마커. 우리 DB(/api/ev/bbox)만 조회.
+  const [evStations, setEvStations] = useState<EvStationMarker[]>([]);
+  const evAbort = useRef<AbortController | null>(null);
+  // PC: 충전소 마커 클릭 시 요약 팝업 대상
+  const [evPopup, setEvPopup] = useState<EvStationMarker | null>(null);
 
   // 위치 기반 반경 조회 (내 주변 TOP10 + 1km 알람)
   const [geoEnabled, setGeoEnabled] = useState(false);
@@ -131,6 +139,11 @@ export default function HomePage() {
     if (!isDesktop && popupStation) setPopupStation(null);
   }, [isDesktop, popupStation]);
 
+  // 충전소 팝업도 동일하게 — 모바일 폭으로 줄거나 주유소 레이어로 전환되면 닫는다.
+  useEffect(() => {
+    if ((!isDesktop || layer !== 'ev') && evPopup) setEvPopup(null);
+  }, [isDesktop, layer, evPopup]);
+
   // bbox 변경 시 stations 조회
   useEffect(() => {
     const b = lastBoundsRef.current;
@@ -184,6 +197,37 @@ export default function HomePage() {
         if (e.name !== 'AbortError') console.error('bbox fetch fail', e);
       });
   }
+
+  // 충전소 마커 조회 — layer='ev'일 때만 호출. 우리 DB(/api/ev/bbox)만 조회(data.go.kr는 sync 전용).
+  function fetchEvStations(b: { swLat: number; swLng: number; neLat: number; neLng: number }) {
+    if (evAbort.current) evAbort.current.abort();
+    evAbort.current = new AbortController();
+    const params = new URLSearchParams({
+      swLat: String(b.swLat), swLng: String(b.swLng),
+      neLat: String(b.neLat), neLng: String(b.neLng),
+    });
+    fetch(`/api/ev/bbox?${params}`, { signal: evAbort.current.signal })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`ev bbox ${r.status}`);
+        return (await r.json()) as EvBboxResponse;
+      })
+      .then((data) => {
+        setEvStations(Array.isArray(data?.stations) ? data.stations : []);
+      })
+      .catch((e) => {
+        if (e.name !== 'AbortError') console.error('ev bbox fetch fail', e);
+      });
+  }
+
+  // 레이어 전환 시 현재 화면 영역으로 즉시 재조회.
+  // - ev: 충전소 조회. gas: 기존 주유소 조회(stations는 product effect/bounds로도 갱신되나 일관성 위해 트리거).
+  useEffect(() => {
+    const b = lastBoundsRef.current;
+    if (!b) return;
+    if (layer === 'ev') fetchEvStations(b);
+    else fetchStations(b);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layer]);
 
   // 버튼으로 내 위치를 요청했는데 아직 좌표가 없던 경우(복원 모드 등 자동 센터링이 꺼진 상황),
   // 첫 좌표 획득 시 1회 내 위치로 이동시킨다.
@@ -313,13 +357,21 @@ export default function HomePage() {
           nearbyStations={visibleNearbyStations}
           activeTab={activeTab}
           product={product}
+          layer={layer}
+          evStations={evStations}
+          onEvMarkerClick={(s) => {
+            if (isDesktop) setEvPopup(s);
+            else router.push(`/ev/${s.statId}`);
+          }}
           myLocation={myLocation}
           heading={geo.coords?.heading ?? null}
           recenterSignal={recenterSignal}
           follow={follow}
           onBoundsChange={(b) => {
             lastBoundsRef.current = b;
-            fetchStations(b);
+            // 활성 레이어에 맞는 데이터만 조회(불필요 호출/캐시 오염 방지).
+            if (layer === 'ev') fetchEvStations(b);
+            else fetchStations(b);
           }}
           onViewChange={setLastView}
           onUserPan={() => setFollow(false)}
@@ -413,8 +465,8 @@ export default function HomePage() {
           </button>
         )}
 
-        {/* 1km 알람 */}
-        {alertStation && !alertDismissed && (
+        {/* 1km 알람 — 주유소 레이어에서만(충전소는 가격 알람 대상 아님) */}
+        {layer === 'gas' && alertStation && !alertDismissed && (
           <RadiusAlert
             station={alertStation}
             averagePrice={averagePrice}
@@ -459,6 +511,27 @@ export default function HomePage() {
           onNavigate={() => {
             setNaviTarget(popupStation);
             setPopupStation(null);
+          }}
+        />
+      )}
+
+      {/* PC: 충전소 마커 클릭 시 요약 정보 카드 팝업 */}
+      {evPopup && (
+        <EvStationPopup
+          station={evPopup}
+          onClose={() => setEvPopup(null)}
+          onDetail={() => {
+            const id = evPopup.statId;
+            setEvPopup(null);
+            router.push(`/ev/${id}`);
+          }}
+          onNavigate={() => {
+            setNaviTarget({
+              id: evPopup.statId, name: evPopup.name, brand: 'ETC', isSelf: false,
+              sido: '01', address: '', lat: evPopup.lat, lng: evPopup.lng,
+              product, price: 0, tradeDate: '',
+            });
+            setEvPopup(null);
           }}
         />
       )}

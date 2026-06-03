@@ -8,6 +8,10 @@
     {
       "path": "/api/billing/charge-cron",
       "schedule": "10 * * * *"
+    },
+    {
+      "path": "/api/internal/sync-ev",
+      "schedule": "30 4 * * *"
     }
   ]
 }

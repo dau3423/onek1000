@@ -58,6 +58,7 @@ export const keys = {
   detail: (id: string) => `station:${id}`,
   avgNation: () => `avg:nation`,
   avgSido: (prod: string) => `avg:sido:${prod}`,
+  evBbox: (q: string) => `ev:bbox:${q}`,
 };
 
 /** 좌표 양자화: precision=3 → 약 110m 격자, 4 → 11m */
