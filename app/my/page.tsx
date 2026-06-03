@@ -30,6 +30,7 @@ export default async function MyPage() {
   let favCount = 0;
   let vehicleCount = 0;
   let regionCount = 0;
+  let fuelLogCount = 0;
   let nickname: string | null = session.user.nickname ?? null;
   let image: string | null = session.user.image ?? null;
 
@@ -51,14 +52,16 @@ export default async function MyPage() {
         .limit(1)
         .maybeSingle();
       sub = s as Sub | null;
-      const [{ count: favC }, { count: vehC }, { count: regC }] = await Promise.all([
+      const [{ count: favC }, { count: vehC }, { count: regC }, { count: fuelC }] = await Promise.all([
         sb.from('favorites').select('station_id', { count: 'exact', head: true }).eq('user_id', user.id),
         sb.from('vehicles').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
         sb.from('interest_regions').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+        sb.from('fuel_logs').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
       ]);
       favCount = favC ?? 0;
       vehicleCount = vehC ?? 0;
       regionCount = regC ?? 0;
+      fuelLogCount = fuelC ?? 0;
     }
   }
 
@@ -135,6 +138,18 @@ export default async function MyPage() {
         <Link href="/my/favorites" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
           <span className="text-sm text-gray-700">♡ 저장한 주유소</span>
           <span className="text-sm font-bold text-gray-900">{favCount}개</span>
+        </Link>
+      </section>
+
+      <section className="border-t border-gray-100 px-5 py-5">
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">주유 기록</h2>
+        <Link href="/my/fuel-logs" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
+          <span className="text-sm text-gray-700">⛽ 내 주유 기록</span>
+          {fuelLogCount > 0 ? (
+            <span className="text-sm font-bold text-gray-900">{fuelLogCount}개</span>
+          ) : (
+            <span className="text-sm text-primary">보기 →</span>
+          )}
         </Link>
       </section>
 

@@ -7,6 +7,7 @@ import { FavoriteButton } from '@/components/FavoriteButton';
 import { PriceHistoryChart } from '@/components/charts/PriceHistoryChart';
 import { ReviewSection } from '@/components/reviews/ReviewSection';
 import { NaviButton } from '@/components/station/NaviButton';
+import { FuelLogButton } from '@/components/station/FuelLogButton';
 
 interface Props { params: { id: string } }
 
@@ -103,6 +104,7 @@ export default async function StationDetailPage({ params }: Props) {
 
       {/* CTA */}
       <section className="mt-auto space-y-2 border-t border-gray-100 bg-gray-50 px-5 py-4 pb-[calc(16px+env(safe-area-inset-bottom))]">
+        <FuelLogButton stationId={detail.id} />
         <NaviButton name={detail.name} lat={detail.lat} lng={detail.lng} />
         {detail.tel && (
           <a
