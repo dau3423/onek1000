@@ -35,11 +35,15 @@ const MAX_PAGES = 60;
 const UPSERT_CHUNK = 1500;
 // zcode별 호출 사이 짧은 지연(throttle 회피).
 const REQUEST_DELAY_MS = 80;
-// 페이지 호출 타임아웃(504 대비) + 재시도 횟수.
-const PAGE_TIMEOUT_MS = 20_000;
+// 페이지 호출 타임아웃 — data.go.kr이 numOfRows=1500에서 페이지당 16~19초(실측), 서버는 더 느려
+// 30초로는 abort가 났다. 60초로 상향. (시간예산 로직이 페이지 시작 전 elapsed를 보므로
+// 한 페이지가 60초까지 늘어나도 TIME_BUDGET_MS 초과분은 maxDuration 여유 50s 안에서 흡수된다.)
+const PAGE_TIMEOUT_MS = 60_000;
 const MAX_RETRY = 2;
-// 단일 요청 시간예산. 이 시간이 지나면 진행 중인 zcode를 끝낸 뒤 더 시작하지 않는다(maxDuration 여유 50s).
-const TIME_BUDGET_MS = 250_000;
+// 단일 요청 시간예산. 페이지/시도 "시작 전" elapsed로만 체크하므로, 예산 통과 직후 시작한 마지막
+// 페이지가 최악 PAGE_TIMEOUT_MS(60s) + 재시도/지연 + upsert까지 더 걸릴 수 있다.
+// maxDuration 300s 안에 그 최악 페이지를 흡수하도록 예산을 220s로 둔다(여유 ~80s).
+const TIME_BUDGET_MS = 220_000;
 // data.go.kr 일일 한도 가드 — 한 호출이 부를 수 있는 총 API 호출 상한.
 const MAX_API_CALLS = 400;
 

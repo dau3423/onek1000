@@ -46,15 +46,25 @@ export interface EvChargerInfoItem {
   maker?: string;
 }
 
-interface EvChargerInfoResponse {
+// EvCharger(dataType=JSON)의 실제 응답은 표준 data.go.kr 래퍼(response.header/body)가 없는
+// "최상위 플랫" 구조다. 즉 resultCode/resultMsg/totalCount/items가 모두 최상위에 온다.
+//   { resultMsg:"NORMAL SERVICE.", totalCount:6424, pageNo:1, numOfRows:1500, items:{ item:[...] } }
+// 성공 응답엔 resultCode가 없을 수 있고(있으면 '00'), items.item이 배열(단건이면 객체)이다.
+// 만일을 대비해 래퍼(response.body) 형태도 폴백으로 받아들인다(실제는 플랫).
+interface EvChargerInfoBody {
+  resultCode?: string;
+  resultMsg?: string;
+  items?: { item?: EvChargerInfoItem[] | EvChargerInfoItem } | EvChargerInfoItem[];
+  totalCount?: number | string;
+  pageNo?: number | string;
+  numOfRows?: number | string;
+}
+
+interface EvChargerInfoResponse extends EvChargerInfoBody {
+  // 하위호환: 혹시 표준 래퍼로 오는 경우 대비(실제 EvCharger는 플랫).
   response?: {
     header?: { resultCode?: string; resultMsg?: string };
-    body?: {
-      items?: { item?: EvChargerInfoItem[] | EvChargerInfoItem } | EvChargerInfoItem[];
-      totalCount?: number | string;
-      pageNo?: number | string;
-      numOfRows?: number | string;
-    };
+    body?: EvChargerInfoBody;
   };
 }
 
@@ -88,9 +98,15 @@ export function evDateToIso(v?: string | null): string | null {
   return new Date(ms).toISOString();
 }
 
+/** 플랫(최상위) 우선, 없으면 래퍼(response.body) 폴백으로 body를 고른다. */
+function bodyOf(data: EvChargerInfoResponse): EvChargerInfoBody {
+  // 플랫 응답은 items가 최상위에 존재한다. 래퍼 응답이면 response.body로 폴백.
+  if (data?.items != null || data?.totalCount != null || data?.resultMsg != null) return data;
+  return data?.response?.body ?? data;
+}
+
 function itemsOf(data: EvChargerInfoResponse): EvChargerInfoItem[] {
-  const body = data?.response?.body;
-  if (!body) return [];
+  const body = bodyOf(data);
   // items가 배열이거나 { item: ... } 둘 다 대응. item은 단건이면 객체로 온다.
   const raw = Array.isArray(body.items) ? body.items : body.items?.item;
   if (!raw) return [];
@@ -130,12 +146,20 @@ export async function evGetChargerInfo(opts: {
     const res = await fetch(url, { cache: 'no-store', signal: ctrl.signal });
     if (!res.ok) throw new Error(`EvCharger ${res.status}`);
     const data = (await res.json()) as EvChargerInfoResponse;
-    const code = data?.response?.header?.resultCode;
-    // 정상 코드는 '00'. 그 외(한도초과/키오류 등)는 메시지와 함께 throw.
+    const body = bodyOf(data);
+    // resultCode는 플랫 최상위(또는 래퍼 header)에 있을 수 있고, 성공 응답엔 아예 없을 수도 있다.
+    // 있고 '00'이 아니면(한도초과/키오류 등) 메시지와 함께 throw. 없으면 통과.
+    const code = body.resultCode ?? data?.response?.header?.resultCode;
+    const msg = body.resultMsg ?? data?.response?.header?.resultMsg ?? '';
     if (code && code !== '00') {
-      throw new Error(`EvCharger result ${code}: ${data?.response?.header?.resultMsg ?? ''}`);
+      throw new Error(`EvCharger result ${code}: ${msg}`);
     }
-    const total = Number(data?.response?.body?.totalCount ?? 0);
+    // resultCode가 없더라도 명백한 에러 메시지(키 오류/한도 등)는 방어적으로 throw.
+    // 정상 메시지는 "NORMAL SERVICE." 이므로, 그 외에 에러성 키워드가 보이면 실패로 본다.
+    if (!code && msg && /SERVICE[_ ]?KEY|LIMITED|ERROR|DENIED|UNREGISTERED|EXPIRED/i.test(msg)) {
+      throw new Error(`EvCharger error: ${msg}`);
+    }
+    const total = Number(body.totalCount ?? 0);
     return { items: itemsOf(data), totalCount: Number.isFinite(total) ? total : 0 };
   } finally {
     clearTimeout(timer);
