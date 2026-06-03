@@ -206,10 +206,15 @@ export async function POST(req: Request) {
   const jobs = sigungus.flatMap(({ code, sido }) => PRODUCTS.map((prod) => ({ code, sido, prod })));
   const lists: Array<{ code: string; sido: SidoCode; prod: ProductCode; oils: any[] }> = [];
   let topFetchFailed = 0; // fetch 자체 실패(=catch) job 수. stale 과삭제 가드용.
+  // 빈 응답(0건) job 수. Opinet 할당량 소진 시 HTTP 200 + RESULT.OIL=[] 를 주므로
+  // catch(=topFetchFailed)로는 절대 안 잡힌다. stale 과삭제를 막는 핵심 신호다.
+  let topEmpty = 0;
   await mapWithConcurrency(jobs, CONCURRENCY, async ({ code, sido, prod }) => {
     opinetCalls++;
     try {
-      lists.push({ code, sido, prod, oils: await opinetLowTop10(code, prod) });
+      const oils = await opinetLowTop10(code, prod);
+      if (!Array.isArray(oils) || oils.length === 0) topEmpty++;
+      lists.push({ code, sido, prod, oils: Array.isArray(oils) ? oils : [] });
     } catch (e) {
       topFetchFailed++;
       fetchErrors.push(`top ${code}/${prod}: ${(e as Error).message}`);
@@ -292,15 +297,69 @@ export async function POST(req: Request) {
   // 이번 run에 보고된 행만 살아남고(updated_at=now), 미보고 행은 유종과 무관하게
   // 자연히 정리된다(과거 취급 유종 변경 시 잔존할 orphan 행도 함께 청소된다).
   //
-  // 안전 가드: Opinet fetch가 대량 실패하면 priceRows가 비정상적으로 적어지고,
-  // 그 상태로 stale 정리를 돌리면 prices_latest가 통째로 비는 사고가 난다.
-  // → 판정 기준을 "fetch 실패율"로 둔다. fetch 실패 job이 전체의 절반 미만이고
-  //   적재 행이 1건 이상이면 데이터가 신뢰 가능하다고 보고 stale 정리를 진행한다.
-  const STALE_GUARD_MAX_FAIL_RATIO = 0.5;
+  // 안전 가드 (3중) — "이번 sync가 충분히 완전할 때만" stale 정리를 실행한다.
+  // 부분/할당량소진 의심 시 정리를 완전 스킵해 오래된 가격을 그대로 유지한다.
+  // (stale 가격이 남는 것은 가격이 통째로 삭제돼 지도에서 사라지는 사고보다 훨씬 낫다.)
+  //
+  // [사고 원인] 기존 가드는 fetch 실패율(topFetchFailed)만 봤다. 그러나 Opinet은 일일
+  // 할당량 소진 시 에러가 아니라 HTTP 200 + RESULT.OIL=[] (빈 응답)을 준다. 이 빈 응답은
+  // catch에 걸리지 않아 topFetchFailed가 0인 채로 가드를 통과했고, "그 시군구엔 주유소
+  // 없음"으로 오인해 미수신 지역(~2,700행)의 가격을 전부 삭제했다(3,788→1,103).
+  //
+  // 판정 신호(아래 중 하나라도 해당하면 cleanup 스킵):
+  //   (A) fetch 실패율 ≥ 0.5            — 기존 가드 유지.
+  //   (B) 빈 응답(0건) job 비율 ≥ 0.4   — 할당량 소진 의심(빈 응답이 다수면 받은 게 적음).
+  //   (C) 이번 priceUpserts < 기존 prices_latest 행수 × 0.7 — 부분 sync(급감) 의심.
+  //   (D) priceRows == 0                — 받은 게 전혀 없음.
+  const STALE_GUARD_MAX_FAIL_RATIO = 0.5;   // (A)
+  const STALE_GUARD_MAX_EMPTY_RATIO = 0.4;  // (B)
+  const STALE_GUARD_MIN_UPSERT_RATIO = 0.7; // (C)
+
   const failRatio = jobs.length ? topFetchFailed / jobs.length : 1;
+  const emptyRatio = jobs.length ? topEmpty / jobs.length : 1;
+
+  // 기존 prices_latest 행 수(삭제 전 기준). 부분 sync(급감) 판정 (C)에 쓴다.
+  // head:true + count:'exact' 로 행을 받지 않고 카운트만 조회한다.
+  let existingPriceCount: number | null = null;
+  {
+    const { count, error: cErr } = await sb
+      .from('prices_latest')
+      .select('*', { count: 'exact', head: true });
+    if (cErr) {
+      // 카운트 실패 시 (C) 판정 불가 → 보수적으로 0으로 두면 (C)가 항상 통과되어 위험.
+      // 대신 null 로 남겨 아래에서 (C)를 "기준 미상이면 스킵" 쪽으로 처리한다.
+      fetchErrors.push(`prices_latest count failed: ${cErr.message}`);
+    } else {
+      existingPriceCount = count ?? 0;
+    }
+  }
+  // upsert/기존 비율 — 기존이 0(최초 sync)이면 비교 불가이므로 1로 둬 (C)를 통과시킨다.
+  const upsertRatio =
+    existingPriceCount && existingPriceCount > 0
+      ? priceUpserts / existingPriceCount
+      : 1;
+
+  const guardFail = failRatio >= STALE_GUARD_MAX_FAIL_RATIO;   // (A)
+  const guardEmpty = emptyRatio >= STALE_GUARD_MAX_EMPTY_RATIO; // (B)
+  // (C): 기존 카운트를 알고(>0), 이번 upsert가 기존의 70% 미만이면 부분 sync 의심.
+  //      카운트 조회 실패(null)면 안전하게 스킵 처리한다(기준 미상 = 신뢰 불가).
+  const guardCountUnknown = existingPriceCount === null;
+  const guardShrink =
+    existingPriceCount !== null &&
+    existingPriceCount > 0 &&
+    upsertRatio < STALE_GUARD_MIN_UPSERT_RATIO;
+  const guardEmptyRows = priceRows.length === 0; // (D)
+
+  const staleSkipReasons: string[] = [];
+  if (guardEmptyRows) staleSkipReasons.push('priceRows=0');
+  if (guardFail) staleSkipReasons.push(`failRatio ${failRatio.toFixed(2)} ≥ ${STALE_GUARD_MAX_FAIL_RATIO}`);
+  if (guardEmpty) staleSkipReasons.push(`emptyRatio ${emptyRatio.toFixed(2)} ≥ ${STALE_GUARD_MAX_EMPTY_RATIO}`);
+  if (guardShrink) staleSkipReasons.push(`upsertRatio ${upsertRatio.toFixed(2)} < ${STALE_GUARD_MIN_UPSERT_RATIO} (upsert ${priceUpserts} / existing ${existingPriceCount})`);
+  if (guardCountUnknown) staleSkipReasons.push('existing prices_latest count unknown (count query failed)');
+
   let staleDeleted = 0;
-  let staleSkipped = false;
-  if (priceRows.length > 0 && failRatio < STALE_GUARD_MAX_FAIL_RATIO) {
+  const staleSkipped = staleSkipReasons.length > 0;
+  if (!staleSkipped) {
     // 이번 run 시작 시각(now)보다 오래된 updated_at = 이번에 보고되지 않은 행.
     // UPSERT가 모두 성공한 뒤 실행하므로 신규/갱신 행은 updated_at=now 로 보존된다.
     // product 제약을 두지 않아 과거 취급 유종 변경으로 남은 orphan 행도 함께 정리된다.
@@ -315,10 +374,7 @@ export async function POST(req: Request) {
       staleDeleted = deleted?.length ?? 0;
     }
   } else {
-    staleSkipped = true;
-    fetchErrors.push(
-      `stale cleanup skipped: priceRows ${priceRows.length}, fetchFailed ${topFetchFailed}/${jobs.length} (ratio ${failRatio.toFixed(2)})`,
-    );
+    fetchErrors.push(`stale cleanup skipped: ${staleSkipReasons.join('; ')}`);
   }
 
   // ─── 부가서비스 회전 보강 (detailById.do) ───
@@ -568,12 +624,20 @@ export async function POST(req: Request) {
     ok: true, asOf: new Date().toISOString(),
     sidos: SIDOS.length, products: PRODUCTS.length,
     sigungus: sigungus.length, areaFetchFailed,
-    topJobs: jobs.length, topFetchFailed,
+    topJobs: jobs.length, topFetchFailed, topEmpty,
     // areaCode(17) + lowTop10(~1,000) + avg(4) ≈ ~1,020 + 부가서비스 회전 보강(최대 BUDGET)
     // ≈ ~1,420 (일일 한도 1,500 이내). BUDGET은 OPINET_AMENITY_BUDGET 로 조정.
     opinetCalls,
     concurrency: CONCURRENCY,
     stationUpserts, priceUpserts, staleDeleted, staleSkipped,
+    // stale cleanup 판정 지표 — 운영 가시성(부분/할당량소진 진단)용.
+    staleGuard: {
+      failRatio: Number(failRatio.toFixed(3)),
+      emptyRatio: Number(emptyRatio.toFixed(3)),
+      existingPriceCount,
+      upsertRatio: Number(upsertRatio.toFixed(3)),
+      reasons: staleSkipped ? staleSkipReasons : undefined,
+    },
     amenityBudget: AMENITY_REFRESH_BUDGET, amenityRefreshed, amenityFailed, amenitySkipped, amenityAborted,
     pushSent, pushFailed,
     regionPushSent, regionPushFailed,
