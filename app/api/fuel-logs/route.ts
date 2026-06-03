@@ -1,6 +1,7 @@
 // 내 주유 기록 CRUD — 로그인 필요, 소유자 스코프
-// POST: 1클릭 생성. body 최소 {stationId} + 서버가 단가/유종/시각을 보강해 즉시 저장.
+// POST: 생성. body 최소 {stationId} + 서버가 단가/유종/시각을 보강해 즉시 저장.
 //   단가는 클라이언트 값을 신뢰하지 않고 우리 DB(prices_latest)에서 조회(없으면 null).
+//   선택 입력 {amountWon, liters(주유), kwh(EV)}는 단축버튼/직접입력 값으로, 서버에서 형식 검증 후 저장.
 // GET: 내 기록 목록(최신순, 페이지네이션).
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -39,6 +40,22 @@ interface FuelLogRow {
   memo: string | null;
   logged_at: string;
   created_at: string;
+}
+
+/** 정수 입력(원) 정규화: 빈값/null → null, 음수/NaN → 'invalid'. (PATCH와 동일 규칙) */
+function parseIntField(v: unknown): number | null | 'invalid' {
+  if (v === null || v === undefined || v === '') return null;
+  const n = typeof v === 'number' ? v : Number(v);
+  if (!Number.isFinite(n) || n < 0) return 'invalid';
+  return Math.round(n);
+}
+
+/** 주유량(L)/충전량(kWh) 정규화: 소수 둘째자리까지 허용. (PATCH와 동일 규칙) */
+function parseDecimalField(v: unknown): number | null | 'invalid' {
+  if (v === null || v === undefined || v === '') return null;
+  const n = typeof v === 'number' ? v : Number(v);
+  if (!Number.isFinite(n) || n < 0) return 'invalid';
+  return Math.round(n * 100) / 100;
 }
 
 function toFuelLog(r: FuelLogRow): FuelLog {
@@ -90,10 +107,28 @@ export async function POST(req: Request) {
   if (!session?.user?.email) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   if (!isSupabaseConfigured()) return NextResponse.json({ error: 'db not configured' }, { status: 503 });
 
-  const body = (await req.json()) as { stationId?: string; kind?: string };
+  const body = (await req.json()) as {
+    stationId?: string;
+    kind?: string;
+    amountWon?: unknown;
+    liters?: unknown;
+    kwh?: unknown;
+  };
   const stationId = body.stationId;
   if (!stationId) return NextResponse.json({ error: 'stationId required' }, { status: 400 });
   const kind: 'gas' | 'ev' = body.kind === 'ev' ? 'ev' : 'gas';
+
+  // 단축버튼/직접입력으로 들어온 금액·주유량(L)·충전량(kWh)을 서버에서 형식 검증.
+  // (PATCH 편집과 동일 규칙. 단가/유종/시각은 여전히 서버가 보강한다.)
+  const amountWon = parseIntField(body.amountWon);
+  if (amountWon === 'invalid')
+    return NextResponse.json({ error: '금액은 0 이상 숫자여야 해요.' }, { status: 400 });
+  const liters = parseDecimalField(body.liters);
+  if (liters === 'invalid')
+    return NextResponse.json({ error: '주유량은 0 이상 숫자여야 해요.' }, { status: 400 });
+  const kwh = parseDecimalField(body.kwh);
+  if (kwh === 'invalid')
+    return NextResponse.json({ error: '충전량은 0 이상 숫자여야 해요.' }, { status: 400 });
 
   const userId = await getUserId(session.user.email);
   if (!userId) return NextResponse.json({ error: 'user not found' }, { status: 404 });
@@ -101,6 +136,7 @@ export async function POST(req: Request) {
   const sb = getSupabase();
 
   // 저장할 행(공통 컬럼). kind별로 station_name/product/unit_price를 서버에서 보강한다.
+  // amount_won/liters/kwh는 클라가 보낸 값을 위에서 검증한 뒤 반영(없으면 null).
   let insertRow: {
     user_id: string;
     station_id: string;
@@ -108,6 +144,9 @@ export async function POST(req: Request) {
     product: string;
     unit_price: number | null;
     kind: 'gas' | 'ev';
+    amount_won: number | null;
+    liters?: number | null;
+    kwh?: number | null;
   };
 
   if (kind === 'ev') {
@@ -129,6 +168,8 @@ export async function POST(req: Request) {
       product: 'EV',
       unit_price: null,
       kind: 'ev',
+      amount_won: amountWon,
+      kwh,
     };
   } else {
     // 주유소 존재/상호 확인(스냅샷 저장용)
@@ -157,6 +198,8 @@ export async function POST(req: Request) {
       product,
       unit_price: priceRow?.price ?? null,
       kind: 'gas',
+      amount_won: amountWon,
+      liters,
     };
   }
 
