@@ -13,6 +13,7 @@ import {
   type PlanCode,
   type PgKind,
 } from '@/lib/billing/portone';
+import { sendAdminKakaoMemo } from '@/lib/kakao/adminMemo';
 
 export interface ConfirmInput {
   /** 단건: 결제 paymentId */
@@ -152,7 +153,54 @@ export async function confirmPayment(input: ConfirmInput): Promise<ConfirmResult
     .update({ status: 'consumed', consumed_at: nowIso })
     .eq('oid', oid);
 
+  // 관리자 본인에게 결제 발생 알림(best-effort, fire-and-forget).
+  // 멱등(이미 consumed)으로 빠진 주문은 위에서 early-return 되므로 여기선 신규 확정 1회만.
+  // 알림 실패/지연이 결제 확정 응답을 막지 않도록 await 하지 않고 void + catch 로 격리한다.
+  void notifyAdminPayment(userId, planDef.code, planDef.amount, now);
+
   return { ok: true, plan: planDef.code };
+}
+
+/** 결제 발생 시 관리자 본인 카톡으로 요약 알림. 어떤 실패도 호출부에 영향 없음. */
+async function notifyAdminPayment(
+  userId: string,
+  plan: PlanCode,
+  amount: number,
+  at: Date,
+) {
+  try {
+    const sb = getSupabase();
+    const { data: user } = await sb.from('users').select('email').eq('id', userId).maybeSingle();
+    const planLabel = plan === 'monthly_1000' ? '정기구독' : '1개월권';
+    const kst = at.toLocaleString('ko-KR', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const text = [
+      '💳 결제 발생',
+      `플랜: ${planLabel}`,
+      `금액: ₩${amount.toLocaleString('ko-KR')}`,
+      `사용자: ${maskEmail(user?.email)}`,
+      `시각: ${kst} (KST)`,
+    ].join('\n');
+    await sendAdminKakaoMemo({ text });
+  } catch (e) {
+    // sendAdminKakaoMemo 자체가 throw 안 하지만, users 조회 등 만약을 대비해 한 번 더 격리.
+    console.error('[billing] 관리자 결제 알림 실패(무시)', e);
+  }
+}
+
+/** 이메일 부분 마스킹: ab***@gmail.com */
+function maskEmail(email?: string | null): string {
+  if (!email) return '(미상)';
+  const [local, domain] = email.split('@');
+  if (!domain) return '***';
+  const head = local.slice(0, 2);
+  return `${head}${'*'.repeat(Math.max(local.length - 2, 1))}@${domain}`;
 }
 
 /** active/trial 유니크 인덱스 회피: 만료/해지된 구독 정리 */
