@@ -21,6 +21,12 @@ export function FilterBar() {
   // 현재 선택이 휘발유 계열(일반/고급)인지 — 칩 활성/라벨 판정에 사용
   const gasSelected = !isEv && (GASOLINE_OPTIONS as ProductCode[]).includes(product);
 
+  // 유종 칩(휘발유/경유/LPG) 선택 — EV 모드였다면 주유소 레이어로 되돌리고 유종 적용
+  const selectFuel = (p: ProductCode) => {
+    if (isEv) setLayer('gas');
+    setProduct(p);
+  };
+
   // 바깥 클릭 / ESC로 휘발유 드롭다운 닫기
   useEffect(() => {
     if (!gasOpen) return;
@@ -40,39 +46,6 @@ export function FilterBar() {
 
   return (
     <div className="relative flex items-center gap-1.5 border-b border-gray-100 bg-white px-3 py-2 dark:border-gray-800 dark:bg-gray-900">
-      {/* 레이어 토글: 주유소 / 충전소. 충전소 선택 시 유종 칩은 의미가 없어 숨긴다. */}
-      <div className="flex shrink-0 items-center rounded-full bg-gray-100 p-0.5 dark:bg-gray-800" role="tablist" aria-label="지도 레이어">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={!isEv}
-          onClick={() => setLayer('gas')}
-          className={clsx(
-            'rounded-full px-3 py-1 text-xs font-bold transition',
-            !isEv ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-50' : 'text-gray-500 dark:text-gray-400',
-          )}
-        >
-          주유소
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={isEv}
-          onClick={() => setLayer('ev')}
-          className={clsx(
-            'flex items-center gap-0.5 rounded-full px-3 py-1 text-xs font-bold transition',
-            isEv ? 'bg-white text-emerald-600 shadow-sm dark:bg-gray-700 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400',
-          )}
-        >
-          ⚡ 충전소
-        </button>
-      </div>
-
-      {/* 충전소 레이어에서는 유종 필터/브랜드 필터가 무의미하므로 미노출. */}
-      {isEv ? (
-        <span className="ml-1 truncate text-xs text-gray-400 dark:text-gray-500">전기차 충전소 표시 중</span>
-      ) : (
-      <>
       {/*
         휘발유 드롭다운(일반/고급) — 스크롤 컨테이너 밖에 둔다.
         overflow-x-auto 컨테이너 안에 두면 overflow-y도 자동으로 잘라(clip) 드롭다운 패널이 안 보임.
@@ -80,7 +53,16 @@ export function FilterBar() {
       */}
       <div ref={gasRef} className="relative z-20 shrink-0">
         <button
-          onClick={() => setGasOpen((v) => !v)}
+          onClick={() => {
+            // 휘발유 칩: EV 모드였다면 주유소로 전환하며 드롭다운 토글
+            if (isEv) {
+              setLayer('gas');
+              setProduct('B027');
+              setGasOpen(true);
+            } else {
+              setGasOpen((v) => !v);
+            }
+          }}
           aria-haspopup="menu"
           aria-expanded={gasOpen}
           aria-label="휘발유 유종 선택"
@@ -104,14 +86,14 @@ export function FilterBar() {
             className="absolute left-0 top-9 z-50 w-32 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
           >
             {GASOLINE_OPTIONS.map((p) => {
-              const active = product === p;
+              const active = !isEv && product === p;
               return (
                 <button
                   key={p}
                   role="menuitemradio"
                   aria-checked={active}
                   onClick={() => {
-                    setProduct(p);
+                    selectFuel(p);
                     setGasOpen(false);
                   }}
                   className={clsx(
@@ -134,16 +116,16 @@ export function FilterBar() {
         )}
       </div>
 
-      {/* 나머지 유종 버튼: 좁은 화면에서 가로 스크롤. 좌→우: 경유 · LPG */}
+      {/* 나머지 칩: 좁은 화면에서 가로 스크롤. 좌→우: 경유 · LPG · EV */}
       <div className="flex flex-1 items-center gap-1.5 overflow-x-auto">
         {/* 경유 · LPG 단독 칩 */}
         {SIMPLE_PRODUCTS.map((p) => (
           <button
             key={p}
-            onClick={() => setProduct(p)}
+            onClick={() => selectFuel(p)}
             className={clsx(
               'shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition',
-              product === p
+              !isEv && product === p
                 ? 'bg-primary text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
             )}
@@ -151,12 +133,25 @@ export function FilterBar() {
             {PRODUCT_LABEL[p]}
           </button>
         ))}
+
+        {/* EV 칩 — 클릭 시 충전소 레이어로 전환. 유종 칩과 동일 강조 스타일로 통일. */}
+        <button
+          onClick={() => setLayer('ev')}
+          aria-pressed={isEv}
+          className={clsx(
+            'flex shrink-0 items-center gap-0.5 rounded-full px-3 py-1.5 text-xs font-semibold transition',
+            isEv
+              ? 'bg-primary text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
+          )}
+        >
+          <span aria-hidden>⚡</span>
+          <span>EV</span>
+        </button>
       </div>
 
-      {/* 브랜드별 보기(회원 전용) — 맨 뒤(우측)에 고정 */}
-      <BrandFilter />
-      </>
-      )}
+      {/* 브랜드별 보기(회원 전용) — 맨 뒤(우측)에 고정. 주유소(gas) 레이어에서만 의미 있음. */}
+      {!isEv && <BrandFilter />}
     </div>
   );
 }
