@@ -48,6 +48,13 @@ export default function HomePage() {
   const router = useRouter();
   const { product, brands, alertDismissed, dismissAlert, resetAlert, setLastView, layer } = useMapStore();
 
+  // 최신 유종을 항상 참조하기 위한 ref. fetchStations/fetchAllStations 같은 콜백이
+  // (지도 idle의 onBoundsChange 등에서) 옛 렌더의 클로저로 호출되더라도, 실제 요청은
+  // 항상 "현재 선택된 유종"으로 나가도록 보장한다 — 유종 변경과 idle 타이밍 경쟁 시
+  // 이전 유종으로 되돌아가 마커가 갱신 안 되던 버그를 차단한다.
+  const productRef = useRef(product);
+  useEffect(() => { productRef.current = product; }, [product]);
+
   // 마운트 시점에 1회 고정: 직전에 보던 지도 시점(상세 왕복/새로고침 복원).
   // 있으면 그 시점을 초기값으로 쓰고, 자동 위치 센터링을 억제한다.
   const [restoredView] = useState<MapView | null>(() => getInitialMapView());
@@ -158,6 +165,8 @@ export default function HomePage() {
   useEffect(() => {
     const b = lastBoundsRef.current;
     if (!b) return;
+    // 유종 변경 시 현재 화면(bbox) 기준으로 즉시 재조회한다(가격 마커).
+    // 회색 점(allStations)은 가격과 무관하므로 재조회하지 않는다(줌 게이팅은 bounds/layer effect가 담당).
     fetchStations(b);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product]);
@@ -183,11 +192,15 @@ export default function HomePage() {
   function fetchStations(b: { swLat: number; swLng: number; neLat: number; neLng: number; zoom: number }) {
     if (bboxAbort.current) bboxAbort.current.abort();
     bboxAbort.current = new AbortController();
+    // 항상 최신 유종으로 요청한다(클로저 product가 아닌 productRef). 지도 idle이 옛 렌더의
+    // onBoundsChange 클로저로 발화해도 현재 유종이 나가도록 보장 → 유종 변경 후 이전 유종으로
+    // 되돌아가는 경쟁을 차단한다.
+    const reqProduct = productRef.current;
     const params = new URLSearchParams({
       swLat: String(b.swLat), swLng: String(b.swLng),
       neLat: String(b.neLat), neLng: String(b.neLng),
       zoom: String(b.zoom),
-      product,
+      product: reqProduct,
     });
     fetch(`/api/stations/bbox?${params}`, { signal: bboxAbort.current.signal })
       .then(async (r) => {
@@ -195,6 +208,9 @@ export default function HomePage() {
         return (await r.json()) as BboxResponse;
       })
       .then((data) => {
+        // 응답이 abort 직전에 이미 resolve 단계였던 경우(out-of-order) 방어:
+        // 요청한 유종과 현재 유종이 다르면 무시한다(옛 유종 가격이 화면에 박히는 것 차단).
+        if (reqProduct !== productRef.current) return;
         // 오류 응답({error})이나 예기치 못한 형태로 stations가 비어도 마커 렌더가 깨지지 않도록 방어
         const list = Array.isArray(data?.stations) ? data.stations : [];
         setStations(list);
