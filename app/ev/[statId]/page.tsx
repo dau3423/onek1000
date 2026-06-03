@@ -1,33 +1,22 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { refreshAndQueryEvStationDetail } from '@/lib/db/ev';
+import { queryEvStationDetail } from '@/lib/db/ev';
 import { NaviButton } from '@/components/station/NaviButton';
-import { relativeFromNow, liveRelativeFromNow } from '@/lib/ev/format';
-import {
-  chargerTypeLabel,
-  chargerStatLabel,
-  chargerStatTone,
-  chargerSpeed,
-  type EvStationDetail,
-} from '@/types/ev';
+import { EvChargerStatusPanel } from '@/components/ev/EvChargerStatusPanel';
+import type { EvStationDetail } from '@/types/ev';
 
 interface Props { params: { statId: string } }
 
-// 상세 진입 시 그 충전소만 data.go.kr에서 라이브 갱신하므로 항상 동적 렌더(캐시 금지).
+// 진입 시엔 우리 DB만으로 즉시 렌더(외부 호출 없음 → 빠름). 라이브 갱신은 충전기 현황의 새로고침 버튼으로만.
+// 충전기 상태는 자주 바뀌므로 캐시는 하지 않는다(DB 조회만 수행).
 export const dynamic = 'force-dynamic';
 
-const TONE_CLASS: Record<'available' | 'busy' | 'off', string> = {
-  available: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
-  busy: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-  off: 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-300',
-};
-
 export default async function EvStationDetailPage({ params }: Props) {
-  // 상세 진입 시 그 충전소(statId) 1곳만 라이브 갱신 → ev_chargers upsert → DB값으로 표시(준실시간).
-  // 라이브 호출 실패/지연·최근 갱신(debounce) 시 DB 스냅샷으로 폴백한다. "표시는 항상 우리 DB."
+  // 진입은 DB 스냅샷으로 즉시 표시. 외부(data.go.kr) 호출은 하지 않는다(빠른 진입).
+  // 실시간 갱신은 EvChargerStatusPanel의 "새로고침" 버튼 → POST /api/ev/[statId]에서만.
   let detail: EvStationDetail | null = null;
   try {
-    detail = await refreshAndQueryEvStationDetail(params.statId);
+    detail = await queryEvStationDetail(params.statId);
   } catch {
     detail = null;
   }
@@ -65,73 +54,16 @@ export default async function EvStationDetailPage({ params }: Props) {
         </div>
       </section>
 
-      {/* 사용 가능 요약 (실시간) */}
-      <section className="border-t border-gray-100 px-5 py-4 dark:border-gray-800">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-bold text-gray-800 dark:text-gray-100">충전기 현황</h2>
-          {/* 라이브 갱신 시각: synced_at(우리 DB에 막 반영된 시각) 기준 "방금 갱신 / N초 전". */}
-          <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
-            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" aria-hidden />
-            {liveRelativeFromNow(detail.syncedAt)}
-          </span>
-        </div>
-        <p className="mt-1 text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">
-          {detail.availableChargers}
-          <span className="ml-1 text-sm font-medium text-gray-400 dark:text-gray-500">/ {detail.totalChargers}대 사용 가능</span>
-        </p>
-        {/* 상태별 요약 배지 (사용가능/충전중/그 외). 충전기 여러 대일 때 한눈에 보기. */}
-        {(() => {
-          const available = detail.chargers.filter((c) => c.stat === '2').length;
-          const busy = detail.chargers.filter((c) => c.stat === '3').length;
-          const other = detail.chargers.length - available - busy;
-          return (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                사용가능 {available}
-              </span>
-              {busy > 0 && (
-                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                  충전중 {busy}
-                </span>
-              )}
-              {other > 0 && (
-                <span className="rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-                  기타 {other}
-                </span>
-              )}
-            </div>
-          );
-        })()}
-      </section>
-
-      {/* 충전기 목록 */}
-      <section className="border-t border-gray-100 px-5 py-4 dark:border-gray-800">
-        <h2 className="mb-3 text-sm font-bold text-gray-800 dark:text-gray-100">충전기 ({detail.chargers.length}대)</h2>
-        <ul className="divide-y divide-gray-100 dark:divide-gray-800">
-          {detail.chargers.map((c) => {
-            const tone = chargerStatTone(c.stat);
-            const speed = chargerSpeed(c.chgerType, c.output);
-            return (
-              <li key={c.chgerId} className="flex items-center justify-between gap-2 py-2.5">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-gray-800 dark:text-gray-100">
-                    {chargerTypeLabel(c.chgerType)}
-                    <span className="ml-1.5 text-xs font-normal text-gray-400 dark:text-gray-500">
-                      {speed === 'fast' ? '급속' : '완속'}{c.output != null ? ` · ${c.output}kW` : ''}
-                    </span>
-                  </p>
-                  {c.statUpdAt && (
-                    <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">{relativeFromNow(c.statUpdAt)}</p>
-                  )}
-                </div>
-                <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${TONE_CLASS[tone]}`}>
-                  {chargerStatLabel(c.stat)}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+      {/* 충전기 현황 + 충전기 목록 (클라이언트: 새로고침 버튼으로만 라이브 갱신) */}
+      <EvChargerStatusPanel
+        statId={detail.statId}
+        initial={{
+          totalChargers: detail.totalChargers,
+          availableChargers: detail.availableChargers,
+          syncedAt: detail.syncedAt,
+          chargers: detail.chargers,
+        }}
+      />
 
       {/* CTA */}
       <section className="mt-auto space-y-2 border-t border-gray-100 bg-gray-50 px-5 py-4 pb-[calc(16px+env(safe-area-inset-bottom))] dark:border-gray-800 dark:bg-gray-900">
@@ -147,7 +79,7 @@ export default async function EvStationDetailPage({ params }: Props) {
       </section>
 
       <footer className="border-t border-gray-100 bg-white px-5 py-3 text-center text-[10px] text-gray-400 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-500">
-        충전소 정보 제공: 한국환경공단(공공데이터포털) · 충전기 상태는 상세 진입 시 실시간 갱신됩니다.
+        충전소 정보 제공: 한국환경공단(공공데이터포털) · 충전기 상태는 새로고침 버튼으로 실시간 갱신됩니다.
       </footer>
     </main>
   );

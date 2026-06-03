@@ -6,6 +6,7 @@ import type { EvChargerUnit, EvStationDetail, EvStationMarker } from '@/types/ev
 import { chargerSpeed } from '@/types/ev';
 import { evGetChargerInfoByStatId } from '@/lib/ev/client';
 import { toRow } from '@/lib/ev/row';
+import { EV_LIVE_REFRESH_COOLDOWN_MS } from '@/lib/ev/constants';
 import {
   getMockEvChargersByBbox,
   getMockEvChargersByRadius,
@@ -152,7 +153,8 @@ export async function queryEvStationDetail(statId: string): Promise<EvStationDet
 
 // 같은 충전소를 이 시간(ms) 이내에 라이브 갱신했으면 data.go.kr 재호출을 스킵한다.
 // 새로고침 연타로 외부 API를 때리지 않게 하는 과호출 방지(debounce). (기준=synced_at)
-const LIVE_REFRESH_DEBOUNCE_MS = 45_000;
+// 클라이언트 새로고침 쿨다운과 동일 상수로 정렬(분당 1회) — 우회 직접 POST에 대한 이중 방어.
+const LIVE_REFRESH_DEBOUNCE_MS = EV_LIVE_REFRESH_COOLDOWN_MS;
 
 /**
  * 상세 진입 시 그 충전소(statId) 1곳만 라이브 갱신 후 DB값으로 반환 — 준실시간.
