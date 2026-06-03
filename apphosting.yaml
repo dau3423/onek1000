@@ -151,6 +151,9 @@ env:
   # ─── 한국환경공단 전기차충전소 API 키 (data.go.kr) ───
   - variable: EV_CHARGER_API_KEY
     secret: EV_CHARGER_API_KEY
+  # ─── 관리자 카톡 알림(나에게 보내기) refresh_token ───
+  - variable: ADMIN_KAKAO_REFRESH_TOKEN
+    secret: ADMIN_KAKAO_REFRESH_TOKEN
   # ─── 심사용 로그인 (심사 종료 후 제거) ───
   - variable: REVIEWER_EMAIL
     value: "test@onek1000.kr"
