@@ -154,13 +154,18 @@ export interface RoutePoint {
 
 /**
  * 경로별 최저가 결과 — route 페이지에서 찾은 뒤 메인 지도로 전달해
- * 직선 Polyline + 출발/도착 마커 + 최저가 주유소 마커를 표시하고,
+ * 도로 경로 Polyline + 출발/도착 마커 + 최저가 주유소 마커를 표시하고,
  * 주행 중 근접 알림 대상으로 사용한다.
  */
 export interface RoutePlan {
   from: RoutePoint;
   to: RoutePoint;
   product: ProductCode;
-  /** 경로(직선) buffer 내 최저가 주유소들(가격 오름차순). distance=경로(선)로부터의 거리(m). */
+  /** 경로(도로 선) buffer 내 최저가 주유소들(가격 오름차순). distance=경로(선)로부터의 거리(m). */
   stations: StationWithPrice[];
+  /**
+   * 지도에 그릴 경로 점들(주행 순서). 카카오내비 도로 경로면 도로를 따라가고,
+   * directions 실패(폴백) 시 출발/도착 직선 2점이 들어온다.
+   */
+  path: RoutePoint[];
 }

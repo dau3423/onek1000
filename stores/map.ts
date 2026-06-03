@@ -57,7 +57,11 @@ function readRoutePlan(): RoutePlan | null {
       && v.to && typeof v.to.lat === 'number' && typeof v.to.lng === 'number'
       && Array.isArray(v.stations)
     ) {
-      return v as RoutePlan;
+      // path(도로 경로 점들)는 신규 필드 — 구버전 저장값엔 없을 수 있어 직선 2점으로 보강.
+      const path = Array.isArray(v.path) && v.path.length >= 2
+        ? v.path
+        : [{ lat: v.from.lat, lng: v.from.lng }, { lat: v.to.lat, lng: v.to.lng }];
+      return { ...v, path } as RoutePlan;
     }
   } catch {
     // 손상된 값은 무시

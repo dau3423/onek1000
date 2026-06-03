@@ -761,13 +761,18 @@ export function KakaoMap({
 
     if (!routePlan) return;
 
-    const { from, to, stations: routeStations } = routePlan;
+    const { from, to, stations: routeStations, path } = routePlan;
     const fromPos = new window.kakao.maps.LatLng(from.lat, from.lng);
     const toPos = new window.kakao.maps.LatLng(to.lat, to.lng);
 
-    // (a) 출발→도착 직선 Polyline (카카오모빌리티 미사용 — 직선만)
+    // (a) 경로 Polyline — 도로 경로 점들(path)을 따라 그린다.
+    //     path가 없거나 부족하면 출발→도착 직선 2점으로 폴백.
+    const linePath =
+      Array.isArray(path) && path.length >= 2
+        ? path.map((p) => new window.kakao.maps.LatLng(p.lat, p.lng))
+        : [fromPos, toPos];
     const line = new window.kakao.maps.Polyline({
-      path: [fromPos, toPos],
+      path: linePath,
       strokeWeight: 5,
       strokeColor: '#2563EB',
       strokeOpacity: 0.85,
@@ -831,8 +836,7 @@ export function KakaoMap({
 
     // (d) 출발~도착(+주유소)이 모두 보이게 bounds fit
     const bounds = new window.kakao.maps.LatLngBounds();
-    bounds.extend(fromPos);
-    bounds.extend(toPos);
+    for (const pos of linePath) bounds.extend(pos);
     for (const s of routeStations) bounds.extend(new window.kakao.maps.LatLng(s.lat, s.lng));
     map.setBounds(bounds);
     // setBounds는 idle을 유발 → onBoundsChange로 bbox 재조회가 이어진다(정상).

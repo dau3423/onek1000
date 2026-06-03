@@ -114,18 +114,24 @@ function RouteCheapestInner() {
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? '검색 실패');
       const stations: StationWithPrice[] = j.stations ?? [];
+      // 도로 경로 점들(directions 성공 시 도로 따라, 실패 시 출발/도착 직선 2점).
+      const path: { lat: number; lng: number }[] =
+        Array.isArray(j.path) && j.path.length >= 2
+          ? j.path
+          : [{ lat: from.lat, lng: from.lng }, { lat: to.lat, lng: to.lng }];
       setResults(stations);
       if (stations.length === 0) {
         // 경로 주변에 주유소가 없으면 지도로 보낼 게 없으므로 페이지에 머물며 안내.
-        setError('경로(직선) 반경 2km 내 주유소를 찾지 못했어요. 출발/도착을 조정해보세요.');
+        setError('경로 반경 2km 내 주유소를 찾지 못했어요. 출발/도착을 조정해보세요.');
         return;
       }
-      // 결과를 store에 담아 메인 지도로 이동 → 직선 Polyline + 출발/도착/최저가 마커 표시.
+      // 결과를 store에 담아 메인 지도로 이동 → 도로 경로 Polyline + 출발/도착/최저가 마커 표시.
       setRoutePlan({
         from: { lat: from.lat, lng: from.lng, name: from.name },
         to: { lat: to.lat, lng: to.lng, name: to.name },
         product,
         stations,
+        path,
       });
       router.push('/');
     } catch (e) {
@@ -187,7 +193,7 @@ function RouteCheapestInner() {
       <section className="border-t border-gray-100">
         {results.length === 0 && !loading && (
           <p className="px-5 py-6 text-sm text-gray-400">
-            경로(직선)에서 반경 2km 내 주유소를 찾아드려요.
+            도로 경로 반경 2km 내 주유소를 찾아드려요.
           </p>
         )}
         <ul className="divide-y divide-gray-100">
