@@ -159,9 +159,6 @@ export function SubscribeButton() {
         />
       </div>
 
-      {/* 결제 수단 안내: 이니시스 카드 통합결제창 단일(선택 토글 없음) */}
-      <PayMethodNotice />
-
       {/* 휴대폰 번호 입력: 이니시스 V2 결제 필수 항목.
           소셜로그인에선 번호를 받지 못하므로 결제 직전에 입력받는다. */}
       <div>
@@ -263,37 +260,5 @@ function PlanCard({ selected, onSelect, title, price, desc, badge }: PlanCardPro
         {desc}
       </div>
     </button>
-  );
-}
-
-// 결제수단 안내(비대화형): 이니시스 카드 통합결제창 단일.
-// 선택지가 하나뿐이라 토글 대신 고정 안내로 표시한다.
-// 카카오페이 등 간편결제는 이니시스 통합창 안에서 제공된다.
-function PayMethodNotice() {
-  return (
-    <div
-      className="flex items-center gap-2.5 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5"
-      role="note"
-    >
-      <span
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-white"
-        aria-hidden
-      >
-        {/* 카드 아이콘 */}
-        <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-          <rect x="2.5" y="5" width="19" height="14" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M2.5 9.5h19" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M6 14.5h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
-      </span>
-      <span className="min-w-0">
-        <span className="block text-sm font-semibold text-gray-900">
-          카드 결제
-        </span>
-        <span className="block text-[11px] leading-tight text-gray-500">
-          신용·체크카드 · 카카오페이 등 간편결제
-        </span>
-      </span>
-    </div>
   );
 }
