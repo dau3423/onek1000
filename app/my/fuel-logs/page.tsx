@@ -14,7 +14,7 @@ export default async function FuelLogsPage() {
         <Link href="/my" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100">
           ←
         </Link>
-        <h1 className="font-bold text-gray-900">내 주유 기록</h1>
+        <h1 className="font-bold text-gray-900">내 기록</h1>
       </header>
 
       <section className="px-5 py-5 pb-[calc(20px+env(safe-area-inset-bottom))]">

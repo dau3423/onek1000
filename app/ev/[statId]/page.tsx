@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { queryEvStationDetail } from '@/lib/db/ev';
 import { NaviButton } from '@/components/station/NaviButton';
 import { EvChargerStatusPanel } from '@/components/ev/EvChargerStatusPanel';
+import { EvChargeLogButton } from '@/components/ev/EvChargeLogButton';
 import type { EvStationDetail } from '@/types/ev';
 
 interface Props { params: { statId: string } }
@@ -68,6 +69,7 @@ export default async function EvStationDetailPage({ params }: Props) {
 
       {/* CTA */}
       <section className="mt-auto space-y-2 border-t border-gray-100 bg-gray-50 px-5 py-4 pb-[calc(16px+env(safe-area-inset-bottom))]">
+        <EvChargeLogButton statId={detail.statId} />
         <NaviButton name={detail.name} lat={detail.lat} lng={detail.lng} />
         {detail.busiCall && (
           <a

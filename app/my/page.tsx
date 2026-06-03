@@ -142,9 +142,9 @@ export default async function MyPage() {
       </section>
 
       <section className="border-t border-gray-100 px-5 py-5">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">주유 기록</h2>
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">내 기록</h2>
         <Link href="/my/fuel-logs" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
-          <span className="text-sm text-gray-700">⛽ 내 주유 기록</span>
+          <span className="text-sm text-gray-700">⛽⚡ 주유 · 충전 기록</span>
           {fuelLogCount > 0 ? (
             <span className="text-sm font-bold text-gray-900">{fuelLogCount}개</span>
           ) : (

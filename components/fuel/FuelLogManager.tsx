@@ -1,7 +1,7 @@
 'use client';
 
-// 내 주유 기록 목록 + 간단 통계 + 개별 편집/삭제.
-// 1클릭 저장은 주유소 상세에서 하고, 여기서는 금액/주유량(L)/주행거리/메모를 나중에 편집한다.
+// 내 기록 목록(주유 + 전기차 충전 통합) + 간단 통계 + 개별 편집/삭제.
+// 1클릭 저장은 주유소/충전소 상세에서 하고, 여기서는 금액/주유량(L)·충전량(kWh)/주행거리/메모를 나중에 편집한다.
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { PRODUCT_LABEL } from '@/types/station';
@@ -15,12 +15,14 @@ function formatDate(iso: string): string {
 interface Stats {
   count: number;
   totalSpent: number;
+  /** 주유 기록 평균 단가(원/L). EV는 단위(원/kWh)가 달라 혼합하지 않는다. */
   avgUnitPrice: number | null;
 }
 
 function computeStats(logs: FuelLog[]): Stats {
   const totalSpent = logs.reduce((s, l) => s + (l.amountWon ?? 0), 0);
-  const priced = logs.filter((l) => l.unitPrice != null);
+  // 평균 단가는 단위가 같은 주유(원/L) 기록만 집계(EV 원/kWh와 혼합 금지).
+  const priced = logs.filter((l) => l.kind === 'gas' && l.unitPrice != null);
   const avgUnitPrice =
     priced.length > 0 ? Math.round(priced.reduce((s, l) => s + (l.unitPrice ?? 0), 0) / priced.length) : null;
   return { count: logs.length, totalSpent, avgUnitPrice };
@@ -75,9 +77,9 @@ export function FuelLogManager() {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
         <div className="text-5xl">⛽</div>
-        <p className="text-sm text-gray-500">아직 주유 기록이 없어요.</p>
+        <p className="text-sm text-gray-500">아직 기록이 없어요.</p>
         <p className="text-xs leading-relaxed text-gray-400">
-          주유소 상세에서 “여기서 주유” 버튼 한 번으로 기록할 수 있어요.
+          주유소·충전소 상세에서 “여기서 주유 / 여기서 충전” 버튼 한 번으로 기록할 수 있어요.
         </p>
         <Link href="/" className="mt-1 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white">
           지도에서 찾기
@@ -109,16 +111,33 @@ export function FuelLogManager() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="truncate font-semibold text-gray-900">{l.stationName}</span>
-                    <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600">
-                      {PRODUCT_LABEL[l.product]}
-                    </span>
+                    {l.kind === 'ev' ? (
+                      <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                        ⚡ 충전
+                      </span>
+                    ) : (
+                      <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600">
+                        ⛽ {PRODUCT_LABEL[l.product]}
+                      </span>
+                    )}
                   </div>
                   <div className="mt-0.5 text-xs text-gray-500">
                     {formatDate(l.loggedAt)}
-                    {l.unitPrice != null && <> · ₩{l.unitPrice.toLocaleString()}/L</>}
-                    {l.amountWon != null && <> · 총 ₩{l.amountWon.toLocaleString()}</>}
-                    {l.liters != null && <> · {l.liters}L</>}
-                    {l.odometer != null && <> · {l.odometer.toLocaleString()}km</>}
+                    {l.kind === 'ev' ? (
+                      <>
+                        {l.unitPrice != null && <> · ₩{l.unitPrice.toLocaleString()}/kWh</>}
+                        {l.amountWon != null && <> · 총 ₩{l.amountWon.toLocaleString()}</>}
+                        {l.kwh != null && <> · {l.kwh}kWh</>}
+                        {l.odometer != null && <> · {l.odometer.toLocaleString()}km</>}
+                      </>
+                    ) : (
+                      <>
+                        {l.unitPrice != null && <> · ₩{l.unitPrice.toLocaleString()}/L</>}
+                        {l.amountWon != null && <> · 총 ₩{l.amountWon.toLocaleString()}</>}
+                        {l.liters != null && <> · {l.liters}L</>}
+                        {l.odometer != null && <> · {l.odometer.toLocaleString()}km</>}
+                      </>
+                    )}
                   </div>
                   {l.memo && <div className="mt-1 text-xs text-gray-600">{l.memo}</div>}
                 </div>
@@ -173,8 +192,10 @@ function EditForm({
   onSaved: (l: FuelLog) => void;
   onCancel: () => void;
 }) {
+  const isEv = log.kind === 'ev';
   const [amountWon, setAmountWon] = useState(log.amountWon != null ? String(log.amountWon) : '');
   const [liters, setLiters] = useState(log.liters != null ? String(log.liters) : '');
+  const [kwh, setKwh] = useState(log.kwh != null ? String(log.kwh) : '');
   const [odometer, setOdometer] = useState(log.odometer != null ? String(log.odometer) : '');
   const [memo, setMemo] = useState(log.memo ?? '');
   const [busy, setBusy] = useState(false);
@@ -184,12 +205,16 @@ function EditForm({
     setBusy(true);
     setErr(null);
     try {
+      // 종류에 맞는 수치만 전송(주유=liters, 충전=kwh).
+      const quantity = isEv
+        ? { kwh: kwh === '' ? null : Number(kwh) }
+        : { liters: liters === '' ? null : Number(liters) };
       const res = await fetch(`/api/fuel-logs/${encodeURIComponent(log.id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amountWon: amountWon === '' ? null : Number(amountWon),
-          liters: liters === '' ? null : Number(liters),
+          ...quantity,
           odometer: odometer === '' ? null : Number(odometer),
           memo: memo.trim() === '' ? null : memo.trim(),
         }),
@@ -209,7 +234,11 @@ function EditForm({
       <div className="text-sm font-semibold text-gray-900">{log.stationName}</div>
       <div className="grid grid-cols-3 gap-2">
         <Field label="금액(원)" value={amountWon} onChange={setAmountWon} inputMode="numeric" />
-        <Field label="주유량(L)" value={liters} onChange={setLiters} inputMode="decimal" />
+        {isEv ? (
+          <Field label="충전량(kWh)" value={kwh} onChange={setKwh} inputMode="decimal" />
+        ) : (
+          <Field label="주유량(L)" value={liters} onChange={setLiters} inputMode="decimal" />
+        )}
         <Field label="주행거리(km)" value={odometer} onChange={setOdometer} inputMode="numeric" />
       </div>
       <input

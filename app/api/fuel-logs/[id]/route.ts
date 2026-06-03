@@ -19,14 +19,19 @@ async function getUserId(email: string): Promise<string | null> {
   return data?.id ?? null;
 }
 
+const SELECT_COLS =
+  'id, kind, station_id, station_name, product, unit_price, amount_won, liters, kwh, odometer, memo, logged_at, created_at';
+
 interface FuelLogRow {
   id: string;
+  kind: string | null;
   station_id: string;
   station_name: string;
   product: string;
   unit_price: number | null;
   amount_won: number | null;
   liters: number | string | null;
+  kwh: number | string | null;
   odometer: number | null;
   memo: string | null;
   logged_at: string;
@@ -36,12 +41,14 @@ interface FuelLogRow {
 function toFuelLog(r: FuelLogRow): FuelLog {
   return {
     id: r.id,
+    kind: r.kind === 'ev' ? 'ev' : 'gas',
     stationId: r.station_id,
     stationName: r.station_name,
     product: (r.product as ProductCode) in PRODUCT_LABEL ? (r.product as ProductCode) : 'B027',
     unitPrice: r.unit_price,
     amountWon: r.amount_won,
     liters: r.liters === null ? null : Number(r.liters),
+    kwh: r.kwh === null ? null : Number(r.kwh),
     odometer: r.odometer,
     memo: r.memo,
     loggedAt: r.logged_at,
@@ -57,8 +64,8 @@ function parseIntField(v: unknown): number | null | 'invalid' {
   return Math.round(n);
 }
 
-/** 주유량(L) 정규화: 소수 둘째자리까지 허용 */
-function parseLiters(v: unknown): number | null | 'invalid' {
+/** 주유량(L)/충전량(kWh) 정규화: 소수 둘째자리까지 허용 */
+function parseDecimalField(v: unknown): number | null | 'invalid' {
   if (v === null || v === undefined || v === '') return null;
   const n = typeof v === 'number' ? v : Number(v);
   if (!Number.isFinite(n) || n < 0) return 'invalid';
@@ -74,7 +81,7 @@ export async function PATCH(req: Request, { params }: Params) {
   if (!userId) return NextResponse.json({ error: 'user not found' }, { status: 404 });
 
   const body = (await req.json()) as {
-    amountWon?: unknown; liters?: unknown; odometer?: unknown; memo?: unknown;
+    amountWon?: unknown; liters?: unknown; kwh?: unknown; odometer?: unknown; memo?: unknown;
   };
 
   const patch: Record<string, number | string | null> = {};
@@ -85,9 +92,14 @@ export async function PATCH(req: Request, { params }: Params) {
     patch.amount_won = v;
   }
   if ('liters' in body) {
-    const v = parseLiters(body.liters);
+    const v = parseDecimalField(body.liters);
     if (v === 'invalid') return NextResponse.json({ error: '주유량은 0 이상 숫자여야 해요.' }, { status: 400 });
     patch.liters = v;
+  }
+  if ('kwh' in body) {
+    const v = parseDecimalField(body.kwh);
+    if (v === 'invalid') return NextResponse.json({ error: '충전량은 0 이상 숫자여야 해요.' }, { status: 400 });
+    patch.kwh = v;
   }
   if ('odometer' in body) {
     const v = parseIntField(body.odometer);
@@ -116,7 +128,7 @@ export async function PATCH(req: Request, { params }: Params) {
     .update(patch)
     .eq('id', params.id)
     .eq('user_id', userId)
-    .select('id, station_id, station_name, product, unit_price, amount_won, liters, odometer, memo, logged_at, created_at')
+    .select(SELECT_COLS)
     .maybeSingle();
   if (error) return NextResponse.json({ error: '수정에 실패했어요.' }, { status: 500 });
   if (!data) return NextResponse.json({ error: 'not found' }, { status: 404 });
