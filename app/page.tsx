@@ -330,6 +330,18 @@ export default function HomePage() {
 
   const myLocation = geo.coords ?? null;
 
+  // 충전소 정렬/거리 기준 좌표: 내 위치 우선, 없으면 화면 중심(마지막 bounds 중심)으로 폴백.
+  // (위치 없으면 거리는 화면 중심 기준 — 정렬은 사용가능→급속→거리, 거리 폴백은 합리적 근사)
+  const evOrigin = useMemo(() => {
+    if (myLocation) return { lat: myLocation.lat, lng: myLocation.lng };
+    const b = lastBoundsRef.current;
+    if (b) return { lat: (b.swLat + b.neLat) / 2, lng: (b.swLng + b.neLng) / 2 };
+    return null;
+    // lastBoundsRef는 ref라 의존성에 못 들어가므로, 영역 이동으로 evStations가 바뀌면
+    // 화면중심 폴백을 다시 계산하도록 evStations를 게이트로 둔다(의도된 의존성).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myLocation, evStations]);
+
   return (
     // 바깥 래퍼: 세로 스크롤 가능. 첫 뷰포트(헤더+필터바+지도)는 한 화면(h-dvh)을 채우고,
     // 그 아래로 스크롤하면 사업자 정보 푸터가 나온다(카드사 심사: 메인 하단 사업자 정보).
@@ -491,6 +503,17 @@ export default function HomePage() {
           onNavigate={(s) => setNaviTarget(s)}
           onOpenChange={setSheetOpen}
           onTabChange={handleTabChange}
+          layer={layer}
+          evStations={evStations}
+          evOrigin={evOrigin}
+          onSelectEv={(s) => router.push(`/ev/${s.statId}`)}
+          onNavigateEv={(s) =>
+            setNaviTarget({
+              id: s.statId, name: s.name, brand: 'ETC', isSelf: false,
+              sido: '01', address: '', lat: s.lat, lng: s.lng,
+              product, price: 0, tradeDate: '',
+            })
+          }
         />
         </div>
       </div>

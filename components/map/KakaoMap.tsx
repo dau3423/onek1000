@@ -625,12 +625,15 @@ export function KakaoMap({
     for (const s of evStations ?? []) {
       const content = buildEvMarkerContent(s, showLabel);
       content.addEventListener('click', () => onEvMarkerClickRef.current?.(s));
+      // 사용가능(available>0) 충전소를 위에 그려 겹칠 때 우선 보이게 한다(강조).
+      // 급속 보유는 그 다음 가중치. (마커 색/뱃지로도 구분되지만 z순서로 한 번 더 강조)
+      const z = 2 + (s.availableChargers > 0 ? 2 : 0) + (s.hasFast ? 1 : 0);
       const overlay = new window.kakao.maps.CustomOverlay({
         position: new window.kakao.maps.LatLng(s.lat, s.lng),
         content,
         yAnchor: 1,
         clickable: true,
-        zIndex: 2,
+        zIndex: z,
       });
       overlay.setMap(map);
       evOverlaysRef.current.push(overlay);
