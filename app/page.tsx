@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { Header } from '@/components/ui/Header';
 import { FilterBar } from '@/components/ui/FilterBar';
 import { BottomSheet, SHEET_PEEK_PX } from '@/components/ui/BottomSheet';
@@ -14,6 +15,8 @@ import { NaviConfirm } from '@/components/alert/NaviConfirm';
 import { ProductSync } from '@/components/map/ProductSync';
 import { StationPopup } from '@/components/map/StationPopup';
 import { EvStationPopup } from '@/components/map/EvStationPopup';
+import { FuelDwellPrompt } from '@/components/station/FuelDwellPrompt';
+import { useFuelDwellDetect, type DwellStation } from '@/hooks/useFuelDwellDetect';
 import { MarkerLegend } from '@/components/ui/MarkerLegend';
 import { InstallBanner } from '@/components/pwa/InstallBanner';
 import { BusinessFooter } from '@/components/legal/BusinessFooter';
@@ -59,6 +62,7 @@ const GRAY_DOT_LIMIT = 500;
 
 export default function HomePage() {
   const router = useRouter();
+  const { status: authStatus } = useSession();
   const { product, brands, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, setRoutePlan, clearRoutePlan } = useMapStore();
 
   // 최신 유종을 항상 참조하기 위한 ref. fetchStations/fetchAllStations 같은 콜백이
@@ -120,6 +124,11 @@ export default function HomePage() {
 
   // 길안내 확인 모달 대상
   const [naviTarget, setNaviTarget] = useState<StationWithPrice | null>(null);
+
+  // 주유소 체류 감지 팝업 대상(감지된 주유소). 저장/닫기 시 null.
+  const [dwellStation, setDwellStation] = useState<DwellStation | null>(null);
+  // 주유 기록 저장 완료 피드백 토스트.
+  const [fuelSavedToast, setFuelSavedToast] = useState(false);
 
   // 하단 시트 펼침 여부 — GPS 버튼이 시트에 가려지지 않게 위치를 연동한다.
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -602,6 +611,17 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myLocation, evStations]);
 
+  // === 주유소 체류 감지(지오펜스 + dwell) ===
+  // 포그라운드 + GPS 추적 중에만 동작(웹 한계: 백그라운드 감지 불가, 정상).
+  // 조건: 로그인 + gas 레이어 + 경로 모드 아님(경로 알림과 UI/맥락 충돌 방지) + 이미 팝업 떠있지 않음.
+  // 50m 진입→2분 체류→이탈 시 onDetect로 팝업 표시(같은 주유소 2시간 억제는 훅 내부에서 처리).
+  const dwellEnabled =
+    authStatus === 'authenticated' && layer === 'gas' && !routePlan && !dwellStation;
+  const handleDwellDetect = useCallback((s: DwellStation) => {
+    setDwellStation(s);
+  }, []);
+  useFuelDwellDetect(geo.coords ?? null, dwellEnabled, handleDwellDetect);
+
   return (
     // 바깥 래퍼: 세로 스크롤 가능. 첫 뷰포트(헤더+필터바+지도)는 한 화면(h-dvh)을 채우고,
     // 그 아래로 스크롤하면 사업자 정보 푸터가 나온다(카드사 심사: 메인 하단 사업자 정보).
@@ -880,6 +900,29 @@ export default function HomePage() {
           origin={myLocation ? { name: '내 위치', lat: myLocation.lat, lng: myLocation.lng } : null}
           onClose={() => setNaviTarget(null)}
         />
+      )}
+
+      {/* 주유소 체류 감지 팝업 — "방금 여기서 주유하셨나요?" + 리터/금액 선택 후 저장 */}
+      {dwellStation && (
+        <FuelDwellPrompt
+          stationId={dwellStation.id}
+          stationName={dwellStation.name}
+          onClose={() => setDwellStation(null)}
+          onSaved={() => {
+            setFuelSavedToast(true);
+            window.setTimeout(() => setFuelSavedToast(false), 2500);
+          }}
+        />
+      )}
+
+      {/* 주유 기록 저장 완료 토스트 — 짧게(2.5초) 하단 중앙 */}
+      {fuelSavedToast && (
+        <div
+          role="status"
+          className="pointer-events-none fixed bottom-[calc(2rem+env(safe-area-inset-bottom))] left-1/2 z-[70] -translate-x-1/2 rounded-full bg-gray-900/90 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur"
+        >
+          ⛽ 주유 기록을 저장했어요
+        </div>
       )}
     </div>
   );
