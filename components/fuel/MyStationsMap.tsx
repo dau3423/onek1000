@@ -19,6 +19,9 @@ export function MyStationsMap({ stations }: Props) {
   const mapRef = useRef<kakao.maps.Map | null>(null);
   const overlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // 지도 초기화는 async라 마운트 시점엔 mapRef가 null. ref 변경은 effect 재실행을 트리거하지 않으므로,
+  // 준비 완료를 state로 알려 핀 렌더 effect가 지도 준비 후 재실행되게 한다(메인 KakaoMap의 ready 패턴과 동일).
+  const [mapReady, setMapReady] = useState(false);
 
   // 지도 초기화(1회). 키 없음/로드 실패는 안내 문구로 폴백(페이지는 깨지지 않음).
   useEffect(() => {
@@ -32,6 +35,7 @@ export function MyStationsMap({ stations }: Props) {
           level: 8,
         });
         mapRef.current = map;
+        setMapReady(true);
       } catch {
         if (alive) setError('지도를 불러오지 못했어요.');
       }
@@ -41,10 +45,10 @@ export function MyStationsMap({ stations }: Props) {
     };
   }, []);
 
-  // 핀 렌더 + bounds fit. stations 변경 시 갱신.
+  // 핀 렌더 + bounds fit. stations 또는 지도 준비 상태 변경 시 갱신(둘 중 무엇이 먼저 와도 그려지게).
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!mapReady || !map) return;
     const kakao = window.kakao;
 
     overlaysRef.current.forEach((o) => o.setMap(null));
@@ -89,7 +93,7 @@ export function MyStationsMap({ stations }: Props) {
     } else {
       map.setBounds(bounds);
     }
-  }, [stations, router]);
+  }, [stations, router, mapReady]);
 
   if (error) {
     return (

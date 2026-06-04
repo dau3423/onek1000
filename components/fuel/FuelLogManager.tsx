@@ -4,6 +4,7 @@
 // 1클릭 저장은 주유소/충전소 상세에서 하고, 여기서는 금액/주유량(L)·충전량(kWh)/주행거리/메모를 나중에 편집한다.
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { PRODUCT_LABEL } from '@/types/station';
 import type { FuelLog, FuelLogStation } from '@/types/fuel-log';
 import { amountToQuantity, hasUsableUnitPrice, quantityToAmount } from '@/lib/fuel/calc';
@@ -200,7 +201,15 @@ function ListTab({
   loadingMore: boolean;
   loadMore: () => void;
 }) {
+  const router = useRouter();
   const stats = computeStats(logs);
+
+  // 기록 항목 탭 → 해당 주유소/충전소 상세로 이동(EV는 /ev/{statId}, 주유는 /station/{id}).
+  // 편집/삭제 영역과 충돌하지 않게 정보 영역에만 핸들러를 둔다(영역 분리).
+  const goDetail = (l: FuelLog) => {
+    const path = l.kind === 'ev' ? `/ev/${encodeURIComponent(l.stationId)}` : `/station/${encodeURIComponent(l.stationId)}`;
+    router.push(path);
+  };
 
   return (
     <div className="space-y-5">
@@ -220,8 +229,13 @@ function ListTab({
           ) : (
             <li key={l.id} className="px-4 py-3">
               <div className="flex items-start gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => goDetail(l)}
+                  aria-label={`${l.stationName} 상세 보기`}
+                  className="group -m-1 min-w-0 flex-1 rounded-lg p-1 text-left transition hover:bg-gray-50"
+                >
+                  <span className="flex items-center gap-2">
                     <span className="truncate font-semibold text-gray-900">{l.stationName}</span>
                     {l.kind === 'ev' ? (
                       <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
@@ -232,8 +246,14 @@ function ListTab({
                         ⛽ {PRODUCT_LABEL[l.product]}
                       </span>
                     )}
-                  </div>
-                  <div className="mt-0.5 text-xs text-gray-500">
+                    <span
+                      aria-hidden
+                      className="shrink-0 text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-gray-400"
+                    >
+                      ›
+                    </span>
+                  </span>
+                  <span className="mt-0.5 block text-xs text-gray-500">
                     {formatDate(l.loggedAt)}
                     {l.kind === 'ev' ? (
                       <>
@@ -250,9 +270,9 @@ function ListTab({
                         {l.odometer != null && <> · {l.odometer.toLocaleString()}km</>}
                       </>
                     )}
-                  </div>
-                  {l.memo && <div className="mt-1 text-xs text-gray-600">{l.memo}</div>}
-                </div>
+                  </span>
+                  {l.memo && <span className="mt-1 block text-xs text-gray-600">{l.memo}</span>}
+                </button>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <button
                     onClick={() => setEditing(l.id)}
