@@ -412,9 +412,10 @@ export default function HomePage() {
 
   const myLocation = geo.coords ?? null;
 
-  // === 경로별 최저가: 새로고침 견고성을 위한 store hydrate ===
+  // === 경로별 최저가: 콜드 리로드 견고성을 위한 store hydrate ===
   // route 페이지 → '/' SPA 네비에서는 zustand 메모리 상태(routePlan)가 그대로 유지되지만,
-  // 새로고침 시엔 store가 비므로 sessionStorage(getInitialRoutePlan)에서 1회 복원한다.
+  // 새로고침/백그라운드 후 콜드 리로드 시엔 store가 비므로 localStorage(getInitialRoutePlan)에서
+  // 만료(3시간) 이내 경로를 1회 복원한다.
   useEffect(() => {
     if (useMapStore.getState().routePlan) return; // 이미 메모리에 있으면(네비 직후) 그대로 사용
     const restored = getInitialRoutePlan();
@@ -482,6 +483,31 @@ export default function HomePage() {
         <ProductSync />
         <Header />
         <FilterBar />
+
+        {/* 경로 모드 표시줄 — routePlan이 있을 때 필터바 바로 아래(정상 흐름)에 컴팩트하게 노출.
+            지도 영역 밖이라 마커/하단 GPS 버튼과 겹치지 않는다. 왼쪽: 출발→도착·최저가 N곳(한 줄 말줄임),
+            오른쪽: 닫기(✕)로 경로 해제. */}
+        {layer === 'gas' && routePlan && (
+          <div className="flex items-center gap-2 border-b border-gray-100 bg-white px-3 py-1.5 dark:border-gray-800 dark:bg-gray-900">
+            <span className="shrink-0 text-sm">🛣️</span>
+            <div className="min-w-0 flex-1 truncate text-xs">
+              <span className="font-bold text-gray-900 dark:text-gray-100">
+                {routePlan.from.name ?? '출발'} → {routePlan.to.name ?? '도착'}
+              </span>
+              <span className="ml-1.5 text-gray-500 dark:text-gray-400">
+                · 최저가 {routePlan.stations.length}곳
+              </span>
+            </div>
+            <button
+              onClick={() => clearRoutePlan()}
+              aria-label="경로 표시 해제"
+              title="경로 표시 해제"
+              className="shrink-0 rounded-full p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* overflow-hidden: 접힘 시 시트 본체가 translate-y로 컨테이너 하단(=첫 화면 경계) 밖으로
             삐져나가 그 아래 사업자 정보 푸터를 가리는 것을 막는다. 시트는 이 컨테이너(relative) 기준
@@ -608,30 +634,6 @@ export default function HomePage() {
           >
             {fullscreen.isFullscreen ? '🗗' : '⛶'}
           </button>
-        )}
-
-        {/* 경로 모드 표시줄 — routePlan이 있을 때 지도 상단(필터바 아래)에 노출.
-            출발→도착 요약 + 경로 해제(닫기) 컨트롤. 닫으면 일반 지도로 돌아간다. */}
-        {layer === 'gas' && routePlan && (
-          <div className="pointer-events-auto absolute inset-x-2 top-[calc(56px+44px+8px+env(safe-area-inset-top))] z-30 flex items-center gap-2 rounded-xl bg-white/95 px-3 py-2 shadow-lg backdrop-blur dark:bg-gray-800/95">
-            <span className="text-base">🛣️</span>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-xs font-bold text-gray-900 dark:text-gray-100">
-                {routePlan.from.name ?? '출발'} → {routePlan.to.name ?? '도착'}
-              </div>
-              <div className="truncate text-[11px] text-gray-500 dark:text-gray-400">
-                경로 위 최저가 {routePlan.stations.length}곳
-              </div>
-            </div>
-            <button
-              onClick={() => clearRoutePlan()}
-              aria-label="경로 표시 해제"
-              title="경로 표시 해제"
-              className="shrink-0 rounded-full p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-100"
-            >
-              ✕
-            </button>
-          </div>
         )}
 
         {/* 1km 알람 — 주유소 레이어에서만(충전소는 가격 알람 대상 아님).

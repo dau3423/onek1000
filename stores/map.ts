@@ -40,20 +40,39 @@ function writeLastView(v: MapView | null) {
 }
 
 const ROUTE_PLAN_KEY = 'onek:routePlan';
+/**
+ * 경로 계획의 저장 유효기간(ms). 모바일/PWA가 백그라운드 시 탭을 종료해도
+ * 포그라운드 복귀(콜드 리로드) 시 경로가 살아있도록 localStorage에 저장하되,
+ * 너무 오래된(예: 어제 검색한) 경로가 계속 복원되는 것을 막기 위한 만료.
+ */
+const ROUTE_PLAN_TTL_MS = 3 * 60 * 60 * 1000; // 3시간
+
+/** localStorage에 저장하는 래퍼 — savedAt(저장 시각)으로 만료를 판정한다. */
+interface StoredRoutePlan {
+  savedAt: number;
+  plan: RoutePlan;
+}
 
 /**
- * 경로 계획(RoutePlan)을 sessionStorage에서 읽는다.
+ * 경로 계획(RoutePlan)을 localStorage에서 읽는다.
  * route 페이지 → 메인 지도 이동(SPA 네비)에는 메모리 상태로 충분하나,
- * 새로고침 견고성을 위해 sessionStorage도 병행한다(lastView와 동일 패턴).
+ * 모바일 백그라운드 → 포그라운드 콜드 리로드 견고성을 위해 localStorage에 병행 저장한다.
+ * (sessionStorage는 탭 종료 시 날아가 복원이 안 됨 → localStorage + 만료로 대체)
  */
 function readRoutePlan(): RoutePlan | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = window.sessionStorage.getItem(ROUTE_PLAN_KEY);
+    const raw = window.localStorage.getItem(ROUTE_PLAN_KEY);
     if (!raw) return null;
-    const v = JSON.parse(raw) as Partial<RoutePlan>;
+    const parsed = JSON.parse(raw) as Partial<StoredRoutePlan>;
+    // 만료 검사 — savedAt 없거나 TTL 초과면 복원하지 않고 정리한다.
+    if (typeof parsed.savedAt !== 'number' || Date.now() - parsed.savedAt > ROUTE_PLAN_TTL_MS) {
+      window.localStorage.removeItem(ROUTE_PLAN_KEY);
+      return null;
+    }
+    const v = parsed.plan as Partial<RoutePlan> | undefined;
     if (
-      v.from && typeof v.from.lat === 'number' && typeof v.from.lng === 'number'
+      v && v.from && typeof v.from.lat === 'number' && typeof v.from.lng === 'number'
       && v.to && typeof v.to.lat === 'number' && typeof v.to.lng === 'number'
       && Array.isArray(v.stations)
     ) {
@@ -63,6 +82,8 @@ function readRoutePlan(): RoutePlan | null {
         : [{ lat: v.from.lat, lng: v.from.lng }, { lat: v.to.lat, lng: v.to.lng }];
       return { ...v, path } as RoutePlan;
     }
+    // 손상/구버전 값은 정리하고 무시.
+    window.localStorage.removeItem(ROUTE_PLAN_KEY);
   } catch {
     // 손상된 값은 무시
   }
@@ -72,10 +93,14 @@ function readRoutePlan(): RoutePlan | null {
 function writeRoutePlan(v: RoutePlan | null) {
   if (typeof window === 'undefined') return;
   try {
-    if (v) window.sessionStorage.setItem(ROUTE_PLAN_KEY, JSON.stringify(v));
-    else window.sessionStorage.removeItem(ROUTE_PLAN_KEY);
+    if (v) {
+      const stored: StoredRoutePlan = { savedAt: Date.now(), plan: v };
+      window.localStorage.setItem(ROUTE_PLAN_KEY, JSON.stringify(stored));
+    } else {
+      window.localStorage.removeItem(ROUTE_PLAN_KEY);
+    }
   } catch {
-    // sessionStorage 불가 환경은 메모리 상태로만 동작
+    // localStorage 불가 환경은 메모리 상태로만 동작
   }
 }
 
@@ -171,7 +196,10 @@ export function getInitialMapView(): MapView | null {
   return useMapStore.getState().lastView ?? readLastView();
 }
 
-/** 홈 마운트 시점에 1회 호출 — 메모리 또는 sessionStorage에 저장된 경로 계획을 반환. */
+/**
+ * 홈 마운트 시점에 1회 호출 — 메모리 상태가 있으면 그대로, 없으면(콜드 리로드)
+ * localStorage에서 만료(3시간) 이내 경로 계획을 복원해 반환한다.
+ */
 export function getInitialRoutePlan(): RoutePlan | null {
   return useMapStore.getState().routePlan ?? readRoutePlan();
 }
