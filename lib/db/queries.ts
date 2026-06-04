@@ -1,6 +1,8 @@
 // Supabase 기반 도메인 쿼리 — Supabase 미설정 시 mock 폴백
 import { getSupabase, isSupabaseConfigured } from './supabase';
+import { PRODUCT_LABEL } from '@/types/station';
 import type { StationWithPrice, ProductCode, SidoCode, BrandCode, NationalTop10Item, StationDetail, StationPoint } from '@/types/station';
+import type { FuelLog } from '@/types/fuel-log';
 import type { Bbox } from '@/lib/map/geo';
 import { getMockStations, getMockStationDetail } from '@/lib/mock/stations';
 import { distanceMeters, inBbox, topPriceRankMap } from '@/lib/map/geo';
@@ -267,6 +269,60 @@ export async function queryStationDetailWithPriceFallback(id: string): Promise<S
   await cacheStationPrices(id, live).catch(() => {});
 
   return merged;
+}
+
+interface MyFuelLogRow {
+  id: string;
+  kind: string | null;
+  station_id: string;
+  station_name: string;
+  product: string;
+  unit_price: number | null;
+  amount_won: number | null;
+  liters: number | string | null;
+  kwh: number | string | null;
+  odometer: number | null;
+  memo: string | null;
+  logged_at: string;
+  created_at: string;
+}
+
+/**
+ * 로그인 사용자의 "특정 주유소" 주유 기록(최신순). 주유소 상세의 "내 주유 기록" 섹션용.
+ * 진입 경로(메인 지도/마이페이지 지도)와 무관하게 상세 페이지에서 직접 조회한다.
+ * email→userId 해석 후 본인(user_id) + 해당 station_id 만 조회(소유자 스코프).
+ * Supabase 미설정(mock) 또는 비로그인/사용자 없음이면 빈 배열.
+ */
+export async function queryMyFuelLogsAtStation(email: string, stationId: string, limit = 10): Promise<FuelLog[]> {
+  if (!isSupabaseConfigured()) return [];
+  const sb = getSupabase();
+  const { data: u } = await sb.from('users').select('id').eq('email', email).maybeSingle();
+  const userId = u?.id;
+  if (!userId) return [];
+
+  const { data } = await sb
+    .from('fuel_logs')
+    .select('id, kind, station_id, station_name, product, unit_price, amount_won, liters, kwh, odometer, memo, logged_at, created_at')
+    .eq('user_id', userId)
+    .eq('station_id', stationId)
+    .order('logged_at', { ascending: false })
+    .limit(limit);
+
+  return ((data ?? []) as MyFuelLogRow[]).map((r) => ({
+    id: r.id,
+    kind: r.kind === 'ev' ? 'ev' : 'gas',
+    stationId: r.station_id,
+    stationName: r.station_name,
+    product: (r.product as ProductCode) in PRODUCT_LABEL ? (r.product as ProductCode) : 'B027',
+    unitPrice: r.unit_price,
+    amountWon: r.amount_won,
+    liters: r.liters === null ? null : Number(r.liters),
+    kwh: r.kwh === null ? null : Number(r.kwh),
+    odometer: r.odometer,
+    memo: r.memo,
+    loggedAt: r.logged_at,
+    createdAt: r.created_at,
+  }));
 }
 
 /** Opinet detailById로 받은 가격을 prices_latest에 upsert(+stations 부가서비스 보강). best-effort. */

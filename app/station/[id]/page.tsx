@@ -8,6 +8,7 @@ import { PriceHistoryChart } from '@/components/charts/PriceHistoryChart';
 import { ReviewSection } from '@/components/reviews/ReviewSection';
 import { NaviButton } from '@/components/station/NaviButton';
 import { FuelLogButton } from '@/components/station/FuelLogButton';
+import { MyFuelLogsSection } from '@/components/station/MyFuelLogsSection';
 
 interface Props { params: { id: string } }
 
@@ -84,6 +85,9 @@ export default async function StationDetailPage({ params }: Props) {
           })}
         </ul>
       </section>
+
+      {/* 내 주유 기록 — 로그인 사용자의 이 주유소 기록(없으면/비로그인은 자동 숨김) */}
+      <MyFuelLogsSection stationId={detail.id} />
 
       {/* 가격 추이 (휘발유 최근 30일) */}
       <section className="border-t border-gray-100 px-5 py-4">

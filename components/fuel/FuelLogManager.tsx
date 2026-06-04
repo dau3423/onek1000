@@ -5,8 +5,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { PRODUCT_LABEL } from '@/types/station';
-import type { FuelLog } from '@/types/fuel-log';
+import type { FuelLog, FuelLogStation } from '@/types/fuel-log';
 import { amountToQuantity, hasUsableUnitPrice, quantityToAmount } from '@/lib/fuel/calc';
+import { MyStationsMap } from '@/components/fuel/MyStationsMap';
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -29,7 +30,10 @@ function computeStats(logs: FuelLog[]): Stats {
   return { count: logs.length, totalSpent, avgUnitPrice };
 }
 
+type Tab = 'list' | 'map';
+
 export function FuelLogManager() {
+  const [tab, setTab] = useState<Tab>('list');
   const [logs, setLogs] = useState<FuelLog[] | null>(null);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
@@ -89,6 +93,113 @@ export function FuelLogManager() {
     );
   }
 
+  return (
+    <div className="space-y-4">
+      {/* 목록 / 지도 전환 토글 */}
+      <div className="flex rounded-xl bg-gray-100 p-1">
+        <TabButton active={tab === 'list'} onClick={() => setTab('list')} label="목록" />
+        <TabButton active={tab === 'map'} onClick={() => setTab('map')} label="지도" />
+      </div>
+
+      {tab === 'list' ? (
+        <ListTab
+          logs={logs}
+          editing={editing}
+          setEditing={setEditing}
+          onSaved={onSaved}
+          remove={remove}
+          hasMore={hasMore}
+          loadingMore={loadingMore}
+          loadMore={loadMore}
+        />
+      ) : (
+        <MapTab />
+      )}
+    </div>
+  );
+}
+
+function TabButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${
+        active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+// 지도 탭 — 내가 주유한 주유소만 핀으로(방문 횟수 배지). 탭 진입 시 1회 조회.
+function MapTab() {
+  const [stations, setStations] = useState<FuelLogStation[] | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/fuel-logs/stations')
+      .then((r) => r.json())
+      .then((d) => {
+        if (alive) setStations((d.stations ?? []) as FuelLogStation[]);
+      })
+      .catch(() => {
+        if (alive) setStations([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (stations === null) {
+    return (
+      <div className="flex h-[420px] items-center justify-center rounded-xl border border-gray-100 bg-gray-50 text-sm text-gray-400">
+        불러오는 중…
+      </div>
+    );
+  }
+
+  if (stations.length === 0) {
+    return (
+      <div className="flex h-[420px] flex-col items-center justify-center gap-2 rounded-xl border border-gray-100 bg-gray-50 text-center">
+        <div className="text-4xl">🗺️</div>
+        <p className="text-sm text-gray-500">아직 주유 기록이 없어요.</p>
+        <p className="text-xs text-gray-400">좌표가 있는 주유소 기록이 생기면 지도에 표시돼요.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <MyStationsMap stations={stations} />
+      <p className="text-center text-[11px] text-gray-400">
+        핀의 숫자는 방문 횟수예요. 핀을 누르면 주유소 상세로 이동해요.
+      </p>
+    </div>
+  );
+}
+
+// 목록 탭 — 기존 통계 + 리스트(편집/삭제/더보기).
+function ListTab({
+  logs,
+  editing,
+  setEditing,
+  onSaved,
+  remove,
+  hasMore,
+  loadingMore,
+  loadMore,
+}: {
+  logs: FuelLog[];
+  editing: string | null;
+  setEditing: (id: string | null) => void;
+  onSaved: (l: FuelLog) => void;
+  remove: (id: string) => void;
+  hasMore: boolean;
+  loadingMore: boolean;
+  loadMore: () => void;
+}) {
   const stats = computeStats(logs);
 
   return (

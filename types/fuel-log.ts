@@ -47,6 +47,22 @@ export interface FuelLogPatchInput {
   memo?: string | null;
 }
 
+/** 내가 주유한 주유소(distinct) — 지도 핀 표시용. 좌표는 stations 조인. */
+export interface FuelLogStation {
+  /** 주유소/충전소 ID(= Opinet UNI_ID / statId) */
+  stationId: string;
+  /** 주유소/충전소명(스냅샷) */
+  stationName: string;
+  /** 위도(stations 조인). 좌표 없으면 null → 핀 제외 */
+  lat: number | null;
+  /** 경도(stations 조인) */
+  lng: number | null;
+  /** 방문(기록) 횟수 */
+  visitCount: number;
+  /** 마지막 방문 시각(ISO) */
+  lastLoggedAt: string;
+}
+
 /** 기록 목록 간단 통계 */
 export interface FuelLogStats {
   count: number;
