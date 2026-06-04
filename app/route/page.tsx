@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -10,6 +10,21 @@ import { useMapStore } from '@/stores/map';
 import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL, type BrandCode, type ProductCode, type StationWithPrice } from '@/types/station';
 
 type Point = { lat: number; lng: number; name?: string };
+
+/** 경로 화면이 지원하는 유종 선택지(휘발유/경유/LPG). */
+const ROUTE_PRODUCTS: ProductCode[] = ['B027', 'D047', 'C004'];
+
+/**
+ * 기본 차량 유종을 경로 화면 선택지(B027/D047/C004)로 매핑한다.
+ * 선택지 밖 값(B034 고급휘발유 → 휘발유 계열 B027, K015 등유 등 → 기본 B027)은
+ * 어색하지 않게 폴백한다. 매핑 불가/없음이면 null(기존 B027 유지).
+ */
+function toRouteProduct(fuel?: ProductCode): ProductCode | null {
+  if (!fuel) return null;
+  if (ROUTE_PRODUCTS.includes(fuel)) return fuel; // 그대로 지원되는 유종
+  if (fuel === 'B034') return 'B027'; // 고급휘발유 → 휘발유 계열
+  return 'B027'; // 등유(K015) 등 그 외는 휘발유로 폴백
+}
 
 type SearchResult = {
   id: string;
@@ -78,13 +93,23 @@ function RouteSignInGate() {
 
 function RouteCheapestInner() {
   const router = useRouter();
+  const { data: session } = useSession();
   const setRoutePlan = useMapStore((s) => s.setRoutePlan);
   const [from, setFrom] = useState<Point | null>(null);
   const [to, setTo] = useState<Point | null>(null);
   const [product, setProduct] = useState<ProductCode>('B027');
+  const [productTouched, setProductTouched] = useState(false);
   const [results, setResults] = useState<StationWithPrice[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 로그인 + 기본 차량 유종이 있으면 진입 시 1회 자동 선택(선택지 밖 값은 폴백 매핑).
+  // 사용자가 직접 유종을 바꾼 뒤에는 덮어쓰지 않는다(productTouched 가드).
+  useEffect(() => {
+    if (productTouched) return;
+    const mapped = toRouteProduct(session?.user?.defaultProduct);
+    if (mapped) setProduct(mapped);
+  }, [session?.user?.defaultProduct, productTouched]);
 
   const pickMyLocation = (which: 'from' | 'to') => {
     if (!navigator.geolocation) return;
@@ -165,10 +190,10 @@ function RouteCheapestInner() {
         />
 
         <div className="flex items-center gap-1.5 overflow-x-auto">
-          {(['B027', 'D047', 'C004'] as ProductCode[]).map((p) => (
+          {ROUTE_PRODUCTS.map((p) => (
             <button
               key={p}
-              onClick={() => setProduct(p)}
+              onClick={() => { setProductTouched(true); setProduct(p); }}
               className={
                 product === p
                   ? 'shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-white'
