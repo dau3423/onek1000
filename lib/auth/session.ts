@@ -145,3 +145,13 @@ export async function getSessionIdCached(userId: string): Promise<string | undef
   sessionIdCache.set(userId, { sid, at: now });
   return sid;
 }
+
+/**
+ * 캐시 강제 갱신 — 방금 확인한 fresh session_id를 캐시에 즉시 반영한다.
+ * 로그인 직후(새 sid 기록)·검증 중 fresh 재확인 직후 호출해, 같은 서버 인스턴스의
+ * 후속 getSessionIdCached가 stale 값을 읽어 현재 기기를 오무효화하는 것을 막는다.
+ * (인스턴스별 모듈 메모리라 보조 수단이며, 본질적 보호는 검증부의 fresh 재확인이다.)
+ */
+export function primeSessionIdCache(userId: string, sid: string | undefined): void {
+  sessionIdCache.set(userId, { sid, at: Date.now() });
+}

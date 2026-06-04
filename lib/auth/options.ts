@@ -8,7 +8,7 @@ import KakaoProvider from 'next-auth/providers/kakao';
 import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
-import { getPremiumStatus, getDefaultProduct, getNickname, getAvatar, getSessionId, getSessionIdCached } from './session';
+import { getPremiumStatus, getDefaultProduct, getNickname, getAvatar, getSessionId, getSessionIdCached, primeSessionIdCache } from './session';
 import { generateUniqueNickname } from '@/lib/nickname-db';
 
 const PREMIUM_CACHE_MS = 60_000;
@@ -147,8 +147,13 @@ export const authOptions: NextAuthOptions = {
       // 1계정 1세션: 갓 로그인한 토큰(이번 signIn에서 새 sid를 DB에 기록한 승자)에는
       // DB의 최신 session_id를 그대로 박는다. 이후 검증에서 자기 자신과 일치하게 된다.
       if (isFreshLogin && token.userId) {
-        token.sid = (await getSessionId(token.userId)) ?? token.sid;
+        const freshSid = await getSessionId(token.userId);
+        token.sid = freshSid ?? token.sid;
         token.sessionRevoked = false;
+        // 같은 서버 인스턴스에 남아 있던 이전 sid 캐시(=직전 기기 A의 값)를
+        // 이번 로그인 sid로 즉시 갱신한다. 이렇게 해야 바로 뒤따르는 검증 재호출이
+        // stale 값을 읽지 않는다(아래 fresh 재확인과 합쳐 2중 안전망).
+        if (freshSid !== undefined) primeSessionIdCache(token.userId, freshSid);
       }
 
       // 1계정 1세션 검증 — isPremium(60초) 캐시와 "분리"하여 매 재검증마다 수행한다.
@@ -157,9 +162,24 @@ export const authOptions: NextAuthOptions = {
       // (getSessionIdCached: email→session_id 단일 컬럼 조회만, isPremium 미조회)
       // 갓 로그인 케이스는 위에서 동기화했으니 제외.
       if (!isFreshLogin && token.userId && token.sid) {
-        const current = await getSessionIdCached(token.userId);
-        // current === undefined: session_id 컬럼 미적용 환경 등 → 검증 불가, 기존 동작 유지.
-        if (current && current !== token.sid) token.sessionRevoked = true;
+        const cached = await getSessionIdCached(token.userId);
+        // cached === undefined: session_id 컬럼 미적용 환경 등 → 검증 불가, 기존 동작 유지.
+        // cached !== token.sid 라고 곧장 revoke하면 안 된다(치명 버그):
+        //   - 갓 로그인한 현재 기기 B(sid==DB)라도, 같은 인스턴스에 남은 stale 캐시(이전
+        //     기기 A의 sid)를 읽으면 cached!==sid가 되어 "유효한 현재 기기"가 오무효화된다.
+        // → 캐시값이 불일치할 때만 fresh(uncached) DB 재확인으로 확정한다.
+        //   fresh도 token.sid와 다를 때에만 revoke. 같으면 revoke 안 함(B 보호) +
+        //   캐시를 fresh 값으로 정정해 다음 호출의 stale 적중을 막는다.
+        if (cached !== undefined && cached !== token.sid) {
+          const fresh = await getSessionId(token.userId);
+          if (fresh !== undefined) primeSessionIdCache(token.userId, fresh);
+          if (fresh !== undefined && fresh !== token.sid) {
+            // DB 최신 sid가 내 토큰 sid와 다름 = 더 나중에 다른 기기가 로그인함 → 이 기기는 패자.
+            token.sessionRevoked = true;
+          }
+          // fresh === token.sid: 내가 현재 유효 기기 → revoke 안 함(이미 false 유지).
+          // fresh === undefined: 검증 불가 → 기존 동작 유지(revoke 안 함).
+        }
       }
 
       // isPremium 캐시 (60초 또는 명시적 update trigger 시 갱신)
