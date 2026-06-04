@@ -423,6 +423,18 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 경로 모드 진입 시 GPS 자동 활성화.
+  // 경로 근접 알림(RouteAlert)·'내 위치' 기준은 GPS watch가 돌아야 동작하므로,
+  // routePlan이 활성화되면(직접 검색/콜드 리로드 복원 모두 포함) geoEnabled를 true로 켠다.
+  //  - 권한 미허용이면 watch 시작 시 브라우저 권한 프롬프트가 떠 자연스럽게 유도된다.
+  //  - 거부/미지원이면 useGeolocation이 graceful fallback(앱 안 깨짐, status denied/unavailable).
+  //  - 이미 켜져 있으면 setState(true)가 no-op이라 watch 재시작 없음(idempotent).
+  //  - 경로 종료(clearRoutePlan) 시엔 끄지 않는다 — 사용자가 켜둔 GPS 상태를 존중.
+  //  - 따라가기(follow)는 과하지 않게 기존대로 사용자 선택으로 둔다(여기선 위치 활성화만).
+  useEffect(() => {
+    if (routePlan) setGeoEnabled(true);
+  }, [routePlan]);
+
   // 경로 모드에서 '경로상 최저가 주유소' 근접 알림 대상.
   // routePlan이 있고 GPS 주행 중일 때, 그 주유소 중 1km 이내로 접근한 가장 가까운 곳을 1회 알린다.
   const [routeAlert, setRouteAlert] = useState<{ station: StationWithPrice; distanceM: number } | null>(null);
