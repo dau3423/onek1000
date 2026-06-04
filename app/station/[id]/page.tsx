@@ -1,6 +1,6 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { queryStationDetailWithPriceFallback } from '@/lib/db/queries';
+import { BackButton } from '@/components/common/BackButton';
 import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL, type ProductCode, type StationDetail } from '@/types/station';
 import { InterstitialAd } from '@/components/ads/InterstitialAd';
 import { FavoriteButton } from '@/components/FavoriteButton';
@@ -39,9 +39,7 @@ export default async function StationDetailPage({ params }: Props) {
       <InterstitialAd />
       {/* 헤더 */}
       <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-gray-100 bg-white/95 px-3 backdrop-blur">
-        <Link href="/" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100">
-          ←
-        </Link>
+        <BackButton />
         <h1 className="flex-1 truncate font-bold text-gray-900">{detail.name}</h1>
         <FavoriteButton stationId={detail.id} />
       </header>

@@ -73,7 +73,9 @@ export function MyStationsMap({ stations }: Props) {
           </div>
           <div style="width:8px;height:8px;background:#fff;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;transform:rotate(45deg);margin-top:-4px"></div>
         </div>`;
-      content.addEventListener('click', () => router.push(`/station/${encodeURIComponent(s.stationId)}`));
+      content.addEventListener('click', () =>
+        router.push(`${s.isEv ? '/ev' : '/station'}/${encodeURIComponent(s.stationId)}`),
+      );
 
       const overlay = new kakao.maps.CustomOverlay({
         position: pos,

@@ -1,9 +1,10 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { queryEvStationDetail } from '@/lib/db/ev';
+import { BackButton } from '@/components/common/BackButton';
 import { NaviButton } from '@/components/station/NaviButton';
 import { EvChargerStatusPanel } from '@/components/ev/EvChargerStatusPanel';
 import { EvChargeLogButton } from '@/components/ev/EvChargeLogButton';
+import { MyEvLogsSection } from '@/components/ev/MyEvLogsSection';
 import type { EvStationDetail } from '@/types/ev';
 
 interface Props { params: { statId: string } }
@@ -28,9 +29,7 @@ export default async function EvStationDetailPage({ params }: Props) {
     <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
       {/* 헤더 */}
       <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-gray-100 bg-white/95 px-3 backdrop-blur">
-        <Link href="/" className="flex h-9 w-9 items-center justify-center rounded-full text-gray-700 hover:bg-gray-100">
-          ←
-        </Link>
+        <BackButton />
         <h1 className="flex-1 truncate font-bold text-gray-900">{detail.name}</h1>
       </header>
 
@@ -66,6 +65,9 @@ export default async function EvStationDetailPage({ params }: Props) {
           chargers: detail.chargers,
         }}
       />
+
+      {/* 내 충전 기록 — 로그인 사용자의 이 충전소 기록(없으면/비로그인은 자동 숨김) */}
+      <MyEvLogsSection statId={detail.statId} />
 
       {/* CTA */}
       <section className="mt-auto space-y-2 border-t border-gray-100 bg-gray-50 px-5 py-4 pb-[calc(16px+env(safe-area-inset-bottom))]">

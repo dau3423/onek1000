@@ -53,6 +53,8 @@ export interface FuelLogStation {
   stationId: string;
   /** 주유소/충전소명(스냅샷) */
   stationName: string;
+  /** 전기차 충전소 여부(true=EV → /ev/{statId}, false=주유소 → /station/{id}) */
+  isEv: boolean;
   /** 위도(stations 조인). 좌표 없으면 null → 핀 제외 */
   lat: number | null;
   /** 경도(stations 조인) */

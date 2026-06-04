@@ -15,6 +15,11 @@ function formatDate(iso: string): string {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// 주유량(L)/충전량(kWh) 표시 포맷. 소수 있으면 둘째자리까지, 정수면 그대로(불필요한 .00 제거).
+function formatQuantity(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(2);
+}
+
 interface Stats {
   count: number;
   totalSpent: number;
@@ -257,16 +262,24 @@ function ListTab({
                     {formatDate(l.loggedAt)}
                     {l.kind === 'ev' ? (
                       <>
+                        {l.kwh != null && (
+                          <> · <span className="font-semibold text-gray-700">{formatQuantity(l.kwh)}kWh</span></>
+                        )}
+                        {l.amountWon != null && (
+                          <> · <span className="font-semibold text-gray-700">₩{l.amountWon.toLocaleString()}</span></>
+                        )}
                         {l.unitPrice != null && <> · ₩{l.unitPrice.toLocaleString()}/kWh</>}
-                        {l.amountWon != null && <> · 총 ₩{l.amountWon.toLocaleString()}</>}
-                        {l.kwh != null && <> · {l.kwh}kWh</>}
                         {l.odometer != null && <> · {l.odometer.toLocaleString()}km</>}
                       </>
                     ) : (
                       <>
+                        {l.liters != null && (
+                          <> · <span className="font-semibold text-gray-700">{formatQuantity(l.liters)}L</span></>
+                        )}
+                        {l.amountWon != null && (
+                          <> · <span className="font-semibold text-gray-700">₩{l.amountWon.toLocaleString()}</span></>
+                        )}
                         {l.unitPrice != null && <> · ₩{l.unitPrice.toLocaleString()}/L</>}
-                        {l.amountWon != null && <> · 총 ₩{l.amountWon.toLocaleString()}</>}
-                        {l.liters != null && <> · {l.liters}L</>}
                         {l.odometer != null && <> · {l.odometer.toLocaleString()}km</>}
                       </>
                     )}

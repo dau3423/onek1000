@@ -12,6 +12,11 @@ function formatDate(iso: string): string {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// 주유량(L)/충전량(kWh) 표시 포맷. 소수 있으면 둘째자리까지, 정수면 그대로.
+function formatQuantity(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(2);
+}
+
 export async function MyFuelLogsSection({ stationId }: { stationId: string }) {
   const session = await getServerSession(authOptions);
   const email = session?.user?.email;
@@ -51,16 +56,20 @@ export async function MyFuelLogsSection({ stationId }: { stationId: string }) {
             <div className="mt-0.5 text-xs text-gray-500">
               {l.kind === 'ev' ? (
                 <>
-                  {l.unitPrice != null && <span>₩{l.unitPrice.toLocaleString()}/kWh</span>}
-                  {l.amountWon != null && <span> · 총 ₩{l.amountWon.toLocaleString()}</span>}
-                  {l.kwh != null && <span> · {l.kwh}kWh</span>}
+                  {l.kwh != null && <span className="font-semibold text-gray-700">{formatQuantity(l.kwh)}kWh</span>}
+                  {l.amountWon != null && (
+                    <span>{l.kwh != null ? ' · ' : ''}<span className="font-semibold text-gray-700">₩{l.amountWon.toLocaleString()}</span></span>
+                  )}
+                  {l.unitPrice != null && <span> · ₩{l.unitPrice.toLocaleString()}/kWh</span>}
                   {l.odometer != null && <span> · {l.odometer.toLocaleString()}km</span>}
                 </>
               ) : (
                 <>
-                  {l.unitPrice != null && <span>₩{l.unitPrice.toLocaleString()}/L</span>}
-                  {l.amountWon != null && <span> · 총 ₩{l.amountWon.toLocaleString()}</span>}
-                  {l.liters != null && <span> · {l.liters}L</span>}
+                  {l.liters != null && <span className="font-semibold text-gray-700">{formatQuantity(l.liters)}L</span>}
+                  {l.amountWon != null && (
+                    <span>{l.liters != null ? ' · ' : ''}<span className="font-semibold text-gray-700">₩{l.amountWon.toLocaleString()}</span></span>
+                  )}
+                  {l.unitPrice != null && <span> · ₩{l.unitPrice.toLocaleString()}/L</span>}
                   {l.odometer != null && <span> · {l.odometer.toLocaleString()}km</span>}
                 </>
               )}

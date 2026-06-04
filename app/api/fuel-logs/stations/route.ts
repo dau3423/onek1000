@@ -102,6 +102,7 @@ export async function GET() {
       return {
         stationId: a.stationId,
         stationName: a.stationName,
+        isEv: a.isEv,
         lat: c?.lat ?? null,
         lng: c?.lng ?? null,
         visitCount: a.visitCount,
