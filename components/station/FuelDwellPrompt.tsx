@@ -5,6 +5,7 @@
 // FuelLogButton의 단축칩/프리필/저장 로직을 모달 형태로 재사용한다(단가/유종/시각은 서버 보강).
 import { useEffect, useRef, useState } from 'react';
 import type { FuelLog } from '@/types/fuel-log';
+import { amountToQuantity, hasUsableUnitPrice, quantityToAmount } from '@/lib/fuel/calc';
 
 // FuelLogButton과 동일 프리셋(일관성).
 const LITER_PRESETS = [30, 50] as const; // L (가득은 직접입력)
@@ -15,13 +16,15 @@ type State = 'idle' | 'busy';
 interface Props {
   stationId: string;
   stationName: string;
+  /** 보조 표시용 현재가(원/L). 단축입력 시 리터↔금액 추정에 사용. 없으면 표시 생략. */
+  unitPrice?: number | null;
   /** 저장 완료/닫기 → 팝업 해제 */
   onClose: () => void;
   /** 저장 성공 시 부모에게 알림(피드백 토스트 등). 선택 */
   onSaved?: () => void;
 }
 
-export function FuelDwellPrompt({ stationId, stationName, onClose, onSaved }: Props) {
+export function FuelDwellPrompt({ stationId, stationName, unitPrice, onClose, onSaved }: Props) {
   const [state, setState] = useState<State>('idle');
   const [err, setErr] = useState<string | null>(null);
   const [liters, setLiters] = useState('');
@@ -99,6 +102,19 @@ export function FuelDwellPrompt({ stationId, stationName, onClose, onSaved }: Pr
   const chipActive = 'border-primary bg-primary/10 text-primary';
   const literChipCls = (l: number) => (recentLiters === l ? `${chip} ${chipActive}` : chip);
   const amountChipCls = (a: number) => (recentAmount === a ? `${chip} ${chipActive}` : chip);
+
+  // 단축입력 보조 표시: 현재가를 알면 입력값으로 반대편을 추정해 안내(저장값은 입력 그대로).
+  const canEstimate = hasUsableUnitPrice(unitPrice);
+  const litersNum = liters.trim() === '' ? null : Number(liters);
+  const amountNum = amount.trim() === '' ? null : Number(amount);
+  const estAmount =
+    canEstimate && litersNum != null && Number.isFinite(litersNum)
+      ? quantityToAmount(litersNum, unitPrice)
+      : null;
+  const estLiters =
+    canEstimate && amountNum != null && Number.isFinite(amountNum)
+      ? amountToQuantity(amountNum, unitPrice)
+      : null;
 
   return (
     // 라이트 톤 고정(다크 변형 없이 흰 카드) — 알림 성격의 모달이라 시인성 우선.
@@ -190,6 +206,17 @@ export function FuelDwellPrompt({ stationId, stationName, onClose, onSaved }: Pr
             />
           </label>
         </div>
+
+        {canEstimate && estAmount != null && (
+          <p className="mt-1.5 text-[11px] text-gray-500">
+            약 ₩{estAmount.toLocaleString()} (단가 ₩{unitPrice!.toLocaleString()}/L 기준)
+          </p>
+        )}
+        {canEstimate && estLiters != null && (
+          <p className="mt-1.5 text-[11px] text-gray-500">
+            약 {estLiters}L (단가 ₩{unitPrice!.toLocaleString()}/L 기준)
+          </p>
+        )}
 
         <div className="mt-4 flex gap-2">
           <button

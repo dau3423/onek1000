@@ -7,10 +7,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import type { FuelLog } from '@/types/fuel-log';
+import { amountToQuantity, hasUsableUnitPrice, quantityToAmount } from '@/lib/fuel/calc';
 
 interface Props {
   stationId: string;
   className?: string;
+  /** 보조 표시용 휘발유 현재가(원/L). 단축입력 시 리터↔금액 추정에 사용. 없으면 표시 생략. */
+  unitPrice?: number | null;
 }
 
 type State = 'idle' | 'busy' | 'done';
@@ -19,7 +22,7 @@ type State = 'idle' | 'busy' | 'done';
 const LITER_PRESETS = [30, 50] as const; // L (가득은 직접입력)
 const AMOUNT_PRESETS = [30000, 50000, 70000] as const; // 원
 
-export function FuelLogButton({ stationId, className }: Props) {
+export function FuelLogButton({ stationId, className, unitPrice }: Props) {
   const { status } = useSession();
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<State>('idle');
@@ -125,6 +128,19 @@ export function FuelLogButton({ stationId, className }: Props) {
   const literChipCls = (l: number) => (recentLiters === l ? `${chip} ${chipActive}` : chip);
   const amountChipCls = (a: number) => (recentAmount === a ? `${chip} ${chipActive}` : chip);
 
+  // 단축입력 보조 표시: 현재가(휘발유)를 알면 입력값으로 반대편을 추정해 안내(저장값은 입력 그대로).
+  const canEstimate = hasUsableUnitPrice(unitPrice);
+  const litersNum = liters.trim() === '' ? null : Number(liters);
+  const amountNum = amount.trim() === '' ? null : Number(amount);
+  const estAmount =
+    canEstimate && litersNum != null && Number.isFinite(litersNum)
+      ? quantityToAmount(litersNum, unitPrice)
+      : null;
+  const estLiters =
+    canEstimate && amountNum != null && Number.isFinite(amountNum)
+      ? amountToQuantity(amountNum, unitPrice)
+      : null;
+
   return (
     <div>
       <button
@@ -219,6 +235,16 @@ export function FuelLogButton({ stationId, className }: Props) {
               그냥 저장
             </button>
           </div>
+          {canEstimate && estAmount != null && (
+            <p className="mt-1.5 text-[11px] text-gray-500">
+              약 ₩{estAmount.toLocaleString()} (휘발유 단가 ₩{unitPrice!.toLocaleString()}/L 기준)
+            </p>
+          )}
+          {canEstimate && estLiters != null && (
+            <p className="mt-1.5 text-[11px] text-gray-500">
+              약 {estLiters}L (휘발유 단가 ₩{unitPrice!.toLocaleString()}/L 기준)
+            </p>
+          )}
           <p className="mt-1.5 text-[11px] text-gray-500">단가는 현재가로 자동 입력돼요. 값은 나중에 편집할 수 있어요.</p>
         </div>
       )}

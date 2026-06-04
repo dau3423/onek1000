@@ -907,6 +907,7 @@ export default function HomePage() {
         <FuelDwellPrompt
           stationId={dwellStation.id}
           stationName={dwellStation.name}
+          unitPrice={dwellStation.price ?? null}
           onClose={() => setDwellStation(null)}
           onSaved={() => {
             setFuelSavedToast(true);

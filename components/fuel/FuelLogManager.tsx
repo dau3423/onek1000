@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { PRODUCT_LABEL } from '@/types/station';
 import type { FuelLog } from '@/types/fuel-log';
+import { amountToQuantity, hasUsableUnitPrice, quantityToAmount } from '@/lib/fuel/calc';
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -201,6 +202,38 @@ function EditForm({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // 단가 기반 자동계산: gas=리터↔금액, ev=충전량↔금액. unit_price가 유효(양수)할 때만 동작.
+  // 무한루프 방지: onChange 핸들러 안에서만 반대쪽을 갱신(useEffect 양방향 의존 회피).
+  // 사용자가 자동계산된 값을 직접 수정하면 그 쪽이 입력 소스가 되어 반대쪽이 파생됨(덮어쓰기 허용).
+  const autoCalc = hasUsableUnitPrice(log.unitPrice);
+  const setQuantity = isEv ? setKwh : setLiters;
+
+  // 수량(L/kWh) 입력 → 금액 파생.
+  const onQuantityChange = (v: string) => {
+    setQuantity(v);
+    if (!autoCalc) return;
+    if (v.trim() === '') {
+      setAmountWon('');
+      return;
+    }
+    const n = Number(v);
+    const amount = quantityToAmount(n, log.unitPrice);
+    if (amount != null) setAmountWon(String(amount));
+  };
+
+  // 금액 입력 → 수량 파생.
+  const onAmountChange = (v: string) => {
+    setAmountWon(v);
+    if (!autoCalc) return;
+    if (v.trim() === '') {
+      setQuantity('');
+      return;
+    }
+    const n = Number(v);
+    const qty = amountToQuantity(n, log.unitPrice);
+    if (qty != null) setQuantity(String(qty));
+  };
+
   const save = async () => {
     setBusy(true);
     setErr(null);
@@ -233,14 +266,20 @@ function EditForm({
     <div className="space-y-2.5">
       <div className="text-sm font-semibold text-gray-900">{log.stationName}</div>
       <div className="grid grid-cols-3 gap-2">
-        <Field label="금액(원)" value={amountWon} onChange={setAmountWon} inputMode="numeric" />
+        <Field label="금액(원)" value={amountWon} onChange={onAmountChange} inputMode="numeric" />
         {isEv ? (
-          <Field label="충전량(kWh)" value={kwh} onChange={setKwh} inputMode="decimal" />
+          <Field label="충전량(kWh)" value={kwh} onChange={onQuantityChange} inputMode="decimal" />
         ) : (
-          <Field label="주유량(L)" value={liters} onChange={setLiters} inputMode="decimal" />
+          <Field label="주유량(L)" value={liters} onChange={onQuantityChange} inputMode="decimal" />
         )}
         <Field label="주행거리(km)" value={odometer} onChange={setOdometer} inputMode="numeric" />
       </div>
+      {autoCalc && (
+        <p className="text-[11px] text-gray-400">
+          단가 ₩{log.unitPrice!.toLocaleString()}/{isEv ? 'kWh' : 'L'} 기준 {isEv ? '충전량' : '주유량'}·금액이 자동
+          계산돼요. 직접 수정하면 그 값이 우선해요.
+        </p>
+      )}
       <input
         value={memo}
         onChange={(e) => setMemo(e.target.value)}

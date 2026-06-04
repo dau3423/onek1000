@@ -110,7 +110,7 @@ export default async function StationDetailPage({ params }: Props) {
 
       {/* CTA */}
       <section className="mt-auto space-y-2 border-t border-gray-100 bg-gray-50 px-5 py-4 pb-[calc(16px+env(safe-area-inset-bottom))]">
-        <FuelLogButton stationId={detail.id} />
+        <FuelLogButton stationId={detail.id} unitPrice={detail.prices.B027?.price ?? null} />
         <NaviButton name={detail.name} lat={detail.lat} lng={detail.lng} />
         {detail.tel && (
           <a
