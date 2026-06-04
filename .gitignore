@@ -8,3 +8,9 @@ node_modules
 firebase-debug.log
 secrets/
 next-env.d.ts
+
+# 마케팅/임시 자료 (저장소 제외)
+1000냥_주유소_IR.pptx
+마케팅_*.html
+마케팅_*.md
+tmp-*.html
