@@ -188,7 +188,7 @@ export async function queryStationDetail(id: string): Promise<StationDetail | nu
   const sb = getSupabase();
   const { data: s, error: e1 } = await sb
     .from('stations')
-    .select('id, name, brand_code, is_self, sido_code, address, tel, has_carwash, has_cvs, has_maintenance, has_lpg, is_kpetro, amenities_updated_at, lat, lng')
+    .select('id, name, brand_code, is_self, sido_code, address, tel, has_carwash, has_cvs, has_maintenance, has_lpg, is_kpetro, amenities_updated_at, is_highway, route_name, direction, lat, lng')
     .eq('id', id)
     .single();
   if (e1 || !s) return null;
@@ -211,6 +211,9 @@ export async function queryStationDetail(id: string): Promise<StationDetail | nu
     hasCarwash: !!s.has_carwash, hasCvs: !!s.has_cvs, hasMaintenance: !!s.has_maintenance,
     hasLpg: !!s.has_lpg, isKpetro: !!s.is_kpetro,
     amenitiesUpdatedAt: s.amenities_updated_at ?? null,
+    isHighway: !!s.is_highway,
+    routeName: s.route_name ?? null,
+    direction: s.direction ?? null,
     lat: s.lat ?? 0, lng: s.lng ?? 0,
     prices: priceMap,
   };

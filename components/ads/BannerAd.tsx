@@ -57,7 +57,16 @@ export function BannerAd({ hide, sheetOpen }: Props) {
   const isPremium = Boolean(data?.user?.isPremium);
 
   // 시트 펼침 시 fade-out + 클릭 차단(GPS 버튼과 동일 톤). 접히면 다시 보인다.
-  const sheetHiddenCls = sheetOpen ? 'pointer-events-none opacity-0' : 'opacity-100';
+  //
+  // ⚠️ pointer-events 유틸은 "단일 출처"로만 토글한다.
+  // Tailwind 생성 CSS에서 `.pointer-events-auto`가 `.pointer-events-none`보다 뒤에 와서
+  // (동일 특이성이라 나중 규칙 승) 한 요소에 두 클래스를 함께 두면 항상 auto가 이긴다.
+  // 과거 컨테이너에 정적 `pointer-events-auto` + 조건부 `pointer-events-none`을 같이 붙여,
+  // 시트 펼침(opacity-0)에도 배너가 클릭 가능 상태로 남아 그 아래 시트 목록 행 클릭을
+  // 가로채 결제(/pricing)로 오이동하던 버그가 있었다. 분기별로 둘 중 하나만 출력한다.
+  const sheetHiddenCls = sheetOpen
+    ? 'pointer-events-none opacity-0'
+    : 'pointer-events-auto opacity-100';
 
   const client = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
   const slot = process.env.NEXT_PUBLIC_ADSENSE_BANNER_SLOT;
@@ -80,7 +89,7 @@ export function BannerAd({ hide, sheetOpen }: Props) {
   if (!client || !slot) {
     return (
       <div
-        className={`pointer-events-auto absolute inset-x-0 z-30 flex justify-center px-3 pb-2 transition-opacity duration-300 ${sheetHiddenCls}`}
+        className={`absolute inset-x-0 z-30 flex justify-center px-3 pb-2 transition-opacity duration-300 ${sheetHiddenCls}`}
         style={{ bottom: `${BANNER_BOTTOM_PX}px` }}
         aria-hidden={sheetOpen}
       >
@@ -100,7 +109,7 @@ export function BannerAd({ hide, sheetOpen }: Props) {
 
   return (
     <div
-      className={`pointer-events-auto absolute inset-x-0 z-30 flex justify-center px-3 pb-2 transition-opacity duration-300 ${sheetHiddenCls}`}
+      className={`absolute inset-x-0 z-30 flex justify-center px-3 pb-2 transition-opacity duration-300 ${sheetHiddenCls}`}
       style={{ bottom: `calc(${BANNER_BOTTOM_PX}px + env(safe-area-inset-bottom))` }}
       aria-hidden={sheetOpen}
     >

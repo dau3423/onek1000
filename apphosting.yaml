@@ -251,6 +251,8 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  - variable: EX_API_KEY
+    secret: EX_API_KEY
   # - variable: NEXT_PUBLIC_ADSENSE_BANNER_SLOT
   #   value: "1234567890"
   #   availability:

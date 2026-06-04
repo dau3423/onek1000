@@ -10,7 +10,9 @@ export const PRODUCT_LABEL: Record<ProductCode, string> = {
   C004: 'LPG',
 };
 
-export type BrandCode = 'SKE' | 'GSC' | 'HDO' | 'SOL' | 'RTE' | 'ETC' | 'RTO' | 'NHO' | 'E1G' | 'SOG';
+// EXP = 한국도로공사 고속도로(휴게소) 주유소. Opinet UNI_ID 체계와 별개로 'EX:' prefix id로 적재된다.
+// (정유사 oilCompany 값은 별도로 매핑하지 않고, 고속도로 구분은 brand=EXP + is_highway 플래그로 표현한다.)
+export type BrandCode = 'SKE' | 'GSC' | 'HDO' | 'SOL' | 'RTE' | 'ETC' | 'RTO' | 'NHO' | 'E1G' | 'SOG' | 'EXP';
 
 export const BRAND_LABEL: Record<BrandCode, string> = {
   SKE: 'SK에너지',
@@ -23,6 +25,7 @@ export const BRAND_LABEL: Record<BrandCode, string> = {
   E1G: 'E1',
   SOG: 'SK가스',
   ETC: '자영/기타',
+  EXP: '고속도로',
 };
 
 export const BRAND_COLOR: Record<BrandCode, string> = {
@@ -36,6 +39,7 @@ export const BRAND_COLOR: Record<BrandCode, string> = {
   E1G: '#0033A0',
   SOG: '#E2231A',
   ETC: '#666666',
+  EXP: '#7C3AED', // 보라 — 일반 정유사/알뜰과 시각적으로 또렷이 구분
 };
 
 export type SidoCode =
@@ -68,6 +72,12 @@ export interface StationBase {
   isKpetro?: boolean;
   /** 부가서비스 마지막 보강 시각(ISO). null/undefined면 미보강 */
   amenitiesUpdatedAt?: string | null;
+  /** 고속도로(휴게소) 주유소 여부 — 한국도로공사 데이터로 적재된 건. UI에서 '고속도로' 배지에 사용. */
+  isHighway?: boolean;
+  /** 고속도로 노선명(예: 경부선) — isHighway일 때만 채워짐 */
+  routeName?: string | null;
+  /** 고속도로 방향(예: 부산) — isHighway일 때만 채워짐 */
+  direction?: string | null;
   lat: number;
   lng: number;
 }

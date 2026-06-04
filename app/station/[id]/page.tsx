@@ -54,6 +54,13 @@ export default async function StationDetailPage({ params }: Props) {
           <span className="text-sm font-semibold text-gray-700">
             {BRAND_LABEL[detail.brand]}
           </span>
+          {detail.isHighway && (
+            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-700">
+              고속도로
+              {detail.routeName ? ` · ${detail.routeName}` : ''}
+              {detail.direction ? `(${detail.direction})` : ''}
+            </span>
+          )}
         </div>
         <p className="mt-2 text-sm text-gray-600">📍 {detail.address}</p>
         {detail.tel && <p className="mt-1 text-sm text-gray-600">📞 {detail.tel}</p>}

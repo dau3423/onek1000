@@ -25,6 +25,7 @@ import { useGeolocation } from '@/hooks/useGeolocation';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { quantize, distanceMeters, distancePointToPath } from '@/lib/map/geo';
+import { ensureNotifyPermission } from '@/lib/sound';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
 import type { BboxResponse, RadiusResponse, StationWithPrice, NationalTop10Item, NationalTop10Response, StationPoint, StationsInBboxResponse, RoutePlan } from '@/types/station';
 import type { EvBboxResponse, EvStationMarker } from '@/types/ev';
@@ -94,11 +95,19 @@ export default function HomePage() {
   // 비로그인(unauthenticated)이면 기존 인증 유도 패턴(next-auth signIn, 현재 화면으로 복귀)을
   // 그대로 재사용해 로그인/회원가입을 유도한다(BrandFilter/FavoriteButton/route 페이지와 일관).
   // 세션 확인 중(loading)에는 막지 않고 통과시킨다(깜빡임/오차단 방지). 인증이면 action 실행.
+  // 시스템 알림 권한은 "사용자 인터랙션(회원 전용 동작) 직후"에 1회만 자연스럽게 요청한다.
+  // 페이지 로드 즉시 무분별 요청 금지. 거부/미지원이면 조용히 인앱음만 사용된다.
+  const notifyAsked = useRef(false);
   const requireAuth = useCallback(
     (action: () => void) => {
       if (authStatus === 'unauthenticated') {
         signIn(undefined, { callbackUrl: '/' });
         return;
+      }
+      // 회원 가드 통과(길안내 시작/따라가기 등 명시적 인터랙션) 시점에 권한 확보 1회 시도.
+      if (!notifyAsked.current) {
+        notifyAsked.current = true;
+        void ensureNotifyPermission();
       }
       action();
     },

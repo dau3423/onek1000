@@ -6,10 +6,16 @@ import { useMapStore } from '@/stores/map';
 import { BRAND_LABEL, BRAND_COLOR, type BrandCode } from '@/types/station';
 import clsx from 'clsx';
 
-// 필터에 노출할 브랜드 순서 (주요 정유사 → 알뜰 → 기타 → LPG)
+// 필터에 노출할 브랜드 순서 (주요 정유사 → 알뜰 → 고속도로 → 기타 → LPG)
 const BRAND_OPTIONS: BrandCode[] = [
-  'SKE', 'GSC', 'HDO', 'SOL', 'RTE', 'RTO', 'NHO', 'ETC', 'E1G', 'SOG',
+  'SKE', 'GSC', 'HDO', 'SOL', 'RTE', 'RTO', 'NHO', 'EXP', 'ETC', 'E1G', 'SOG',
 ];
+
+// 필터 칩 전용 라벨 오버라이드 — 마커/상세 등 좁은 곳은 BRAND_LABEL('고속도로')를 그대로 쓰고,
+// 필터 칩에서만 사용자가 식별하기 쉽게 '고속도로(휴게소)'로 노출한다.
+const FILTER_LABEL_OVERRIDE: Partial<Record<BrandCode, string>> = {
+  EXP: '고속도로(휴게소)',
+};
 
 /**
  * 브랜드별 필터 (회원 전용).
@@ -103,7 +109,7 @@ export function BrandFilter() {
                     className="h-2 w-2 shrink-0 rounded-full"
                     style={{ background: BRAND_COLOR[b] }}
                   />
-                  {BRAND_LABEL[b]}
+                  {FILTER_LABEL_OVERRIDE[b] ?? BRAND_LABEL[b]}
                 </button>
               );
             })}

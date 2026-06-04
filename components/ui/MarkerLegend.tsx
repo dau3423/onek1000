@@ -68,6 +68,7 @@ const BRANDS: { label: string; color: string }[] = [
   { label: '현대오일뱅크', color: BRAND_COLOR.HDO },
   { label: 'S-OIL', color: BRAND_COLOR.SOL },
   { label: '알뜰주유소', color: BRAND_COLOR.RTE },
+  { label: '고속도로', color: BRAND_COLOR.EXP },
   { label: '자영/기타', color: BRAND_COLOR.ETC },
 ];
 

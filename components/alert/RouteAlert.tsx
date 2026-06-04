@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import type { StationWithPrice } from '@/types/station';
 import { BRAND_LABEL } from '@/types/station';
-import { playAlertChime } from '@/lib/sound';
+import { playAlertChime, notifyRouteAlert, isNotifyGranted } from '@/lib/sound';
 
 interface Props {
   /** 근접한 경로 최저가 주유소 */
@@ -24,15 +24,29 @@ interface Props {
  * 기존 내 주변 RadiusAlert와 형태를 맞추되, "경로상 최저가" 문구로 구분한다.
  */
 export function RouteAlert({ station, distanceM, onClick, onDismiss, onNavigate }: Props) {
-  // 새 대상으로 배너가 바뀔 때 짧은 효과음(마운트=등장). autoplay 차단 시 조용히 무시.
-  useEffect(() => {
-    playAlertChime();
-  }, [station.id]);
-
   // "N00m 앞" — 100m 단위 반올림(1km 미만), 그 이상은 km.
   const distanceText = distanceM < 1000
     ? `${Math.max(100, Math.round(distanceM / 100) * 100)}m`
     : `${(distanceM / 1000).toFixed(1)}km`;
+
+  // 새 대상으로 배너가 바뀔 때 1회(마운트=등장):
+  //  - 큰 인앱 알림음을 항상 보장(playAlertChime). autoplay 차단 시 조용히 무시.
+  //  - 권한이 granted면 OS 시스템 알림도 함께 시도(추가/폴백). 권한 요청은 여기서 하지 않는다
+  //    (무분별 요청 금지 — app/page.tsx의 사용자 인터랙션 핸들러에서 ensureNotifyPermission로 확보).
+  //  - 시스템 알림과 인앱음이 동시에 나도 과하지 않게, granted일 땐 인앱음을 약간(0.8) 낮춘다.
+  useEffect(() => {
+    const granted = isNotifyGranted();
+    playAlertChime(granted ? 0.8 : 1);
+    if (granted) {
+      notifyRouteAlert({
+        title: '🚗 경로상 최저가 주유소',
+        body: `${station.name} · ₩${station.price.toLocaleString()} (${BRAND_LABEL[station.brand]}) · ${distanceText} 앞`,
+        tag: `route-alert-${station.id}`,
+      });
+    }
+    // station.id 변경(=새 대상 등장) 시에만 발화. distanceM 변동으론 재발화하지 않음(리렌더 반복 금지).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [station.id]);
 
   return (
     <div

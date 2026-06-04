@@ -8,7 +8,7 @@ import KakaoProvider from 'next-auth/providers/kakao';
 import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
-import { getPremiumStatus, getDefaultProduct, getNickname, getAvatar, getSessionId } from './session';
+import { getPremiumStatus, getDefaultProduct, getNickname, getAvatar, getSessionId, getSessionIdCached } from './session';
 import { generateUniqueNickname } from '@/lib/nickname-db';
 
 const PREMIUM_CACHE_MS = 60_000;
@@ -151,6 +151,17 @@ export const authOptions: NextAuthOptions = {
         token.sessionRevoked = false;
       }
 
+      // 1계정 1세션 검증 — isPremium(60초) 캐시와 "분리"하여 매 재검증마다 수행한다.
+      // 다른 기기에서 더 나중에 로그인하면 DB의 session_id가 바뀌므로, 이 검증이
+      // 빠르게 돌수록 기존 기기가 빨리 무효화된다. DB 부하는 경량 캐시(약 3초)로 흡수한다.
+      // (getSessionIdCached: email→session_id 단일 컬럼 조회만, isPremium 미조회)
+      // 갓 로그인 케이스는 위에서 동기화했으니 제외.
+      if (!isFreshLogin && token.userId && token.sid) {
+        const current = await getSessionIdCached(token.userId);
+        // current === undefined: session_id 컬럼 미적용 환경 등 → 검증 불가, 기존 동작 유지.
+        if (current && current !== token.sid) token.sessionRevoked = true;
+      }
+
       // isPremium 캐시 (60초 또는 명시적 update trigger 시 갱신)
       const now = Date.now();
       const stale = !token.premiumCheckedAt || now - token.premiumCheckedAt > PREMIUM_CACHE_MS;
@@ -166,15 +177,6 @@ export const authOptions: NextAuthOptions = {
         // 프로필 사진(사용자 관리 image_url)도 같은 주기로 갱신.
         // DB값이 있으면 우선, 없으면 소셜 이미지 폴백.
         token.picture = (await getAvatar(token.userId)) ?? token.picture ?? undefined;
-
-        // 1계정 1세션 검증: DB 최신 sid와 토큰 sid가 다르면(= 다른 기기에서 더 나중에
-        // 로그인) 이 세션을 무효로 표시한다. 갓 로그인 케이스는 위에서 동기화했으니 제외.
-        // DB 조회는 프리미엄 캐시와 같은 60초 주기에 묶어 추가 부담을 최소화한다.
-        if (!isFreshLogin && token.userId && token.sid) {
-          const current = await getSessionId(token.userId);
-          // current === undefined: session_id 컬럼 미적용 환경 등 → 검증 불가, 기존 동작 유지.
-          if (current && current !== token.sid) token.sessionRevoked = true;
-        }
       }
       return token;
     },

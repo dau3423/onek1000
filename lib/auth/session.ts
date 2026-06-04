@@ -124,3 +124,24 @@ export async function getSessionId(userId?: string): Promise<string | undefined>
   if (error) return undefined;
   return (data?.session_id as string | null) ?? undefined;
 }
+
+/**
+ * 경량 session_id 캐시 — 1계정 1세션 검증을 isPremium(60초)과 분리하면서도
+ * jwt 콜백이 매 재검증마다 DB를 때리지 않도록 아주 짧게(기본 3초) 캐싱한다.
+ *
+ * - 키: userId. 값: 마지막 조회한 session_id(또는 undefined=검증불가)와 조회시각.
+ * - 캐시 적중 시 DB 미조회. 만료 시 1회 조회 후 갱신.
+ * - 무효화 지연: refetchInterval(10초)·포커스 복귀 트리거와 합쳐도 최대 약 (10초+3초) 수준.
+ *   서버 인스턴스 모듈 메모리라 인스턴스별 독립이지만, 인증 검증 용도엔 충분하다.
+ */
+const SESSION_ID_CACHE_MS = 3_000;
+const sessionIdCache = new Map<string, { sid: string | undefined; at: number }>();
+
+export async function getSessionIdCached(userId: string): Promise<string | undefined> {
+  const now = Date.now();
+  const hit = sessionIdCache.get(userId);
+  if (hit && now - hit.at < SESSION_ID_CACHE_MS) return hit.sid;
+  const sid = await getSessionId(userId);
+  sessionIdCache.set(userId, { sid, at: now });
+  return sid;
+}
