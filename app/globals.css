@@ -105,13 +105,51 @@ body {
   100% { transform: scale(1.9); opacity: 0; }
 }
 
+/* === 현재 배너에 떠 있는 "그" 경로 최저가 주유소 강조 ===
+   RouteAlert 배너가 가리키는 주유소(highlightStationId)에만 추가로 입힌다.
+   - 더 크고 진한 이중 펄스 링(주황 계열)으로 다른 경로 마커(은은한 블루 펄스)와 구분.
+   - 마커 본체는 위아래로 살짝 bounce시켜 "지금 이 주유소"임을 한눈에 보이게 한다.
+   route-blink::before(블루 펄스)는 그대로 두고 그 위에 ::after로 더 강한 링을 덧깐다. */
+.route-blink--focus::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  width: 30px;
+  height: 30px;
+  margin-left: -15px;
+  border-radius: 50%;
+  background: rgba(249, 115, 22, .45);  /* 주황 — 배너(primary)와 구분되는 강조색 */
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, .55);
+  transform: translateZ(0);
+  animation: route-pulse-focus 1.2s ease-out infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+.route-blink--focus > div:last-child {
+  animation: route-bounce 1.2s ease-in-out infinite;
+}
+@keyframes route-pulse-focus {
+  0%   { transform: scale(.6); opacity: 1; }
+  70%  { transform: scale(2.4); opacity: 0; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+@keyframes route-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+
 /* 모션 민감 사용자: 반짝임/글로우/스윕/스파클/펄스 중단(접근성, NFR-7). */
 @media (prefers-reduced-motion: reduce) {
   .top10-glow,
   .top10-shimmer::after,
   .top10-pin::after,
   .top10-sparkle,
-  .route-blink::before { animation: none !important; }
+  .route-blink::before,
+  .route-blink--focus::after,
+  .route-blink--focus > div:last-child { animation: none !important; }
   .top10-sparkle { display: none; }
   .route-blink::before { display: none; }
+  /* 모션 민감 시 펄스 링은 끄되, 정적 강조 링은 남겨 어떤 마커인지 식별은 유지한다. */
+  .route-blink--focus::after { display: block; opacity: .7; transform: scale(1.4); }
 }

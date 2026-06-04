@@ -10,6 +10,8 @@ function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }
   const params = useSearchParams();
   const router = useRouter();
   const callbackUrl = params.get('callbackUrl') ?? '/';
+  // 중복 로그인(다른 기기에서 새 로그인)으로 밀려나 강제 로그아웃된 경우 안내.
+  const duplicateNotice = params.get('reason') === 'duplicate';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,6 +48,12 @@ function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }
       />
       <h1 className="mt-4 text-xl font-bold text-gray-900">1000냥 주유소</h1>
       <p className="mt-1 text-sm text-gray-500">소셜 계정으로 1초만에 시작</p>
+
+      {duplicateNotice && (
+        <div className="mt-6 w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
+          다른 기기에서 로그인되어 현재 기기는 로그아웃되었습니다. 계정당 1개의 기기에서만 사용할 수 있어요. 다시 로그인해 주세요.
+        </div>
+      )}
 
       <div className="mt-8 w-full space-y-2">
         <button

@@ -227,6 +227,12 @@ interface Props {
   routePlan?: RoutePlan | null;
   /** 경로 최저가 주유소 마커 클릭 콜백(routePlan 표시 중). 미지정 시 onMarkerClick 사용. */
   onRouteStationClick?: (s: StationWithPrice) => void;
+  /**
+   * 지금 RouteAlert 배너에 떠 있는 "그" 경로 최저가 주유소 id. 해당 마커만 더 강하게
+   * 강조(주황 펄스 + bounce)해, 배너가 가리키는 주유소를 지도에서 한눈에 찾게 한다.
+   * null/미지정이면 어떤 경로 마커도 추가 강조하지 않는다.
+   */
+  highlightStationId?: string | null;
   onBoundsChange?: (b: {
     swLat: number; swLng: number; neLat: number; neLng: number; zoom: number;
   }) => void;
@@ -257,6 +263,7 @@ export function KakaoMap({
   onEvMarkerClick,
   routePlan,
   onRouteStationClick,
+  highlightStationId = null,
   onBoundsChange,
   onViewChange,
   onUserPan,
@@ -280,6 +287,11 @@ export function KakaoMap({
   const routeLineRef = useRef<kakao.maps.Polyline | null>(null);
   // 경로 오버레이(출발/도착 핀 + 경로 최저가 주유소 마커) — Polyline과 함께 관리.
   const routeOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
+  // 경로 최저가 주유소 마커의 .route-blink 엘리먼트 맵(station id → el). 배너 강조 대상이
+  // 바뀔 때 마커 재생성(=bounds 재fit) 없이 focus 클래스만 토글하기 위해 보관한다.
+  const routeBlinkElsRef = useRef<Map<string, HTMLElement>>(new Map());
+  // 경로 최저가 마커 오버레이 맵(station id → overlay). 강조 대상을 다른 마커 위로 올리기 위함.
+  const routeStationOverlaysRef = useRef<Map<string, kakao.maps.CustomOverlay>>(new Map());
   const onRouteStationClickRef = useRef(onRouteStationClick);
   useEffect(() => { onRouteStationClickRef.current = onRouteStationClick; }, [onRouteStationClick]);
   const onMarkerClickRef = useRef(onMarkerClick);
@@ -759,6 +771,8 @@ export function KakaoMap({
     if (routeLineRef.current) { routeLineRef.current.setMap(null); routeLineRef.current = null; }
     routeOverlaysRef.current.forEach((o) => o.setMap(null));
     routeOverlaysRef.current = [];
+    routeBlinkElsRef.current = new Map();
+    routeStationOverlaysRef.current = new Map();
 
     if (!routePlan) return;
 
@@ -829,12 +843,16 @@ export function KakaoMap({
       content.addEventListener('click', () => {
         (onRouteStationClickRef.current ?? onMarkerClickRef.current)?.(s);
       });
+      // 배너 강조 토글 대상(.route-blink) 등록 — id로 찾아 focus 클래스만 입힌다.
+      const blinkEl = content.querySelector('.route-blink');
+      if (blinkEl instanceof HTMLElement) routeBlinkElsRef.current.set(s.id, blinkEl);
       const ov = new window.kakao.maps.CustomOverlay({
         position: new window.kakao.maps.LatLng(s.lat, s.lng),
         content, yAnchor: 1, clickable: true, zIndex: 15,
       });
       ov.setMap(map);
       routeOverlaysRef.current.push(ov);
+      routeStationOverlaysRef.current.set(s.id, ov);
     });
 
     // (d) 출발~도착(+주유소)이 모두 보이게 bounds fit
@@ -845,6 +863,21 @@ export function KakaoMap({
     // setBounds는 idle을 유발 → onBoundsChange로 bbox 재조회가 이어진다(정상).
     // routePlan은 마운트/변경 시 1회만 fit하면 되므로 의존성에서 stations 등 다른 데이터는 제외.
   }, [ready, routePlan]);
+
+  // 배너 강조 대상(highlightStationId) 변경 시, 해당 경로 마커에만 focus 강조 클래스를 토글한다.
+  // 마커를 재생성하지 않으므로(=bounds 재fit 없음) 배너가 가리키는 주유소만 부드럽게 강조/해제된다.
+  // routePlan 변경으로 마커가 새로 그려진 직후에도(엘리먼트 맵 갱신) 이 effect가 다시 적용한다.
+  useEffect(() => {
+    if (!ready) return;
+    const els = routeBlinkElsRef.current;
+    const ovs = routeStationOverlaysRef.current;
+    for (const [id, el] of els) {
+      const focused = id === highlightStationId;
+      el.classList.toggle('route-blink--focus', focused);
+      // 강조 마커는 다른 경로 마커(zIndex 15) 위로 올려 겹쳐도 가려지지 않게 한다.
+      ovs.get(id)?.setZIndex(focused ? 18 : 15);
+    }
+  }, [ready, routePlan, highlightStationId]);
 
   // 내 위치 마커 + 1km 원
   useEffect(() => {
@@ -898,8 +931,9 @@ export function KakaoMap({
       map.setLevel(MY_AREA_LEVEL);
       panToProgrammatic(pos);
     } else if (follow) {
-      // 따라가기 모드: 위치 갱신마다 줌은 유지한 채 중심만 부드럽게 이동
-      panToProgrammatic(pos);
+      // 따라가기 모드: 위치 갱신마다 줌은 유지한 채 중심만 부드럽게 이동.
+      // 네비 스타일로 내 위치를 화면 하단부에 두어 진행 방향 앞이 더 보이게 한다(heading 있을 때).
+      panToProgrammatic(pos, true);
     }
     // follow 변화만으로는 재이동하지 않고 위치 갱신 시점에만 추적 (의도치 않은 이동 방지)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -910,7 +944,8 @@ export function KakaoMap({
     if (!ready || !mapRef.current || !myLocation || recenterSignal === 0) return;
     const map = mapRef.current;
     map.setLevel(MY_AREA_LEVEL);
-    panToProgrammatic(new window.kakao.maps.LatLng(myLocation.lat, myLocation.lng));
+    // 따라가기 중이면 네비 오프셋(하단부 배치) 유지, 아니면 중앙.
+    panToProgrammatic(new window.kakao.maps.LatLng(myLocation.lat, myLocation.lng), followRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recenterSignal]);
 
@@ -935,12 +970,46 @@ export function KakaoMap({
     }
   }, [heading, myLocation]);
 
+  // 네비 스타일 카메라: 따라가기(follow) 주행 중에는 내 위치를 화면 중앙이 아닌 하단부
+  // (세로 NAVI_USER_VERTICAL 지점, 기본 72%)에 두어 진행 방향 앞쪽 길을 더 보여준다.
+  // 화면 비율 + 현재 줌(projection)을 활용해 "지도 중심"을 heading 방향으로 일정 픽셀만큼
+  // 앞으로 밀어 잡는 방식이라 줌 레벨이 달라져도 화면상 위치 비율이 일정하게 유지된다.
+  // heading이 없으면(정지/미지원) 오프셋 없이 기존처럼 내 위치를 중앙에 둔다.
+  const NAVI_USER_VERTICAL = 0.72; // 내 위치를 화면 세로 72% 지점(아래쪽)에 배치
+  function centerForFollow(pos: kakao.maps.LatLng): kakao.maps.LatLng {
+    const map = mapRef.current;
+    const container = containerRef.current;
+    if (!map || !container) return pos;
+    const h = lastHeadingRef.current;
+    // heading 없음 → 중앙 배치(오프셋 0). 네비 모드(follow)가 아니어도 호출되므로 follow도 확인.
+    if (!followRef.current || h === null || !Number.isFinite(h)) return pos;
+    const height = container.clientHeight;
+    if (!height) return pos;
+    // 내 위치를 중앙(50%)에서 (NAVI_USER_VERTICAL-0.5)만큼 아래로 내리려면,
+    // 지도 중심을 그만큼 "진행 방향 앞쪽"으로 옮긴다(= 화면상 위로). 픽셀 거리로 환산.
+    const forwardPx = (NAVI_USER_VERTICAL - 0.5) * height;
+    const rad = (h * Math.PI) / 180;
+    // 화면 좌표: 위(북쪽 고정 지도)가 -y. heading 0=북 → 앞쪽은 화면 위(-y).
+    const dx = Math.sin(rad) * forwardPx;
+    const dy = -Math.cos(rad) * forwardPx;
+    try {
+      const proj = map.getProjection();
+      const pt = proj.containerPointFromCoords(pos);
+      const shifted = new window.kakao.maps.Point(pt.x + dx, pt.y + dy);
+      return proj.coordsFromContainerPoint(shifted);
+    } catch {
+      // projection 미준비 등 예외 시 안전하게 중앙 배치로 폴백.
+      return pos;
+    }
+  }
+
   // 프로그램적 중심 이동 — 따라가기 해제 트리거(dragstart)와 구분하기 위해 플래그를 잠깐 세운다.
-  function panToProgrammatic(pos: kakao.maps.LatLng) {
+  // useNaviOffset=true면 네비 스타일 오프셋(내 위치를 화면 하단부)으로 중심을 보정한다.
+  function panToProgrammatic(pos: kakao.maps.LatLng, useNaviOffset = false) {
     const map = mapRef.current;
     if (!map) return;
     programmaticMoveRef.current = true;
-    map.panTo(pos);
+    map.panTo(useNaviOffset ? centerForFollow(pos) : pos);
     // panTo 애니메이션 동안 발생할 수 있는 이벤트를 흡수한 뒤 플래그 해제
     window.setTimeout(() => { programmaticMoveRef.current = false; }, 600);
   }

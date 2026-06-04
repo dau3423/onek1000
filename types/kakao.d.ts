@@ -22,6 +22,19 @@ declare global {
       getNorthEast(): LatLng;
     }
 
+    // 화면(컨테이너) 픽셀 좌표. projection 변환에 사용.
+    class Point {
+      constructor(x: number, y: number);
+      x: number;
+      y: number;
+    }
+
+    // 지도 좌표 ↔ 화면 픽셀 좌표 변환기. map.getProjection()으로 얻는다.
+    interface MapProjection {
+      containerPointFromCoords(latlng: LatLng): Point;
+      coordsFromContainerPoint(point: Point): LatLng;
+    }
+
     class Map {
       constructor(container: HTMLElement, options: MapOptions);
       setCenter(latlng: LatLng): void;
@@ -29,6 +42,7 @@ declare global {
       setLevel(level: number): void;
       getLevel(): number;
       getBounds(): LatLngBounds;
+      getProjection(): MapProjection;
       panTo(latlng: LatLng): void;
       relayout(): void;
       setBounds(bounds: LatLngBounds): void;
@@ -59,6 +73,7 @@ declare global {
       });
       setMap(map: Map | null): void;
       setPosition(latlng: LatLng): void;
+      setZIndex(zIndex: number): void;
     }
 
     class Polyline {

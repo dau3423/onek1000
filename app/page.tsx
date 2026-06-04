@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession, signIn } from 'next-auth/react';
 import { Header } from '@/components/ui/Header';
 import { FilterBar } from '@/components/ui/FilterBar';
 import { BottomSheet, SHEET_PEEK_PX } from '@/components/ui/BottomSheet';
@@ -26,7 +26,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { quantize, distanceMeters, distancePointToPath } from '@/lib/map/geo';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
-import type { BboxResponse, RadiusResponse, StationWithPrice, NationalTop10Item, NationalTop10Response, StationPoint, StationsInBboxResponse } from '@/types/station';
+import type { BboxResponse, RadiusResponse, StationWithPrice, NationalTop10Item, NationalTop10Response, StationPoint, StationsInBboxResponse, RoutePlan } from '@/types/station';
 import type { EvBboxResponse, EvStationMarker } from '@/types/ev';
 
 // KakaoMap은 window 의존 + SDK 외부 스크립트라 SSR 비활성
@@ -39,6 +39,9 @@ const ALERT_THRESHOLD = 50; // 평균 대비 -50원 이상 저렴할 때 알람
 const ALERT_RADIUS_M = 1000; // 알람 판정 반경 (FR-2.3)
 // 경로 주행 중 '경로상 최저가 주유소' 근접 알림 판정 반경 (내 주변 알람과 동일 1km, 조정 가능)
 const ROUTE_ALERT_RADIUS_M = 1000;
+// 표시 중인 배너를 자동으로 닫는 '이탈' 반경. 진입(1km)보다 크게 잡아 히스테리시스를 둔다
+// — GPS 지터로 1km 경계에서 들락거려도 배너가 깜빡이지 않게(주유소를 "지나간" 경우만 닫힘).
+const ROUTE_ALERT_EXIT_M = 1200;
 // === 경로 이탈 자동 재탐색 파라미터 ===
 // 도로 path로부터 이 거리(m)를 초과하면 '이탈 후보'로 본다.
 const OFF_ROUTE_M = 150;
@@ -60,10 +63,47 @@ const GRAY_DOT_MIN_ZOOM = 10;
 // 회색 점 조회 상한(서버 limit과 정렬). 화면 영역 내로 제한 + 대량 로드 방지.
 const GRAY_DOT_LIMIT = 500;
 
+/**
+ * "실제 새 경로"를 식별하는 경로 정체성 키.
+ * - 출발/도착/유종 + 도로 path(첫·끝점·길이)를 합쳐 만든다.
+ * - 새 경로 검색은 물론, 경로 이탈 자동 재탐색(출발=내 위치, path 변경)도 키가 바뀌므로
+ *   "새 경로"로 인식된다. 반면 동일 routePlan 객체로의 단순 재렌더에는 키가 동일해
+ *   알림 억제 상태(1회 알림/닫음)가 불필요하게 초기화되지 않는다.
+ * - 좌표는 소수 5자리(약 1m)로 절단해 부동소수 미세차로 키가 흔들리지 않게 한다.
+ */
+function routeIdentityKey(plan: RoutePlan): string {
+  const f = (n: number) => n.toFixed(5);
+  const head = plan.path[0];
+  const tail = plan.path[plan.path.length - 1];
+  return [
+    f(plan.from.lat), f(plan.from.lng),
+    f(plan.to.lat), f(plan.to.lng),
+    plan.product,
+    plan.path.length,
+    head ? `${f(head.lat)},${f(head.lng)}` : '-',
+    tail ? `${f(tail.lat)},${f(tail.lng)}` : '-',
+  ].join('|');
+}
+
 export default function HomePage() {
   const router = useRouter();
   const { status: authStatus } = useSession();
   const { product, brands, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, setRoutePlan, clearRoutePlan } = useMapStore();
+
+  // 회원 전용 동작 가드 — 길찾기/길안내 시작·따라가기는 로그인 회원만 사용(FR-5 기반 UX 정책).
+  // 비로그인(unauthenticated)이면 기존 인증 유도 패턴(next-auth signIn, 현재 화면으로 복귀)을
+  // 그대로 재사용해 로그인/회원가입을 유도한다(BrandFilter/FavoriteButton/route 페이지와 일관).
+  // 세션 확인 중(loading)에는 막지 않고 통과시킨다(깜빡임/오차단 방지). 인증이면 action 실행.
+  const requireAuth = useCallback(
+    (action: () => void) => {
+      if (authStatus === 'unauthenticated') {
+        signIn(undefined, { callbackUrl: '/' });
+        return;
+      }
+      action();
+    },
+    [authStatus],
+  );
 
   // 최신 유종을 항상 참조하기 위한 ref. fetchStations/fetchAllStations 같은 콜백이
   // (지도 idle의 onBoundsChange 등에서) 옛 렌더의 클로저로 호출되더라도, 실제 요청은
@@ -473,13 +513,31 @@ export default function HomePage() {
   const [routeAlert, setRouteAlert] = useState<{ station: StationWithPrice; distanceM: number } | null>(null);
   // 이미 알린(근접 트리거된) 주유소 id 집합 — 한 주유소는 1회만 알린다(중복 알림 방지).
   const alertedRouteIdsRef = useRef<Set<string>>(new Set());
-  // 사용자가 닫은 알림은 다시 띄우지 않기 위한 닫힘 플래그(현재 표시 대상 기준).
-  const routeAlertDismissedRef = useRef<string | null>(null);
+  // 사용자가 닫은(✕) + 지나가서 자동으로 닫힌 주유소 id 누적 집합.
+  // "현재 경로(세션)" 동안 같은 배너를 다시 띄우지 않기 위한 억제 목록(요청2).
+  // 여러 주유소를 닫아도 각각 누적되며, 새 경로로 재탐색되면(아래 키 기반 리셋) 함께 초기화된다.
+  const routeAlertDismissedRef = useRef<Set<string>>(new Set());
 
-  // routePlan이 바뀌면(새 경로 검색/해제) 알림 상태를 리셋한다.
+  // === 알림 억제 상태 리셋 식별(요청1) ===
+  // routePlan이 "실제 새 경로"로 바뀔 때만(routeIdentityKey 변경) 1회 알림/닫음 억제를 리셋한다.
+  //  - 새 경로 검색: from/to/product/path가 모두 새로 → 키 변경 → 리셋.
+  //  - 경로 이탈 자동 재탐색: 출발(내 위치)·도로 path가 바뀜 → 키 변경 → 리셋
+  //    → 새 경로 기준 경로상 최저가를 근접 시 다시 알릴 수 있다.
+  //  - 동일 routePlan 객체로의 단순 재렌더: 키 동일 → 리셋하지 않음(불필요 깜빡임 방지).
+  const routeIdentityRef = useRef<string | null>(null);
   useEffect(() => {
+    if (!routePlan) {
+      routeIdentityRef.current = null;
+      alertedRouteIdsRef.current = new Set();
+      routeAlertDismissedRef.current = new Set();
+      setRouteAlert(null);
+      return;
+    }
+    const key = routeIdentityKey(routePlan);
+    if (routeIdentityRef.current === key) return; // 같은 경로 → 억제 상태 유지
+    routeIdentityRef.current = key;
     alertedRouteIdsRef.current = new Set();
-    routeAlertDismissedRef.current = null;
+    routeAlertDismissedRef.current = new Set();
     setRouteAlert(null);
   }, [routePlan]);
 
@@ -492,6 +550,7 @@ export default function HomePage() {
     let nearest: { station: StationWithPrice; distanceM: number } | null = null;
     for (const s of routePlan.stations) {
       if (alertedRouteIdsRef.current.has(s.id)) continue; // 이미 알린 주유소는 건너뜀
+      if (routeAlertDismissedRef.current.has(s.id)) continue; // 현재 경로에서 닫은 주유소는 다시 안 띄움(요청2)
       const d = distanceMeters(lat, lng, s.lat, s.lng);
       if (d <= ROUTE_ALERT_RADIUS_M && (!nearest || d < nearest.distanceM)) {
         nearest = { station: s, distanceM: d };
@@ -499,12 +558,28 @@ export default function HomePage() {
     }
     if (nearest) {
       alertedRouteIdsRef.current.add(nearest.station.id); // 1회만 — 멀어졌다 재접근해도 재알림 안 함
-      routeAlertDismissedRef.current = null;
       setRouteAlert(nearest);
     }
     // 위경도 변화에만 반응(heading/accuracy 변경에는 재평가 불필요)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geo.coords?.lat, geo.coords?.lng, routePlan, layer]);
+
+  // 표시 중인 RouteAlert 주유소를 "지나가면"(멀어지면) 배너를 자동으로 닫는다.
+  // 진입(1km)보다 큰 이탈 반경(ROUTE_ALERT_EXIT_M)을 써 히스테리시스를 둬, GPS 지터로
+  // 경계에서 들락거려도 깜빡이지 않게 한다. 해당 주유소는 진입 시점에 이미 alertedRouteIdsRef에
+  // 추가되어 있으므로(1회 알림 정책), 자동으로 닫힌 뒤 재접근해도 다시 뜨지 않는다.
+  useEffect(() => {
+    if (!routeAlert || !geo.coords) return;
+    const { lat, lng } = geo.coords;
+    const d = distanceMeters(lat, lng, routeAlert.station.lat, routeAlert.station.lng);
+    if (d > ROUTE_ALERT_EXIT_M) {
+      // 사용자가 ✕로 닫은 것과 동일하게 처리(렌더 가드 일관성). 강조도 함께 해제된다.
+      // 현재 경로 억제 목록에 누적해, 새 경로로 재탐색되기 전까지 같은 배너가 다시 뜨지 않게 한다(요청2).
+      routeAlertDismissedRef.current.add(routeAlert.station.id);
+      setRouteAlert(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geo.coords?.lat, geo.coords?.lng, routeAlert]);
 
   // === 경로 이탈 자동 재탐색 ===
   // 경로 모드 + GPS 주행 중, 내 위치가 도로 path에서 OFF_ROUTE_M를 OFF_ROUTE_HITS회 연속 초과하면
@@ -683,6 +758,9 @@ export default function HomePage() {
           }}
           routePlan={layer === 'gas' ? routePlan : null}
           onRouteStationClick={handleMarkerClick}
+          // RouteAlert 배너가 떠 있는 그 주유소만 지도에서 강하게 강조(주황 펄스 + bounce).
+          // 배너가 닫히거나(routeAlert=null) 대상이 바뀌면 강조도 따라 갱신된다.
+          highlightStationId={layer === 'gas' && routePlan && routeAlert ? routeAlert.station.id : null}
           myLocation={myLocation}
           heading={geo.coords?.heading ?? null}
           recenterSignal={recenterSignal}
@@ -700,17 +778,20 @@ export default function HomePage() {
 
         {/* 내 위치 / 따라가기 버튼 — 누르면 따라가기 ON(위치 자동 추적), 다시 누르면 즉시 내 위치로 재이동 */}
         <button
-          onClick={() => {
-            setGeoEnabled(true);
-            geo.request();
-            // 따라가기 모드 ON: 이후 위치 갱신마다 지도가 내 위치를 따라간다.
-            setFollow(true);
-            // 이미 위치를 알고 있으면 즉시 그 위치로 이동(재클릭).
-            // 아직 모르면 대기 플래그를 켜서 첫 좌표 획득 시 이동시킨다
-            // (복원 모드에선 자동 센터링이 꺼져 있으므로 이 경로로 이동을 보장).
-            if (geo.coords) setRecenterSignal((n) => n + 1);
-            else pendingRecenterRef.current = true;
-          }}
+          onClick={() =>
+            // 따라가기(내 위치 자동 추적)는 회원 전용(요청4). 비로그인은 로그인/회원가입 유도.
+            requireAuth(() => {
+              setGeoEnabled(true);
+              geo.request();
+              // 따라가기 모드 ON: 이후 위치 갱신마다 지도가 내 위치를 따라간다.
+              setFollow(true);
+              // 이미 위치를 알고 있으면 즉시 그 위치로 이동(재클릭).
+              // 아직 모르면 대기 플래그를 켜서 첫 좌표 획득 시 이동시킨다
+              // (복원 모드에선 자동 센터링이 꺼져 있으므로 이 경로로 이동을 보장).
+              if (geo.coords) setRecenterSignal((n) => n + 1);
+              else pendingRecenterRef.current = true;
+            })
+          }
           // 우측 하단 고정(접힘 상태 기준). 시트 펼침 시에는 fade-out + 클릭 차단으로 숨긴다(시트 뒤로 가려짐).
           style={gpsPosition}
           aria-hidden={sheetOpen}
@@ -793,22 +874,23 @@ export default function HomePage() {
             averagePrice={averagePrice}
             onClick={() => router.push(`/station/${alertStation.id}`)}
             onDismiss={dismissAlert}
-            onNavigate={() => setNaviTarget(alertStation)}
+            onNavigate={() => requireAuth(() => setNaviTarget(alertStation))}
           />
         )}
 
         {/* 경로 주행 중 '경로상 최저가 주유소' 근접 알림 — 1km 이내 접근 시 1회 노출(인앱 팝업 + 효과음).
             경로 표시줄과 같은 상단 위치를 쓰지만, 알림은 z-40으로 그 위에 겹쳐 표시한다. */}
-        {layer === 'gas' && routePlan && routeAlert && routeAlertDismissedRef.current !== routeAlert.station.id && (
+        {layer === 'gas' && routePlan && routeAlert && !routeAlertDismissedRef.current.has(routeAlert.station.id) && (
           <RouteAlert
             station={routeAlert.station}
             distanceM={routeAlert.distanceM}
             onClick={() => router.push(`/station/${routeAlert.station.id}`)}
             onDismiss={() => {
-              routeAlertDismissedRef.current = routeAlert.station.id;
+              // 현재 경로 억제 목록에 누적(요청2). 새 경로로 재탐색 전까지 같은 배너 재노출 안 함.
+              routeAlertDismissedRef.current.add(routeAlert.station.id);
               setRouteAlert(null);
             }}
-            onNavigate={() => setNaviTarget(routeAlert.station)}
+            onNavigate={() => requireAuth(() => setNaviTarget(routeAlert.station))}
           />
         )}
 
@@ -834,7 +916,7 @@ export default function HomePage() {
           nearbyEnabled={geoEnabled && !!geo.coords}
           nearbyRadiusM={NEARBY_RADIUS_M}
           onSelect={(s) => router.push(`/station/${s.id}`)}
-          onNavigate={(s) => setNaviTarget(s)}
+          onNavigate={(s) => requireAuth(() => setNaviTarget(s))}
           onOpenChange={setSheetOpen}
           onTabChange={handleTabChange}
           layer={layer}
@@ -842,11 +924,13 @@ export default function HomePage() {
           evOrigin={evOrigin}
           onSelectEv={(s) => router.push(`/ev/${s.statId}`)}
           onNavigateEv={(s) =>
-            setNaviTarget({
-              id: s.statId, name: s.name, brand: 'ETC', isSelf: false,
-              sido: '01', address: '', lat: s.lat, lng: s.lng,
-              product, price: 0, tradeDate: '',
-            })
+            requireAuth(() =>
+              setNaviTarget({
+                id: s.statId, name: s.name, brand: 'ETC', isSelf: false,
+                sido: '01', address: '', lat: s.lat, lng: s.lng,
+                product, price: 0, tradeDate: '',
+              }),
+            )
           }
         />
         </div>
@@ -865,10 +949,12 @@ export default function HomePage() {
             setPopupStation(null);
             router.push(`/station/${id}`);
           }}
-          onNavigate={() => {
-            setNaviTarget(popupStation);
-            setPopupStation(null);
-          }}
+          onNavigate={() =>
+            requireAuth(() => {
+              setNaviTarget(popupStation);
+              setPopupStation(null);
+            })
+          }
         />
       )}
 
@@ -882,14 +968,16 @@ export default function HomePage() {
             setEvPopup(null);
             router.push(`/ev/${id}`);
           }}
-          onNavigate={() => {
-            setNaviTarget({
-              id: evPopup.statId, name: evPopup.name, brand: 'ETC', isSelf: false,
-              sido: '01', address: '', lat: evPopup.lat, lng: evPopup.lng,
-              product, price: 0, tradeDate: '',
-            });
-            setEvPopup(null);
-          }}
+          onNavigate={() =>
+            requireAuth(() => {
+              setNaviTarget({
+                id: evPopup.statId, name: evPopup.name, brand: 'ETC', isSelf: false,
+                sido: '01', address: '', lat: evPopup.lat, lng: evPopup.lng,
+                product, price: 0, tradeDate: '',
+              });
+              setEvPopup(null);
+            })
+          }
         />
       )}
 

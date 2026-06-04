@@ -8,7 +8,7 @@ import KakaoProvider from 'next-auth/providers/kakao';
 import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
-import { getPremiumStatus, getDefaultProduct, getNickname, getAvatar } from './session';
+import { getPremiumStatus, getDefaultProduct, getNickname, getAvatar, getSessionId } from './session';
 import { generateUniqueNickname } from '@/lib/nickname-db';
 
 const PREMIUM_CACHE_MS = 60_000;
@@ -101,6 +101,10 @@ export const authOptions: NextAuthOptions = {
         .eq('email', user.email)
         .maybeSingle();
 
+      // 1계정 1세션(last-login-wins): 이번 로그인의 세션 식별자를 새로 발급해 DB에 기록한다.
+      // 기존 기기에 남아 있던 토큰의 sid는 더 이상 DB와 일치하지 않게 되어 무효화된다.
+      const sid = crypto.randomUUID();
+
       if (!existing) {
         // 첫 로그인: 유니크한 한국어 닉네임 자동 생성
         const nickname = await generateUniqueNickname();
@@ -111,11 +115,14 @@ export const authOptions: NextAuthOptions = {
           image_url: user.image ?? null,
           provider: account?.provider,
           provider_account_id: account?.providerAccountId,
+          session_id: sid,
         });
       } else {
         const patch: Record<string, unknown> = {
           name: user.name ?? null,
           updated_at: new Date().toISOString(),
+          // 새 세션 식별자로 교체 → 이전 기기 세션은 다음 검증 때 무효 처리된다.
+          session_id: sid,
         };
         // 기존 사용자(닉네임 없는 레코드) 자동 백필
         if (!existing.nickname) patch.nickname = await generateUniqueNickname();
@@ -128,12 +135,20 @@ export const authOptions: NextAuthOptions = {
     },
 
     async jwt({ token, user, trigger }) {
+      const isFreshLogin = Boolean(user?.email);
       if (user?.email) token.email = user.email;
       if (!token.userId && token.email && isSupabaseConfigured()) {
         const sb = getSupabase();
         const { data } = await sb
           .from('users').select('id').eq('email', token.email).maybeSingle();
         if (data) token.userId = data.id;
+      }
+
+      // 1계정 1세션: 갓 로그인한 토큰(이번 signIn에서 새 sid를 DB에 기록한 승자)에는
+      // DB의 최신 session_id를 그대로 박는다. 이후 검증에서 자기 자신과 일치하게 된다.
+      if (isFreshLogin && token.userId) {
+        token.sid = (await getSessionId(token.userId)) ?? token.sid;
+        token.sessionRevoked = false;
       }
 
       // isPremium 캐시 (60초 또는 명시적 update trigger 시 갱신)
@@ -151,11 +166,27 @@ export const authOptions: NextAuthOptions = {
         // 프로필 사진(사용자 관리 image_url)도 같은 주기로 갱신.
         // DB값이 있으면 우선, 없으면 소셜 이미지 폴백.
         token.picture = (await getAvatar(token.userId)) ?? token.picture ?? undefined;
+
+        // 1계정 1세션 검증: DB 최신 sid와 토큰 sid가 다르면(= 다른 기기에서 더 나중에
+        // 로그인) 이 세션을 무효로 표시한다. 갓 로그인 케이스는 위에서 동기화했으니 제외.
+        // DB 조회는 프리미엄 캐시와 같은 60초 주기에 묶어 추가 부담을 최소화한다.
+        if (!isFreshLogin && token.userId && token.sid) {
+          const current = await getSessionId(token.userId);
+          // current === undefined: session_id 컬럼 미적용 환경 등 → 검증 불가, 기존 동작 유지.
+          if (current && current !== token.sid) token.sessionRevoked = true;
+        }
       }
       return token;
     },
 
     async session({ session, token }) {
+      // 무효화된 세션(중복 로그인으로 밀려난 이전 기기): 로그인 정보를 비워
+      // 서버 가드(getSessionUser)가 비로그인으로 보게 하고, 클라이언트엔 revoked 표식을 내린다.
+      if (token.sessionRevoked) {
+        session.revoked = true;
+        session.user = { id: undefined, email: null, name: null, image: null };
+        return session;
+      }
       if (token.userId) session.user.id = token.userId;
       session.user.isPremium = Boolean(token.isPremium);
       session.user.subStatus = token.subStatus ?? 'none';

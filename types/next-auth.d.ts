@@ -5,6 +5,12 @@ import type { ProductCode } from './station';
 
 declare module 'next-auth' {
   interface Session {
+    /**
+     * 중복 로그인으로 무효화된 세션 표식(1계정 1세션, last-login-wins).
+     * 다른 기기에서 더 나중에 로그인하면 이 세션의 토큰 sid가 DB와 어긋나 true가 되며,
+     * 클라이언트는 이를 보고 강제 로그아웃한다. 서버에서는 user.id/email이 비워진다.
+     */
+    revoked?: boolean;
     user: {
       id?: string;
       email?: string | null;
@@ -32,5 +38,9 @@ declare module 'next-auth/jwt' {
     defaultProduct?: ProductCode;
     /** 닉네임(캐시) */
     nickname?: string;
+    /** 이 토큰이 발급된 로그인 세션 식별자(1계정 1세션 검증용). 로그인 시 새로 발급. */
+    sid?: string;
+    /** 중복 로그인으로 이 세션이 무효화됨(DB의 최신 sid와 불일치). */
+    sessionRevoked?: boolean;
   }
 }

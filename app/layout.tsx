@@ -3,6 +3,7 @@ import localFont from 'next/font/local';
 import { Suspense } from 'react';
 import './globals.css';
 import { SessionProvider } from '@/components/SessionProvider';
+import { SessionGuard } from '@/components/SessionGuard';
 import { AdsenseScript } from '@/components/ads/AdsenseScript';
 import { FirebaseAnalytics } from '@/components/FirebaseAnalytics';
 
@@ -53,6 +54,7 @@ export default function RootLayout({
     <html lang="ko" className={pretendard.variable}>
       <body className="h-full">
         <SessionProvider>
+          <SessionGuard />
           {children}
           <AdsenseScript />
           <Suspense fallback={null}>

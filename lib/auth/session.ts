@@ -7,6 +7,8 @@ import { PRODUCT_LABEL, type ProductCode } from '@/types/station';
 
 export async function getSessionUser() {
   const session = await getServerSession(authOptions);
+  // 중복 로그인으로 무효화된 세션은 비로그인으로 취급(서버 가드/회원 전용 API 보호).
+  if (session?.revoked) return null;
   if (!session?.user?.email) return null;
   return session.user;
 }
@@ -104,4 +106,21 @@ export async function getAvatar(userId?: string): Promise<string | null> {
   const sb = getSupabase();
   const { data } = await sb.from('users').select('image_url').eq('id', userId).maybeSingle();
   return (data?.image_url as string | null) ?? null;
+}
+
+/**
+ * 현재 유효한 세션 식별자(users.session_id) 조회 — 1계정 1세션 검증용.
+ * 반환 의미:
+ *  - string: DB에 기록된 최신 세션 식별자(이 값과 토큰 sid를 비교).
+ *  - undefined: 검증 불가(미설정 또는 session_id 컬럼 미적용 환경) → 호출부는 검증을 건너뛴다.
+ *  - null이 아닌 undefined를 쓰는 이유: "값이 없음(검증 불가)"과 "다른 세션"을 구분하기 위함.
+ */
+export async function getSessionId(userId?: string): Promise<string | undefined> {
+  if (!userId || !isSupabaseConfigured()) return undefined;
+  const sb = getSupabase();
+  // 마이그레이션 0019(session_id 추가) 미적용 환경 방어:
+  // 컬럼 부재로 select가 에러나면 검증 불가(undefined)로 폴백해 로그인/세션을 깨지 않는다.
+  const { data, error } = await sb.from('users').select('session_id').eq('id', userId).maybeSingle();
+  if (error) return undefined;
+  return (data?.session_id as string | null) ?? undefined;
 }
