@@ -70,7 +70,7 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
   // 저장: payload에 liters/amountWon 포함(빈값은 미포함 → 서버는 null 처리).
   const save = async (payload: { liters?: number; amountWon?: number }) => {
     if (status !== 'authenticated') {
-      signIn(undefined, { callbackUrl: `/station/${stationId}` });
+      signIn(undefined, { callbackUrl: `/station/${encodeURIComponent(stationId)}` });
       return;
     }
     setState('busy');
@@ -114,7 +114,7 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
 
   const onMainClick = () => {
     if (status !== 'authenticated') {
-      signIn(undefined, { callbackUrl: `/station/${stationId}` });
+      signIn(undefined, { callbackUrl: `/station/${encodeURIComponent(stationId)}` });
       return;
     }
     setErr(null);

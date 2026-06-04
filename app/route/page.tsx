@@ -224,7 +224,7 @@ function RouteCheapestInner() {
         <ul className="divide-y divide-gray-100">
           {results.map((s, i) => (
             <li key={s.id}>
-              <Link href={`/station/${s.id}`} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50">
+              <Link href={`/station/${encodeURIComponent(s.id)}`} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50">
                 <span className="w-5 text-center text-xs font-bold text-gray-500">{i + 1}</span>
                 <span
                   className="h-2.5 w-2.5 shrink-0 rounded-full"

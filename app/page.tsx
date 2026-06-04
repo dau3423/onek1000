@@ -219,7 +219,8 @@ export default function HomePage() {
   // 일반 마커와 전국 TOP10 메달 마커 모두 onMarkerClick을 경유하므로 동일하게 적용된다.
   function handleMarkerClick(s: StationWithPrice) {
     if (isDesktop) setPopupStation(s);
-    else router.push(`/station/${s.id}`);
+    // 고속도로 주유소 id('EX:'+코드)의 콜론 등 특수문자가 경로에서 깨지지 않도록 인코딩.
+    else router.push(`/station/${encodeURIComponent(s.id)}`);
   }
 
   // 팝업이 열린 채로 뷰포트가 모바일 폭으로 줄면 팝업을 닫는다(분기 일관성).
@@ -763,7 +764,7 @@ export default function HomePage() {
           evStations={evStations}
           onEvMarkerClick={(s) => {
             if (isDesktop) setEvPopup(s);
-            else router.push(`/ev/${s.statId}`);
+            else router.push(`/ev/${encodeURIComponent(s.statId)}`);
           }}
           routePlan={layer === 'gas' ? routePlan : null}
           onRouteStationClick={handleMarkerClick}
@@ -881,7 +882,7 @@ export default function HomePage() {
           <RadiusAlert
             station={alertStation}
             averagePrice={averagePrice}
-            onClick={() => router.push(`/station/${alertStation.id}`)}
+            onClick={() => router.push(`/station/${encodeURIComponent(alertStation.id)}`)}
             onDismiss={dismissAlert}
             onNavigate={() => requireAuth(() => setNaviTarget(alertStation))}
           />
@@ -893,7 +894,7 @@ export default function HomePage() {
           <RouteAlert
             station={routeAlert.station}
             distanceM={routeAlert.distanceM}
-            onClick={() => router.push(`/station/${routeAlert.station.id}`)}
+            onClick={() => router.push(`/station/${encodeURIComponent(routeAlert.station.id)}`)}
             onDismiss={() => {
               // 현재 경로 억제 목록에 누적(요청2). 새 경로로 재탐색 전까지 같은 배너 재노출 안 함.
               routeAlertDismissedRef.current.add(routeAlert.station.id);
@@ -924,14 +925,14 @@ export default function HomePage() {
           nationalTop10Rank={nationalTop10Rank}
           nearbyEnabled={geoEnabled && !!geo.coords}
           nearbyRadiusM={NEARBY_RADIUS_M}
-          onSelect={(s) => router.push(`/station/${s.id}`)}
+          onSelect={(s) => router.push(`/station/${encodeURIComponent(s.id)}`)}
           onNavigate={(s) => requireAuth(() => setNaviTarget(s))}
           onOpenChange={setSheetOpen}
           onTabChange={handleTabChange}
           layer={layer}
           evStations={evStations}
           evOrigin={evOrigin}
-          onSelectEv={(s) => router.push(`/ev/${s.statId}`)}
+          onSelectEv={(s) => router.push(`/ev/${encodeURIComponent(s.statId)}`)}
           onNavigateEv={(s) =>
             requireAuth(() =>
               setNaviTarget({
@@ -956,7 +957,7 @@ export default function HomePage() {
           onDetail={() => {
             const id = popupStation.id;
             setPopupStation(null);
-            router.push(`/station/${id}`);
+            router.push(`/station/${encodeURIComponent(id)}`);
           }}
           onNavigate={() =>
             requireAuth(() => {
@@ -975,7 +976,7 @@ export default function HomePage() {
           onDetail={() => {
             const id = evPopup.statId;
             setEvPopup(null);
-            router.push(`/ev/${id}`);
+            router.push(`/ev/${encodeURIComponent(id)}`);
           }}
           onNavigate={() =>
             requireAuth(() => {

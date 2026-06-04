@@ -54,7 +54,7 @@ export default async function FavoritesPage() {
             return (
               <li key={f.station_id}>
                 <Link
-                  href={`/station/${f.station_id}`}
+                  href={`/station/${encodeURIComponent(f.station_id)}`}
                   className="flex items-center gap-3 px-5 py-4 hover:bg-gray-50"
                 >
                   <span

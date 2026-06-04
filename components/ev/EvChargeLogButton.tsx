@@ -64,7 +64,7 @@ export function EvChargeLogButton({ statId, className }: Props) {
 
   const save = async (payload: { kwh?: number; amountWon?: number }) => {
     if (status !== 'authenticated') {
-      signIn(undefined, { callbackUrl: `/ev/${statId}` });
+      signIn(undefined, { callbackUrl: `/ev/${encodeURIComponent(statId)}` });
       return;
     }
     setState('busy');
@@ -107,7 +107,7 @@ export function EvChargeLogButton({ statId, className }: Props) {
 
   const onMainClick = () => {
     if (status !== 'authenticated') {
-      signIn(undefined, { callbackUrl: `/ev/${statId}` });
+      signIn(undefined, { callbackUrl: `/ev/${encodeURIComponent(statId)}` });
       return;
     }
     setErr(null);

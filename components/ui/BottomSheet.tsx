@@ -228,7 +228,7 @@ export function BottomSheet({
                           ₩{s.price.toLocaleString()}
                         </div>
                         <Link
-                          href={`/station/${s.id}`}
+                          href={`/station/${encodeURIComponent(s.id)}`}
                           className="text-[11px] text-primary hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >

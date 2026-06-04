@@ -24,7 +24,7 @@ export function FavoriteButton({ stationId }: Props) {
 
   const toggle = async () => {
     if (status !== 'authenticated') {
-      signIn(undefined, { callbackUrl: `/station/${stationId}` });
+      signIn(undefined, { callbackUrl: `/station/${encodeURIComponent(stationId)}` });
       return;
     }
     setBusy(true);

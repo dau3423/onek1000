@@ -64,7 +64,7 @@ function SearchInner() {
           {results.map((r) => (
             <li key={r.id}>
               <Link
-                href={`/station/${r.id}`}
+                href={`/station/${encodeURIComponent(r.id)}`}
                 className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50"
               >
                 <span

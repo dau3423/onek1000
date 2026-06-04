@@ -504,7 +504,7 @@ export async function POST(req: Request) {
       const payload = {
         title: `⛽ ${top.station_name}`,
         body: `${PRODUCT_LABEL[top.product as ProductCode] ?? top.product} ${top.diff}원 ↓ → ₩${top.new_price.toLocaleString()}`,
-        url: `/station/${top.station_id}`,
+        url: `/station/${encodeURIComponent(top.station_id)}`,
         tag: `drop-${top.station_id}-${top.product}`,
       };
 
@@ -587,7 +587,7 @@ export async function POST(req: Request) {
           const payload = {
             title: `📍 ${reg.name} 최저가`,
             body: `${PRODUCT_LABEL[reg.product as ProductCode] ?? reg.product} ₩${lowest.price.toLocaleString()} (${lowest.stationName})${extra}`,
-            url: `/station/${lowest.stationId}`,
+            url: `/station/${encodeURIComponent(lowest.stationId)}`,
             tag: `region-${reg.id}`,
           };
 

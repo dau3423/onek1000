@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>배너 알림음 미리듣기</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+         display:flex; flex-direction:column; align-items:center; justify-content:center;
+         min-height:100vh; margin:0; background:#0f172a; color:#e2e8f0; gap:20px; }
+  h1 { font-size:18px; font-weight:700; margin:0; }
+  p { font-size:13px; color:#94a3b8; margin:0; text-align:center; max-width:320px; line-height:1.6; }
+  button { font-size:16px; font-weight:700; padding:16px 28px; border:none; border-radius:14px;
+           background:#2563eb; color:#fff; cursor:pointer; box-shadow:0 6px 20px rgba(37,99,235,.4); }
+  button:active { transform:scale(.97); }
+  .row { display:flex; gap:12px; align-items:center; }
+  label { font-size:13px; color:#cbd5e1; }
+  input[type=range]{ width:160px; }
+</style>
+</head>
+<body>
+  <h1>🚗 경로 최저가 배너 알림음</h1>
+  <p>실제 앱(<code>lib/sound.ts</code>의 <code>playAlertChime</code>)과 동일한 Web Audio 합성음입니다. 버튼을 누르면 들립니다.</p>
+  <button id="play">▶︎ 알림음 재생</button>
+  <div class="row">
+    <label>음량</label>
+    <input id="vol" type="range" min="0" max="1" step="0.05" value="1" />
+    <span id="volval">1.0</span>
+  </div>
+  <p style="color:#64748b">※ 기기 미디어 볼륨 / 무음스위치에 따라 크기가 달라집니다.</p>
+
+<script>
+let ctx = null;
+function getCtx() {
+  try {
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    if (!Ctor) return null;
+    if (!ctx) ctx = new Ctor();
+    return ctx;
+  } catch { return null; }
+}
+function tone(ac, freq, startAt, dur, gain, dest) {
+  const osc = ac.createOscillator();
+  const g = ac.createGain();
+  osc.type = 'triangle';
+  osc.frequency.value = freq;
+  g.gain.setValueAtTime(0, startAt);
+  g.gain.linearRampToValueAtTime(gain, startAt + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, startAt + dur);
+  osc.connect(g).connect(dest);
+  osc.start(startAt);
+  osc.stop(startAt + dur + 0.02);
+}
+function playAlertChime(volumeScale = 1) {
+  const ac = getCtx();
+  if (!ac) return;
+  try {
+    if (ac.state === 'suspended') void ac.resume().catch(() => {});
+    const master = ac.createGain();
+    master.gain.value = Math.max(0, Math.min(1, volumeScale));
+    let chainHead = ac.destination;
+    try {
+      const comp = ac.createDynamicsCompressor();
+      comp.threshold.value = -12;
+      comp.ratio.value = 6;
+      comp.attack.value = 0.003;
+      comp.release.value = 0.15;
+      comp.connect(ac.destination);
+      chainHead = comp;
+    } catch {}
+    master.connect(chainHead);
+    const t0 = ac.currentTime + 0.02;
+    const melody = [[1047, 0.0],[1319, 0.12],[1568, 0.24]];
+    const g = 0.6;
+    const groupGap = 0.52;
+    for (let rep = 0; rep < 2; rep++) {
+      const base = t0 + rep * groupGap;
+      for (const [freq, off] of melody) tone(ac, freq, base + off, 0.16, g, master);
+    }
+  } catch {}
+}
+const vol = document.getElementById('vol');
+const volval = document.getElementById('volval');
+vol.addEventListener('input', () => { volval.textContent = Number(vol.value).toFixed(2); });
+document.getElementById('play').addEventListener('click', () => playAlertChime(Number(vol.value)));
+</script>
+</body>
+</html>

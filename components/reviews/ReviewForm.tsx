@@ -34,7 +34,7 @@ export function ReviewForm({ stationId, onCreated, onCancel }: Props) {
       <div className="rounded-xl border border-dashed border-gray-300 p-4 text-center">
         <p className="text-sm text-gray-600">리뷰를 작성하려면 로그인이 필요해요.</p>
         <button
-          onClick={() => signIn(undefined, { callbackUrl: `/station/${stationId}` })}
+          onClick={() => signIn(undefined, { callbackUrl: `/station/${encodeURIComponent(stationId)}` })}
           className="mt-3 rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-white"
         >
           로그인
