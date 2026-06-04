@@ -5,7 +5,7 @@
   "type": "module",
   "description": "서울(asia-northeast3) Cloud Run 전용 고속도로(휴게소) 주유소 sync 서비스. 한국도로공사 API가 해외 IP를 차단하므로 서울 리전에서 도로공사 호출 + 카카오 지오코딩 + Supabase upsert를 수행한다.",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "scripts": {
     "start": "node server.js"
