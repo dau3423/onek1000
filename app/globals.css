@@ -79,11 +79,39 @@ body {
   40%           { opacity: 0; transform: scale(.5) rotate(90deg); }
 }
 
-/* 모션 민감 사용자: 반짝임/글로우/스윕/스파클 중단(접근성, NFR-7). */
+/* === 경로별 최저가 주유소 "깜빡이는 핀" 강조 ===
+   경로 모드에서 routePlan.stations 마커를 한눈에 찾도록, 마커 본체(가격 라벨+동심원)
+   아래에 펄스 링을 깔아 은은하게 깜빡인다. inline style의 animation으로 참조하므로
+   keyframes는 전역에 둔다. 출발/도착 핀과 달리 최저가 주유소 마커에만 적용한다. */
+.route-blink { position: relative; }
+.route-blink::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 2px;           /* 마커 꼬리(앵커) 부근에 링을 깐다 */
+  width: 26px;
+  height: 26px;
+  margin-left: -13px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, .35);  /* 경로 라인(블루)과 톤 연계 */
+  transform: translateZ(0);
+  animation: route-pulse 1.6s ease-out infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+@keyframes route-pulse {
+  0%   { transform: scale(.5); opacity: .9; }
+  70%  { transform: scale(1.9); opacity: 0; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
+/* 모션 민감 사용자: 반짝임/글로우/스윕/스파클/펄스 중단(접근성, NFR-7). */
 @media (prefers-reduced-motion: reduce) {
   .top10-glow,
   .top10-shimmer::after,
   .top10-pin::after,
-  .top10-sparkle { animation: none !important; }
+  .top10-sparkle,
+  .route-blink::before { animation: none !important; }
   .top10-sparkle { display: none; }
+  .route-blink::before { display: none; }
 }

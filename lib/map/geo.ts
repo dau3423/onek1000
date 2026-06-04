@@ -66,6 +66,46 @@ export function topNByZoom(zoom: number): number {
   return 100;                        // 내 지역 확대(시군구)~동네 상세
 }
 
+/**
+ * 점-선분 최소거리(m, 평면근사). 서버 `route-cheapest`의 동명 로직과 동일한 근사를 쓴다
+ * (1도 위도 ≈ 110,540m, 경도는 cos(lat) 보정). 경로 이탈 판정용으로 클라이언트에서 사용.
+ */
+function pointToSegmentMeters(
+  lat: number, lng: number,
+  aLat: number, aLng: number,
+  bLat: number, bLng: number,
+): number {
+  const cosLat = Math.cos((aLat * Math.PI) / 180);
+  const ax = aLng * 111320 * cosLat, ay = aLat * 110540;
+  const bx = bLng * 111320 * cosLat, by = bLat * 110540;
+  const px = lng * 111320 * cosLat, py = lat * 110540;
+  const dx = bx - ax, dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  if (len2 === 0) return distanceMeters(lat, lng, aLat, aLng);
+  let t = ((px - ax) * dx + (py - ay) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  const cx = ax + t * dx, cy = ay + t * dy;
+  return Math.hypot(px - cx, py - cy);
+}
+
+/**
+ * 점에서 경로(폴리라인) 전체까지의 최소거리(m). 경로 이탈 판정에 사용한다.
+ * path가 비면 Infinity, 1점이면 그 점까지의 직선거리.
+ */
+export function distancePointToPath(
+  lat: number, lng: number,
+  path: Array<{ lat: number; lng: number }>,
+): number {
+  if (path.length === 0) return Infinity;
+  if (path.length === 1) return distanceMeters(lat, lng, path[0].lat, path[0].lng);
+  let min = Infinity;
+  for (let i = 0; i + 1 < path.length; i++) {
+    const d = pointToSegmentMeters(lat, lng, path[i].lat, path[i].lng, path[i + 1].lat, path[i + 1].lng);
+    if (d < min) min = d;
+  }
+  return min;
+}
+
 export type PriceTier = 'cheap' | 'normal' | 'expensive';
 
 /**

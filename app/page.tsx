@@ -21,7 +21,7 @@ import { useMapStore, getInitialMapView, getInitialRoutePlan, type MapView } fro
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useFullscreen } from '@/hooks/useFullscreen';
-import { quantize, distanceMeters } from '@/lib/map/geo';
+import { quantize, distanceMeters, distancePointToPath } from '@/lib/map/geo';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
 import type { BboxResponse, RadiusResponse, StationWithPrice, NationalTop10Item, NationalTop10Response, StationPoint, StationsInBboxResponse } from '@/types/station';
 import type { EvBboxResponse, EvStationMarker } from '@/types/ev';
@@ -36,6 +36,15 @@ const ALERT_THRESHOLD = 50; // 평균 대비 -50원 이상 저렴할 때 알람
 const ALERT_RADIUS_M = 1000; // 알람 판정 반경 (FR-2.3)
 // 경로 주행 중 '경로상 최저가 주유소' 근접 알림 판정 반경 (내 주변 알람과 동일 1km, 조정 가능)
 const ROUTE_ALERT_RADIUS_M = 1000;
+// === 경로 이탈 자동 재탐색 파라미터 ===
+// 도로 path로부터 이 거리(m)를 초과하면 '이탈 후보'로 본다.
+const OFF_ROUTE_M = 150;
+// 연속으로 이 횟수 이상 이탈 후보면 실제 이탈로 확정(GPS 튐 1~2회로 인한 오재탐색 방지).
+const OFF_ROUTE_HITS = 3;
+// 재탐색 최소 간격(ms). 카카오 directions 과호출/과금(무료 1만/일) 방지.
+const REROUTE_MIN_INTERVAL_MS = 30000;
+// 도착지 이 거리(m) 이내면 재탐색하지 않는다(거의 다 왔으면 불필요).
+const REROUTE_SKIP_NEAR_DEST_M = 1500;
 const NEARBY_RADIUS_M = 10000; // '내 주변' 표시 반경 (현재 위치 기준 10km)
 // 반경 응답 최대 개수. 내 주변 TOP10(가격 정렬) + 1km 알람 산출(거리 기반)을 한 응답에서
 // 모두 뽑아내려면 충분히 커야 한다(10km 내 주유소가 많아도 1km 내 최저가가 잘리지 않게).
@@ -50,7 +59,7 @@ const GRAY_DOT_LIMIT = 500;
 
 export default function HomePage() {
   const router = useRouter();
-  const { product, brands, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, clearRoutePlan } = useMapStore();
+  const { product, brands, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, setRoutePlan, clearRoutePlan } = useMapStore();
 
   // 최신 유종을 항상 참조하기 위한 ref. fetchStations/fetchAllStations 같은 콜백이
   // (지도 idle의 onBoundsChange 등에서) 옛 렌더의 클로저로 호출되더라도, 실제 요청은
@@ -423,16 +432,31 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 경로 모드 진입 시 GPS 자동 활성화.
+  // 경로 모드 진입 시 GPS 자동 활성화 + 따라가기(follow) 자동 ON.
   // 경로 근접 알림(RouteAlert)·'내 위치' 기준은 GPS watch가 돌아야 동작하므로,
   // routePlan이 활성화되면(직접 검색/콜드 리로드 복원 모두 포함) geoEnabled를 true로 켠다.
   //  - 권한 미허용이면 watch 시작 시 브라우저 권한 프롬프트가 떠 자연스럽게 유도된다.
   //  - 거부/미지원이면 useGeolocation이 graceful fallback(앱 안 깨짐, status denied/unavailable).
   //  - 이미 켜져 있으면 setState(true)가 no-op이라 watch 재시작 없음(idempotent).
-  //  - 경로 종료(clearRoutePlan) 시엔 끄지 않는다 — 사용자가 켜둔 GPS 상태를 존중.
-  //  - 따라가기(follow)는 과하지 않게 기존대로 사용자 선택으로 둔다(여기선 위치 활성화만).
+  // 추가로 "지도가 내 위치를 따라가는 주행 모드"로 진입시킨다:
+  //  - follow=true(이미 true면 idempotent) + recenter 신호로 내 위치로 지도 이동(panTo).
+  //  - 좌표를 아직 모르면 pendingRecenter로 대기 → 첫 좌표 획득 시 1회 이동(복원 모드 포함).
+  // 종료(clearRoutePlan)/이탈 재탐색 시점엔 follow를 강제로 끄지 않는다(사용자 상태 존중).
+  // routePlan 참조가 바뀔 때마다(이탈 재탐색의 setRoutePlan 포함) recenter가 또 나가는 걸
+  // 막기 위해, 새 "경로 세션"(from→to 키가 달라질 때)에서만 follow/recenter를 발화한다.
+  const prevRouteKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (routePlan) setGeoEnabled(true);
+    if (!routePlan) { prevRouteKeyRef.current = null; return; }
+    setGeoEnabled(true);
+    const key = `${routePlan.to.lat.toFixed(5)},${routePlan.to.lng.toFixed(5)}|${routePlan.product}`;
+    if (prevRouteKeyRef.current === key) return; // 같은 목적지의 재탐색 갱신 → recenter 재발화 안 함
+    prevRouteKeyRef.current = key;
+    // 따라가기 ON + 내 위치로 이동(좌표 모르면 첫 획득 시 1회 이동).
+    setFollow(true);
+    if (geo.coords) setRecenterSignal((n) => n + 1);
+    else pendingRecenterRef.current = true;
+    // geo.coords는 의도적으로 의존성에서 제외(좌표 갱신마다 recenter 재발화 방지) — 진입 시 1회.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routePlan]);
 
   // 경로 모드에서 '경로상 최저가 주유소' 근접 알림 대상.
@@ -472,6 +496,99 @@ export default function HomePage() {
     // 위경도 변화에만 반응(heading/accuracy 변경에는 재평가 불필요)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geo.coords?.lat, geo.coords?.lng, routePlan, layer]);
+
+  // === 경로 이탈 자동 재탐색 ===
+  // 경로 모드 + GPS 주행 중, 내 위치가 도로 path에서 OFF_ROUTE_M를 OFF_ROUTE_HITS회 연속 초과하면
+  // '내 위치 → 기존 도착(유종 유지)'으로 route-cheapest를 재호출해 새 경로/최저가로 갱신한다.
+  //  - 가드: 최소 간격(REROUTE_MIN_INTERVAL_MS) + in-flight 중복 금지 + 도착 근처면 스킵.
+  //  - 실패 시 기존 경로 유지(앱 안 깨짐). routePlan이 바뀌면(✕/재탐색 성공) 카운터 리셋.
+  //  - directions 호출은 서버(route-cheapest) 경유 유지(키 노출 금지).
+  const offRouteHitsRef = useRef(0);
+  const lastRerouteAtRef = useRef(0);
+  const rerouteInFlightRef = useRef(false);
+  const rerouteAbortRef = useRef<AbortController | null>(null);
+  const [rerouteToast, setRerouteToast] = useState(false);
+
+  // 경로가 바뀌면(새 검색/재탐색 성공/해제) 이탈 카운터를 초기화한다.
+  useEffect(() => {
+    offRouteHitsRef.current = 0;
+  }, [routePlan]);
+
+  // routePlan 해제 시 진행 중 재탐색 요청을 취소한다(✕ 종료 시 중단).
+  useEffect(() => {
+    if (!routePlan && rerouteAbortRef.current) {
+      rerouteAbortRef.current.abort();
+      rerouteAbortRef.current = null;
+      rerouteInFlightRef.current = false;
+    }
+  }, [routePlan]);
+
+  useEffect(() => {
+    if (!routePlan || !geo.coords || layer !== 'gas') return;
+    const { lat, lng } = geo.coords;
+
+    // 도착지 근처면 재탐색하지 않는다(거의 다 왔으면 불필요한 호출 방지).
+    const toDest = distanceMeters(lat, lng, routePlan.to.lat, routePlan.to.lng);
+    if (toDest <= REROUTE_SKIP_NEAR_DEST_M) { offRouteHitsRef.current = 0; return; }
+
+    // 현재 위치 ↔ 경로(도로 path) 최소거리로 이탈 여부 판정.
+    const off = distancePointToPath(lat, lng, routePlan.path);
+    if (off <= OFF_ROUTE_M) { offRouteHitsRef.current = 0; return; }
+    offRouteHitsRef.current += 1;
+    if (offRouteHitsRef.current < OFF_ROUTE_HITS) return; // 연속 확인 전이면 대기(GPS 튐 방어)
+
+    // 가드: 최소 간격 미경과 또는 재탐색 진행 중이면 스킵.
+    const now = Date.now();
+    if (rerouteInFlightRef.current) return;
+    if (now - lastRerouteAtRef.current < REROUTE_MIN_INTERVAL_MS) return;
+
+    // 재탐색 실행: 출발=현재 위치, 도착=기존 to, 유종=기존 product. 같은 엔드포인트(서버 경유).
+    rerouteInFlightRef.current = true;
+    lastRerouteAtRef.current = now;
+    offRouteHitsRef.current = 0;
+    const ac = new AbortController();
+    rerouteAbortRef.current = ac;
+    const dest = routePlan.to;
+    const reqProduct = routePlan.product;
+    const q = new URLSearchParams({
+      fromLat: String(lat), fromLng: String(lng),
+      toLat: String(dest.lat), toLng: String(dest.lng),
+      product: reqProduct, buffer: '2000', limit: '10',
+    });
+    fetch(`/api/route-cheapest?${q}`, { signal: ac.signal })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`route-cheapest ${r.status}`);
+        return r.json();
+      })
+      .then((j) => {
+        // 사용자가 그새 ✕로 종료했으면 갱신하지 않는다.
+        if (!useMapStore.getState().routePlan) return;
+        const newStations: StationWithPrice[] = Array.isArray(j?.stations) ? j.stations : [];
+        if (newStations.length === 0) return; // 주변 주유소 없으면 기존 경로 유지
+        const newPath = Array.isArray(j?.path) && j.path.length >= 2
+          ? j.path
+          : [{ lat, lng }, { lat: dest.lat, lng: dest.lng }];
+        setRoutePlan({
+          from: { lat, lng, name: '내 위치' },
+          to: dest,
+          product: reqProduct,
+          stations: newStations,
+          path: newPath,
+        });
+        setRerouteToast(true);
+        window.setTimeout(() => setRerouteToast(false), 2500);
+      })
+      .catch((e) => {
+        // 실패(취소/네트워크/할당량) 시 기존 경로 유지 — 앱 안 깨짐.
+        if (e.name !== 'AbortError') console.error('reroute fail', e);
+      })
+      .finally(() => {
+        rerouteInFlightRef.current = false;
+        if (rerouteAbortRef.current === ac) rerouteAbortRef.current = null;
+      });
+    // 위경도 변화에만 반응(거리 계산은 가벼움). product/destination은 routePlan 식별로 포함.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geo.coords?.lat, geo.coords?.lng, routePlan, layer, setRoutePlan]);
 
   // 충전소 정렬/거리 기준 좌표: 내 위치 우선, 없으면 화면 중심(마지막 bounds 중심)으로 폴백.
   // (위치 없으면 거리는 화면 중심 기준 — 정렬은 사용가능→급속→거리, 거리 폴백은 합리적 근사)
@@ -673,6 +790,16 @@ export default function HomePage() {
             }}
             onNavigate={() => setNaviTarget(routeAlert.station)}
           />
+        )}
+
+        {/* 경로 이탈 자동 재탐색 안내 토스트 — 짧게 노출(2.5초). 과하지 않게 하단 중앙. */}
+        {layer === 'gas' && routePlan && rerouteToast && (
+          <div
+            role="status"
+            className="pointer-events-none absolute left-1/2 top-3 z-40 -translate-x-1/2 rounded-full bg-gray-900/90 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur dark:bg-gray-100/90 dark:text-gray-900"
+          >
+            경로를 다시 찾았어요
+          </div>
         )}
 
         {/* 배너 광고 (무료 사용자만 — MVP는 전부 무료).

@@ -816,8 +816,10 @@ export function KakaoMap({
       content.style.transform = 'translate(-50%, -100%)';
       content.style.position = 'relative';
       const badge = numberMarkerSvg(tier, 28, rank, { ring: brandColor, ringWidth: 8, gap: 4 });
+      // route-blink: 마커 본체 아래에 펄스 링(globals.css)을 깔아 경로 최저가 주유소를
+      // 한눈에 찾게 한다. 출발/도착 핀과 구분되도록 이 마커에만 적용한다.
       content.innerHTML = `
-        <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
+        <div class="route-blink" style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
           <div style="padding:4px 8px;border-radius:10px;background:${tierColor};color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
             ₩${s.price.toLocaleString()}
           </div>
