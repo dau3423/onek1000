@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -261,6 +261,20 @@ function PointPicker({
   const [places, setPlaces] = useState<SearchResult[] | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
 
+  // 외부에서 확정된 지점(value)의 이름을 입력란에 반영한다.
+  // - "내 위치" 선택 → 입력란에 "📍 내 위치" 표시(좌표만 잡히던 모호함 해소)
+  // - 장소 검색 후 선택 → 그 장소명으로 덮어쓰기
+  // 부모는 지점 확정 시마다 새 객체를 만들므로, value 참조가 바뀔 때만 동기화한다.
+  // (사용자가 입력란에 직접 타이핑하는 동안에는 value가 그대로라 검색어가 보존된다.)
+  const lastSyncedValue = useRef<Point | null>(null);
+  useEffect(() => {
+    if (value === lastSyncedValue.current) return;
+    lastSyncedValue.current = value;
+    if (value?.name) {
+      setQuery(value.name === '내 위치' ? '📍 내 위치' : value.name);
+    }
+  }, [value]);
+
   const runSearch = async () => {
     const keyword = query.trim();
     if (!keyword) return;
@@ -299,7 +313,7 @@ function PointPicker({
 
   const handleSelect = (p: SearchResult) => {
     onSelect({ lat: p.lat, lng: p.lng, name: p.name });
-    setQuery('');
+    // 입력란 표시는 value 동기화 effect가 선택한 장소명으로 채운다(여기서 비우지 않음).
     setPlaces(null);
     setSearchError(null);
   };
