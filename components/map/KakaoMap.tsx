@@ -972,30 +972,27 @@ export function KakaoMap({
 
   // 네비 스타일 카메라: 따라가기(follow) 주행 중에는 내 위치를 화면 중앙이 아닌 하단부
   // (세로 NAVI_USER_VERTICAL 지점, 기본 72%)에 두어 진행 방향 앞쪽 길을 더 보여준다.
-  // 화면 비율 + 현재 줌(projection)을 활용해 "지도 중심"을 heading 방향으로 일정 픽셀만큼
-  // 앞으로 밀어 잡는 방식이라 줌 레벨이 달라져도 화면상 위치 비율이 일정하게 유지된다.
-  // heading이 없으면(정지/미지원) 오프셋 없이 기존처럼 내 위치를 중앙에 둔다.
+  // 가로(화면 x)는 heading과 무관하게 항상 정중앙을 유지하고, 세로(화면 y)만 오프셋을 준다.
+  // 화면 비율 + 현재 줌(projection)을 활용해 "지도 중심"을 화면 좌표 기준 위쪽으로 일정 픽셀만큼
+  // 당겨 잡는 방식이라 줌 레벨이 달라져도 화면상 위치 비율이 일정하게 유지된다.
+  // north-up(회전 없는) 지도이므로 화면 y = 북쪽 방향이며, 세로 오프셋만 적용하면 충분하다.
   const NAVI_USER_VERTICAL = 0.72; // 내 위치를 화면 세로 72% 지점(아래쪽)에 배치
   function centerForFollow(pos: kakao.maps.LatLng): kakao.maps.LatLng {
     const map = mapRef.current;
     const container = containerRef.current;
     if (!map || !container) return pos;
-    const h = lastHeadingRef.current;
-    // heading 없음 → 중앙 배치(오프셋 0). 네비 모드(follow)가 아니어도 호출되므로 follow도 확인.
-    if (!followRef.current || h === null || !Number.isFinite(h)) return pos;
+    // 네비 모드(follow)가 아니면 오프셋 없이 중앙 배치. heading 유무는 더 이상 보지 않는다
+    // (가로 중앙·세로 하단은 진행 방향과 무관하게 적용 가능하므로).
+    if (!followRef.current) return pos;
     const height = container.clientHeight;
     if (!height) return pos;
-    // 내 위치를 중앙(50%)에서 (NAVI_USER_VERTICAL-0.5)만큼 아래로 내리려면,
-    // 지도 중심을 그만큼 "진행 방향 앞쪽"으로 옮긴다(= 화면상 위로). 픽셀 거리로 환산.
-    const forwardPx = (NAVI_USER_VERTICAL - 0.5) * height;
-    const rad = (h * Math.PI) / 180;
-    // 화면 좌표: 위(북쪽 고정 지도)가 -y. heading 0=북 → 앞쪽은 화면 위(-y).
-    const dx = Math.sin(rad) * forwardPx;
-    const dy = -Math.cos(rad) * forwardPx;
+    // 내 위치를 화면 세로 NAVI_USER_VERTICAL(예: 72%) 지점에 두려면, 지도 중심을
+    // 그만큼 화면상 위쪽(-y)으로 당긴다. 가로(x)는 0 오프셋이라 내 위치가 항상 가로 중앙.
+    const dy = -(NAVI_USER_VERTICAL - 0.5) * height;
     try {
       const proj = map.getProjection();
       const pt = proj.containerPointFromCoords(pos);
-      const shifted = new window.kakao.maps.Point(pt.x + dx, pt.y + dy);
+      const shifted = new window.kakao.maps.Point(pt.x, pt.y + dy);
       return proj.coordsFromContainerPoint(shifted);
     } catch {
       // projection 미준비 등 예외 시 안전하게 중앙 배치로 폴백.
