@@ -88,8 +88,8 @@ function routeIdentityKey(plan: RoutePlan): string {
 
 export default function HomePage() {
   const router = useRouter();
-  const { status: authStatus } = useSession();
-  const { product, brands, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, setRoutePlan, clearRoutePlan } = useMapStore();
+  const { data: session, status: authStatus } = useSession();
+  const { product, brands, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, setRoutePlan, clearRoutePlan, setProduct } = useMapStore();
 
   // 회원 전용 동작 가드 — 길찾기/길안내 시작·따라가기는 로그인 회원만 사용(FR-5 기반 UX 정책).
   // 비로그인(unauthenticated)이면 기존 인증 유도 패턴(next-auth signIn, 현재 화면으로 복귀)을
@@ -550,6 +550,27 @@ export default function HomePage() {
     routeAlertDismissedRef.current = new Set();
     setRouteAlert(null);
   }, [routePlan]);
+
+  // === 차종 미설정 사용자: 경로 탐색 유종을 메인 지도 선택 유종에 반영 ===
+  // 기본 차량 유종(defaultProduct)이 없는 사용자(차종 미선택 + 비로그인 포함)가 /route에서
+  // 유종(예: 경유)을 골라 경로를 탐색하면, 메인 지도로 돌아올 때 선택 유종이 그 유종으로
+  // 자동 선택되게 한다(요청).
+  //  - 조건: defaultProduct 부재일 때만. 차종이 있는 사용자는 기존 동작 유지(자동 변경 안 함).
+  //  - "한 번만/덮어쓰기 방지": routeIdentityKey(실제 새 경로) 변경 시에만 1회 반영한다.
+  //    → 같은 경로의 단순 재렌더/재탐색 path 갱신엔 product를 건드리지 않고,
+  //      사용자가 이후 필터바에서 수동으로 다른 유종을 골라도 그 값이 보존된다.
+  //  - 이미 같은 유종이면 setProduct를 호출하지 않아 불필요한 상태 변경/재조회를 막는다.
+  const routeProductSyncRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!routePlan) { routeProductSyncRef.current = null; return; }
+    // 세션은 서버 검증된 값. 차종(기본 차량 유종)이 있으면 자동 변경하지 않는다.
+    if (session?.user?.defaultProduct) return;
+    const key = routeIdentityKey(routePlan);
+    if (routeProductSyncRef.current === key) return; // 동일 경로 → 1회만 반영
+    routeProductSyncRef.current = key;
+    if (productRef.current !== routePlan.product) setProduct(routePlan.product);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routePlan, session?.user?.defaultProduct, setProduct]);
 
   // GPS 위치 변경 시 경로 최저가 주유소 근접 감지(포그라운드 전제, 웹 한계로 백그라운드 제외).
   // 좌표 양자화 게이트(lastRadiusKeyRef와 별개)로 과한 재계산을 피하되, 거리 계산 자체는 가벼우므로
