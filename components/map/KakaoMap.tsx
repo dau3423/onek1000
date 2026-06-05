@@ -213,6 +213,15 @@ interface Props {
    * 일반 마커/내 주변 핀에 숫자로 표시한다. BottomSheet의 nearbyStations와 동일 배열을 받는다.
    */
   nearbyStations?: StationWithPrice[];
+  /**
+   * "고속도로 휴게소만" 필터 활성 여부. true면 expStations(전국 고속도로 주유소)를
+   * 전용 렌더한다: 전국 가격 최저가 TOP10 = 가격/순위 마커, 나머지 EXP = 일반 점.
+   * 모든 EXP 마커는 줌 게이팅을 면제해 줌을 아무리 줄여도 항상 보인다.
+   * 이 모드에서는 일반 bbox 마커/전국·내주변 TOP10 강조 마커를 그리지 않는다(EXP 전용 화면).
+   */
+  expOnly?: boolean;
+  /** 전국 고속도로(EXP) 주유소 목록(화면 영역 무관, 가격 포함). expOnly일 때만 사용. */
+  expStations?: StationWithPrice[];
   /** 지도 레이어. 'ev'면 주유소 마커 대신 충전소 마커를 그린다. 기본 'gas'(주유소). */
   layer?: 'gas' | 'ev';
   /** 충전소 마커 목록(layer='ev'일 때만 렌더). */
@@ -256,6 +265,8 @@ export function KakaoMap({
   nationalTop10,
   nearbyTop10,
   nearbyStations,
+  expOnly = false,
+  expStations,
   activeTab = 'area',
   product = 'B027',
   layer = 'gas',
@@ -279,6 +290,8 @@ export function KakaoMap({
   const nearOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
   // 회색 점(비하이라이트 주유소) 오버레이 — 일반/강조 마커와 독립 관리.
   const grayOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
+  // "고속도로만" 필터 전용 EXP 마커 오버레이(전국 top10 가격마커 + 나머지 일반 점) — 독립 관리.
+  const expOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
   // 전기차 충전소 마커 오버레이 — 주유소 마커와 독립 관리(레이어 전환 시 서로 간섭 없게).
   const evOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
   const onEvMarkerClickRef = useRef(onEvMarkerClick);
@@ -481,6 +494,8 @@ export function KakaoMap({
 
     // EV 레이어에서는 주유소 일반 마커를 그리지 않는다(위에서 제거만 하고 종료).
     if (layer === 'ev') return;
+    // "고속도로만" 필터에서는 EXP 전용 effect가 전국 EXP를 직접 그리므로 일반 bbox 마커는 생략한다.
+    if (expOnly) return;
 
     const showLabel = map.getLevel() <= 5; // 줌 인 상태에서만 가격 라벨
 
@@ -535,7 +550,7 @@ export function KakaoMap({
       overlay.setMap(map);
       overlaysRef.current.push(overlay);
     }
-  }, [ready, stations, top10Rank, nearbyRank, tierThresholds, onMarkerClick, mapLevel, activeTab, areaListRank, layer]);
+  }, [ready, stations, top10Rank, nearbyRank, tierThresholds, onMarkerClick, mapLevel, activeTab, areaListRank, layer, expOnly]);
 
   // 전국 최저가 TOP10 핀 오버레이 — bbox stations 포함 여부와 무관하게 항상 렌더.
   // 위치/가격/순위는 모두 nationalTop10 항목 값을 사용한다(bbox의 비동기 타이밍 불일치 차단).
@@ -547,8 +562,9 @@ export function KakaoMap({
     topOverlaysRef.current.forEach((o) => o.setMap(null));
     topOverlaysRef.current = [];
 
-    // EV 레이어에서는 전국 TOP10 메달을 그리지 않는다.
-    if (layer === 'ev') return;
+    // EV 레이어/"고속도로만" 필터에서는 전국 TOP10 메달을 그리지 않는다
+    // (expOnly는 전국 EXP top10을 EXP 전용 effect가 별도로 그린다).
+    if (layer === 'ev' || expOnly) return;
 
     const showLabel = map.getLevel() <= 5; // 줌 인 상태에서만 가격 라벨
 
@@ -611,7 +627,7 @@ export function KakaoMap({
     }
     // top10ToStation은 product/렌더마다 새로 생성되므로 product를 직접 의존성에 둔다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, nationalTop10, product, tierThresholds, onMarkerClick, mapLevel, layer]);
+  }, [ready, nationalTop10, product, tierThresholds, onMarkerClick, mapLevel, layer, expOnly]);
 
   // 내 주변(10km) TOP10 핀/배지 오버레이 — 전국 메달/일반 마커와 독립적으로 항상 렌더.
   // 위치/가격/순위는 nearbyTop10(이미 가격순) 기준. 전국 메달과 겹치는 id는 nearbyRank에서 제외됨.
@@ -623,8 +639,8 @@ export function KakaoMap({
     nearOverlaysRef.current.forEach((o) => o.setMap(null));
     nearOverlaysRef.current = [];
 
-    // EV 레이어에서는 내 주변 TOP10 핀을 그리지 않는다.
-    if (layer === 'ev') return;
+    // EV 레이어/"고속도로만" 필터에서는 내 주변 TOP10 핀을 그리지 않는다(EXP 전용 화면 일관성).
+    if (layer === 'ev' || expOnly) return;
 
     const showLabel = map.getLevel() <= 5; // 줌 인 상태에서만 가격 라벨
 
@@ -679,7 +695,7 @@ export function KakaoMap({
       overlay.setMap(map);
       nearOverlaysRef.current.push(overlay);
     }
-  }, [ready, nearbyTop10, nearbyRank, nearbyListRank, tierThresholds, onMarkerClick, mapLevel, layer]);
+  }, [ready, nearbyTop10, nearbyRank, nearbyListRank, tierThresholds, onMarkerClick, mapLevel, layer, expOnly]);
 
   // 전기차 충전소 마커 — layer='ev'일 때만 렌더(주유소 마커와 독립 오버레이).
   // 충전소(statId) 단위 1마커. 색=사용가능 충전기 유무, 라벨=사용가능/전체 + 급속 여부.
@@ -724,8 +740,9 @@ export function KakaoMap({
     grayOverlaysRef.current.forEach((o) => o.setMap(null));
     grayOverlaysRef.current = [];
 
-    // 회색 점 기능 비활성(플래그)이거나, EV 레이어이거나, 줌아웃 상태(level이 임계보다 큼)면 그리지 않는다.
-    if (!GRAY_DOTS_ENABLED || layer === 'ev' || map.getLevel() > GRAY_DOT_MAX_LEVEL) return;
+    // 회색 점 기능 비활성(플래그)이거나, EV 레이어/"고속도로만" 필터이거나, 줌아웃 상태(level이 임계보다 큼)면 그리지 않는다.
+    // ("고속도로만"에서는 EXP 전용 effect가 비-top10 EXP를 일반 점으로 직접 그린다 — 이중 렌더 방지.)
+    if (!GRAY_DOTS_ENABLED || layer === 'ev' || expOnly || map.getLevel() > GRAY_DOT_MAX_LEVEL) return;
 
     // 하이라이트(이미 다른 마커로 그려진) 주유소 id 집합 — 전국 TOP10 + 내 주변 TOP10 + 일반 bbox 마커.
     const highlighted = new Set<string>();
@@ -758,7 +775,89 @@ export function KakaoMap({
     }
     // pointToStation은 product/렌더마다 새로 생성되므로 product를 직접 의존성에 둔다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, allStations, stations, top10Rank, nearbyRank, mapLevel, layer, product, onMarkerClick]);
+  }, [ready, allStations, stations, top10Rank, nearbyRank, mapLevel, layer, product, onMarkerClick, expOnly]);
+
+  // === "고속도로 휴게소만" 필터 전용 EXP 마커 ===
+  // expOnly일 때, 전국 고속도로 주유소(expStations)를 화면 줌/패닝과 무관하게 항상 전부 그린다
+  // (줌 게이팅 면제 — 줌을 아무리 줄여도 모든 EXP가 보인다).
+  //  - 전국 가격 최저가 TOP10(가격 오름차순 상위 10): 가격/순위 마커(일반 최저가 마커 톤 — 가격 라벨 + 순위 숫자 동심원).
+  //  - 나머지(11위 이하): 일반 점(회색 점)으로 표시.
+  // expStations는 전국 집합이라 정렬해 top10을 매겨도 줌인으로 bbox가 좁아질 때 흔들리지 않는다(전국 고정).
+  // EXP가 아닌 일반 마커/강조 마커는 expOnly에서 그리지 않으므로(위 effect들의 가드) 충돌이 없다.
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    const map = mapRef.current;
+
+    // 기존 EXP 오버레이 제거
+    expOverlaysRef.current.forEach((o) => o.setMap(null));
+    expOverlaysRef.current = [];
+
+    // EV 레이어이거나 "고속도로만" 필터가 아니면 그리지 않는다(제거만 하고 종료).
+    if (layer === 'ev' || !expOnly) return;
+
+    const list = expStations ?? [];
+    // 전국 가격 오름차순 정렬 → 상위 10 = top10(가격 마커), 나머지 = 일반 점.
+    const sorted = [...list].sort((a, b) => a.price - b.price);
+    const topRank = new Map<string, number>();
+    for (let i = 0; i < Math.min(10, sorted.length); i++) topRank.set(sorted[i].id, i + 1);
+
+    // 가격 tier 색은 EXP 집합 자체의 상대 분포로 산정(전국 EXP 기준 저렴/보통/비쌈).
+    const expThresholds = priceTierThresholds(sorted.map((s) => s.price));
+    const showLabel = map.getLevel() <= 5; // 줌 인 상태에서만 가격 라벨(일반 마커와 동일 정책)
+
+    for (const s of list) {
+      const rank = topRank.get(s.id);
+      const content = document.createElement('div');
+      content.className = 'cursor-pointer select-none';
+
+      if (rank != null) {
+        // === 전국 최저가 TOP10: 가격/순위 마커(일반 최저가 마커와 동일 톤) ===
+        content.style.transform = 'translate(-50%, -100%)';
+        content.style.position = 'relative';
+        const tier = priceTier(s.price, expThresholds);
+        const tierColor = TIER_FACE[tier].color;
+        const brandColor = BRAND_COLOR[s.brand] ?? '#666';
+        const faceSize = showLabel ? 26 : 30;
+        const face = numberMarkerSvg(tier, faceSize, rank, { ring: brandColor, ringWidth: 8, gap: 4 });
+        content.innerHTML = showLabel
+          ? `
+          <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
+            <div style="padding:4px 8px;border-radius:10px;background:${tierColor};color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
+              ₩${s.price.toLocaleString()}
+            </div>
+            <div style="width:8px;height:8px;background:${tierColor};transform:rotate(45deg);margin-top:-4px"></div>
+            <div style="margin-top:-1px">${face}</div>
+          </div>`
+          : `
+          <div style="position:relative;display:flex;flex-direction:column;align-items:center">
+            ${face}
+          </div>`;
+        content.addEventListener('click', () => onMarkerClick?.(s));
+        const overlay = new window.kakao.maps.CustomOverlay({
+          position: new window.kakao.maps.LatLng(s.lat, s.lng),
+          content, yAnchor: 1, clickable: true,
+          // 일반 점(아래) 위에 그려지도록. 순위 높을수록 더 위로.
+          zIndex: 10 + (11 - rank),
+        });
+        overlay.setMap(map);
+        expOverlaysRef.current.push(overlay);
+      } else {
+        // === 나머지 EXP(11위 이하): 일반 점(회색 점) ===
+        content.style.transform = 'translate(-50%, -50%)';
+        content.innerHTML =
+          '<div style="width:12px;height:12px;border-radius:50%;background:#9ca3af;'
+          + 'border:1.5px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.3)"></div>';
+        content.addEventListener('click', () => onMarkerClick?.(s));
+        const overlay = new window.kakao.maps.CustomOverlay({
+          position: new window.kakao.maps.LatLng(s.lat, s.lng),
+          content, yAnchor: 0.5, xAnchor: 0.5, clickable: true,
+          zIndex: 1,
+        });
+        overlay.setMap(map);
+        expOverlaysRef.current.push(overlay);
+      }
+    }
+  }, [ready, expOnly, expStations, mapLevel, layer, onMarkerClick]);
 
   // 경로별 최저가 오버레이 — routePlan이 있으면 출발→도착 직선 Polyline +
   // 출발/도착 핀 + 경로 최저가 주유소 마커를 그리고, 출발~도착이 모두 보이도록 fit한다.

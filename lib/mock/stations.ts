@@ -98,6 +98,12 @@ const SEED: SeedRow[] = [
   // ─── 제주 ───
   { id: 'A0110001', name: 'GS 제주시',       brand: 'GSC', isSelf: false, sido: '11', address: '제주 제주시 연삼로 224',  lat: 33.4996, lng: 126.5312, priceB027: 1758, priceD047: 1618 },
   { id: 'A0110002', name: 'SK 서귀포',       brand: 'SKE', isSelf: false, sido: '11', address: '제주 서귀포시 일주동로 8688', lat: 33.2541, lng: 126.5601, priceB027: 1772, priceD047: 1632 },
+
+  // ─── 고속도로(휴게소) — brand=EXP. mock 모드에서 '고속도로만' 필터/줌아웃 표시를 검증하기 위한 시드.
+  // 가격을 일반 주유소 평균 수준(상한에 밀려도 이상하지 않게)으로 두고, 전국에 흩뜨려 배치한다.
+  { id: 'EX:0001', name: '죽전휴게소(부산방향)', brand: 'EXP', isSelf: false, sido: '02', address: '경기 용인시 수지구 경부고속도로', lat: 37.3247, lng: 127.1056, priceB027: 1680, priceD047: 1540 },
+  { id: 'EX:0002', name: '문막휴게소(강릉방향)', brand: 'EXP', isSelf: false, sido: '03', address: '강원 원주시 문막읍 영동고속도로', lat: 37.3197, lng: 127.8203, priceB027: 1672, priceD047: 1532 },
+  { id: 'EX:0003', name: '칠곡휴게소(서울방향)', brand: 'EXP', isSelf: false, sido: '08', address: '경북 칠곡군 경부고속도로', lat: 35.9954, lng: 128.4012, priceB027: 1665, priceD047: 1525 },
 ];
 
 /** Mock 데이터를 StationWithPrice 배열로 변환 (지정 유종) */

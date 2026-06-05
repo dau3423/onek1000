@@ -16,20 +16,32 @@ interface RpcRow {
 
 export async function queryStationsByBbox(
   bbox: Bbox, product: ProductCode, limit: number,
+  // 단일 브랜드만 조회할 때 지정(예: 'EXP'=고속도로만). 지정 시 그 브랜드만 limit 안에 담아
+  // 줌 아웃(넓은 bbox)에서도 가격 상한에 밀려 누락되지 않게 한다. 미지정이면 기존 동작(전체).
+  brand?: BrandCode,
 ): Promise<StationWithPrice[]> {
   if (!isSupabaseConfigured()) {
     return getMockStations(product)
       .filter((s) => inBbox(s.lat, s.lng, bbox))
+      .filter((s) => (brand ? s.brand === brand : true))
       .sort((a, b) => a.price - b.price)
       .slice(0, limit);
   }
   const sb = getSupabase();
-  const { data, error } = await sb.rpc('rpc_stations_by_bbox', {
-    p_product: product,
-    p_sw_lng: bbox.swLng, p_sw_lat: bbox.swLat,
-    p_ne_lng: bbox.neLng, p_ne_lat: bbox.neLat,
-    p_limit: limit,
-  });
+  // 브랜드 지정 시 brand 필터 RPC(0021)로 그 브랜드만 조회한다. 미지정이면 기존 RPC 그대로.
+  const { data, error } = brand
+    ? await sb.rpc('rpc_stations_by_bbox_brand', {
+        p_product: product, p_brand: brand,
+        p_sw_lng: bbox.swLng, p_sw_lat: bbox.swLat,
+        p_ne_lng: bbox.neLng, p_ne_lat: bbox.neLat,
+        p_limit: limit,
+      })
+    : await sb.rpc('rpc_stations_by_bbox', {
+        p_product: product,
+        p_sw_lng: bbox.swLng, p_sw_lat: bbox.swLat,
+        p_ne_lng: bbox.neLng, p_ne_lat: bbox.neLat,
+        p_limit: limit,
+      });
   if (error) throw new Error(`bbox query failed: ${error.message}`);
   return (data as RpcRow[]).map((r) => ({
     id: r.id, name: r.name, brand: (r.brand_code as BrandCode) ?? 'ETC',

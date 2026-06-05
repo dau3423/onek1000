@@ -27,7 +27,7 @@ import { useFullscreen } from '@/hooks/useFullscreen';
 import { quantize, distanceMeters, distancePointToPath } from '@/lib/map/geo';
 import { ensureNotifyPermission } from '@/lib/sound';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
-import type { BboxResponse, RadiusResponse, StationWithPrice, NationalTop10Item, NationalTop10Response, StationPoint, StationsInBboxResponse, RoutePlan } from '@/types/station';
+import type { BboxResponse, RadiusResponse, StationWithPrice, NationalTop10Item, NationalTop10Response, StationPoint, StationsInBboxResponse, RoutePlan, ProductCode } from '@/types/station';
 import type { EvBboxResponse, EvStationMarker } from '@/types/ev';
 
 // KakaoMap은 window 의존 + SDK 외부 스크립트라 SSR 비활성
@@ -121,6 +121,11 @@ export default function HomePage() {
   const productRef = useRef(product);
   useEffect(() => { productRef.current = product; }, [product]);
 
+  // 최신 브랜드 필터를 항상 참조하기 위한 ref. productRef와 동일하게, idle(onBoundsChange)이
+  // 옛 렌더 클로저로 발화해도 실제 bbox 요청이 현재 브랜드 필터 기준으로 나가게 한다.
+  const brandsRef = useRef(brands);
+  useEffect(() => { brandsRef.current = brands; }, [brands]);
+
   // 마운트 시점에 1회 고정: 직전에 보던 지도 시점(상세 왕복/새로고침 복원).
   // 있으면 그 시점을 초기값으로 쓰고, 자동 위치 센터링을 억제한다.
   const [restoredView] = useState<MapView | null>(() => getInitialMapView());
@@ -139,6 +144,15 @@ export default function HomePage() {
   // 일정 줌 이상 확대 시에만 조회한다(줌 게이팅, rate limit/대량 로드 방지).
   const [allStations, setAllStations] = useState<StationPoint[]>([]);
   const allAbort = useRef<AbortController | null>(null);
+
+  // "고속도로 휴게소만" 필터(brands===['EXP'])일 때 사용할 전국 고속도로 주유소 집합.
+  // 화면 bbox와 무관하게 전국 EXP를 받아(유종 변경 시 재조회), 줌을 아무리 줄여도 모든 EXP가
+  // 보이게 하고(줌 게이팅 면제), 전국 기준 top10(가격순)을 bbox와 무관하게 고정한다.
+  // 전국 ~214개로 희소해 전부 그려도 부담이 적다(우리 DB bbox 조회만 — 신규 외부 fetch 아님).
+  const [expStations, setExpStations] = useState<StationWithPrice[]>([]);
+  const expAbort = useRef<AbortController | null>(null);
+  // "고속도로만" 필터 활성 여부(브랜드가 정확히 EXP 하나).
+  const expOnly = useMemo(() => brands.length === 1 && brands[0] === 'EXP', [brands]);
 
   // 전기차 충전소(layer='ev') — 지도 영역 내 충전소 마커. 우리 DB(/api/ev/bbox)만 조회.
   const [evStations, setEvStations] = useState<EvStationMarker[]>([]);
@@ -238,10 +252,12 @@ export default function HomePage() {
     const b = lastBoundsRef.current;
     if (!b) return;
     // 유종 변경 시 현재 화면(bbox) 기준으로 즉시 재조회한다(가격 마커).
-    // 회색 점(allStations)은 가격과 무관하므로 재조회하지 않는다(줌 게이팅은 bounds/layer effect가 담당).
+    // 브랜드 필터 변경 시에도 재조회한다: "고속도로만"(EXP 단일)으로 전환되면 EXP 전용
+    // 서버 조회 경로로, 다시 전체/다중으로 바뀌면 일반 조회 경로로 즉시 갈아끼우기 위함.
+    // (회색 점(allStations)은 가격과 무관하므로 재조회하지 않는다 — 줌 게이팅은 bounds/layer effect 담당.)
     fetchStations(b);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [product]);
+  }, [product, brands]);
 
   // 유종 변경 시 전국 최저가 TOP10 재조회 (마운트 1회 + product 변경 시).
   // 화면 영역과 무관하므로 bbox 패닝/줌에는 재호출하지 않는다(캐시/rate limit 보호).
@@ -289,6 +305,14 @@ export default function HomePage() {
       zoom: String(b.zoom),
       product: reqProduct,
     });
+    // "고속도로만" 필터(브랜드가 정확히 EXP 하나)일 때는 EXP만 서버에서 조회한다.
+    // 고속도로 주유소는 전국 ~214개로 희소해, 줌 아웃 시 가격순 상한(topNByZoom)에
+    // 일반 주유소에 밀려 누락되던 문제를 막는다(서버가 EXP만 충분한 상한으로 반환).
+    // 여러 브랜드 동시 선택/미선택(전체)일 때는 기존 동작 유지(전체 조회 후 클라이언트 필터).
+    const reqBrands = brandsRef.current;
+    if (reqBrands.length === 1 && reqBrands[0] === 'EXP') {
+      params.set('brand', 'EXP');
+    }
     fetch(`/api/stations/bbox?${params}`, { signal: bboxAbort.current.signal })
       .then(async (r) => {
         if (!r.ok) throw new Error(`bbox ${r.status}`);
@@ -342,6 +366,47 @@ export default function HomePage() {
         if (e.name !== 'AbortError') console.error('all-in-bbox fetch fail', e);
       });
   }
+
+  // 전국 고속도로(EXP) 주유소 조회 — "고속도로만" 필터일 때만 호출.
+  // 전국 bbox(한반도 전체)를 brand=EXP로 한 번 받아(우리 DB bbox 조회만), 화면 줌/패닝과
+  // 무관하게 모든 EXP를 보유한다. 응답 상한(BRAND_ONLY_LIMIT=300) 안에 전국 ~214개가 다 담긴다.
+  // 유종이 바뀌면 가격이 달라지므로(top10 정렬 기준) 재조회한다.
+  function fetchExpStations(reqProduct: ProductCode) {
+    if (expAbort.current) expAbort.current.abort();
+    expAbort.current = new AbortController();
+    const params = new URLSearchParams({
+      // 한반도를 넉넉히 덮는 전국 bbox(제주~강원/울릉 포함). brand=EXP라 EXP만 반환된다.
+      swLat: '33.0', swLng: '124.5', neLat: '38.7', neLng: '132.0',
+      zoom: '7', product: reqProduct, brand: 'EXP',
+    });
+    fetch(`/api/stations/bbox?${params}`, { signal: expAbort.current.signal })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`exp bbox ${r.status}`);
+        return (await r.json()) as BboxResponse;
+      })
+      .then((data) => {
+        // out-of-order 방어: 요청 유종이 현재 유종과 다르면 무시.
+        if (reqProduct !== productRef.current) return;
+        setExpStations(Array.isArray(data?.stations) ? data.stations : []);
+      })
+      .catch((e) => {
+        if (e.name !== 'AbortError') console.error('exp bbox fetch fail', e);
+      });
+  }
+
+  // "고속도로만" 필터 진입/해제 + 유종 변경 시 전국 EXP 집합을 갱신한다.
+  //  - expOnly 진입: 전국 EXP를 받아 모든 EXP 표시 + 전국 top10 고정.
+  //  - expOnly 해제: 진행 중 요청 취소 + 집합 비움(EXP 전용 렌더 종료, 일반 마커로 복귀).
+  useEffect(() => {
+    if (!expOnly) {
+      if (expAbort.current) { expAbort.current.abort(); expAbort.current = null; }
+      if (expStations.length) setExpStations([]);
+      return;
+    }
+    fetchExpStations(product);
+    return () => { if (expAbort.current) expAbort.current.abort(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expOnly, product]);
 
   // 충전소 마커 조회 — layer='ev'일 때만 호출. 우리 DB(/api/ev/bbox)만 조회(data.go.kr는 sync 전용).
   function fetchEvStations(b: { swLat: number; swLng: number; neLat: number; neLng: number }) {
@@ -779,6 +844,8 @@ export default function HomePage() {
           nationalTop10={visibleNationalTop10}
           nearbyTop10={visibleNearbyTop10}
           nearbyStations={visibleNearbyStations}
+          expOnly={expOnly}
+          expStations={expStations}
           activeTab={activeTab}
           product={product}
           layer={layer}
