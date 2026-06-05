@@ -320,11 +320,14 @@ export async function POST(req: Request) {
 
   // 기존 prices_latest 행 수(삭제 전 기준). 부분 sync(급감) 판정 (C)에 쓴다.
   // head:true + count:'exact' 로 행을 받지 않고 카운트만 조회한다.
+  // 고속도로(EX-) 가격은 highway-sync(서울 Cloud Run)가 관리하는 외부 소스라 Opinet
+  // 보고분(priceUpserts)과 비교 대상이 아니다 → 카운트에서 제외해 upsertRatio 판정을 공정하게.
   let existingPriceCount: number | null = null;
   {
     const { count, error: cErr } = await sb
       .from('prices_latest')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true })
+      .not('station_id', 'like', 'EX-%');
     if (cErr) {
       // 카운트 실패 시 (C) 판정 불가 → 보수적으로 0으로 두면 (C)가 항상 통과되어 위험.
       // 대신 null 로 남겨 아래에서 (C)를 "기준 미상이면 스킵" 쪽으로 처리한다.
@@ -363,10 +366,13 @@ export async function POST(req: Request) {
     // 이번 run 시작 시각(now)보다 오래된 updated_at = 이번에 보고되지 않은 행.
     // UPSERT가 모두 성공한 뒤 실행하므로 신규/갱신 행은 updated_at=now 로 보존된다.
     // product 제약을 두지 않아 과거 취급 유종 변경으로 남은 orphan 행도 함께 정리된다.
+    // 단 고속도로(EX-) 가격은 highway-sync(서울 Cloud Run)가 적재하는 외부 소스라
+    // Opinet 입장에선 항상 stale로 보인다 → 제외하지 않으면 매일 삭제되어 고속도로가 지도에서 사라진다.
     const { data: deleted, error } = await sb
       .from('prices_latest')
       .delete()
       .lt('updated_at', now)
+      .not('station_id', 'like', 'EX-%')
       .select('station_id'); // 삭제 건수 집계용
     if (error) {
       fetchErrors.push(`stale cleanup failed: ${error.message}`);
