@@ -6,6 +6,10 @@
       "schedule": "0 15 * * *"
     },
     {
+      "path": "/api/internal/backfill-amenities",
+      "schedule": "30 15 * * *"
+    },
+    {
       "path": "/api/billing/charge-cron",
       "schedule": "10 * * * *"
     },
