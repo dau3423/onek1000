@@ -1,6 +1,6 @@
 // 고속도로(휴게소) 주유소 sync 본체.
 // === app/api/internal/sync-highway/route.ts 에서 포팅 ===
-// 적재 규칙은 라우트와 동일하게 유지(id 'EX:'+code, brand EXP/'고속도로', is_highway=true,
+// 적재 규칙은 라우트와 동일하게 유지(id 'EX-'+code, brand EXP/'고속도로', is_highway=true,
 // prices_latest onConflict(station_id,product) + prices_history insert, 좌표 캐시 재지오코딩 생략,
 // 청크 upsert 500, 좌표 못 구하면 적재 보류).
 
@@ -9,7 +9,9 @@ import { fetchAllHighwayStations, isExoilConfigured } from './exoil.js';
 import { geocode, isGeocodeConfigured } from './geocode.js';
 
 // types/station.ts BRAND_LABEL.EXP 값과 일치시킨다.
-const EX_ID_PREFIX = 'EX:';
+// URL-safe prefix: 콜론(':')은 Firebase App Hosting(Google LB/CDN)에서 경로 세그먼트 라우팅을
+// 깨뜨려 /station/EX:000297 이 404가 난다(raw/인코딩 모두). unreserved 문자인 하이픈으로 둔다.
+const EX_ID_PREFIX = 'EX-';
 const EX_BRAND = 'EXP';
 const EX_BRAND_NAME = '고속도로';
 // 고속도로 주유소는 행정구역 sido 코드를 알 수 없어 NOT NULL 충족용 폴백값(라우트와 동일).

@@ -22,8 +22,10 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-// 도로공사 휴게소 주유소는 'EX:' + serviceAreaCode2 로 적재해 Opinet UNI_ID 와 충돌하지 않게 한다.
-const EX_ID_PREFIX = 'EX:';
+// 도로공사 휴게소 주유소는 'EX-' + serviceAreaCode2 로 적재해 Opinet UNI_ID 와 충돌하지 않게 한다.
+// 콜론(':')은 Firebase App Hosting(Google LB/CDN)에서 /station/EX:000297 경로를 깨뜨려 404가 나므로
+// (raw/인코딩 모두) unreserved 문자인 하이픈을 쓴다. 실제 적재는 서울 Cloud Run(services/highway-sync).
+const EX_ID_PREFIX = 'EX-';
 // 고속도로 구분 브랜드 코드(types/station.ts BrandCode 'EXP' 와 일치). 정유사 oilCompany 는 별도 매핑하지 않는다.
 const EX_BRAND = 'EXP';
 // 고속도로 주유소는 행정구역 sido 코드를 알 수 없어 비공간 컬럼은 NOT NULL 충족용 폴백값을 둔다.

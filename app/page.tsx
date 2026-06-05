@@ -219,7 +219,7 @@ export default function HomePage() {
   // 일반 마커와 전국 TOP10 메달 마커 모두 onMarkerClick을 경유하므로 동일하게 적용된다.
   function handleMarkerClick(s: StationWithPrice) {
     if (isDesktop) setPopupStation(s);
-    // 고속도로 주유소 id('EX:'+코드)의 콜론 등 특수문자가 경로에서 깨지지 않도록 인코딩.
+    // 고속도로 주유소 id('EX-'+코드) 포함 특수문자가 경로에서 깨지지 않도록 인코딩(하이픈/영숫자엔 no-op).
     else router.push(`/station/${encodeURIComponent(s.id)}`);
   }
 

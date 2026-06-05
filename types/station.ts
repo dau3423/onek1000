@@ -10,7 +10,7 @@ export const PRODUCT_LABEL: Record<ProductCode, string> = {
   C004: 'LPG',
 };
 
-// EXP = 한국도로공사 고속도로(휴게소) 주유소. Opinet UNI_ID 체계와 별개로 'EX:' prefix id로 적재된다.
+// EXP = 한국도로공사 고속도로(휴게소) 주유소. Opinet UNI_ID 체계와 별개로 'EX-' prefix id로 적재된다.
 // (정유사 oilCompany 값은 별도로 매핑하지 않고, 고속도로 구분은 brand=EXP + is_highway 플래그로 표현한다.)
 export type BrandCode = 'SKE' | 'GSC' | 'HDO' | 'SOL' | 'RTE' | 'ETC' | 'RTO' | 'NHO' | 'E1G' | 'SOG' | 'EXP';
 
