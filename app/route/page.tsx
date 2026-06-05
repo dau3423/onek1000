@@ -8,8 +8,16 @@ import { useSession, signIn } from 'next-auth/react';
 import { loadKakao } from '@/components/map/loadKakao';
 import { useMapStore } from '@/stores/map';
 import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL, type BrandCode, type ProductCode, type StationWithPrice } from '@/types/station';
+import {
+  getRecentPlaces,
+  recordRecentPlace,
+  removeRecentPlace,
+  toRoutePoint,
+  type RecentPlace,
+} from '@/lib/route/recentPlaces';
 
-type Point = { lat: number; lng: number; name?: string };
+// placeId: 카카오 장소 id(최근 위치 동일성 판정용). "내 위치"처럼 검색 외 지정엔 없음.
+type Point = { lat: number; lng: number; name?: string; placeId?: string };
 
 /** 경로 화면이 지원하는 유종 선택지(휘발유/경유/LPG). */
 const ROUTE_PRODUCTS: ProductCode[] = ['B027', 'D047', 'C004'];
@@ -102,6 +110,12 @@ function RouteCheapestInner() {
   const [results, setResults] = useState<StationWithPrice[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 최근/자주 탐색한 위치(클라이언트 localStorage). SSR 안전을 위해 마운트 후 로드.
+  const [recent, setRecent] = useState<RecentPlace[]>([]);
+
+  useEffect(() => {
+    setRecent(getRecentPlaces());
+  }, []);
 
   // 로그인 + 기본 차량 유종이 있으면 진입 시 1회 자동 선택(선택지 밖 값은 폴백 매핑).
   // 사용자가 직접 유종을 바꾼 뒤에는 덮어쓰지 않는다(productTouched 가드).
@@ -150,6 +164,19 @@ function RouteCheapestInner() {
         setError('경로 반경 2km 내 주유소를 찾지 못했어요. 출발/도착을 조정해보세요.');
         return;
       }
+      // 탐색한 위치를 최근/자주 목록에 기록(중복은 count++ & lastAt 갱신).
+      // - 도착지(to)는 항상 기록 대상. 출발지(from)도 별도 항목으로 기록한다.
+      // - 단 "내 위치/현재위치" 같은 동적 항목과 이름 없는 좌표는 제외(재사용 의미 없음).
+      const isStaticPlace = (p: Point) =>
+        !!p.name && p.name !== '내 위치' && p.name !== '현재위치';
+      if (isStaticPlace(to)) {
+        recordRecentPlace({ placeId: to.placeId, name: to.name as string, lat: to.lat, lng: to.lng });
+      }
+      if (isStaticPlace(from)) {
+        recordRecentPlace({ placeId: from.placeId, name: from.name as string, lat: from.lat, lng: from.lng });
+      }
+      setRecent(getRecentPlaces());
+
       // 결과를 store에 담아 메인 지도로 이동 → 도로 경로 Polyline + 출발/도착/최저가 마커 표시.
       setRoutePlan({
         from: { lat: from.lat, lng: from.lng, name: from.name },
@@ -214,6 +241,40 @@ function RouteCheapestInner() {
         </button>
         {error && <p className="text-xs text-red-500">{error}</p>}
       </section>
+
+      {recent.length > 0 && (
+        <section className="border-t border-gray-100 px-5 py-4">
+          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
+            최근·자주 가는 위치
+          </h2>
+          <ul className="flex flex-wrap gap-2">
+            {recent.map((p) => (
+              <li key={`${p.placeId ?? ''}|${p.name}|${p.lat},${p.lng}`}>
+                <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 pl-3 pr-1 text-xs">
+                  <button
+                    type="button"
+                    // 클릭 시 도착지(to)에 좌표·이름 포함해 채워 바로 재검색 가능하게.
+                    onClick={() => setPoint('to', toRoutePoint(p))}
+                    className="max-w-[10rem] truncate py-1.5 font-semibold text-gray-800 hover:text-primary"
+                    title={`${p.name} · ${p.count}회`}
+                  >
+                    {p.name}
+                    {p.count > 1 && <span className="ml-1 text-gray-400">{p.count}회</span>}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`${p.name} 삭제`}
+                    onClick={() => setRecent(removeRecentPlace(p))}
+                    className="ml-0.5 flex h-5 w-5 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                  >
+                    ✕
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="border-t border-gray-100">
         {results.length === 0 && !loading && (
@@ -312,7 +373,8 @@ function PointPicker({
   };
 
   const handleSelect = (p: SearchResult) => {
-    onSelect({ lat: p.lat, lng: p.lng, name: p.name });
+    // placeId(카카오 장소 id)도 함께 넘겨 최근 위치 동일성 판정 정확도를 높인다.
+    onSelect({ lat: p.lat, lng: p.lng, name: p.name, placeId: p.id });
     // 입력란 표시는 value 동기화 effect가 선택한 장소명으로 채운다(여기서 비우지 않음).
     setPlaces(null);
     setSearchError(null);
