@@ -215,7 +215,8 @@ interface Props {
   nearbyStations?: StationWithPrice[];
   /**
    * "고속도로 휴게소만" 필터 활성 여부. true면 expStations(전국 고속도로 주유소)를
-   * 전용 렌더한다: 전국 가격 최저가 TOP10 = 가격/순위 마커, 나머지 EXP = 일반 점.
+   * 전용 렌더한다: 모든 EXP = 일반 가격 마커(priceTier 색 동심원 + 줌인 가격 라벨),
+   * 그중 전국 가격 최저가 TOP10만 순위 숫자로 강조.
    * 모든 EXP 마커는 줌 게이팅을 면제해 줌을 아무리 줄여도 항상 보인다.
    * 이 모드에서는 일반 bbox 마커/전국·내주변 TOP10 강조 마커를 그리지 않는다(EXP 전용 화면).
    */
@@ -780,8 +781,9 @@ export function KakaoMap({
   // === "고속도로 휴게소만" 필터 전용 EXP 마커 ===
   // expOnly일 때, 전국 고속도로 주유소(expStations)를 화면 줌/패닝과 무관하게 항상 전부 그린다
   // (줌 게이팅 면제 — 줌을 아무리 줄여도 모든 EXP가 보인다).
-  //  - 전국 가격 최저가 TOP10(가격 오름차순 상위 10): 가격/순위 마커(일반 최저가 마커 톤 — 가격 라벨 + 순위 숫자 동심원).
-  //  - 나머지(11위 이하): 일반 점(회색 점)으로 표시.
+  //  - 모든 EXP를 일반 주유소 마커와 동일한 방식으로 그린다(priceTier 색 동심원 + 줌인 시 가격 라벨).
+  //  - 그중 전국 가격 최저가 TOP10(가격 오름차순 상위 10)만 순위 숫자(numberMarkerSvg)로 강조,
+  //    나머지(11위 이하)는 tier 표정(faceMarkerSvg)으로 — 둘 다 동일한 tier 색 가격 마커다(회색 점 제거).
   // expStations는 전국 집합이라 정렬해 top10을 매겨도 줌인으로 bbox가 좁아질 때 흔들리지 않는다(전국 고정).
   // EXP가 아닌 일반 마커/강조 마커는 expOnly에서 그리지 않으므로(위 effect들의 가드) 충돌이 없다.
   useEffect(() => {
@@ -796,66 +798,53 @@ export function KakaoMap({
     if (layer === 'ev' || !expOnly) return;
 
     const list = expStations ?? [];
-    // 전국 가격 오름차순 정렬 → 상위 10 = top10(가격 마커), 나머지 = 일반 점.
+    // 전국 가격 오름차순 정렬 → 상위 10 = top10(순위 숫자 강조), 나머지도 동일 가격 마커.
     const sorted = [...list].sort((a, b) => a.price - b.price);
     const topRank = new Map<string, number>();
     for (let i = 0; i < Math.min(10, sorted.length); i++) topRank.set(sorted[i].id, i + 1);
 
     // 가격 tier 색은 EXP 집합 자체의 상대 분포로 산정(전국 EXP 기준 저렴/보통/비쌈).
+    // EXP만 보는 화면이므로 집합 내 상대 색이 자연스럽다(일반 bbox 마커가 화면 분포 기준인 것과 동일 취지).
     const expThresholds = priceTierThresholds(sorted.map((s) => s.price));
     const showLabel = map.getLevel() <= 5; // 줌 인 상태에서만 가격 라벨(일반 마커와 동일 정책)
 
     for (const s of list) {
       const rank = topRank.get(s.id);
+      // === 모든 EXP = 일반 주유소 가격 마커 스타일(priceTier 색 동심원 + 줌인 가격 라벨) ===
+      // top10만 순위 숫자(numberMarkerSvg), 나머지는 tier 표정(faceMarkerSvg)으로 차등.
       const content = document.createElement('div');
       content.className = 'cursor-pointer select-none';
-
-      if (rank != null) {
-        // === 전국 최저가 TOP10: 가격/순위 마커(일반 최저가 마커와 동일 톤) ===
-        content.style.transform = 'translate(-50%, -100%)';
-        content.style.position = 'relative';
-        const tier = priceTier(s.price, expThresholds);
-        const tierColor = TIER_FACE[tier].color;
-        const brandColor = BRAND_COLOR[s.brand] ?? '#666';
-        const faceSize = showLabel ? 26 : 30;
-        const face = numberMarkerSvg(tier, faceSize, rank, { ring: brandColor, ringWidth: 8, gap: 4 });
-        content.innerHTML = showLabel
-          ? `
-          <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
-            <div style="padding:4px 8px;border-radius:10px;background:${tierColor};color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
-              ₩${s.price.toLocaleString()}
-            </div>
-            <div style="width:8px;height:8px;background:${tierColor};transform:rotate(45deg);margin-top:-4px"></div>
-            <div style="margin-top:-1px">${face}</div>
-          </div>`
-          : `
-          <div style="position:relative;display:flex;flex-direction:column;align-items:center">
-            ${face}
-          </div>`;
-        content.addEventListener('click', () => onMarkerClick?.(s));
-        const overlay = new window.kakao.maps.CustomOverlay({
-          position: new window.kakao.maps.LatLng(s.lat, s.lng),
-          content, yAnchor: 1, clickable: true,
-          // 일반 점(아래) 위에 그려지도록. 순위 높을수록 더 위로.
-          zIndex: 10 + (11 - rank),
-        });
-        overlay.setMap(map);
-        expOverlaysRef.current.push(overlay);
-      } else {
-        // === 나머지 EXP(11위 이하): 일반 점(회색 점) ===
-        content.style.transform = 'translate(-50%, -50%)';
-        content.innerHTML =
-          '<div style="width:12px;height:12px;border-radius:50%;background:#9ca3af;'
-          + 'border:1.5px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.3)"></div>';
-        content.addEventListener('click', () => onMarkerClick?.(s));
-        const overlay = new window.kakao.maps.CustomOverlay({
-          position: new window.kakao.maps.LatLng(s.lat, s.lng),
-          content, yAnchor: 0.5, xAnchor: 0.5, clickable: true,
-          zIndex: 1,
-        });
-        overlay.setMap(map);
-        expOverlaysRef.current.push(overlay);
-      }
+      content.style.transform = 'translate(-50%, -100%)';
+      content.style.position = 'relative';
+      const tier = priceTier(s.price, expThresholds);
+      const tierColor = TIER_FACE[tier].color;
+      const brandColor = BRAND_COLOR[s.brand] ?? '#666';
+      const faceSize = showLabel ? 26 : 30;
+      const face = rank != null
+        ? numberMarkerSvg(tier, faceSize, rank, { ring: brandColor, ringWidth: 8, gap: 4 })
+        : faceMarkerSvg(tier, faceSize, { ring: brandColor, ringWidth: 8, gap: 4 });
+      content.innerHTML = showLabel
+        ? `
+        <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
+          <div style="padding:4px 8px;border-radius:10px;background:${tierColor};color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
+            ₩${s.price.toLocaleString()}
+          </div>
+          <div style="width:8px;height:8px;background:${tierColor};transform:rotate(45deg);margin-top:-4px"></div>
+          <div style="margin-top:-1px">${face}</div>
+        </div>`
+        : `
+        <div style="position:relative;display:flex;flex-direction:column;align-items:center">
+          ${face}
+        </div>`;
+      content.addEventListener('click', () => onMarkerClick?.(s));
+      const overlay = new window.kakao.maps.CustomOverlay({
+        position: new window.kakao.maps.LatLng(s.lat, s.lng),
+        content, yAnchor: 1, clickable: true,
+        // top10(순위 강조)은 비-top10 위에 그려지도록. 순위 높을수록 더 위로.
+        zIndex: rank != null ? 10 + (11 - rank) : 1,
+      });
+      overlay.setMap(map);
+      expOverlaysRef.current.push(overlay);
     }
   }, [ready, expOnly, expStations, mapLevel, layer, onMarkerClick]);
 
