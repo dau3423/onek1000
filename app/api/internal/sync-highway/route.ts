@@ -37,6 +37,22 @@ const UPSERT_CHUNK = 500;
 const GEOCODE_DELAY_MS = 60;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// === 가격 sanity 가드 상수(services/highway-sync/sync.js 와 동일 규칙) ===
+// 도로공사 원본 이상값(예: 휘발유 1,198원 — 정상 1,998원)이 잘못 적재되는 걸 막는다.
+// 가드에 걸린 유종은 prices_latest upsert에서 제외(=기존값 유지)하고, prices_history엔 원시값을 항상 기록.
+const PRODUCT_LPG = 'C004'; // LPG
+// 가드1(관계형): 휘발유/경유는 한국에서 항상 LPG보다 비싸다. LPG가 있는데 gas <= lpg 면 그 유종은 오류.
+const RELATIONAL_PRODUCTS: ProductCode[] = ['B027', 'D047']; // 휘발유, 경유
+// 가드2(급변): 새 값이 직전값 대비 ±30% 초과 변동이면 급변 의심.
+const CHANGE_THRESHOLD = 0.3;
+// 급변이어도 최근 history에 새 값과 ±3% 이내 근접 reading이 있으면 실제 추세로 수용.
+const HISTORY_MATCH_TOL = 0.03;
+// history 추세 확인 시 station+product별로 살펴볼 최근 reading 개수.
+const HISTORY_LOOKBACK = 3;
+
+type GuardLog = { station_id: string; product: ProductCode; new: number; prev: number | null; reason: string };
+type PriceCand = { station_id: string; product: ProductCode; price: number };
+
 export async function GET(req: Request) { return POST(req); }
 
 export async function POST(req: Request) {
@@ -67,6 +83,8 @@ export async function POST(req: Request) {
   // 2) 기존 EX 좌표 캐시 — 이미 좌표가 있는 휴게소는 재지오코딩하지 않는다(카카오 호출 절약).
   const ids = highway.map((h) => EX_ID_PREFIX + h.code);
   const coordCache = new Map<string, { lat: number; lng: number }>();
+  // 가드2(급변)용 직전 저장값 — `${station_id} ${product}` → price.
+  const prevPriceMap = new Map<string, number>();
   {
     // id IN (...) 조회는 대량이면 청크로 나눠 안전하게.
     for (let i = 0; i < ids.length; i += UPSERT_CHUNK) {
@@ -79,12 +97,49 @@ export async function POST(req: Request) {
         if (r.lat != null && r.lng != null) coordCache.set(r.id as string, { lat: r.lat, lng: r.lng });
       }
     }
+    // 직전 prices_latest 일괄 조회(이번 sync 대상 EX station들만). 메모리에서 급변 판정.
+    for (let i = 0; i < ids.length; i += UPSERT_CHUNK) {
+      const chunk = ids.slice(i, i + UPSERT_CHUNK);
+      const { data } = await sb
+        .from('prices_latest')
+        .select('station_id, product, price')
+        .in('station_id', chunk);
+      for (const r of data ?? []) {
+        if (r.price != null) prevPriceMap.set(`${r.station_id} ${r.product}`, Number(r.price));
+      }
+    }
   }
+
+  // 가드2 보완: 급변 의심 건만 prices_history 최근 reading을 모아 추세 확인용으로 조회한다.
+  // (전 station을 다 긁지 않고 실제 급변에 걸린 station만 대상으로 효율화. 인덱스: station_id,product,observed_at)
+  const fetchRecentHistory = async (pairs: PriceCand[]): Promise<Map<string, number[]>> => {
+    const map = new Map<string, number[]>();
+    if (pairs.length === 0) return map;
+    const stationIds = [...new Set(pairs.map((p) => p.station_id))];
+    for (let i = 0; i < stationIds.length; i += UPSERT_CHUNK) {
+      const chunk = stationIds.slice(i, i + UPSERT_CHUNK);
+      const { data } = await sb
+        .from('prices_history')
+        .select('station_id, product, price, observed_at')
+        .in('station_id', chunk)
+        .order('observed_at', { ascending: false });
+      for (const r of data ?? []) {
+        if (r.price == null) continue;
+        const k = `${r.station_id} ${r.product}`;
+        const arr = map.get(k) ?? [];
+        if (arr.length < HISTORY_LOOKBACK) arr.push(Number(r.price));
+        map.set(k, arr);
+      }
+    }
+    return map;
+  };
 
   // 3) 좌표 확보(없는 건만 지오코딩) + station/price 행 구성.
   const stationRows: Record<string, unknown>[] = [];
-  const priceRows: Record<string, unknown>[] = [];
-  const history: Array<{ station_id: string; product: ProductCode; price: number }> = [];
+  const priceRows: Record<string, unknown>[] = []; // 최종 prices_latest upsert 대상(가드 통과분).
+  const history: Array<{ station_id: string; product: ProductCode; price: number }> = []; // 원시 reading(항상 insert).
+  const latestCandidates: PriceCand[] = []; // 관계형 통과분 — 급변 가드 후 priceRows로 확정.
+  const guarded: GuardLog[] = []; // 가드로 latest에서 제외된 건(모니터링 로그).
   const geocodeEnabled = isGeocodeConfigured();
   let geocoded = 0;
   let coordSkipped = 0;
@@ -126,17 +181,76 @@ export async function POST(req: Request) {
       updated_at: now,
     });
 
+    // prices_history엔 원시 reading을 항상 기록(가드로 latest를 막아도 추세는 누적되어
+    // 다음 회차에 진짜 변동이 history 확인으로 수용된다).
     for (const [product, price] of Object.entries(h.prices) as Array<[ProductCode, number]>) {
-      priceRows.push({ station_id: id, product, price, trade_dt: today, updated_at: now });
       history.push({ station_id: id, product, price });
+    }
+
+    // === 가드1(관계형) ===: LPG가 있는데 휘발유/경유가 LPG 이하면 그 유종은 오류 → latest 제외.
+    const prices = h.prices as Record<ProductCode, number>;
+    const lpg = prices[PRODUCT_LPG as ProductCode];
+    const skippedProducts = new Set<ProductCode>();
+    if (lpg != null) {
+      for (const product of RELATIONAL_PRODUCTS) {
+        const v = prices[product];
+        if (v != null && v <= lpg) {
+          skippedProducts.add(product);
+          guarded.push({ station_id: id, product, new: v, prev: prevPriceMap.get(`${id} ${product}`) ?? null, reason: `relational(<=lpg ${lpg})` });
+        }
+      }
+    }
+
+    // 관계형 통과분만 latest 후보로 둔다. 급변 가드는 history 조회 후 일괄 판정(아래).
+    for (const [product, price] of Object.entries(h.prices) as Array<[ProductCode, number]>) {
+      if (skippedProducts.has(product)) continue;
+      latestCandidates.push({ station_id: id, product, price });
     }
   }
 
   if (coordSkipped) errors.push(`coord skipped(no geocode): ${coordSkipped}`);
+
+  // === 가드2(급변): 직전값 대비 ±30% 초과 변동 건만 후보로 추려, history 추세로 수용/스킵 판정 ===
+  // 직전값이 없으면(신규 주유소) 급변 가드 미적용(관계형만).
+  const surgeSuspects: Array<PriceCand & { prev: number }> = [];
+  const candidateKept: PriceCand[] = [];
+  for (const c of latestCandidates) {
+    const prev = prevPriceMap.get(`${c.station_id} ${c.product}`);
+    if (prev == null || prev <= 0) {
+      candidateKept.push(c); // 신규: 급변 가드 미적용.
+      continue;
+    }
+    const change = Math.abs(c.price - prev) / prev;
+    if (change > CHANGE_THRESHOLD) surgeSuspects.push({ ...c, prev });
+    else candidateKept.push(c);
+  }
+
+  // 급변 의심 건만 최근 history를 조회해, 새 값과 ±3% 근접 reading이 이미 있으면 실제 추세로 수용.
+  const recentHistory = surgeSuspects.length > 0 ? await fetchRecentHistory(surgeSuspects) : new Map<string, number[]>();
+  for (const s of surgeSuspects) {
+    const readings = recentHistory.get(`${s.station_id} ${s.product}`) ?? [];
+    // 이번 회차 원시 reading은 아직 insert 전이라 history엔 없다(직전 회차들만 비교) → 의도된 동작.
+    const matched = readings.some((r) => r > 0 && Math.abs(s.price - r) / r <= HISTORY_MATCH_TOL);
+    if (matched) {
+      candidateKept.push({ station_id: s.station_id, product: s.product, price: s.price });
+    } else {
+      // 첫 등장 글리치로 보고 latest 갱신 스킵(기존값 유지). history엔 이미 원시값 기록됨.
+      guarded.push({ station_id: s.station_id, product: s.product, new: s.price, prev: s.prev, reason: `surge(>${CHANGE_THRESHOLD * 100}%, no history match)` });
+    }
+  }
+
+  // 가드 통과분만 prices_latest upsert payload로 확정.
+  for (const c of candidateKept) {
+    priceRows.push({ station_id: c.station_id, product: c.product, price: c.price, trade_dt: today, updated_at: now });
+  }
+
+  const guardedCount = guarded.length;
+  if (guardedCount) errors.push(`price guard skipped(latest kept): ${guardedCount}`);
+
   if (stationRows.length === 0) {
     return NextResponse.json({
       ok: true, asOf: now, fetched: highway.length,
-      stationUpserts: 0, priceUpserts: 0, coordSkipped,
+      stationUpserts: 0, priceUpserts: 0, coordSkipped, guardedCount,
       note: geocodeEnabled ? 'all geocode failed' : 'geocode key missing (KAKAO_REST_API_KEY)',
       errors: errors.length ? errors : undefined,
     });
@@ -176,6 +290,8 @@ export async function POST(req: Request) {
     stationUpserts: stationRows.length,
     priceUpserts: priceRows.length,
     geocoded, coordCached, coordSkipped,
+    guardedCount,
+    guarded: guarded.slice(0, 50), // 모니터링용 사례 샘플(과다 로그 방지 상한).
     errors: errors.length ? errors : undefined,
   });
 }
