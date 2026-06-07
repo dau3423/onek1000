@@ -1,7 +1,7 @@
 // Supabase 기반 도메인 쿼리 — Supabase 미설정 시 mock 폴백
 import { getSupabase, isSupabaseConfigured } from './supabase';
 import { PRODUCT_LABEL } from '@/types/station';
-import type { StationWithPrice, ProductCode, SidoCode, BrandCode, NationalTop10Item, StationDetail, StationPoint } from '@/types/station';
+import type { StationWithPrice, ProductCode, SidoCode, BrandCode, NationalTop10Item, DailyTop10Item, StationDetail, StationPoint } from '@/types/station';
 import type { FuelLog } from '@/types/fuel-log';
 import type { Bbox } from '@/lib/map/geo';
 import { getMockStations, getMockStationDetail } from '@/lib/mock/stations';
@@ -191,6 +191,54 @@ export async function queryNationalTop10(
       lng: st?.lng ?? 0,
       price: r.price,
       rank: i + 1,
+    };
+  });
+}
+
+/**
+ * SNS 게시(매일 복붙/이미지) 전용 전국 최저가 TOP10.
+ * queryNationalTop10과 동일한 "전국 가격 오름차순 상위 10" 의미지만,
+ * 게시 문구/표에 필요한 지역(sido)·셀프여부를 함께 담는다.
+ * Supabase 미설정 시 mock 폴백(전국 SEED 기준 TOP10).
+ */
+export async function queryDailyTop10(
+  product: ProductCode,
+): Promise<DailyTop10Item[]> {
+  if (!isSupabaseConfigured()) {
+    return getMockStations(product)
+      .slice()
+      .sort((a, b) => a.price - b.price)
+      .slice(0, 10)
+      .map((s, i) => ({
+        rank: i + 1, id: s.id, name: s.name, brand: s.brand,
+        sido: s.sido, isSelf: s.isSelf, price: s.price,
+      }));
+  }
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('prices_latest')
+    .select('station_id, price, stations!inner(name, brand_code, sido_code, is_self)')
+    .eq('product', product)
+    .order('price', { ascending: true })
+    .limit(10);
+  if (error) throw new Error(`daily top10 query failed: ${error.message}`);
+  type Row = {
+    station_id: string;
+    price: number;
+    stations:
+      | { name: string; brand_code: string; sido_code: string; is_self: boolean }
+      | Array<{ name: string; brand_code: string; sido_code: string; is_self: boolean }>;
+  };
+  return (data as Row[] ?? []).map((r, i) => {
+    const st = Array.isArray(r.stations) ? r.stations[0] : r.stations;
+    return {
+      rank: i + 1,
+      id: r.station_id,
+      name: st?.name ?? '',
+      brand: (st?.brand_code as BrandCode) ?? 'ETC',
+      sido: (st?.sido_code as SidoCode) ?? '01',
+      isSelf: !!st?.is_self,
+      price: r.price,
     };
   });
 }

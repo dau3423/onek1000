@@ -148,6 +148,20 @@ export interface NationalTop10Response {
   ttlSec: number;
 }
 
+/**
+ * SNS 게시(매일 복붙/이미지) 전용 전국 최저가 1건.
+ * 지도 마커 강조용 NationalTop10Item과 달리 지역(sido)·셀프여부를 포함한다.
+ */
+export interface DailyTop10Item {
+  rank: number; // 1~10
+  id: string;
+  name: string;
+  brand: BrandCode;
+  sido: SidoCode;
+  isSelf: boolean;
+  price: number; // 원/L
+}
+
 export interface AvgPriceResponse {
   product: ProductCode;
   nation: number;
