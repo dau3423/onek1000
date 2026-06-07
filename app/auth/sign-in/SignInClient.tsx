@@ -40,10 +40,16 @@ function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }
 
   const isInApp = inAppKind !== null;
 
-  function handleOpenExternal() {
-    const { attempted, needsManual } = openExternalBrowser();
-    // 시도조차 못 했거나(iOS 등) 수동 안내가 필요하면 복사 안내 패널을 펼친다.
-    if (!attempted || needsManual) setShowManual(true);
+  async function handleOpenExternal() {
+    // best-effort 자동 외부 열기: 스킴/intent가 먹히는 환경(카톡/일부 안드)에선 즉시 전환된다.
+    openExternalBrowser();
+    // 자동 전환이 조용히 무시되는 웹뷰(당근 등)에서도 버튼이 죽지 않도록,
+    // 결과와 무관하게 항상 수동 안내 패널을 띄우고 링크를 자동 복사한다.
+    // (자동 전환이 성공하면 이미 페이지를 떠나므로 아래 상태 변경은 부작용이 없다.)
+    setShowManual(true);
+    const ok = await copyCurrentUrl();
+    setCopied(ok);
+    if (ok) setTimeout(() => setCopied(false), 2000);
   }
 
   async function handleCopyUrl() {
@@ -125,8 +131,9 @@ function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }
                 </p>
               ) : (
                 <p>
-                  자동 전환이 안 되면 아래 버튼으로 링크를 복사해 Chrome 등
-                  외부 브라우저 주소창에 붙여넣어 주세요.
+                  이 화면이 보이면 <b>우측 상단(또는 하단)의 ⋮ / 공유 메뉴에서
+                  &ldquo;다른 브라우저로 열기&rdquo;</b>를 누르거나, <b>복사된 링크를 Chrome /
+                  Safari 주소창에 붙여넣어</b> 주세요.
                 </p>
               )}
               <button
