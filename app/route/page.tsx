@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useSession, signIn } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { loadKakao } from '@/components/map/loadKakao';
 import { useMapStore } from '@/stores/map';
 import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL, type BrandCode, type ProductCode, type StationWithPrice } from '@/types/station';
@@ -45,10 +45,7 @@ type SearchResult = {
 export default function RouteCheapestPage() {
   const { status } = useSession();
 
-  // 회원 전용(로그인 사용자 전용). 비로그인 시 로그인 CTA 노출.
-  if (status === 'unauthenticated') {
-    return <RouteSignInGate />;
-  }
+  // 경로별 최저가는 비회원에게도 완전 개방(진입·입력·검색·결과까지). 로그인 유도 없음.
   // 세션 확인 중에는 깜빡임 방지용 간단 로딩
   if (status === 'loading') {
     return (
@@ -59,44 +56,6 @@ export default function RouteCheapestPage() {
   }
 
   return <RouteCheapestInner />;
-}
-
-/** 비로그인 사용자에게 보여줄 로그인 유도 화면 */
-function RouteSignInGate() {
-  return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
-      <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-gray-100 bg-white/95 px-3 backdrop-blur">
-        <Link href="/" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100">
-          ←
-        </Link>
-        <h1 className="font-bold text-gray-900">경로별 최저가</h1>
-      </header>
-
-      <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-        <Image
-          src="/icons/icon_run.png"
-          alt=""
-          width={56}
-          height={56}
-          className="opacity-80"
-        />
-        <h2 className="mt-4 text-lg font-bold text-gray-900">회원 전용 기능이에요</h2>
-        <p className="mt-2 text-sm leading-relaxed text-gray-500">
-          출발·도착을 잇는 경로 위 최저가 주유소 찾기는<br />
-          로그인 후 이용할 수 있어요.
-        </p>
-        <button
-          onClick={() => signIn(undefined, { callbackUrl: '/route' })}
-          className="mt-6 w-full rounded-xl bg-primary py-3 font-bold text-white shadow-sm hover:opacity-90"
-        >
-          로그인하고 경로별 최저가 보기
-        </button>
-        <Link href="/" className="mt-3 text-xs text-gray-400 hover:underline">
-          지도로 돌아가기
-        </Link>
-      </div>
-    </main>
-  );
 }
 
 function RouteCheapestInner() {
@@ -141,6 +100,10 @@ function RouteCheapestInner() {
   };
 
   const search = async () => {
+    // 경로별 최저가는 비회원에게도 완전 개방한다(가입 전 가치 체험 → 전환 개선).
+    // 입력·장소검색·경로 검색·최저가 결과 보기까지 로그인 없이 사용 가능.
+    // 우리 DB + 서버 경유 directions 조회라 클라이언트 인증과 무관하다.
+    // (외부 길안내 시작(NaviButton)만 별도로 회원 가드를 유지한다 — 메인 지도 측에서 처리.)
     if (!from || !to) { setError('출발/도착을 먼저 지정해주세요.'); return; }
     setError(null); setLoading(true);
     try {

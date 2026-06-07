@@ -876,20 +876,19 @@ export default function HomePage() {
 
         {/* 내 위치 / 따라가기 버튼 — 누르면 따라가기 ON(위치 자동 추적), 다시 누르면 즉시 내 위치로 재이동 */}
         <button
-          onClick={() =>
-            // 따라가기(내 위치 자동 추적)는 회원 전용(요청4). 비로그인은 로그인/회원가입 유도.
-            requireAuth(() => {
-              setGeoEnabled(true);
-              geo.request();
-              // 따라가기 모드 ON: 이후 위치 갱신마다 지도가 내 위치를 따라간다.
-              setFollow(true);
-              // 이미 위치를 알고 있으면 즉시 그 위치로 이동(재클릭).
-              // 아직 모르면 대기 플래그를 켜서 첫 좌표 획득 시 이동시킨다
-              // (복원 모드에선 자동 센터링이 꺼져 있으므로 이 경로로 이동을 보장).
-              if (geo.coords) setRecenterSignal((n) => n + 1);
-              else pendingRecenterRef.current = true;
-            })
-          }
+          onClick={() => {
+            // 내 위치 이동/따라가기는 비회원도 사용 가능(가입 전 가치 체험).
+            // 위치 권한은 브라우저 단에서 처리되므로 로그인 불필요.
+            setGeoEnabled(true);
+            geo.request();
+            // 따라가기 모드 ON: 이후 위치 갱신마다 지도가 내 위치를 따라간다.
+            setFollow(true);
+            // 이미 위치를 알고 있으면 즉시 그 위치로 이동(재클릭).
+            // 아직 모르면 대기 플래그를 켜서 첫 좌표 획득 시 이동시킨다
+            // (복원 모드에선 자동 센터링이 꺼져 있으므로 이 경로로 이동을 보장).
+            if (geo.coords) setRecenterSignal((n) => n + 1);
+            else pendingRecenterRef.current = true;
+          }}
           // 우측 하단 고정(접힘 상태 기준). 시트 펼침 시에는 fade-out + 클릭 차단으로 숨긴다(시트 뒤로 가려짐).
           style={gpsPosition}
           aria-hidden={sheetOpen}

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useSession, signIn } from 'next-auth/react';
 import { useMapStore } from '@/stores/map';
 import { BRAND_LABEL, BRAND_COLOR, type BrandCode } from '@/types/station';
 import clsx from 'clsx';
@@ -18,14 +17,12 @@ const FILTER_LABEL_OVERRIDE: Partial<Record<BrandCode, string>> = {
 };
 
 /**
- * 브랜드별 필터 (회원 전용).
+ * 브랜드별 필터 (비회원 포함 누구나 사용 가능).
  * - 미선택(빈 배열) = 전체 표시.
- * - 비로그인 사용자는 잠금 처리, 누르면 로그인 유도.
- * - 로그인 사용자만 다중 선택 칩으로 실제 필터 동작.
+ * - 마커 필터링은 클라이언트/우리 DB 조회라 로그인 불필요 — 가입 전 가치 체험을 위해 개방.
+ * - 다중 선택 칩으로 실제 필터 동작.
  */
 export function BrandFilter() {
-  const { status } = useSession();
-  const signedIn = status === 'authenticated';
   const { brands, toggleBrand, clearBrands } = useMapStore();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -43,11 +40,6 @@ export function BrandFilter() {
   const count = brands.length;
 
   const handleClick = () => {
-    if (!signedIn) {
-      // 비로그인: 로그인 유도 (현재 화면으로 복귀)
-      signIn(undefined, { callbackUrl: '/' });
-      return;
-    }
     setOpen((v) => !v);
   };
 
@@ -55,9 +47,9 @@ export function BrandFilter() {
     <div ref={ref} className="relative shrink-0">
       <button
         onClick={handleClick}
-        aria-label={signedIn ? '브랜드 필터' : '로그인하고 브랜드 필터 사용'}
+        aria-label="브랜드 필터"
         aria-expanded={open}
-        title={signedIn ? '브랜드별 보기' : '로그인하고 브랜드 필터 사용'}
+        title="브랜드별 보기"
         className={clsx(
           'flex h-7 shrink-0 items-center gap-1 rounded-full border px-2.5 text-xs font-semibold transition',
           count > 0
@@ -65,18 +57,11 @@ export function BrandFilter() {
             : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300',
         )}
       >
-        {/* 비로그인 시 잠금 아이콘 */}
-        {!signedIn && (
-          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2}>
-            <rect x="5" y="11" width="14" height="9" rx="2" />
-            <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-          </svg>
-        )}
         <span>브랜드{count > 0 ? ` ${count}` : ''}</span>
       </button>
 
-      {/* 드롭다운: 로그인 사용자에게만 열림 */}
-      {open && signedIn && (
+      {/* 드롭다운 */}
+      {open && (
         <div className="absolute right-0 top-9 z-40 w-56 rounded-xl border border-gray-100 bg-white p-2 shadow-lg dark:border-gray-700 dark:bg-gray-800">
           <div className="mb-1.5 flex items-center justify-between px-1">
             <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
