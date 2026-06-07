@@ -4,7 +4,16 @@ import { signIn } from 'next-auth/react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+
+import {
+  copyCurrentUrl,
+  getInAppKind,
+  getPlatform,
+  inAppKindLabel,
+  openExternalBrowser,
+  type InAppKind,
+} from '@/lib/inapp';
 
 function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }) {
   const params = useSearchParams();
@@ -17,6 +26,41 @@ function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // 인앱 웹뷰(카톡/인스타 등) 감지 — UA는 클라이언트에서만 확정되므로 마운트 후 설정한다.
+  const [inAppKind, setInAppKind] = useState<InAppKind | null>(null);
+  const [isIos, setIsIos] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [showManual, setShowManual] = useState(false);
+
+  useEffect(() => {
+    setInAppKind(getInAppKind());
+    setIsIos(getPlatform() === 'ios');
+  }, []);
+
+  const isInApp = inAppKind !== null;
+
+  function handleOpenExternal() {
+    const { attempted, needsManual } = openExternalBrowser();
+    // 시도조차 못 했거나(iOS 등) 수동 안내가 필요하면 복사 안내 패널을 펼친다.
+    if (!attempted || needsManual) setShowManual(true);
+  }
+
+  async function handleCopyUrl() {
+    const ok = await copyCurrentUrl();
+    setCopied(ok);
+    if (ok) setTimeout(() => setCopied(false), 2000);
+  }
+
+  // 인앱 웹뷰에서 OAuth(카카오/구글) 시도 시: 바로 OAuth를 태우지 않고 외부 열기를 유도한다.
+  // (구글은 disallowed_useragent로 차단, 카카오도 깨질 수 있어 가입 실패를 막는다.)
+  function handleOAuth(provider: 'kakao' | 'google') {
+    if (isInApp) {
+      handleOpenExternal();
+      return;
+    }
+    signIn(provider, { callbackUrl });
+  }
 
   async function handleReviewerLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -49,6 +93,53 @@ function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }
       <h1 className="mt-4 text-xl font-bold text-gray-900">1000냥 주유소</h1>
       <p className="mt-1 text-sm text-gray-500">소셜 계정으로 1초만에 시작</p>
 
+      {/* 가입 혜택 한 줄 — 외부 브라우저 유도/소셜 버튼과 함께 가입 동기를 살짝 보강. */}
+      <p className="mt-2 text-center text-[12px] text-gray-400">
+        가격 하락 알림 · 즐겨찾기 · 내 주유기록까지 무료
+      </p>
+
+      {isInApp && (
+        <div className="mt-6 w-full rounded-2xl border border-orange-200 bg-orange-50 p-4">
+          <p className="text-[13px] font-bold text-orange-900">
+            {inAppKindLabel(inAppKind)} 앱에서 열렸어요
+          </p>
+          <p className="mt-1 text-[12px] leading-relaxed text-orange-800">
+            원활한 가입·로그인을 위해 <b>Chrome / Safari 같은 외부 브라우저</b>에서
+            열어주세요. (구글 로그인은 인앱 브라우저에서 차단됩니다.)
+          </p>
+
+          <button
+            onClick={handleOpenExternal}
+            className="mt-3 w-full rounded-xl bg-orange-500 py-3 text-sm font-bold text-white hover:bg-orange-600"
+          >
+            외부 브라우저로 열기
+          </button>
+
+          {/* iOS는 강제 외부 열기가 막혀 있어 수동 안내를, 그 외도 폴백으로 복사를 제공. */}
+          {(showManual || isIos) && (
+            <div className="mt-3 rounded-xl bg-white/70 p-3 text-[12px] leading-relaxed text-orange-800">
+              {isIos ? (
+                <p>
+                  자동 전환이 안 되면 <b>우측 상단 메뉴(···) → &ldquo;Safari로 열기&rdquo;</b>를
+                  눌러주세요. 또는 아래 버튼으로 링크를 복사해 브라우저 주소창에 붙여넣어도 됩니다.
+                </p>
+              ) : (
+                <p>
+                  자동 전환이 안 되면 아래 버튼으로 링크를 복사해 Chrome 등
+                  외부 브라우저 주소창에 붙여넣어 주세요.
+                </p>
+              )}
+              <button
+                onClick={handleCopyUrl}
+                className="mt-2 w-full rounded-lg border border-orange-300 bg-white py-2 text-[12px] font-semibold text-orange-700 hover:bg-orange-50"
+              >
+                {copied ? '링크가 복사되었어요' : '현재 링크 복사하기'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {duplicateNotice && (
         <div className="mt-6 w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
           다른 기기에서 로그인되어 현재 기기는 로그아웃되었습니다. 계정당 1개의 기기에서만 사용할 수 있어요. 다시 로그인해 주세요.
@@ -57,7 +148,7 @@ function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }
 
       <div className="mt-8 w-full space-y-2">
         <button
-          onClick={() => signIn('kakao', { callbackUrl })}
+          onClick={() => handleOAuth('kakao')}
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FEE500] py-3.5 font-bold text-[#191919] hover:opacity-90"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -65,7 +156,7 @@ function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }
           카카오로 시작하기
         </button>
         <button
-          onClick={() => signIn('google', { callbackUrl })}
+          onClick={() => handleOAuth('google')}
           className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-3.5 font-semibold text-gray-700 hover:bg-gray-50"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
