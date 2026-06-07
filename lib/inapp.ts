@@ -13,7 +13,7 @@
 //  - 외부 열기는 플랫폼별 best-effort. 실패해도 깨지지 않게 try/catch로 감싸고,
 //    항상 "링크 복사" 폴백을 제공한다.
 
-/** 감지된 인앱 웹뷰 종류. 'unknown'은 인앱이지만 특정 앱을 식별 못 한 경우(주로 일반 안드 웹뷰). */
+/** 감지된 인앱 웹뷰 종류. 'unknown'은 인앱이지만 특정 앱을 식별 못 한 경우(주로 일반 안드 웹뷰/iOS WKWebView). */
 export type InAppKind =
   | 'kakaotalk'
   | 'instagram'
@@ -23,6 +23,7 @@ export type InAppKind =
   | 'band'
   | 'daum'
   | 'twitter'
+  | 'daangn'
   | 'unknown';
 
 /** 플랫폼(외부 열기 전략 분기에 사용). */
@@ -52,35 +53,82 @@ const KIND_TOKENS: { kind: InAppKind; re: RegExp }[] = [
   { kind: 'band', re: /\bBAND\b/i },
   { kind: 'daum', re: /DaumApps/i },
   { kind: 'twitter', re: /Twitter|TwitterAndroid|\bX11.*X\/|\bXapp/i },
+  // 당근마켓: 웹뷰 UA에 박히는 식별자(추정 포함, best-effort). 토큰을 못 잡아도
+  // 아래 iOS WKWebView 휴리스틱이 'unknown'으로 커버하므로 보수적으로만 둔다.
+  { kind: 'daangn', re: /daangn|Karrot|TownInc/i },
 ];
 
 /**
- * 인앱 웹뷰 종류를 반환한다. 인앱이 아니면 null.
+ * 순수 UA 기반 인앱 웹뷰 종류 판정. 인앱이 아니면 null.
+ * navigator 등 환경 접근 없이 UA 문자열만으로 판단한다(SSR/테스트 안전).
  *
- * 일반 안드로이드 웹뷰 신호(`; wv`)는 단독으로 인앱 단정하지 않는다.
- * 이유: 일부 정상 브라우저/크롬 커스텀탭에서도 wv 흔적이 남아 오탐 위험이 있기 때문.
- * 대신 "버전 토큰(Version/x.x) 없이 wv 가 있는" 전형적 안드 웹뷰 패턴만 'unknown' 인앱으로 본다.
+ * 감지 순서:
+ *  1) 명시 토큰(KAKAOTALK/Instagram/... /당근) → 해당 종류.
+ *  2) 안드로이드 일반 웹뷰(`; wv`) → 'unknown'.
+ *     '; wv'가 명시된 전형적 안드 웹뷰만 본다. 일반 모바일 크롬은 'Chrome/xxx Mobile Safari'로
+ *     '; wv'가 없으므로 걸리지 않는다.
+ *  3) iOS WKWebView 휴리스틱(이름 없는 인앱 커버 — 핵심):
+ *     iOS(iPhone/iPad/iPod)인데 UA에 `Safari/`가 없으면 인앱 WKWebView로 본다('unknown').
+ *     근거: iOS Safari/Chrome(CriOS)/Firefox(FxiOS)/SFSafariViewController는 모두 UA에 `Safari/`를
+ *     포함하지만, 앱이 띄우는 WKWebView는 보통 `Safari/`가 없다. OAuth가 깨지는 게 정확히 이 케이스다.
+ *
+ * 주의: 이 함수는 UA만 본다. iOS 홈화면 추가(standalone PWA) 오탐 방지는 navigator 접근이 가능한
+ * 호출 경로(getInAppKind 인자 없이 호출)에서 별도로 처리한다.
  */
-export function getInAppKind(ua: string = getUserAgent()): InAppKind | null {
+export function getInAppKindFromUA(ua: string): InAppKind | null {
   if (!ua) return null;
 
   for (const { kind, re } of KIND_TOKENS) {
     if (re.test(ua)) return kind;
   }
 
-  // 안드로이드 일반 웹뷰(보수적): '; wv'가 명시되어 있고, 정식 크롬 식별자(Version/...) 패턴이
-  // 아닌 경우에만 인앱(unknown)으로 본다. 일반 모바일 크롬은 'Chrome/xxx Mobile Safari'이며
-  // '; wv'가 없으므로 여기 걸리지 않는다.
+  // 2) 안드로이드 일반 웹뷰(보수적).
   if (getPlatform(ua) === 'android' && /;\s*wv\b/i.test(ua)) {
+    return 'unknown';
+  }
+
+  // 3) iOS WKWebView 휴리스틱: iOS인데 'Safari/' 토큰이 없으면 인앱 웹뷰.
+  if (getPlatform(ua) === 'ios' && !/Safari\//i.test(ua)) {
     return 'unknown';
   }
 
   return null;
 }
 
+/** iOS 홈화면 추가(standalone PWA) 여부. 사용자 본인 설치앱이므로 인앱 배너 대상에서 제외한다. */
+function isStandalonePWA(): boolean {
+  if (typeof navigator !== 'undefined') {
+    // iOS Safari 전용 비표준 속성.
+    const nav = navigator as Navigator & { standalone?: boolean };
+    if (nav.standalone === true) return true;
+  }
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    try {
+      if (window.matchMedia('(display-mode: standalone)').matches) return true;
+    } catch {
+      // matchMedia 미지원 환경 무시
+    }
+  }
+  return false;
+}
+
+/**
+ * 인앱 웹뷰 종류를 반환한다. 인앱이 아니면 null.
+ *
+ * 인자 없이 호출하면 현재 navigator UA로 판정하며, standalone PWA(홈화면 추가)는
+ * 오탐 방지를 위해 제외한다. UA 인자를 직접 넘기면 순수 UA 판정(getInAppKindFromUA)을 따른다.
+ */
+export function getInAppKind(ua?: string): InAppKind | null {
+  // UA 인자 미지정 = navigator 접근 가능한 실제 호출 경로.
+  // 이 경로에서만 standalone PWA(홈화면 추가) 오탐 방지를 적용한다(iOS WKWebView 휴리스틱 가드).
+  if (ua === undefined && isStandalonePWA()) return null;
+  return getInAppKindFromUA(ua ?? getUserAgent());
+}
+
 /** 인앱 웹뷰 여부. SSR 안전. */
-export function isInAppBrowser(ua: string = getUserAgent()): boolean {
-  return getInAppKind(ua) !== null;
+export function isInAppBrowser(ua?: string): boolean {
+  if (ua === undefined && isStandalonePWA()) return false;
+  return getInAppKindFromUA(ua ?? getUserAgent()) !== null;
 }
 
 /** 종류별 한국어 표시명(안내 문구용). */
@@ -102,6 +150,8 @@ export function inAppKindLabel(kind: InAppKind): string {
       return '다음 앱';
     case 'twitter':
       return 'X(트위터)';
+    case 'daangn':
+      return '당근마켓';
     default:
       return '인앱';
   }
