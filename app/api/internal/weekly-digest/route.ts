@@ -9,6 +9,7 @@
 // 안전: 사용자 루프는 청크 + 에러 격리(한 명 실패가 전체를 멈추지 않게). 우리 DB만 사용(외부 API 무관).
 import { NextResponse } from 'next/server';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
+import { getDefaultProduct } from '@/lib/auth/session';
 import { sendPush } from '@/lib/push/webpush';
 import { queryRegionTop10, queryPriceTrend } from '@/lib/db/queries';
 import { PRODUCT_LABEL, type ProductCode } from '@/types/station';
@@ -17,8 +18,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-// 다이제스트 기준 — 휘발유, 반경 5km(내 지역 체감 범위).
-const DIGEST_PRODUCT: ProductCode = 'B027';
+// 다이제스트 기준 — 유종은 사용자별 기본 차량 유종(미설정 시 휘발유 폴백), 반경 5km(내 지역 체감 범위).
+const DIGEST_PRODUCT_FALLBACK: ProductCode = 'B027';
 const DIGEST_RADIUS_M = 5000;
 // 한 번에 처리할 사용자 청크(발송량 폭주 방지 — 청크 사이는 직렬).
 const USER_CHUNK = 50;
@@ -87,14 +88,16 @@ export async function POST(req: Request) {
       const subs = subsByUser.get(u.id);
       if (!subs || subs.length === 0) return;
       try {
-        const top = await queryRegionTop10(u.last_lat, u.last_lng, DIGEST_RADIUS_M, DIGEST_PRODUCT);
+        // 유종은 사용자별 기본 차량 유종 기준(미설정이면 휘발유 폴백) — 경유차엔 경유 최저가를 보낸다.
+        const product = (await getDefaultProduct(u.id)) ?? DIGEST_PRODUCT_FALLBACK;
+        const top = await queryRegionTop10(u.last_lat, u.last_lng, DIGEST_RADIUS_M, product);
         if (top.length === 0) { skippedNoData++; return; }
 
         const lowest = top[0];
         // 간단 전망 — 추세(우리 DB prices_history). 부족하면 문구 생략(graceful).
         let outlook = '';
         try {
-          const trend = await queryPriceTrend(u.last_lat, u.last_lng, DIGEST_RADIUS_M, DIGEST_PRODUCT);
+          const trend = await queryPriceTrend(u.last_lat, u.last_lng, DIGEST_RADIUS_M, product);
           if (trend.trend === 'up') outlook = ' · 오름세 전망';
           else if (trend.trend === 'down') outlook = ' · 내림세 전망';
         } catch { /* 추세 실패는 무시 — 최저가만 발송 */ }
@@ -102,7 +105,7 @@ export async function POST(req: Request) {
         const top3 = top.slice(0, 3).map((t) => `₩${t.price.toLocaleString()}`).join(' · ');
         const payload = {
           title: '📊 이번 주 내 지역 최저가',
-          body: `${PRODUCT_LABEL[DIGEST_PRODUCT]} TOP${Math.min(3, top.length)} ${top3}${outlook}`,
+          body: `${PRODUCT_LABEL[product]} TOP${Math.min(3, top.length)} ${top3}${outlook}`,
           url: `/station/${encodeURIComponent(lowest.stationId)}`,
           tag: 'weekly-digest',
         };
@@ -133,7 +136,8 @@ export async function POST(req: Request) {
     targets: targets.length,
     processed,
     sent, failed, skippedNoData,
-    product: DIGEST_PRODUCT, radiusM: DIGEST_RADIUS_M,
+    // 유종은 사용자별 기본 차량 유종(미설정 시 휘발유 폴백)이라 단일 값이 아니다.
+    product: 'per-user (fallback B027)', radiusM: DIGEST_RADIUS_M,
     errors: errors.length ? errors.slice(0, 20) : undefined,
   });
 }

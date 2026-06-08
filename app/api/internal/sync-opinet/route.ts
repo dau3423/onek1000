@@ -491,6 +491,27 @@ export async function POST(req: Request) {
       .select('user_id')
       .in('status', ['trial', 'active']);
 
+    // 사용자별 기본 차량 유종 맵(일괄 조회로 N+1 회피).
+    // 즐겨찾기 하락 알림은 "내 차 유종" 기준이어야 한다(예: 경유차에 경유 하락만).
+    // is_default 차량이 없으면 맵에 없음 → 폴백(전체 유종 중 최대 하락, 기존 동작) 처리.
+    const defaultProductByUser = new Map<string, ProductCode>();
+    {
+      const premiumIds = (premiumUsers ?? []).map((u) => u.user_id as string);
+      if (premiumIds.length > 0) {
+        const { data: vehicles } = await sb
+          .from('vehicles')
+          .select('user_id, fuel')
+          .eq('is_default', true)
+          .in('user_id', premiumIds);
+        for (const v of vehicles ?? []) {
+          const fuel = v.fuel as string | undefined;
+          if (fuel && fuel in PRODUCT_LABEL) {
+            defaultProductByUser.set(v.user_id as string, fuel as ProductCode);
+          }
+        }
+      }
+    }
+
     for (const u of premiumUsers ?? []) {
       const { data: drops } = await sb.rpc('rpc_recent_price_drops', {
         p_user_id: u.user_id, p_min_drop: 30,
@@ -504,9 +525,16 @@ export async function POST(req: Request) {
         .eq('user_id', u.user_id);
       if (!subs || subs.length === 0) continue;
 
+      // 내 차 유종 기준으로 하락 항목을 필터한다(미설정이면 전체 유종 유지 = 기존 동작 폴백).
+      // 휘발유 하락폭이 대체로 커서, 유종 필터 없이 최대 하락만 고르면 경유 운전자에게도
+      // 휘발유 알림이 가던 문제를 차단한다. 필터 후 남은 하락이 없으면 그 사용자 알림 skip.
+      const userProduct = defaultProductByUser.get(u.user_id);
+      const allDrops = drops as Array<{ station_name: string; product: string; diff: number; new_price: number; station_id: string }>;
+      const filtered = userProduct ? allDrops.filter((d) => d.product === userProduct) : allDrops;
+      if (filtered.length === 0) continue;
+
       // 가장 큰 하락 1건만 보냄 (스팸 방지)
-      const top = (drops as Array<{ station_name: string; product: string; diff: number; new_price: number; station_id: string }>)
-        .sort((a, b) => b.diff - a.diff)[0];
+      const top = filtered.sort((a, b) => b.diff - a.diff)[0];
       const payload = {
         title: `⛽ ${top.station_name}`,
         body: `${PRODUCT_LABEL[top.product as ProductCode] ?? top.product} ${top.diff}원 ↓ → ₩${top.new_price.toLocaleString()}`,
