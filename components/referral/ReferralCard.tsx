@@ -69,27 +69,29 @@ export function ReferralCard() {
     await handleCopy();
   }
 
+  // 마이페이지 메인(app/my/page.tsx, sections.tsx)이 bg-white 라이트 고정이므로,
+  // 일관성과 대비를 위해 이 카드도 라이트 톤으로 통일한다(프리미엄 카드와 동일 톤).
   return (
     <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-      <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
+      <div className="text-sm font-bold text-gray-900">
         친구 추천하면 둘 다 1주일 무료 🎁
       </div>
-      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+      <p className="mt-1 text-xs text-gray-600">
         내 링크로 친구가 가입하면 친구와 나 모두 프리미엄 7일이 연장돼요.
       </p>
 
       {loading ? (
-        <div className="mt-3 h-9 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800" />
+        <div className="mt-3 h-9 animate-pulse rounded-lg bg-gray-100" />
       ) : code ? (
         <>
-          <div className="mt-3 break-all rounded-lg bg-white px-3 py-2 text-xs text-gray-700 ring-1 ring-gray-200 dark:bg-gray-900 dark:text-gray-200 dark:ring-gray-700">
+          <div className="mt-3 break-all rounded-lg bg-white px-3 py-2 text-xs text-gray-800 ring-1 ring-gray-200">
             {link}
           </div>
           <div className="mt-3 flex gap-2">
             <button
               type="button"
               onClick={handleCopy}
-              className="flex-1 rounded-full border border-gray-300 py-2 text-xs font-bold text-gray-700 active:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:active:bg-gray-800"
+              className="flex-1 rounded-full border border-gray-300 bg-white py-2 text-xs font-bold text-gray-700 active:bg-gray-100"
             >
               {copied ? '복사됨!' : '링크 복사'}
             </button>
@@ -101,12 +103,12 @@ export function ReferralCard() {
               공유하기
             </button>
           </div>
-          <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+          <div className="mt-3 text-xs text-gray-600">
             추천 성공 <strong className="text-primary">{successCount}명</strong>
           </div>
         </>
       ) : (
-        <p className="mt-3 text-xs text-gray-400">
+        <p className="mt-3 text-xs text-gray-500">
           추천 링크를 준비 중이에요. 잠시 후 다시 시도해 주세요.
         </p>
       )}
