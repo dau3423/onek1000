@@ -44,10 +44,19 @@ function buildProviders(): NextAuthOptions['providers'] {
     KakaoProvider({
       clientId: process.env.KAKAO_CLIENT_ID ?? '',
       clientSecret: process.env.KAKAO_CLIENT_SECRET ?? '',
+      // 구글과 동일 취지: 매 로그인 시 계정 선택을 유도해 자동 로그인으로 인한
+      // 계정 전환 불가 문제를 완화한다. 카카오 공식 문서가 명시한 표준 값으로,
+      // 사용자가 '로그인 정보 저장'을 켠 경우 계정 선택 화면이 노출된다.
+      // (재인증 강제 prompt=login은 매번 ID/PW 재입력을 요구해 UX 부담이 커서 미채용)
+      authorization: { params: { prompt: 'select_account' } },
     }),
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID ?? '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+      // 매 로그인 시 구글 계정 선택 화면을 강제한다.
+      // 앱 로그아웃 후에도 구글 세션은 남아 이전 계정으로 자동 로그인되던 문제 해결
+      // (다른 계정 전환/같은 계정 재선택 가능). 구글 전체 로그아웃은 필요 없음.
+      authorization: { params: { prompt: 'select_account' } },
     }),
   ];
 
