@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 
 // 노출 1회 판정용 localStorage 키. 문구/혜택을 크게 바꿔 다시 띄우고 싶으면
-// 버전 숫자만 올리면 된다. 내용 대폭 개편으로 V1 → V2 (기존에 본 사용자에게도 1회 재노출).
-const SEEN_KEY = 'welcomePromoSeenV2';
+// 버전 숫자만 올리면 된다. 무료 체험 기간 1달→1주일 변경으로 V2 → V3 (기존에 본 사용자에게도 1회 재노출).
+const SEEN_KEY = 'welcomePromoSeenV3';
 const ENABLED = true;
 
 // 공지 내용(정적). 추후 변경/관리 UI는 범위 밖 — 여기 상수만 고치면 된다.
@@ -13,10 +13,10 @@ const ENABLED = true;
 const PROMO = {
   badge: '신규 가입 한정',
   title: '기름값, 이제 아끼세요',
-  highlight: '회원가입만 해도 1달간 모든 기능 제공!',
+  highlight: '회원가입만 해도 1주일간 모든 기능 제공!',
   desc: '전국 최저가부터 가는 길 최저가, 가격 하락 알림까지 — 가입 즉시 누리세요.',
   benefits: [
-    '✅ 가입 즉시 1달 프리미엄 혜택 — 광고 없이 쾌적하게',
+    '✅ 가입 즉시 1주일 프리미엄 혜택 — 광고 없이 쾌적하게',
     '⛽ 전국 주유소 최저가 한눈에',
     '📍 내 주변 최저가 TOP10',
     '🗺️ 경로 탐색 — 출발지~도착지 길찾기',
@@ -25,8 +25,8 @@ const PROMO = {
     '🔔 즐겨찾기 주유소 가격 하락 알림',
     '🧾 내 주유 기록 자동 관리',
   ],
-  outro: '카드 등록 없이 바로 시작 — 지금 1달 무료로 체험해 보세요.',
-  cta: '회원가입하고 1달 무료 받기',
+  outro: '카드 등록 없이 바로 시작 — 지금 1주일 무료로 체험해 보세요.',
+  cta: '회원가입하고 1주일 무료 받기',
 } as const;
 
 /**

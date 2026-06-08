@@ -65,19 +65,27 @@ function deriveStatus(sub: Sub | null) {
     sub?.status === 'trial' ||
     (sub?.status === 'canceled' && periodEndValid);
   const isCanceled = sub?.status === 'canceled';
-  return { isOnetime, periodEndStr, isActive, isCanceled };
+  // 무료 체험(welcome trial 포함): 결제가 없는 상태 → 표시/노출을 별도로 분기한다.
+  const isTrial = sub?.status === 'trial';
+  return { isOnetime, periodEndStr, isActive, isCanceled, isTrial };
 }
 
 export async function SubscriptionSection({ userId }: { userId: string }) {
   const sub = await fetchSubscription(userId);
-  const { isOnetime, periodEndStr, isActive, isCanceled } = deriveStatus(sub);
+  const { isOnetime, periodEndStr, isActive, isCanceled, isTrial } = deriveStatus(sub);
 
   if (sub && isActive) {
+    // 라벨/값 분기:
+    //  - 무료 체험(trial): "혜택 만료일" + trial 만료일, 가격은 "Free"(결제 없음).
+    //  - 단건/해지건: "이용 만료" + 만료일.
+    //  - 유료 정기(active): "다음 결제" + 다음 결제일.
+    const dateLabel = isTrial ? '혜택 만료일' : isOnetime || isCanceled ? '이용 만료' : '다음 결제';
+    const priceLabel = isTrial ? 'Free' : isOnetime ? '₩1,000 / 1개월' : '월 ₩1,000';
     return (
       <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
         <div className="flex items-center justify-between">
           <span className="rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-white">
-            {sub.status === 'trial'
+            {isTrial
               ? '무료 체험 중'
               : isOnetime
                 ? '1개월권'
@@ -85,13 +93,13 @@ export async function SubscriptionSection({ userId }: { userId: string }) {
                   ? '해지 예정'
                   : '정기 구독'}
           </span>
-          <span className="text-xs text-gray-500">{isOnetime ? '₩1,000 / 1개월' : '월 ₩1,000'}</span>
+          <span className="text-xs text-gray-500">{priceLabel}</span>
         </div>
         <div className="mt-3 text-sm text-gray-700">
-          {isOnetime || isCanceled ? '이용 만료' : '다음 결제'}: <strong>{periodEndStr ?? '-'}</strong>
+          {dateLabel}: <strong>{periodEndStr ?? '-'}</strong>
         </div>
-        {/* 단건/해지건은 끊을 자동결제가 없으므로 해지 버튼 미노출 */}
-        {!isOnetime && !isCanceled && (
+        {/* 단건/해지건은 끊을 자동결제가 없고, 무료 체험은 해지할 유료 구독이 아니므로 해지 버튼 미노출 */}
+        {!isOnetime && !isCanceled && !isTrial && (
           <div className="mt-4">
             <CancelButton />
           </div>

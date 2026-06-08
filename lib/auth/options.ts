@@ -94,15 +94,15 @@ function buildProviders(): NextAuthOptions['providers'] {
 }
 
 // 신규 가입자 환영 무료 체험 기간(일). 운영상 쉽게 조정할 수 있게 상수로 분리.
-const WELCOME_TRIAL_DAYS = 30;
+const WELCOME_TRIAL_DAYS = 7;
 
 /**
- * 신규 가입자에게 "1달 무료 프리미엄(trial)" 1회 부여.
+ * 신규 가입자에게 "1주일 무료 프리미엄(trial)" 1회 부여.
  * - 실결제(PortOne v2)와 무관한 무료 체험: subscriptions에 trial row만 생성한다.
  *   결제/빌링 로직은 일절 건드리지 않는다.
  * - getPremiumStatus는 status∈(trial,active,canceled) & periodEnd(=expires_at||
- *   current_period_end||trial_end) > now 면 isPremium=true → trial_end=now+30일을
- *   넣으면 30일간 프리미엄으로 인정된다.
+ *   current_period_end||trial_end) > now 면 isPremium=true → trial_end=now+7일을
+ *   넣으면 7일간 프리미엄으로 인정된다.
  * - 1계정 1회: 신규 user insert 분기에서만 호출한다(재로그인엔 호출 안 함). 추가로
  *   이미 trial/active 구독이 있으면(동시 가입/재시도 등) 중복 생성을 방어한다.
  * - best-effort: 어떤 실패도 로그인(가입)을 깨뜨리지 않게 모두 흡수하고 로깅만 한다.
@@ -201,7 +201,7 @@ export const authOptions: NextAuthOptions = {
           })
           .select('id')
           .single();
-        // 신규 가입 1회 한정 "1달 무료 프리미엄(trial)" 자동 부여.
+        // 신규 가입 1회 한정 "1주일 무료 프리미엄(trial)" 자동 부여.
         // 실결제(PortOne v2)와 무관한 무료 체험으로, subscriptions에 trial row만 생성한다.
         // best-effort: 부여 실패해도 로그인 자체는 절대 깨지지 않게 try/catch로 격리한다.
         if (created?.id) await grantWelcomeTrial(sb, created.id as string);
