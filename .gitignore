@@ -14,3 +14,4 @@ next-env.d.ts
 마케팅_*.html
 마케팅_*.md
 tmp-*.html
+.tmp/
