@@ -139,6 +139,44 @@ body {
   50%      { transform: translateY(-5px); }
 }
 
+/* === 경로 최저가 dedup: "기존 일반 마커"에 얹는 blink 강조 ===
+   경로 최저가 주유소가 이미 일반 가격/순위 마커로 떠 있으면 별도 route 마커를 또 그리지 않고
+   그 기존 마커(data-sid 컨테이너)에 이 클래스를 입혀 펄스 링으로 강조한다. route-blink와 동일
+   톤(블루 펄스)이지만, 일반 마커는 yAnchor=1(꼬리=하단)이라 링을 마커 하단(앵커)에 깐다. */
+.route-onmarker-blink { position: relative; }
+.route-onmarker-blink::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 26px;
+  height: 26px;
+  margin-left: -13px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, .35);
+  transform: translateZ(0);
+  animation: route-pulse 1.6s ease-out infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+/* 배너가 가리키는 그 주유소(기존 마커 강조판) — 더 강한 주황 펄스로 구분. */
+.route-onmarker-blink--focus::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 30px;
+  height: 30px;
+  margin-left: -15px;
+  border-radius: 50%;
+  background: rgba(249, 115, 22, .45);
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, .55);
+  transform: translateZ(0);
+  animation: route-pulse-focus 1.2s ease-out infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
 /* 모션 민감 사용자: 반짝임/글로우/스윕/스파클/펄스 중단(접근성, NFR-7). */
 @media (prefers-reduced-motion: reduce) {
   .top10-glow,
@@ -147,9 +185,13 @@ body {
   .top10-sparkle,
   .route-blink::before,
   .route-blink--focus::after,
-  .route-blink--focus > div:last-child { animation: none !important; }
+  .route-blink--focus > div:last-child,
+  .route-onmarker-blink::before,
+  .route-onmarker-blink--focus::after { animation: none !important; }
   .top10-sparkle { display: none; }
-  .route-blink::before { display: none; }
+  .route-blink::before,
+  .route-onmarker-blink::before { display: none; }
   /* 모션 민감 시 펄스 링은 끄되, 정적 강조 링은 남겨 어떤 마커인지 식별은 유지한다. */
-  .route-blink--focus::after { display: block; opacity: .7; transform: scale(1.4); }
+  .route-blink--focus::after,
+  .route-onmarker-blink--focus::after { display: block; opacity: .7; transform: scale(1.4); }
 }

@@ -36,6 +36,13 @@ const MY_AREA_LEVEL = 6;
 // level 5 = zoom 10(주변 동네가 보이는 수준)부터 노출 — 가격 라벨 노출 기준(level≤5)과 일치.
 const GRAY_DOT_MAX_LEVEL = 5;
 
+// querySelector 속성값 선택자에 안전하게 끼우기 위한 이스케이프(CSS.escape 폴백).
+// station id는 보통 영숫자(Opinet UNI_ID)지만, 따옴표/특수문자가 와도 셀렉터가 깨지지 않게 한다.
+function cssEscape(s: string): string {
+  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') return CSS.escape(s);
+  return s.replace(/["\\]/g, '\\$&');
+}
+
 // HTML 문자열에 삽입할 사용자 입력(장소명 등) 이스케이프 — innerHTML XSS 방어.
 function escapeHtml(s: string): string {
   return s
@@ -306,6 +313,9 @@ export function KakaoMap({
   const routeBlinkElsRef = useRef<Map<string, HTMLElement>>(new Map());
   // 경로 최저가 마커 오버레이 맵(station id → overlay). 강조 대상을 다른 마커 위로 올리기 위함.
   const routeStationOverlaysRef = useRef<Map<string, kakao.maps.CustomOverlay>>(new Map());
+  // 경로 최저가 dedup으로 "기존 일반 마커"에 blink 클래스를 입힌 엘리먼트들. routePlan 해제/변경 시
+  // 깔끔히 제거(클래스 제거)하기 위해 보관한다. (마커 재생성 시에도 dedup effect가 재적용)
+  const routeOnMarkerElsRef = useRef<HTMLElement[]>([]);
   const onRouteStationClickRef = useRef(onRouteStationClick);
   useEffect(() => { onRouteStationClickRef.current = onRouteStationClick; }, [onRouteStationClick]);
   const onMarkerClickRef = useRef(onMarkerClick);
@@ -373,6 +383,32 @@ export function KakaoMap({
     for (let i = 0; i < Math.min(AREA_LIMIT, sorted.length); i++) m.set(sorted[i].id, i + 1);
     return m;
   }, [stations]);
+
+  // 경로 최저가 주유소 id 집합 — 중복 표시 제거(dedup) 및 기존 마커 blink 강조의 기준.
+  // (좌표 근사가 아니라 station id로 정확히 판정한다.)
+  const routeStationIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const st of routePlan?.stations ?? []) s.add(st.id);
+    return s;
+  }, [routePlan]);
+
+  // 경로 최저가 주유소 중 "이미 일반 가격/순위 마커로 그려진" id 집합.
+  //  - 일반 bbox 가격 마커: stations(전국 TOP10/내주변 TOP10에 든 id는 그쪽 강조로 빠짐)
+  //  - 전국 TOP10 핀 / 내 주변 TOP10 핀
+  // 이 집합에 속한 경로 주유소는 별도 route 오버레이를 그리지 않고 기존 마커를 blink 강조한다.
+  // (회색 점은 "가격 마커"가 아니므로 여기 제외 — 회색 점으로만 뜨는 경로 주유소는
+  //  route 마커로 승격해 가격까지 보여준다. 회색 점 effect에서 해당 id를 제외한다.)
+  // EV 레이어/"고속도로만" 필터에서는 일반/TOP 마커를 그리지 않으므로 dedup 대상도 비운다
+  // (경로 모드는 주유소(gas) 화면에서 쓰이지만, 모드가 겹쳐도 안전하게 처리).
+  const routeDupIds = useMemo(() => {
+    const dup = new Set<string>();
+    if (routeStationIds.size === 0) return dup;
+    if (layer === 'ev' || expOnly) return dup;
+    for (const s of stations) if (routeStationIds.has(s.id)) dup.add(s.id);
+    for (const id of top10Rank.keys()) if (routeStationIds.has(id)) dup.add(id);
+    for (const id of nearbyRank.keys()) if (routeStationIds.has(id)) dup.add(id);
+    return dup;
+  }, [routeStationIds, stations, top10Rank, nearbyRank, layer, expOnly]);
   const nearbyListRank = useMemo(() => {
     const m = new Map<string, number>();
     const sorted = [...(nearbyStations ?? [])].sort((a, b) => a.price - b.price);
@@ -513,6 +549,7 @@ export function KakaoMap({
       content.className = 'cursor-pointer select-none';
       content.style.transform = 'translate(-50%, -100%)';
       content.style.position = 'relative';
+      content.dataset.sid = s.id; // 경로 최저가 blink 강조 대상 탐색용(id 기준 dedup)
 
       // === 일반 마커: 동심원(색 역할 통일) ===
       // 안쪽(채움) = 가격 tier 색, 테두리 = 브랜드 색, 그 사이 흰 간격.
@@ -575,6 +612,7 @@ export function KakaoMap({
       content.className = 'cursor-pointer select-none';
       content.style.transform = 'translate(-50%, -100%)';
       content.style.position = 'relative';
+      content.dataset.sid = t.id; // 경로 최저가 blink 강조 대상 탐색용(id 기준 dedup)
 
       // === TOP10: 물방울 핀 + 왕관(👑) + 순위 숫자 (모든 줌에서 형태로 구분) ===
       // 라벨 줌에서는 가격 라벨을 핀 위에 함께, 축소 줌에서는 핀만 (단, 크게).
@@ -656,6 +694,7 @@ export function KakaoMap({
       content.className = 'cursor-pointer select-none';
       content.style.transform = 'translate(-50%, -100%)';
       content.style.position = 'relative';
+      content.dataset.sid = s.id; // 경로 최저가 blink 강조 대상 탐색용(id 기준 dedup)
 
       // === 내 주변 TOP10: 원형 배지 + 순위 숫자 (전국 물방울 핀과 형태로 구분) ===
       // 둥근 핀(원 + 아래 꼬리). 색 역할 통일: 본체=가격 tier 색, 테두리=브랜드 색.
@@ -750,6 +789,8 @@ export function KakaoMap({
     for (const s of stations) highlighted.add(s.id);
     for (const id of top10Rank.keys()) highlighted.add(id);
     for (const id of nearbyRank.keys()) highlighted.add(id);
+    // 경로 최저가 주유소는 회색 점 대신 route 가격 마커(blink)로 그려진다 → 회색 점에서 제외(이중 표시 방지).
+    for (const id of routeStationIds) highlighted.add(id);
 
     for (const p of allStations ?? []) {
       if (highlighted.has(p.id)) continue; // 하이라이트는 기존 마커로만 표시
@@ -776,7 +817,7 @@ export function KakaoMap({
     }
     // pointToStation은 product/렌더마다 새로 생성되므로 product를 직접 의존성에 둔다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, allStations, stations, top10Rank, nearbyRank, mapLevel, layer, product, onMarkerClick, expOnly]);
+  }, [ready, allStations, stations, top10Rank, nearbyRank, routeStationIds, mapLevel, layer, product, onMarkerClick, expOnly]);
 
   // === "고속도로 휴게소만" 필터 전용 EXP 마커 ===
   // expOnly일 때, 전국 고속도로 주유소(expStations)를 화면 줌/패닝과 무관하게 항상 전부 그린다
@@ -861,6 +902,11 @@ export function KakaoMap({
     routeOverlaysRef.current = [];
     routeBlinkElsRef.current = new Map();
     routeStationOverlaysRef.current = new Map();
+    // 기존 일반 마커에 입혔던 dedup blink 강조도 함께 정리(잔상 방지).
+    routeOnMarkerElsRef.current.forEach((el) => {
+      el.classList.remove('route-onmarker-blink', 'route-onmarker-blink--focus');
+    });
+    routeOnMarkerElsRef.current = [];
 
     if (!routePlan) return;
 
@@ -907,6 +953,10 @@ export function KakaoMap({
 
     // (c) 경로 최저가 주유소 마커 — 기존 마커 톤(가격 라벨 + 동심원)을 활용.
     //     가격이 쌀수록 위(낮은 순위 숫자). 클릭 시 onRouteStationClick(없으면 onMarkerClick).
+    //     모든 경로 주유소의 route 오버레이를 만들되, "이미 일반 마커로 그려진" 주유소의
+    //     오버레이는 아래 dedup effect가 숨기고(이중 표시 방지) 기존 마커를 펄스 강조한다.
+    //     (여기서 한 번에 거르지 않는 이유: 패닝/줌으로 bbox가 바뀌어 dup 여부가 달라져도
+    //      bounds 재fit 없이 dedup effect가 숨김/표시만 동기화하기 위함.)
     const thresholds = priceTierThresholds(routeStations.map((s) => s.price));
     routeStations.forEach((s, i) => {
       const rank = i + 1; // routeStations는 가격 오름차순(API 정렬)
@@ -966,6 +1016,51 @@ export function KakaoMap({
       ovs.get(id)?.setZIndex(focused ? 18 : 15);
     }
   }, [ready, routePlan, highlightStationId]);
+
+  // === 경로 최저가 dedup + 기존 마커 blink 강조 ===
+  // 경로 최저가 주유소가 이미 일반 가격/순위 마커로 떠 있으면(routeDupIds), 그 주유소의
+  // route 오버레이는 숨기고(이중 표시 제거) 기존 마커 DOM에 펄스(blink) 클래스를 입혀 강조한다.
+  // 어느 일반 마커에도 없는 주유소는 route 오버레이를 그대로 보이게 둔다(기존 route-blink 포함).
+  // 마커 effect들이 먼저 실행되어 [data-sid] 엘리먼트가 DOM에 존재하므로, 여기서 id로 찾아 적용한다.
+  // 패닝/줌으로 마커가 재생성되거나 routePlan/highlight가 바뀌면 deps로 재실행되어 동기화된다.
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    const map = mapRef.current;
+    const container = containerRef.current;
+
+    // 직전에 입힌 기존 마커 blink 정리(재실행 시 잔상/누수 방지).
+    routeOnMarkerElsRef.current.forEach((el) => {
+      el.classList.remove('route-onmarker-blink', 'route-onmarker-blink--focus');
+    });
+    routeOnMarkerElsRef.current = [];
+
+    if (!routePlan || !container) {
+      // 경로 모드 아님 → 모든 route 오버레이는 route effect가 이미 정리. 추가 작업 없음.
+      return;
+    }
+
+    const applied: HTMLElement[] = [];
+    for (const [id, ov] of routeStationOverlaysRef.current) {
+      const isDup = routeDupIds.has(id);
+      // dup이면 route 오버레이 숨김(이중 표시 제거), 아니면 표시.
+      ov.setMap(isDup ? null : map);
+      if (!isDup) continue;
+      // 기존 일반 마커(data-sid) DOM을 찾아 펄스 강조 클래스를 입힌다.
+      const el = container.querySelector<HTMLElement>(`[data-sid="${cssEscape(id)}"]`);
+      if (!el) continue;
+      el.classList.add('route-onmarker-blink');
+      // 배너가 가리키는 그 주유소면 더 강한 강조(focus)도 함께.
+      if (id === highlightStationId) el.classList.add('route-onmarker-blink--focus');
+      applied.push(el);
+    }
+    routeOnMarkerElsRef.current = applied;
+  }, [
+    ready, routePlan, routeDupIds, highlightStationId,
+    // 마커 재생성 트리거(=DOM 교체)와 동기화하기 위한 deps. 이들이 바뀌면 기존 마커가 새로
+    // 그려지므로 blink를 재적용해야 한다.
+    stations, top10Rank, nearbyRank, mapLevel, activeTab, areaListRank,
+    nationalTop10, nearbyTop10, nearbyListRank, layer, expOnly,
+  ]);
 
   // 내 위치 마커 + 1km 원
   useEffect(() => {
