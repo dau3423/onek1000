@@ -22,6 +22,12 @@ declare module 'next-auth' {
       defaultProduct?: ProductCode;
       /** 표시용 닉네임(첫 로그인 시 자동 생성, /my에서 변경) */
       nickname?: string;
+      /**
+       * 관리자 여부 — 서버(session 콜백)에서 isAdminEmail(email)로 판정해 주입.
+       * 클라이언트(헤더 등)에서 "관리자 콘솔" 노출 조건으로만 쓰며, 위변조 불가
+       * (세션 토큰 기반 서버 판정값). 실제 /admin 접근 가드는 서버에서 재검증한다.
+       */
+      isAdmin?: boolean;
     };
   }
 }

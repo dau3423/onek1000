@@ -9,6 +9,7 @@ import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { getPremiumStatus, getDefaultProduct, getNickname, getAvatar, getSessionId, getSessionIdCached, primeSessionIdCache } from './session';
+import { isAdminEmail } from './admin';
 import { generateUniqueNickname } from '@/lib/nickname-db';
 
 const PREMIUM_CACHE_MS = 60_000;
@@ -292,6 +293,7 @@ export const authOptions: NextAuthOptions = {
       // 무효화된 세션(중복 로그인으로 밀려난 이전 기기): 로그인 정보를 비워
       // 서버 가드(getSessionUser)가 비로그인으로 보게 하고, 클라이언트엔 revoked 표식을 내린다.
       if (token.sessionRevoked) {
+        // 무효화 세션은 관리자 권한도 당연히 없음(isAdmin 주입 안 함 → undefined=false).
         session.revoked = true;
         session.user = { id: undefined, email: null, name: null, image: null };
         return session;
@@ -301,6 +303,9 @@ export const authOptions: NextAuthOptions = {
       session.user.subStatus = token.subStatus ?? 'none';
       session.user.defaultProduct = token.defaultProduct;
       session.user.nickname = token.nickname;
+      // 관리자 여부는 서버에서 ADMIN_EMAILS 기반으로 판정해 주입(클라 위변조 불가).
+      // 헤더의 "관리자 콘솔" 노출 조건용. 실제 /admin 가드는 서버에서 재검증한다.
+      session.user.isAdmin = isAdminEmail(token.email ?? session.user.email);
       // 사용자가 관리하는 프로필 사진을 세션 image에 반영(헤더/마이페이지 표시).
       if (token.picture) session.user.image = token.picture as string;
       return session;

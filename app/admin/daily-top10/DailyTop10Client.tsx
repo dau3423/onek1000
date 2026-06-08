@@ -54,17 +54,18 @@ function Top10Table({
   accent: string;
   items: DailyTop10Item[];
 }) {
+  // 흰 배경 고정(라이트). accent(#374151 경유 등)는 흰 배경 가정 색이라 대비 보장.
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+    <div className="rounded-xl border border-gray-200 bg-white p-3">
       <h2 className="mb-2 text-base font-bold" style={{ color: accent }}>
         {title}
       </h2>
       {items.length === 0 ? (
-        <p className="py-6 text-center text-sm text-gray-400">데이터가 없습니다.</p>
+        <p className="py-6 text-center text-sm text-gray-500">데이터가 없습니다.</p>
       ) : (
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-100 text-left text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+            <tr className="border-b border-gray-200 text-left text-xs text-gray-500">
               <th className="w-9 py-2 text-center font-medium">순위</th>
               <th className="py-2 font-medium">주유소</th>
               <th className="hidden py-2 font-medium sm:table-cell">브랜드</th>
@@ -76,7 +77,7 @@ function Top10Table({
             {items.map((it) => (
               <tr
                 key={`${it.id}-${it.rank}`}
-                className="border-b border-gray-50 last:border-0 dark:border-gray-800"
+                className="border-b border-gray-100 last:border-0"
               >
                 <td
                   className="py-2 text-center font-bold"
@@ -84,19 +85,19 @@ function Top10Table({
                 >
                   {it.rank}
                 </td>
-                <td className="py-2 font-semibold text-gray-900 dark:text-gray-100">
+                <td className="py-2 font-semibold text-gray-900">
                   {it.name}
                 </td>
-                <td className="hidden py-2 text-gray-600 sm:table-cell dark:text-gray-300">
+                <td className="hidden py-2 text-gray-600 sm:table-cell">
                   {brandLabel(it)}
                 </td>
-                <td className="py-2 text-gray-600 dark:text-gray-300">
+                <td className="py-2 text-gray-600">
                   {sidoLabel(it)}
                   {it.isSelf && (
                     <span className="ml-1 text-xs text-primary">셀프</span>
                   )}
                 </td>
-                <td className="py-2 text-right font-bold tabular-nums text-gray-900 dark:text-gray-100">
+                <td className="py-2 text-right font-bold tabular-nums text-gray-900">
                   {formatPrice(it.price)}원
                 </td>
               </tr>
@@ -139,15 +140,19 @@ export function DailyTop10Client({ date, gasoline, diesel }: Props) {
   const imgUrl = `/api/og/daily-top10?v=${ymd}`;
 
   return (
-    <main className="mx-auto min-h-dvh max-w-2xl bg-gray-50 px-4 pb-[max(24px,env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))] dark:bg-gray-950">
+    // 관리 도구는 가독성 우선 — OS 다크모드와 무관하게 라이트 배경+진한 글자로 고정.
+    <main
+      className="mx-auto min-h-dvh max-w-2xl bg-gray-50 px-4 pb-[max(24px,env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))] text-gray-900"
+      style={{ colorScheme: 'light' }}
+    >
       <header className="py-4">
-        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+        <p className="text-xs font-medium text-gray-500">
           운영자용 · 매일 SNS 게시 도우미
         </p>
-        <h1 className="mt-1 text-xl font-extrabold text-gray-900 dark:text-gray-50">
+        <h1 className="mt-1 text-xl font-extrabold text-gray-900">
           ⛽ {date} 전국 최저가 TOP10
         </h1>
-        <p className="mt-1 text-xs text-gray-400">
+        <p className="mt-1 text-xs text-gray-500">
           데이터: 우리 DB(오피넷 동기화 기준) · 가격 오름차순 전국 상위 10
         </p>
       </header>
@@ -182,20 +187,20 @@ export function DailyTop10Client({ date, gasoline, diesel }: Props) {
       </section>
 
       {/* X 텍스트 미리보기 + 글자수 */}
-      <section className="mb-4 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+      <section className="mb-4 rounded-xl border border-gray-200 bg-white p-3">
         <div className="mb-1 flex items-center justify-between">
-          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+          <span className="text-xs font-medium text-gray-500">
             X 미리보기
           </span>
           <span
             className={`text-xs font-bold tabular-nums ${
-              xLen > 280 ? 'text-red-500' : 'text-gray-400'
+              xLen > 280 ? 'text-red-500' : 'text-gray-500'
             }`}
           >
             {xLen} / 280자
           </span>
         </div>
-        <pre className="whitespace-pre-wrap break-words text-sm text-gray-800 dark:text-gray-200">
+        <pre className="whitespace-pre-wrap break-words text-sm text-gray-800">
           {xText}
         </pre>
       </section>
@@ -206,7 +211,7 @@ export function DailyTop10Client({ date, gasoline, diesel }: Props) {
         <Top10Table title="⚫ 경유 TOP10" accent="#374151" items={diesel} />
       </div>
 
-      <p className="mt-6 text-center text-xs text-gray-400">
+      <p className="mt-6 text-center text-xs text-gray-500">
         티스토리 HTML은 글쓰기 화면을 &lt;HTML&gt; 모드로 바꾼 뒤 붙여넣으세요.
         <br />
         출처: 한국석유공사 오피넷 · onek1000.kr

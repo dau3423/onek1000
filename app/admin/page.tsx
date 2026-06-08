@@ -126,10 +126,16 @@ export default async function AdminPage() {
   const stats = await loadStats();
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8 sm:py-10">
+    // 관리 도구는 가독성 우선 — OS 다크모드와 무관하게 라이트 배경+진한 글자로 고정.
+    // (통계 숫자/라벨, 카드 등은 흰 배경 가정으로 디자인되어 dark: 대응 대신 라이트로 핀)
+    // color-scheme: light 로 스크롤바/폼 컨트롤도 라이트로 강제.
+    <main
+      className="mx-auto min-h-dvh max-w-4xl bg-gray-50 px-4 py-8 text-gray-900 sm:py-10"
+      style={{ colorScheme: 'light' }}
+    >
       <header className="mb-6">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">관리자 대시보드</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <h1 className="text-xl font-bold text-gray-900">관리자 대시보드</h1>
+        <p className="mt-1 text-sm text-gray-500">
           {admin} 으로 로그인됨 · 운영 통계 및 도구
         </p>
       </header>
@@ -139,10 +145,10 @@ export default async function AdminPage() {
         {stats.map((s) => (
           <div
             key={s.label}
-            className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+            className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
           >
-            <div className="text-xs font-medium text-gray-500 dark:text-gray-400">{s.label}</div>
-            <div className="mt-1 text-2xl font-bold tabular-nums text-gray-900 dark:text-gray-50">
+            <div className="text-xs font-medium text-gray-500">{s.label}</div>
+            <div className="mt-1 text-2xl font-bold tabular-nums text-gray-900">
               {s.value}
             </div>
           </div>
@@ -151,21 +157,21 @@ export default async function AdminPage() {
 
       {/* 도구 허브 */}
       <section aria-label="운영 도구" className="mt-8">
-        <h2 className="mb-3 text-sm font-bold text-gray-700 dark:text-gray-200">운영 도구</h2>
+        <h2 className="mb-3 text-sm font-bold text-gray-700">운영 도구</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {TOOLS.map((t) => (
             <Link
               key={t.href}
               href={t.href}
-              className="group rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-primary/40 hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
+              className="group rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-primary/40 hover:shadow-md"
             >
               <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-gray-900 dark:text-gray-50">{t.title}</span>
-                <span className="text-gray-300 transition group-hover:text-primary dark:text-gray-600" aria-hidden>
+                <span className="text-sm font-bold text-gray-900">{t.title}</span>
+                <span className="text-gray-300 transition group-hover:text-primary" aria-hidden>
                   →
                 </span>
               </div>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t.desc}</p>
+              <p className="mt-1 text-xs text-gray-500">{t.desc}</p>
             </Link>
           ))}
         </div>

@@ -8,6 +8,8 @@ export function Header() {
   const { data, status } = useSession();
   const signedIn = status === 'authenticated';
   const isPremium = Boolean(data?.user?.isPremium);
+  // 관리자(ADMIN_EMAILS)로 로그인한 경우에만 노출 — 서버 판정값(session.user.isAdmin)이라 위변조 불가.
+  const isAdmin = Boolean(data?.user?.isAdmin);
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-gray-100 bg-white px-4">
@@ -25,6 +27,18 @@ export function Header() {
       </Link>
 
       <div className="flex shrink-0 items-center gap-1">
+        {/* 관리자 전용 콘솔 진입 — 관리자(ADMIN_EMAILS)에게만 노출. 작은 배지형 링크. */}
+        {isAdmin && (
+          <Link
+            href="/admin"
+            aria-label="관리자 콘솔"
+            title="관리자 콘솔"
+            className="mr-0.5 flex h-7 shrink-0 items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 text-xs font-bold text-primary transition active:scale-95"
+          >
+            <span aria-hidden>⚙️</span>
+            <span className="hidden sm:inline">관리자</span>
+          </Link>
+        )}
         <Link
           href="/search"
           aria-label="검색"
