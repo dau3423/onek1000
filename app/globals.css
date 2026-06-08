@@ -104,6 +104,19 @@ body {
   70%  { transform: scale(1.9); opacity: 0; }
   100% { transform: scale(1.9); opacity: 0; }
 }
+/* 마커 "본체"가 부드럽게 통통 튀는 모션. 펄스 링(::before/::after)이 아니라
+   본체 자식 엘리먼트에만 적용하므로 링 위치/앵커는 그대로 유지된다(transform 충돌 방지). */
+@keyframes route-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+/* route-blink(블루)와 onmarker-blink가 공유하는 기본 바운스: 본체 직속 자식만 움직인다.
+   ::before/::after는 pseudo라 자식 선택자에 포함되지 않아 링은 고정된다. */
+.route-blink > *,
+.route-onmarker-blink > * {
+  animation: route-bob 1.4s ease-in-out infinite;
+  will-change: transform;
+}
 
 /* === 현재 배너에 떠 있는 "그" 경로 최저가 주유소 강조 ===
    RouteAlert 배너가 가리키는 주유소(highlightStationId)에만 추가로 입힌다.
@@ -126,8 +139,12 @@ body {
   pointer-events: none;
   z-index: -1;
 }
-.route-blink--focus > div:last-child {
-  animation: route-bounce 1.2s ease-in-out infinite;
+/* 배너가 가리키는 그 주유소: 본체 전체를 더 크게/빠르게 바운스시켜 "지금 이 주유소"임을 강조.
+   기본 바운스(route-bob)보다 더 큰 진폭(route-bounce)으로 덮어쓴다. */
+.route-blink--focus > *,
+.route-onmarker-blink--focus > * {
+  animation: route-bounce 1.1s ease-in-out infinite;
+  will-change: transform;
 }
 @keyframes route-pulse-focus {
   0%   { transform: scale(.6); opacity: 1; }
@@ -136,7 +153,7 @@ body {
 }
 @keyframes route-bounce {
   0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-5px); }
+  50%      { transform: translateY(-7px); }
 }
 
 /* === 경로 최저가 dedup: "기존 일반 마커"에 얹는 blink 강조 ===
@@ -185,8 +202,11 @@ body {
   .top10-sparkle,
   .route-blink::before,
   .route-blink--focus::after,
-  .route-blink--focus > div:last-child,
+  .route-blink > *,
+  .route-blink--focus > *,
   .route-onmarker-blink::before,
+  .route-onmarker-blink > *,
+  .route-onmarker-blink--focus > *,
   .route-onmarker-blink--focus::after { animation: none !important; }
   .top10-sparkle { display: none; }
   .route-blink::before,
