@@ -388,6 +388,77 @@ export async function queryMyFuelLogsAtStation(email: string, stationId: string,
   }));
 }
 
+/**
+ * 로그인 사용자의 "전체" 주유/충전 기록(최신순) — 차계부 리포트 집계용.
+ * email→userId 해석 후 본인(user_id) 기록만 조회(소유자 스코프).
+ * @param sinceIso 이 시각(포함) 이후 logged_at 만. null이면 전체.
+ * @param limit 안전 상한(기본 2000건). 집계는 클라/서버 메모리에서 수행.
+ * Supabase 미설정(mock) 또는 비로그인/사용자 없음이면 빈 배열.
+ */
+export async function queryMyFuelLogs(
+  email: string,
+  sinceIso: string | null = null,
+  limit = 2000,
+): Promise<FuelLog[]> {
+  if (!isSupabaseConfigured()) return [];
+  const sb = getSupabase();
+  const { data: u } = await sb.from('users').select('id').eq('email', email).maybeSingle();
+  const userId = u?.id;
+  if (!userId) return [];
+
+  let q = sb
+    .from('fuel_logs')
+    .select('id, kind, station_id, station_name, product, unit_price, amount_won, liters, kwh, odometer, memo, logged_at, created_at')
+    .eq('user_id', userId)
+    .order('logged_at', { ascending: false })
+    .limit(limit);
+  if (sinceIso) q = q.gte('logged_at', sinceIso);
+  const { data } = await q;
+
+  return ((data ?? []) as MyFuelLogRow[]).map((r) => ({
+    id: r.id,
+    kind: r.kind === 'ev' ? 'ev' : 'gas',
+    stationId: r.station_id,
+    stationName: r.station_name,
+    product: (r.product as ProductCode) in PRODUCT_LABEL ? (r.product as ProductCode) : 'B027',
+    unitPrice: r.unit_price,
+    amountWon: r.amount_won,
+    liters: r.liters === null ? null : Number(r.liters),
+    kwh: r.kwh === null ? null : Number(r.kwh),
+    odometer: r.odometer,
+    memo: r.memo,
+    loggedAt: r.logged_at,
+    createdAt: r.created_at,
+  }));
+}
+
+/**
+ * 유종별 "현재 전국 평균가"(원/L) — 리포트의 절약 추정 기준선.
+ * 우리 DB(prices_latest)만 집계한다(외부 API 호출 없음). 시점별 히스토리가 없어 현재값으로 근사한다.
+ * Supabase 미설정 시 빈 객체(→ 절약 추정 비활성).
+ */
+export async function queryNationalAvgPrices(): Promise<Partial<Record<ProductCode, number>>> {
+  if (!isSupabaseConfigured()) return {};
+  const sb = getSupabase();
+  // prices_latest 전체에서 유종별 평균을 클라 집계(전국 주유소 ~1.1만개 × 유종, 가벼운 단일 컬럼 조회).
+  const { data } = await sb.from('prices_latest').select('product, price');
+  if (!data) return {};
+  const sum: Record<string, { total: number; n: number }> = {};
+  for (const row of data as Array<{ product: string; price: number }>) {
+    const p = row.product;
+    if (!sum[p]) sum[p] = { total: 0, n: 0 };
+    sum[p].total += row.price;
+    sum[p].n += 1;
+  }
+  const out: Partial<Record<ProductCode, number>> = {};
+  for (const [p, v] of Object.entries(sum)) {
+    if ((p as ProductCode) in PRODUCT_LABEL && v.n > 0) {
+      out[p as ProductCode] = Math.round(v.total / v.n);
+    }
+  }
+  return out;
+}
+
 /** Opinet detailById로 받은 가격을 prices_latest에 upsert(+stations 부가서비스 보강). best-effort. */
 async function cacheStationPrices(id: string, live: StationDetail): Promise<void> {
   if (!isSupabaseConfigured()) return;

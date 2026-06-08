@@ -105,6 +105,11 @@ export default async function MyPage() {
             <span className="text-sm text-primary">보기 →</span>
           )}
         </Link>
+        {/* 차계부/주유비 리포트 — 모든 회원 무료. 월별 주유비·연비·절약 통계. */}
+        <Link href="/my/report" className="mt-2 flex items-center justify-between rounded-xl bg-gray-50 p-4">
+          <span className="text-sm text-gray-700">📊 주유 리포트 (월별 · 연비 · 절약)</span>
+          <span className="text-sm text-primary">보기 →</span>
+        </Link>
       </section>
 
       <section className="border-t border-gray-100 px-5 py-5">

@@ -218,6 +218,15 @@ function ListTab({
 
   return (
     <div className="space-y-5">
+      {/* 차계부 리포트로 이동(월별 주유비·연비·절약. 모든 회원 무료) */}
+      <Link
+        href="/my/report"
+        className="flex items-center justify-between rounded-xl bg-primary/5 px-4 py-3 text-sm font-semibold text-primary hover:bg-primary/10"
+      >
+        <span>📊 월별 주유비 · 연비 · 절약 리포트</span>
+        <span aria-hidden>→</span>
+      </Link>
+
       {/* 간단 통계 (현재 로드된 기록 기준) */}
       <div className="grid grid-cols-3 gap-2">
         <StatCard label="기록 수" value={`${stats.count}건`} />
