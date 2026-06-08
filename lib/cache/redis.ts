@@ -61,6 +61,8 @@ export const keys = {
   evBbox: (q: string) => `ev:bbox:${q}`,
   // 화면 영역 내 전체 주유소(회색 점) — 가격/유종 무관, 좌표만. 줌(z)+격자로 분리.
   stationsInBbox: (z: number, q: string) => `allstn:z${z}:${q}`,
+  // 지역 가격 추세(④ 타이밍 배너) — 유종+격자+반경. 추세는 1일 단위 변화라 TTL 길게(1h).
+  priceTrend: (prod: string, q: string, r: number) => `trend:${prod}:${q}:r${r}`,
 };
 
 /** 좌표 양자화: precision=3 → 약 110m 격자, 4 → 11m */

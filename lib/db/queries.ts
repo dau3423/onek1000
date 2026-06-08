@@ -111,6 +111,84 @@ export async function queryStationsByRadius(
   }));
 }
 
+/** 지역 가격 추세(④ 타이밍 배너용) — 어떤 지점 반경의 최근 7일 vs 직전 7일 평균가 비교 */
+export type TrendDir = 'up' | 'down' | 'flat';
+export interface PriceTrend {
+  /** 'up'=오름세, 'down'=내림세, 'flat'=보합. 데이터 부족이면 null */
+  trend: TrendDir | null;
+  /** 변동률(%) — (recent-prior)/prior*100. 데이터 부족이면 null */
+  changePct: number | null;
+  /** 최근 7일 평균가(원/L) */
+  recentAvg: number | null;
+  /** 직전 7일 평균가(원/L) */
+  priorAvg: number | null;
+  /** 표본 수 — 임계/신뢰 판정용 */
+  recentN: number;
+  priorN: number;
+  /** 산출 근거 라벨(반환 디버깅·UI 보조용) */
+  basis: string;
+}
+
+// 추세 판정 임계 — |변동률| 이 이 값 미만이면 'flat'(보합)으로 본다.
+const TREND_FLAT_PCT = 0.3;
+// 추세를 신뢰하기 위한 최소 표본 수(두 구간 모두 충족해야 방향 판정).
+const TREND_MIN_SAMPLES = 3;
+
+/**
+ * 지점 반경의 가격 추세 산출 — 최근 7일 평균 vs 직전 7일 평균(prices_history).
+ * 외부 API 호출 없이 우리 DB만 사용. Supabase 미설정 시 mock 폴백(항상 'flat').
+ * 데이터 부족(표본 부족/평균 없음)이면 trend=null 로 반환해 배너 미표시를 유도한다.
+ */
+export async function queryPriceTrend(
+  lat: number, lng: number, radiusM: number, product: ProductCode,
+): Promise<PriceTrend> {
+  const empty: PriceTrend = {
+    trend: null, changePct: null, recentAvg: null, priorAvg: null,
+    recentN: 0, priorN: 0, basis: '최근 7일 vs 직전 7일',
+  };
+
+  // Mock 모드: 이력 표본이 없으므로 추세 미산출(보합으로 간주, 배너 미표시).
+  if (!isSupabaseConfigured()) return empty;
+
+  const sb = getSupabase();
+  const { data, error } = await sb.rpc('rpc_price_trend', {
+    p_lat: lat, p_lng: lng, p_radius_m: radiusM, p_product: product,
+  });
+  if (error) throw new Error(`price trend query failed: ${error.message}`);
+
+  const row = (data as Array<{
+    recent_avg: number | null; prior_avg: number | null;
+    recent_n: number | string; prior_n: number | string;
+  }> | null)?.[0];
+  if (!row) return empty;
+
+  const recentAvg = row.recent_avg == null ? null : Number(row.recent_avg);
+  const priorAvg = row.prior_avg == null ? null : Number(row.prior_avg);
+  const recentN = Number(row.recent_n ?? 0);
+  const priorN = Number(row.prior_n ?? 0);
+
+  // 표본/평균 부족 시 방향 판정 불가 → null(배너 미표시).
+  if (recentAvg == null || priorAvg == null || priorAvg <= 0) {
+    return { ...empty, recentAvg, priorAvg, recentN, priorN };
+  }
+  if (recentN < TREND_MIN_SAMPLES || priorN < TREND_MIN_SAMPLES) {
+    return { ...empty, recentAvg, priorAvg, recentN, priorN };
+  }
+
+  const changePct = ((recentAvg - priorAvg) / priorAvg) * 100;
+  const trend: TrendDir =
+    Math.abs(changePct) < TREND_FLAT_PCT ? 'flat' : changePct > 0 ? 'up' : 'down';
+
+  return {
+    trend,
+    changePct: Number(changePct.toFixed(2)),
+    recentAvg: Math.round(recentAvg),
+    priorAvg: Math.round(priorAvg),
+    recentN, priorN,
+    basis: '최근 7일 vs 직전 7일',
+  };
+}
+
 /** 관심 지역 최저가 TOP10 1건 */
 export interface RegionTopRow {
   stationId: string;

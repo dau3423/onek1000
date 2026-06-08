@@ -11,6 +11,7 @@ import { BottomSheet, SHEET_PEEK_PX } from '@/components/ui/BottomSheet';
 import { BannerAd, BANNER_BOTTOM_PX, BANNER_HEIGHT_PX, useBannerVisible } from '@/components/ads/BannerAd';
 import { RadiusAlert } from '@/components/alert/RadiusAlert';
 import { RouteAlert } from '@/components/alert/RouteAlert';
+import { PriceTrendBanner } from '@/components/alert/PriceTrendBanner';
 import { NaviConfirm } from '@/components/alert/NaviConfirm';
 import { ProductSync } from '@/components/map/ProductSync';
 import { StationPopup } from '@/components/map/StationPopup';
@@ -179,12 +180,18 @@ export default function HomePage() {
   const radiusAbort = useRef<AbortController | null>(null);
   // 100m 이상 의미있는 이동에서만 재조회하기 위한 양자화 키 (FR-2.2)
   const lastRadiusKeyRef = useRef<string | null>(null);
+  // 사용자 마지막 위치 저장 throttle — 직전 저장 좌표/시각(과호출 방지: 1km 이동 or 하루 1회)
+  const lastSavedLocRef = useRef<{ lat: number; lng: number; at: number } | null>(null);
   // 값이 바뀌면 지도가 내 위치로 이동 (버튼 재클릭마다 증가)
   const [recenterSignal, setRecenterSignal] = useState(0);
   // 버튼을 눌렀지만 아직 좌표를 모를 때, 첫 좌표 획득 시 1회 내 위치로 이동시키기 위한 대기 플래그
   const pendingRecenterRef = useRef(false);
   // 따라가기 모드: ON이면 위치 갱신마다 지도가 내 위치를 자동 추적, 사용자가 지도를 드래그하면 자동 OFF
   const [follow, setFollow] = useState(false);
+  // ④ 가격 추세 배너용 지도 중심 좌표(GPS 좌표가 없을 때 폴백). 복원 뷰가 있으면 그 중심으로 시작.
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(
+    () => (restoredView ? { lat: restoredView.lat, lng: restoredView.lng } : null),
+  );
 
   // 길안내 확인 모달 대상
   const [naviTarget, setNaviTarget] = useState<StationWithPrice | null>(null);
@@ -480,6 +487,27 @@ export default function HomePage() {
     // geo.coords 전체가 아닌 위경도 변화에만 반응 (양자화 게이트로 재조회 빈도 제어)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geo.coords?.lat, geo.coords?.lng, product, resetAlert]);
+
+  // 로그인 사용자 마지막 위치 저장(③ 주간 다이제스트 cron이 "내 지역"을 알기 위함).
+  // 과호출 방지: 직전 저장 대비 1km 이상 이동했거나 하루(24h) 지났을 때만 POST. best-effort(실패 무시).
+  useEffect(() => {
+    if (authStatus !== 'authenticated' || !geo.coords) return;
+    const { lat, lng } = geo.coords;
+    const prev = lastSavedLocRef.current;
+    const now = Date.now();
+    const moved = !prev || distanceMeters(prev.lat, prev.lng, lat, lng) >= 1000;
+    const stale = !prev || now - prev.at >= 24 * 60 * 60 * 1000;
+    if (!moved && !stale) return;
+    lastSavedLocRef.current = { lat, lng, at: now };
+    fetch('/api/user/location', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lat, lng }),
+      keepalive: true,
+    }).catch(() => { /* best-effort — 실패 무시 */ });
+    // 좌표 변화에만 반응(geo.coords 전체 의존 시 watch 갱신마다 재실행) — radius 효과와 동일 패턴.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authStatus, geo.coords?.lat, geo.coords?.lng]);
 
   // 내 주변(10km) 최저가 TOP10 — 지도에 별도 마커로 표시.
   // radius 응답은 이미 가격 오름차순으로 정렬되어 오므로 상위 N건을 그대로 사용한다.
@@ -870,7 +898,11 @@ export default function HomePage() {
             if (layer === 'ev') fetchEvStations(b);
             else { fetchStations(b); fetchAllStations(b); }
           }}
-          onViewChange={setLastView}
+          onViewChange={(v) => {
+            setLastView(v);
+            // ④ 추세 배너 폴백 좌표 — 지도 중심을 추적(GPS 좌표가 없을 때 사용).
+            setMapCenter({ lat: v.lat, lng: v.lng });
+          }}
           onUserPan={() => setFollow(false)}
           onMarkerClick={handleMarkerClick}
         />
@@ -989,6 +1021,17 @@ export default function HomePage() {
               setRouteAlert(null);
             }}
             onNavigate={() => requireAuth(() => setNaviTarget(routeAlert.station))}
+          />
+        )}
+
+        {/* ④ 가격 추세/타이밍 배너 — 내 지역(현재 위치 또는 지도 중심) 기름값 오름세일 때 노출.
+            전체 사용자(비로그인 포함). 1km 알람(RadiusAlert)·경로 알림과 같은 상단 자리를 쓰므로,
+            그 둘이 떠 있지 않을 때만(겹침 방지) 노출한다. 컴포넌트 내부에서 추세 미산출/내림세면 스스로 미표시. */}
+        {layer === 'gas' && !routePlan && !(alertStation && !alertDismissed) && (
+          <PriceTrendBanner
+            lat={(myLocation ?? mapCenter)?.lat ?? null}
+            lng={(myLocation ?? mapCenter)?.lng ?? null}
+            product={product}
           />
         )}
 
