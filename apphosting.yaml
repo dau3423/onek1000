@@ -167,7 +167,7 @@ env:
   # 빈 값이면 Firebase 파서가 invalid 처리 + 우리 가드는 "관리자 없음"으로 전원 거부하므로
   # placeholder를 둔다(실제 운영 이메일로 반드시 변경, 콤마로 여러 명 가능).
   - variable: ADMIN_EMAILS
-    value: "admin@onek1000.kr"
+    value: "ddu3423@gmail.com"
     availability:
       - BUILD
       - RUNTIME
