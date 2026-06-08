@@ -11,6 +11,7 @@ import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { getPremiumStatus, getDefaultProduct, getNickname, getAvatar, getSessionId, getSessionIdCached, primeSessionIdCache } from './session';
 import { isAdminEmail } from './admin';
 import { generateUniqueNickname } from '@/lib/nickname-db';
+import { ensureReferralCode } from '@/lib/referral';
 
 const PREMIUM_CACHE_MS = 60_000;
 
@@ -205,6 +206,8 @@ export const authOptions: NextAuthOptions = {
         // 실결제(PortOne v2)와 무관한 무료 체험으로, subscriptions에 trial row만 생성한다.
         // best-effort: 부여 실패해도 로그인 자체는 절대 깨지지 않게 try/catch로 격리한다.
         if (created?.id) await grantWelcomeTrial(sb, created.id as string);
+        // 추천 코드 가입 시 자동 발급(best-effort). 실패해도 마이페이지 진입 시 lazy 발급으로 보완.
+        if (created?.id) await ensureReferralCode(created.id as string).catch(() => null);
       } else {
         const patch: Record<string, unknown> = {
           name: user.name ?? null,

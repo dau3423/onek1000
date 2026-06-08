@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import './globals.css';
 import { SessionProvider } from '@/components/SessionProvider';
 import { SessionGuard } from '@/components/SessionGuard';
+import { ReferralClaim } from '@/components/referral/ReferralClaim';
 import { AdsenseScript } from '@/components/ads/AdsenseScript';
 import { FirebaseAnalytics } from '@/components/FirebaseAnalytics';
 
@@ -55,6 +56,7 @@ export default function RootLayout({
       <body className="h-full">
         <SessionProvider>
           <SessionGuard />
+          <ReferralClaim />
           {children}
           <AdsenseScript />
           <Suspense fallback={null}>

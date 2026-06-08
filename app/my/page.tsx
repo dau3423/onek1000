@@ -8,6 +8,7 @@ import { SignOutButton } from '@/components/SignOutButton';
 import { DeleteAccountButton } from '@/components/account/DeleteAccountButton';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { InstallButton } from '@/components/pwa/InstallButton';
+import { ReferralCard } from '@/components/referral/ReferralCard';
 import {
   BadgeSkeleton,
   FavoriteCount,
@@ -70,6 +71,12 @@ export default async function MyPage() {
             </Link>
           </div>
         )}
+      </section>
+
+      <section className="border-t border-gray-100 px-5 py-5">
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">친구 추천</h2>
+        {/* 코드 lazy 발급/성공수는 클라이언트에서 /api/referral/me로 조회(서버 검증). */}
+        <ReferralCard />
       </section>
 
       <section className="border-t border-gray-100 px-5 py-5">
