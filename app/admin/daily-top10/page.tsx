@@ -4,20 +4,14 @@
 //       X(트위터)·티스토리에 쉽게 올리도록 텍스트/HTML 복사 + 이미지 카드 다운로드를 제공.
 // 데이터: 우리 DB만 사용(외부 API 호출 없음). queryDailyTop10(prices_latest+stations).
 //
-// 보호 방식: (a) 무인증 + noindex 로 운영(가장 간단, 북마크 사용). 검색 노출만 차단한다.
-//   ─ (b) 관리자 이메일 게이트로 전환하려면 아래 GATE 블록 주석을 해제하고
-//     환경변수 ADMIN_EMAILS(쉼표구분)에 운영자 이메일을 넣어라. 이메일 하드코딩 금지.
-//
-//     import { getServerSession } from 'next-auth';
-//     import { authOptions } from '@/lib/auth/options';
-//     import { redirect } from 'next/navigation';
-//     const admins = (process.env.ADMIN_EMAILS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-//     const session = await getServerSession(authOptions);
-//     if (admins.length > 0 && !(session?.user?.email && admins.includes(session.user.email))) {
-//       redirect('/'); // 또는 403 화면
-//     }
+// 보호 방식: 관리자 이메일 게이트(ADMIN_EMAILS) + noindex.
+//   - 로그인 이메일이 ADMIN_EMAILS(콤마구분)에 포함될 때만 접근 허용. 아니면 notFound().
+//   - ADMIN_EMAILS 미설정 시 "관리자 없음" → 접근 거부(lib/auth/admin.ts 참고).
+//   - 이메일 하드코딩 금지. og 이미지 라우트(/api/og/daily-top10)는 공개 데이터라 가드 불필요.
 
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { getAdminOrNull } from '@/lib/auth/admin';
 import { queryDailyTop10 } from '@/lib/db/queries';
 import { todayKstLabel } from '@/lib/daily-top10';
 import { DailyTop10Client } from './DailyTop10Client';
@@ -32,6 +26,9 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function DailyTop10Page() {
+  // 관리자 이메일 게이트(ADMIN_EMAILS). 비관리자/비로그인은 404로 가린다(존재 비노출).
+  if (!(await getAdminOrNull())) notFound();
+
   const [gasoline, diesel] = await Promise.all([
     queryDailyTop10('B027'),
     queryDailyTop10('D047'),

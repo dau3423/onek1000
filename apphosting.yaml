@@ -162,6 +162,15 @@ env:
       - RUNTIME
   - variable: REVIEWER_PASSWORD
     secret: REVIEWER_PASSWORD
+  # ─── 관리자 이메일(콤마구분) ───
+  # /admin·/admin/* 접근 허용 대상. 본인 로그인 이메일로 교체할 것.
+  # 빈 값이면 Firebase 파서가 invalid 처리 + 우리 가드는 "관리자 없음"으로 전원 거부하므로
+  # placeholder를 둔다(실제 운영 이메일로 반드시 변경, 콤마로 여러 명 가능).
+  - variable: ADMIN_EMAILS
+    value: "admin@onek1000.kr"
+    availability:
+      - BUILD
+      - RUNTIME
   - variable: PORTONE_API_SECRET
     secret: PORTONE_API_SECRET
   - variable: PORTONE_WEBHOOK_SECRET

@@ -19,6 +19,7 @@ import { FuelDwellPrompt } from '@/components/station/FuelDwellPrompt';
 import { useFuelDwellDetect, type DwellStation } from '@/hooks/useFuelDwellDetect';
 import { MarkerLegend } from '@/components/ui/MarkerLegend';
 import { InstallBanner } from '@/components/pwa/InstallBanner';
+import { WelcomePromo } from '@/components/promo/WelcomePromo';
 import { BusinessFooter } from '@/components/legal/BusinessFooter';
 import { useMapStore, getInitialMapView, getInitialRoutePlan, type MapView } from '@/stores/map';
 import { useGeolocation } from '@/hooks/useGeolocation';
@@ -1032,6 +1033,9 @@ export default function HomePage() {
         />
         </div>
       </div>
+
+      {/* 첫 접속 공지 모달(비로그인·디바이스당 1회) — 회원가입 시 1달 무료 프리미엄 유도 */}
+      <WelcomePromo />
 
       {/* 메인 하단 사업자 정보 푸터 — 첫 화면(지도) 아래로 스크롤하면 노출(카드사 심사용) */}
       <BusinessFooter />

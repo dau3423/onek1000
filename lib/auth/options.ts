@@ -83,6 +83,75 @@ function buildProviders(): NextAuthOptions['providers'] {
   return providers;
 }
 
+// 신규 가입자 환영 무료 체험 기간(일). 운영상 쉽게 조정할 수 있게 상수로 분리.
+const WELCOME_TRIAL_DAYS = 30;
+
+/**
+ * 신규 가입자에게 "1달 무료 프리미엄(trial)" 1회 부여.
+ * - 실결제(PortOne v2)와 무관한 무료 체험: subscriptions에 trial row만 생성한다.
+ *   결제/빌링 로직은 일절 건드리지 않는다.
+ * - getPremiumStatus는 status∈(trial,active,canceled) & periodEnd(=expires_at||
+ *   current_period_end||trial_end) > now 면 isPremium=true → trial_end=now+30일을
+ *   넣으면 30일간 프리미엄으로 인정된다.
+ * - 1계정 1회: 신규 user insert 분기에서만 호출한다(재로그인엔 호출 안 함). 추가로
+ *   이미 trial/active 구독이 있으면(동시 가입/재시도 등) 중복 생성을 방어한다.
+ * - best-effort: 어떤 실패도 로그인(가입)을 깨뜨리지 않게 모두 흡수하고 로깅만 한다.
+ * - customer_key는 NOT NULL이라 채워야 한다. 무료 체험은 PG 거래가 없으므로
+ *   결제 식별자가 없다 → 'welcome_trial:<userId>' 합성값을 넣는다(빌링 흐름과 충돌 없음).
+ */
+async function grantWelcomeTrial(
+  sb: ReturnType<typeof getSupabase>,
+  userId: string,
+): Promise<void> {
+  try {
+    // 방어: 이미 유효 구독(trial/active)이 있으면 중복 생성하지 않는다.
+    const { data: existingSub } = await sb
+      .from('subscriptions')
+      .select('id')
+      .eq('user_id', userId)
+      .in('status', ['trial', 'active'])
+      .limit(1)
+      .maybeSingle();
+    if (existingSub) return;
+
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const trialEnd = new Date(now.getTime() + WELCOME_TRIAL_DAYS * 86400000).toISOString();
+
+    const { error } = await sb.from('subscriptions').insert({
+      user_id: userId,
+      status: 'trial',
+      plan: 'monthly_1000',
+      plan_type: 'recurring',
+      provider: 'welcome_trial', // 실결제 아님(무료 체험) 표식 — 빌링 provider('portone')와 구분
+      customer_key: `welcome_trial:${userId}`, // NOT NULL 충족용 합성값(PG 거래 없음)
+      trial_end: trialEnd,
+      // periodEnd 폴백 일관성: current_period_end도 trial_end로 맞춰 둔다.
+      current_period_start: nowIso,
+      current_period_end: trialEnd,
+      // 자동 청구 없음(무료 체험만, 빌링키 미발급) → next_charge_at은 비운다.
+      next_charge_at: null,
+      updated_at: nowIso,
+    });
+    if (error) {
+      // plan_type/expires_at 등 일부 컬럼 미적용 환경(마이그레이션 차이) 방어:
+      // 최소 컬럼만으로 1회 재시도. 그래도 실패하면 로깅만 하고 가입은 성공시킨다.
+      const retry = await sb.from('subscriptions').insert({
+        user_id: userId,
+        status: 'trial',
+        plan: 'monthly_1000',
+        customer_key: `welcome_trial:${userId}`,
+        trial_end: trialEnd,
+        current_period_end: trialEnd,
+        updated_at: nowIso,
+      });
+      if (retry.error) console.error('[auth] welcome trial 부여 실패', retry.error);
+    }
+  } catch (e) {
+    console.error('[auth] welcome trial 부여 예외', e);
+  }
+}
+
 export const authOptions: NextAuthOptions = {
   providers: buildProviders(),
   session: { strategy: 'jwt' },
@@ -108,15 +177,24 @@ export const authOptions: NextAuthOptions = {
       if (!existing) {
         // 첫 로그인: 유니크한 한국어 닉네임 자동 생성
         const nickname = await generateUniqueNickname();
-        await sb.from('users').insert({
-          email: user.email,
-          name: user.name ?? null,
-          nickname,
-          image_url: user.image ?? null,
-          provider: account?.provider,
-          provider_account_id: account?.providerAccountId,
-          session_id: sid,
-        });
+        // 신규 user.id를 받아 trial 구독을 연결한다(.select('id').single()).
+        const { data: created } = await sb
+          .from('users')
+          .insert({
+            email: user.email,
+            name: user.name ?? null,
+            nickname,
+            image_url: user.image ?? null,
+            provider: account?.provider,
+            provider_account_id: account?.providerAccountId,
+            session_id: sid,
+          })
+          .select('id')
+          .single();
+        // 신규 가입 1회 한정 "1달 무료 프리미엄(trial)" 자동 부여.
+        // 실결제(PortOne v2)와 무관한 무료 체험으로, subscriptions에 trial row만 생성한다.
+        // best-effort: 부여 실패해도 로그인 자체는 절대 깨지지 않게 try/catch로 격리한다.
+        if (created?.id) await grantWelcomeTrial(sb, created.id as string);
       } else {
         const patch: Record<string, unknown> = {
           name: user.name ?? null,
