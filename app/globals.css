@@ -17,6 +17,25 @@ body {
 /* 카카오맵 컨테이너가 부모 크기 100%를 받도록 */
 .map-container { position: relative; height: 100%; width: 100%; }
 
+/* === 누름 피드백(.tap-press) ===
+   헤더/핵심 버튼이 탭 시 "살짝 들어갔다 나오는" 느낌을 주는 공통 유틸.
+   - active(누르는 동안)에만 작아지고 약간 어두워졌다가, 떼면 복귀.
+   - -webkit-tap-highlight-color는 body에서 transparent 처리하므로, 우리 active 피드백이 그대로 보인다.
+   - touch-action: manipulation으로 더블탭 줌 지연(300ms) 제거 → 반응이 즉각적으로 느껴진다. */
+.tap-press {
+  transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+  touch-action: manipulation;
+}
+.tap-press:active {
+  transform: scale(0.92);
+  opacity: 0.8;
+}
+/* 모션 민감 사용자: 크기 변화 대신 투명도만으로 피드백(접근성, NFR-7). */
+@media (prefers-reduced-motion: reduce) {
+  .tap-press { transition: opacity 0.1s ease-out; }
+  .tap-press:active { transform: none; opacity: 0.7; }
+}
+
 /* === 전국 최저가 TOP10 "반짝이는 황금색" 강조 ===
    지도 마커(innerHTML 문자열로 주입되는 CustomOverlay의 황금 핀/라벨)와 목록의 '전국 N위'
    배지에서 공용으로 쓴다. inline style="animation:..."로 참조하므로 keyframes는 전역에 둔다. */

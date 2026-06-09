@@ -13,7 +13,7 @@ export function Header() {
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-gray-100 bg-white px-4">
-      <Link href="/" className="flex min-w-0 items-center gap-2">
+      <Link href="/" className="tap-press flex min-w-0 items-center gap-2">
         <Image
           src="/icons/app_icon.png"
           alt="1000냥 주유소"
@@ -33,7 +33,7 @@ export function Header() {
             href="/admin"
             aria-label="관리자 콘솔"
             title="관리자 콘솔"
-            className="mr-0.5 flex h-7 shrink-0 items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 text-xs font-bold text-primary transition active:scale-95"
+            className="tap-press mr-0.5 flex h-7 shrink-0 items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 text-xs font-bold text-primary hover:bg-primary/20"
           >
             <span aria-hidden>⚙️</span>
             <span className="hidden sm:inline">관리자</span>
@@ -42,21 +42,21 @@ export function Header() {
         <Link
           href="/search"
           aria-label="검색"
-          className="flex h-12 w-12 items-center justify-center rounded-full"
+          className="tap-press flex h-12 w-12 items-center justify-center rounded-full hover:bg-gray-100"
         >
           <Image src="/icons/icon_search.png" alt="" width={30} height={30} />
         </Link>
         <Link
           href="/route"
           aria-label="경로별 최저가"
-          className="flex h-12 w-12 items-center justify-center rounded-full"
+          className="tap-press flex h-12 w-12 items-center justify-center rounded-full hover:bg-gray-100"
           title="경로별 최저가"
         >
           <Image src="/icons/icon_run.png" alt="" width={30} height={30} />
         </Link>
         <Link
           href={signedIn ? '/my' : '/auth/sign-in'}
-          className="flex h-12 w-12 items-center justify-center rounded-full"
+          className="tap-press flex h-12 w-12 items-center justify-center rounded-full hover:bg-gray-100"
           aria-label={signedIn ? (isPremium ? '마이페이지 (프리미엄 회원)' : '마이페이지') : '로그인'}
           title={signedIn && isPremium ? '프리미엄 회원' : (data?.user?.email ?? '로그인')}
         >
