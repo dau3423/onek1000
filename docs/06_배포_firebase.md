@@ -177,6 +177,25 @@ gcloud scheduler jobs create http billing-charge \
   --uri="https://onek1000.kr/api/billing/charge-cron" \
   --headers="Authorization=Bearer ${CRON_SECRET}" \
   --attempt-deadline=120s
+
+# 4) 시장 데이터 동기화(주유 타이밍 예측 선행지표) — 1일 1회 00:45 KST
+#    국제유가(Dubai/Brent/WTI)·MOPS 프록시·USD/KRW·국내 전국평균 소매가 적재.
+#    최초 백필은 ?from=YYYYMMDD 로 1회 수동 호출(아래 '수동 백필' 참조).
+gcloud scheduler jobs create http market-sync \
+  --project=onek1000 \
+  --location=asia-northeast3 \
+  --schedule="45 0 * * *" \
+  --time-zone="Asia/Seoul" \
+  --http-method=POST \
+  --uri="https://onek1000.kr/api/internal/sync-market" \
+  --headers="Authorization=Bearer ${CRON_SECRET}" \
+  --attempt-deadline=120s
+```
+
+시장 데이터 최초 백필(예: 2024-01-01부터, 1회만):
+```bash
+curl -X POST "https://onek1000.kr/api/internal/sync-market?from=20240101" \
+  -H "Authorization: Bearer ${CRON_SECRET}"
 ```
 
 `CRON_SECRET`은 6번 단계에서 등록한 secret과 동일한 값 사용. `${CRON_SECRET}`은 쉘에서 실제 값으로 치환하거나, 또는 `--oidc-service-account-email`로 더 보안 강화 가능.

@@ -20,6 +20,10 @@
     {
       "path": "/api/internal/sync-highway",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/internal/sync-market",
+      "schedule": "45 15 * * *"
     }
   ]
 }
