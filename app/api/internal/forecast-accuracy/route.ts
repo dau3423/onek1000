@@ -39,19 +39,31 @@ export async function GET(req: Request) {
 
   const sb = getSupabase();
 
-  // 평가된 예측 전부(통계용). price_forecast inner join forecast_eval.
-  const { data: evalRows, error } = await sb
-    .from('forecast_eval')
-    .select('hit, actual_direction, actual_change_pct, price_forecast!inner(fuel_type, direction, model_version)')
-    .eq('price_forecast.model_version', model);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
   type Joined = {
     hit: boolean;
     actual_direction: string;
     price_forecast: { fuel_type: string; direction: string } | { fuel_type: string; direction: string }[];
   };
-  const rows = (evalRows ?? []) as Joined[];
+
+  // 평가된 예측 전부(통계용). price_forecast inner join forecast_eval.
+  // 백필 후엔 수천 건 → PostgREST 기본 1000행 제한에서 잘리면 hit-rate 가 과거 일부만 반영된다.
+  // .range 로 끝까지 페이지네이션해 전수 집계한다.
+  const READ_PAGE = 1000;
+  const MAX_PAGES = 10000;
+  const rows: Joined[] = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const from = page * READ_PAGE;
+    const { data, error } = await sb
+      .from('forecast_eval')
+      .select('hit, actual_direction, actual_change_pct, price_forecast!inner(fuel_type, direction, model_version)')
+      .eq('price_forecast.model_version', model)
+      .order('forecast_id', { ascending: true })
+      .range(from, from + READ_PAGE - 1);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const batch = (data ?? []) as Joined[];
+    rows.push(...batch);
+    if (batch.length < READ_PAGE) break;
+  }
 
   const pf = (r: Joined) => (Array.isArray(r.price_forecast) ? r.price_forecast[0] : r.price_forecast);
 

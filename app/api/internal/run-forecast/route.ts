@@ -28,11 +28,38 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
 const UPSERT_CHUNK = 500;
+// PostgREST 기본 한 페이지 행 수. select 에 명시 범위가 없으면 이 값(1000)에서 잘린다.
+// 시계열/전체조회는 이 단위로 .range 페이지네이션해 끝까지 읽는다.
+const READ_PAGE = 1000;
+// 무한루프 방지 안전 상한(READ_PAGE 기준 1000만 행). 정상 데이터에선 절대 도달하지 않음.
+const MAX_PAGES = 10000;
 
 /** YYYY-MM-DD 에 days 더한 날짜(UTC 기준). */
 function addDays(iso: string, days: number): string {
   const ms = Date.parse(`${iso}T00:00:00Z`) + days * 86400000;
   return new Date(ms).toISOString().slice(0, 10);
+}
+
+/**
+ * PostgREST 기본 1000행 제한을 우회해 쿼리 결과 전체를 읽는다(.range 페이지네이션).
+ * - build(from, to): from~to 범위를 지정한 쿼리를 만들어 반환(반드시 .order 로 결정적 정렬할 것).
+ * - 한 페이지가 READ_PAGE 미만이면 마지막 페이지로 보고 종료.
+ * "전체 시계열"이 필요한 곳 전용. "최신 N건"은 .order(desc).limit(N) 을 쓸 것.
+ */
+async function selectAll<T>(
+  build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+  label: string,
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const from = page * READ_PAGE;
+    const { data, error } = await build(from, from + READ_PAGE - 1);
+    if (error) throw new Error(`${label}: ${error.message}`);
+    const rows = data ?? [];
+    out.push(...rows);
+    if (rows.length < READ_PAGE) break;
+  }
+  return out;
 }
 
 async function inChunks<T>(
@@ -68,22 +95,44 @@ export async function POST(req: Request) {
   const sb = getSupabase();
   const nowIso = new Date().toISOString();
 
-  // ─── 입력 시계열 일괄 로드(전체 — 멀어야 수천 행) ───
-  const { data: marketRaw, error: mErr } = await sb
-    .from('market_daily')
-    .select('date, mops_gasoline, mops_diesel, usdkrw')
-    .order('date', { ascending: true });
-  if (mErr) return NextResponse.json({ error: `market_daily: ${mErr.message}` }, { status: 500 });
+  // ─── 입력 시계열 로드 ───
+  // 백필: from~최신 전체(2년치는 domestic 1일 2유종이라 1000행 초과 → 반드시 페이지네이션).
+  // 일배치: 최근 윈도만 읽으면 충분(효율). 이동평균/신호창/horizon + 환율 forward-fill 여유 포함.
+  //   필요 히스토리 ≈ maWindow+signalWindow+horizon. 결측·주말 갭과 from 컷오프 보정 위해 넉넉히.
+  let sinceDate: string | null = null;
+  if (!backfill) {
+    const needDays = cfg.maWindow + cfg.signalWindow + cfg.horizon + 45;
+    sinceDate = addDays(new Date().toISOString().slice(0, 10), -needDays);
+  } else if (fromParam && /^\d{4}-\d{2}-\d{2}$/.test(fromParam)) {
+    // 백필 from 이 주어지면 그 이전 신호창/이동평균 히스토리만 더 읽으면 됨(전체 2016~ 다 읽을 필요 없음).
+    sinceDate = addDays(fromParam, -(cfg.maWindow + cfg.signalWindow + cfg.horizon + 45));
+  }
 
-  const { data: domesticRaw, error: dErr } = await sb
-    .from('domestic_price_daily')
-    .select('date, fuel_type, avg_price')
-    .eq('region', 'nation')
-    .order('date', { ascending: true });
-  if (dErr) return NextResponse.json({ error: `domestic_price_daily: ${dErr.message}` }, { status: 500 });
+  // 전체 시계열은 PostgREST 기본 1000행에서 잘리므로 .range 로 끝까지 페이지네이션해 읽는다.
+  let market: MarketRow[];
+  let domestic: DomesticRow[];
+  try {
+    market = await selectAll<MarketRow>((from, to) => {
+      let q = sb
+        .from('market_daily')
+        .select('date, mops_gasoline, mops_diesel, usdkrw')
+        .order('date', { ascending: true });
+      if (sinceDate) q = q.gte('date', sinceDate);
+      return q.range(from, to);
+    }, 'market_daily');
 
-  const market = (marketRaw ?? []) as MarketRow[];
-  const domestic = (domesticRaw ?? []) as DomesticRow[];
+    domestic = await selectAll<DomesticRow>((from, to) => {
+      let q = sb
+        .from('domestic_price_daily')
+        .select('date, fuel_type, avg_price')
+        .eq('region', 'nation')
+        .order('date', { ascending: true });
+      if (sinceDate) q = q.gte('date', sinceDate);
+      return q.range(from, to);
+    }, 'domestic_price_daily');
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+  }
 
   if (market.length === 0) {
     return NextResponse.json({ ok: true, note: 'market_daily 비어있음 — 예측 생략', created: 0, evaluated: 0 });
@@ -160,26 +209,43 @@ export async function POST(req: Request) {
 
   // ─── 2) 평가: target_date 가 지났고 아직 평가 안 된 예측을 채점 ───
   // 평가 대상은 "target_date <= latestMarketDate(=관측 가능)"인 예측 전부.
-  const { data: pendingRaw, error: pErr } = await sb
-    .from('price_forecast')
-    .select('id, forecast_date, target_date, fuel_type, direction')
-    .lte('target_date', latestMarketDate)
-    .order('forecast_date', { ascending: true });
-  if (pErr) return NextResponse.json({ error: `forecast pending: ${pErr.message}` }, { status: 500 });
-
-  // 이미 평가된 id 제외.
-  const pending = (pendingRaw ?? []) as Array<{
+  // 평가 대상은 백필 후 수천 건이 될 수 있으므로(유종×날짜) 전체를 페이지네이션해 읽는다.
+  type PendingRow = {
     id: number; forecast_date: string; target_date: string; fuel_type: string; direction: Direction;
-  }>;
+  };
+  let pending: PendingRow[];
+  try {
+    pending = await selectAll<PendingRow>((from, to) =>
+      sb
+        .from('price_forecast')
+        .select('id, forecast_date, target_date, fuel_type, direction')
+        .lte('target_date', latestMarketDate)
+        .order('forecast_date', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to),
+      'forecast pending');
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+  }
   let evaluated = 0;
   if (pending.length > 0) {
     const ids = pending.map((p) => p.id);
-    const { data: doneRaw, error: eErr } = await sb
-      .from('forecast_eval')
-      .select('forecast_id')
-      .in('forecast_id', ids);
-    if (eErr) return NextResponse.json({ error: `forecast_eval read: ${eErr.message}` }, { status: 500 });
-    const done = new Set((doneRaw ?? []).map((r) => (r as { forecast_id: number }).forecast_id));
+    // 이미 평가된 id 조회 — pending 이 수천 건이면 .in() URL/응답행이 모두 한계에 걸리므로
+    // id 를 청크로 나눠 조회(각 청크 ≤ READ_PAGE 라 응답이 잘리지 않음).
+    const done = new Set<number>();
+    try {
+      for (let i = 0; i < ids.length; i += READ_PAGE) {
+        const chunk = ids.slice(i, i + READ_PAGE);
+        const { data: doneRaw, error: eErr } = await sb
+          .from('forecast_eval')
+          .select('forecast_id')
+          .in('forecast_id', chunk);
+        if (eErr) throw new Error(`forecast_eval read: ${eErr.message}`);
+        for (const r of doneRaw ?? []) done.add((r as { forecast_id: number }).forecast_id);
+      }
+    } catch (e) {
+      return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+    }
 
     // 유종별 국내가 시계열 캐시(asOf 컷 없이 전체).
     const domCache = new Map<string, ReturnType<typeof buildDomesticSeries>>();
