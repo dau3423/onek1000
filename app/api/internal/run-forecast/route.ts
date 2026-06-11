@@ -62,6 +62,17 @@ async function selectAll<T>(
   return out;
 }
 
+/**
+ * 키 기준 dedupe(같은 키는 마지막 입력만 남김). upsert 한 배치에 동일 conflict 키가
+ * 2개 이상 들어가면 Postgres 가 "ON CONFLICT DO UPDATE command cannot affect row a second time"
+ * 로 실패하므로, upsert 직전 반드시 이 함수로 키 충돌을 제거한다(청크 분할 전 전체에 적용).
+ */
+function dedupeByKey<T>(rows: T[], key: (row: T) => string): T[] {
+  const byKey = new Map<string, T>();
+  for (const row of rows) byKey.set(key(row), row); // 동일 키 → 나중 값으로 덮어씀(마지막만 유지)
+  return [...byKey.values()];
+}
+
 async function inChunks<T>(
   rows: T[],
   size: number,
@@ -151,9 +162,12 @@ export async function POST(req: Request) {
     if (start < earliest) start = earliest;
     // start..latest 를 step 간격으로(각 날짜에 실제 market 행이 있는 날만 쓰면 더 정확하나,
     // 모델이 asOf 컷오프로 알아서 마지막 유효일을 forecastDate 로 잡으므로 날짜격자로 충분).
-    const marketDates = market.map((m) => m.date).filter((d) => d >= start && d <= latestMarketDate);
+    // market_daily 날짜는 원칙적으로 1행/일이나, 입력 이상(중복 적재) 방어 위해 고유·정렬 집합으로 둔다.
+    const marketDates = [...new Set(market.map((m) => m.date))]
+      .filter((d) => d >= start && d <= latestMarketDate)
+      .sort();
     for (let i = 0; i < marketDates.length; i += step) forecastDates.push(marketDates[i]);
-    // 최신일은 항상 포함.
+    // 최신일은 항상 포함(step 격자가 최신일을 비껴갈 수 있음).
     if (forecastDates[forecastDates.length - 1] !== latestMarketDate) forecastDates.push(latestMarketDate);
   } else {
     forecastDates.push(latestMarketDate);
@@ -193,15 +207,22 @@ export async function POST(req: Request) {
     }
   }
 
+  // 서로 다른 asOf 가 주말·결측으로 같은 result.forecastDate 로 collapse 되면 동일 conflict 키 행이
+  // 중복 생성된다. upsert 한 배치에 같은 키가 2개 이상이면 Postgres 가 실패하므로 청크 분할 전 dedupe.
+  const dedupedForecastRows = dedupeByKey(
+    forecastRows,
+    (r) => `${r.forecast_date}|${r.region}|${r.fuel_type}|${r.model_version}`,
+  );
+
   let created = 0;
   try {
-    if (forecastRows.length > 0) {
-      await inChunks(forecastRows, UPSERT_CHUNK,
+    if (dedupedForecastRows.length > 0) {
+      await inChunks(dedupedForecastRows, UPSERT_CHUNK,
         async (chunk) => await sb.from('price_forecast').upsert(chunk, {
           onConflict: 'forecast_date,region,fuel_type,model_version',
         }),
         'price_forecast upsert');
-      created = forecastRows.length;
+      created = dedupedForecastRows.length;
     }
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
@@ -279,12 +300,15 @@ export async function POST(req: Request) {
       });
     }
 
+    // pending 은 고유 id 라 정상적으로는 forecast_id 중복이 없으나, 한 배치 내 동일 키 방어를 일관 적용.
+    const dedupedEvalRows = dedupeByKey(evalRows, (r) => String(r.forecast_id));
+
     try {
-      if (evalRows.length > 0) {
-        await inChunks(evalRows, UPSERT_CHUNK,
+      if (dedupedEvalRows.length > 0) {
+        await inChunks(dedupedEvalRows, UPSERT_CHUNK,
           async (chunk) => await sb.from('forecast_eval').upsert(chunk, { onConflict: 'forecast_id' }),
           'forecast_eval upsert');
-        evaluated = evalRows.length;
+        evaluated = dedupedEvalRows.length;
       }
     } catch (e) {
       return NextResponse.json({ error: (e as Error).message }, { status: 500 });
