@@ -10,7 +10,7 @@
 // 데이터 페칭: 기존 사이드 컴포넌트(PriceTrendBanner / PriceHistoryChart)와 동일하게
 //   useEffect + fetch 패턴을 따른다(코드베이스에 react-query 미도입 — 불필요 의존성 추가 회피).
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ProductCode } from '@/types/station';
 import { PRODUCT_LABEL, SIDO_NAME } from '@/types/station';
 import { ForecastChart, type ForecastSeriesPoint, type ForecastBand } from './ForecastChart';
@@ -112,6 +112,10 @@ export function ForecastCard({ product, region = 'nation' }: Props) {
   const [expanded, setExpanded] = useState(false);
   // 지역 전환은 내부 상태로 관리(prop은 초기값으로만 사용). 변경 시 자동 재조회.
   const [selectedRegion, setSelectedRegion] = useState<string>(region ?? 'nation');
+  // 정상 카드 루트 <section> 참조 — 딥링크(forecast=1) 진입 시 이 카드로 1회 스크롤.
+  const cardRef = useRef<HTMLElement | null>(null);
+  // 딥링크로 들어왔는지(스크롤 대기 플래그). latest 도착 후 ref가 붙으면 1회 소비.
+  const pendingScrollRef = useRef(false);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -125,15 +129,35 @@ export function ForecastCard({ product, region = 'nation' }: Props) {
     return () => ac.abort();
   }, [product, selectedRegion]);
 
-  // 딥링크 자동 펼침 — 미니카드/푸시가 /?forecast=1 로 진입하면 추이 그래프를 기본 펼침.
+  // 딥링크 자동 펼침 + 스크롤 — 미니카드/푸시가 /?forecast=1 로 진입하면 추이 그래프를 펼치고
+  //   카드를 화면으로 끌어온다. 카드가 메인 첫 화면(지도) 아래 흐름에 있어 below-the-fold이기 때문.
   //   SSR/hydration 안전을 위해 mount 후 useEffect 안에서만 window/URLSearchParams 접근.
+  //   실제 scrollIntoView는 ref가 붙는(=latest 도착) 시점에 아래 useEffect에서 1회 수행.
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('forecast') === '1') {
-      setExpanded(true);
-    }
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get('forecast') !== '1') return;
+    setExpanded(true);
+    pendingScrollRef.current = true; // 스크롤 대기 — 카드 렌더 후 소비.
+    // 쿼리 정리: forecast만 제거하고 나머지 파라미터는 보존(새로고침/뒤로가기 재트리거 방지).
+    //   next router 미사용 — history.replaceState로 가볍게.
+    sp.delete('forecast');
+    const qs = sp.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`);
   }, []);
 
   const latest = data?.latest ?? null;
+
+  // 딥링크 스크롤 실행 — latest 도착으로 정상 카드(<section ref>)가 렌더되면 1회만 스크롤.
+  //   레이아웃 안정 후 호출하도록 rAF로 한 프레임 지연. 소비 후 플래그를 내려 재트리거 방지.
+  const hasLatest = !!latest;
+  useEffect(() => {
+    if (!pendingScrollRef.current || !hasLatest) return;
+    const raf = requestAnimationFrame(() => {
+      cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    pendingScrollRef.current = false;
+    return () => cancelAnimationFrame(raf);
+  }, [hasLatest]);
   // graceful 분기:
   //  - latest 있으면 정상 카드.
   //  - latest 없고 지역(시도) 선택 중이면 '데이터 축적 중' 안내 + 전국 전환 버튼(빈 화면 금지).
@@ -182,7 +206,7 @@ export function ForecastCard({ product, region = 'nation' }: Props) {
   const accWindowLabel = showAccuracy ? (acc!.windowDays > 0 ? `최근 ${acc!.windowDays}일` : '전체') : '';
 
   return (
-    <section className="mx-3 mb-3 mt-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <section ref={cardRef} className="mx-3 mb-3 mt-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
