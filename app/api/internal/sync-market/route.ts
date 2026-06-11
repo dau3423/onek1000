@@ -4,6 +4,12 @@
 // 적재 대상(0025 마이그레이션):
 //   market_daily            : 국제 원유(Dubai/Brent/WTI) + MOPS 프록시(휘발유/경유) + USD/KRW
 //   domestic_price_daily    : 국내 전국평균 소매가(region='nation', B027/D047)
+//                             + 시도별 당일 평균가(region=SidoCode '01'..'19', B027/D047)
+//
+// ⚠️ 시도별 시계열은 과거 백필 불가: Opinet avgSidoPrice.do 는 "당일 1 스냅샷"만 주고
+//    날짜를 반환하지 않는다(과거 조회 엔드포인트 없음). 따라서 시도별 과거 시계열 소스가
+//    존재하지 않으며, 시도별 예측은 적재 시작 시점부터 점진적으로만 축적된다.
+//    (nation 은 fetchDomesticDaily 의 CSV 로 과거 시계열까지 보유 — 차이에 주의.)
 //
 // 증분 적재: 기본 최근 LOOKBACK_DAYS(35일)을 재요청해 upsert 한다(후행 정정치 반영).
 //   최초 백필은 ?from=YYYYMMDD 로 시작일을 지정한다(to 는 항상 오늘). ?days=N 도 허용.
@@ -18,6 +24,8 @@ import {
   ymd, daysAgo,
   fetchCrudeDaily, fetchMopsDaily, fetchDomesticDaily, fetchUsdKrwDaily,
 } from '@/lib/market/client';
+import { fetchAvgBySido } from '@/lib/opinet/client';
+import type { ProductCode } from '@/types/station';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -94,8 +102,8 @@ export async function POST(req: Request) {
     return row;
   };
 
-  // 소스별 결과 카운트(운영 가시성).
-  const counts = { crude: 0, mops: 0, fx: 0, domestic: 0 };
+  // 소스별 결과 카운트(운영 가시성). sidoUpserts 는 시도별 당일 평균 적재 행 수.
+  const counts = { crude: 0, mops: 0, fx: 0, domestic: 0, sidoUpserts: 0 };
 
   // 1) 국제 원유(Dubai/Brent/WTI)
   try {
@@ -152,6 +160,32 @@ export async function POST(req: Request) {
     counts.domestic = rows.length;
   } catch (e) {
     errors.push(`domestic: ${(e as Error).message}`);
+  }
+
+  // 4-2) 시도별 당일 평균가 → domestic_price_daily (region=SidoCode '01'..'19')
+  // ⚠️ avgSidoPrice.do 는 "당일 1 스냅샷"이라 과거 시계열 백필 불가(날짜 미반환).
+  //    그래서 date 는 항상 오늘(=to)로 적재하며, 시도별 과거 시계열 소스는 없다.
+  //    시도별 예측은 이 적재가 매일 쌓이며 점진 축적된다(nation 과 달리 초기엔 히스토리 부족).
+  // nation 적재(위 블록)와 완전 분리: 유종별 try/catch 로 실패해도 nation·다른 유종에 무영향.
+  const sidoDate = `${to.slice(0, 4)}-${to.slice(4, 6)}-${to.slice(6, 8)}`; // YYYYMMDD → YYYY-MM-DD
+  for (const product of ['B027', 'D047'] as const satisfies readonly ProductCode[]) {
+    try {
+      const sidoRows = await fetchAvgBySido(product);
+      for (const s of sidoRows) {
+        const price = s.price;
+        if (!Number.isFinite(price) || price <= 0) continue; // 결측/이상치 스킵
+        domesticRows.push({
+          date: sidoDate,
+          region: s.code, // SidoCode 문자열('01'..'19') 그대로
+          fuel_type: product,
+          avg_price: price,
+          updated_at: nowIso,
+        });
+        counts.sidoUpserts += 1;
+      }
+    } catch (e) {
+      errors.push(`sido-${product}: ${(e as Error).message}`);
+    }
   }
 
   // market_daily upsert payload — 적어도 한 컬럼이라도 값이 있는 날짜만.

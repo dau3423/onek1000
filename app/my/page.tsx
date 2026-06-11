@@ -9,6 +9,7 @@ import { DeleteAccountButton } from '@/components/account/DeleteAccountButton';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { InstallButton } from '@/components/pwa/InstallButton';
 import { ReferralCard } from '@/components/referral/ReferralCard';
+import ForecastMiniCard from '@/components/forecast/ForecastMiniCard';
 import { BETA_FREE } from '@/lib/flags';
 import {
   BadgeSkeleton,
@@ -150,6 +151,9 @@ export default async function MyPage() {
           )}
         </Link>
       </section>
+
+      {/* 주유 타이밍 미니카드 — 신호 없으면 자체 null(빈 섹션 미생성). 탭 시 메인 예측 카드 딥링크. */}
+      <ForecastMiniCard />
 
       <section className="border-t border-gray-100 px-5 py-5">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">알림</h2>

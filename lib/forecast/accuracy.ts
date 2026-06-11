@@ -216,3 +216,77 @@ export async function getForecastAccuracy(opts: Options = {}): Promise<ForecastA
     recent,
   };
 }
+
+/**
+ * 공개용 "상승·하락 한정" 적중률 — up/down 예측만 합산(flat 제외)한 단일 지표.
+ *
+ * 의미: 보합(flat)은 사용자에게 의미가 약하므로 빼고, 방향을 명확히 제시한 예측(up+down)만
+ *   집계해 hitRate = hits / n 을 낸다(n>0 이면 round3, 아니면 null).
+ *
+ * - region 미지정 시 전 지역 합산(nation + 모든 시도). 지정 시 해당 region 만.
+ * - sinceDays 미지정 시 전체기간(windowDays=0=전체기간). 지정 시 forecast_date 기준 최근 N일.
+ * - mock/Supabase 미설정이면 throw 없이 graceful: { directionalHitRate: null, n: 0, windowDays }.
+ */
+export async function getPublicDirectionalAccuracy(opts: {
+  region?: string;
+  sinceDays?: number;
+  modelVersion?: string;
+}): Promise<{ directionalHitRate: number | null; n: number; windowDays: number }> {
+  const model = opts.modelVersion ?? FORECAST_CONFIG.version;
+  const windowDays = opts.sinceDays ?? 0; // 0 = 전체기간
+
+  if (process.env.NEXT_PUBLIC_USE_MOCK === 'true' || !isSupabaseConfigured()) {
+    return { directionalHitRate: null, n: 0, windowDays };
+  }
+
+  const sb = getSupabase();
+
+  // sinceDays 지정 시 forecast_date 기준 컷오프(YYYY-MM-DD).
+  const sinceCutoff =
+    opts.sinceDays && opts.sinceDays > 0
+      ? new Date(Date.now() - opts.sinceDays * 86400000).toISOString().slice(0, 10)
+      : null;
+
+  type Joined = {
+    hit: boolean;
+    price_forecast:
+      | { direction: string }
+      | { direction: string }[];
+  };
+  // pf 와 동일한 배열/객체 정규화(임베디드 join 결과가 객체/배열 양쪽으로 올 수 있음).
+  const flatten = (r: Joined) =>
+    Array.isArray(r.price_forecast) ? r.price_forecast[0] : r.price_forecast;
+
+  // forecast_eval inner join price_forecast — 기존 READ_PAGE 페이지네이션 패턴 그대로.
+  const READ_PAGE = 1000;
+  const MAX_PAGES = 10000;
+  let n = 0;
+  let hits = 0;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const from = page * READ_PAGE;
+    let q = sb
+      .from('forecast_eval')
+      .select('hit, price_forecast!inner(direction, region, forecast_date, model_version)')
+      .eq('price_forecast.model_version', model);
+    if (opts.region) q = q.eq('price_forecast.region', opts.region);
+    if (sinceCutoff) q = q.gte('price_forecast.forecast_date', sinceCutoff);
+    const { data, error } = await q
+      .order('forecast_id', { ascending: true })
+      .range(from, from + READ_PAGE - 1);
+    if (error) throw new Error(error.message);
+    const batch = (data ?? []) as Joined[];
+    for (const r of batch) {
+      const dir = flatten(r)?.direction;
+      if (dir !== 'up' && dir !== 'down') continue; // flat 제외(상승·하락만 집계)
+      n += 1;
+      if (r.hit) hits += 1;
+    }
+    if (batch.length < READ_PAGE) break;
+  }
+
+  return {
+    directionalHitRate: n > 0 ? round3(hits / n) : null,
+    n,
+    windowDays,
+  };
+}

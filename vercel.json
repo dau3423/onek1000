@@ -28,6 +28,10 @@
     {
       "path": "/api/internal/run-forecast",
       "schedule": "55 15 * * *"
+    },
+    {
+      "path": "/api/internal/forecast-notify",
+      "schedule": "0 23 * * *"
     }
   ]
 }

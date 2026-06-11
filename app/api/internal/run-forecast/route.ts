@@ -119,9 +119,12 @@ export async function POST(req: Request) {
     sinceDate = addDays(fromParam, -(cfg.maWindow + cfg.signalWindow + cfg.horizon + 45));
   }
 
+  // region 을 포함한 국내가 로드용 로컬 타입(DomesticRow 엔 region 이 없음).
+  type DomesticRowWithRegion = DomesticRow & { region: string };
+
   // 전체 시계열은 PostgREST 기본 1000행에서 잘리므로 .range 로 끝까지 페이지네이션해 읽는다.
   let market: MarketRow[];
-  let domestic: DomesticRow[];
+  let domesticAll: DomesticRowWithRegion[];
   try {
     market = await selectAll<MarketRow>((from, to) => {
       let q = sb
@@ -132,11 +135,11 @@ export async function POST(req: Request) {
       return q.range(from, to);
     }, 'market_daily');
 
-    domestic = await selectAll<DomesticRow>((from, to) => {
+    // nation + 시도별 전 region 을 한 번에 읽는다(region 필터 제거, region 컬럼 추가).
+    domesticAll = await selectAll<DomesticRowWithRegion>((from, to) => {
       let q = sb
         .from('domestic_price_daily')
-        .select('date, fuel_type, avg_price')
-        .eq('region', 'nation')
+        .select('date, region, fuel_type, avg_price')
         .order('date', { ascending: true });
       if (sinceDate) q = q.gte('date', sinceDate);
       return q.range(from, to);
@@ -144,6 +147,17 @@ export async function POST(req: Request) {
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }
+
+  // region 별 그룹화 — buildDomesticSeries 엔 region 없는 DomesticRow 배열을 넘긴다.
+  // (series.ts 는 fuel 만 필터하고 region 은 모르므로, region 분리는 여기 호출부 책임.)
+  const domesticByRegion = new Map<string, DomesticRow[]>();
+  for (const r of domesticAll) {
+    let arr = domesticByRegion.get(r.region);
+    if (!arr) { arr = []; domesticByRegion.set(r.region, arr); }
+    arr.push({ date: r.date, fuel_type: r.fuel_type, avg_price: r.avg_price });
+  }
+  // domestic 전부 결측이면 regions 가 비어 forecastRows 도 비고 created=0 (nation 만 있던 시절과 동치).
+  const regions = [...domesticByRegion.keys()];
 
   if (market.length === 0) {
     return NextResponse.json({ ok: true, note: 'market_daily 비어있음 — 예측 생략', created: 0, evaluated: 0 });
@@ -189,21 +203,25 @@ export async function POST(req: Request) {
   let skipped = 0;
   for (const asOf of forecastDates) {
     for (const fuel of FORECAST_FUELS) {
+      // li(선행지표)는 region 무관 동일 market 사용. domestic 만 region 별로 분리해 넘긴다.
       const li = buildLiSeries(market, fuel, asOf);
-      const dom = buildDomesticSeries(domestic, fuel, asOf);
-      const result = forecast({ li, domestic: dom }, cfg);
-      if (!result.ok || !result.forecastDate) { skipped++; continue; }
-      forecastRows.push({
-        forecast_date: result.forecastDate,
-        target_date: addDays(result.forecastDate, cfg.horizon),
-        region: 'nation',
-        fuel_type: fuel,
-        direction: result.direction,
-        confidence: result.confidence,
-        horizon_days: cfg.horizon,
-        model_version: cfg.version,
-        created_at: nowIso,
-      });
+      for (const region of regions) {
+        const domRows = domesticByRegion.get(region) ?? [];
+        const dom = buildDomesticSeries(domRows, fuel, asOf);
+        const result = forecast({ li, domestic: dom }, cfg);
+        if (!result.ok || !result.forecastDate) { skipped++; continue; }
+        forecastRows.push({
+          forecast_date: result.forecastDate,
+          target_date: addDays(result.forecastDate, cfg.horizon),
+          region,
+          fuel_type: fuel,
+          direction: result.direction,
+          confidence: result.confidence,
+          horizon_days: cfg.horizon,
+          model_version: cfg.version,
+          created_at: nowIso,
+        });
+      }
     }
   }
 
@@ -232,14 +250,14 @@ export async function POST(req: Request) {
   // 평가 대상은 "target_date <= latestMarketDate(=관측 가능)"인 예측 전부.
   // 평가 대상은 백필 후 수천 건이 될 수 있으므로(유종×날짜) 전체를 페이지네이션해 읽는다.
   type PendingRow = {
-    id: number; forecast_date: string; target_date: string; fuel_type: string; direction: Direction;
+    id: number; forecast_date: string; target_date: string; region: string; fuel_type: string; direction: Direction;
   };
   let pending: PendingRow[];
   try {
     pending = await selectAll<PendingRow>((from, to) =>
       sb
         .from('price_forecast')
-        .select('id, forecast_date, target_date, fuel_type, direction')
+        .select('id, forecast_date, target_date, region, fuel_type, direction')
         .lte('target_date', latestMarketDate)
         .order('forecast_date', { ascending: true })
         .order('id', { ascending: true })
@@ -268,11 +286,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: (e as Error).message }, { status: 500 });
     }
 
-    // 유종별 국내가 시계열 캐시(asOf 컷 없이 전체).
+    // region|유종별 국내가 시계열 캐시(asOf 컷 없이 전체). 생성부의 domesticByRegion 재사용.
+    // region 그룹이 없으면 빈 배열 → buildDomesticSeries → priceNear 가 null → 평가 보류(continue).
     const domCache = new Map<string, ReturnType<typeof buildDomesticSeries>>();
-    const getDom = (fuel: string) => {
-      let s = domCache.get(fuel);
-      if (!s) { s = buildDomesticSeries(domestic, fuel); domCache.set(fuel, s); }
+    const getDom = (region: string, fuel: string) => {
+      const k = `${region}|${fuel}`;
+      let s = domCache.get(k);
+      if (!s) { s = buildDomesticSeries(domesticByRegion.get(region) ?? [], fuel); domCache.set(k, s); }
       return s;
     };
 
@@ -286,7 +306,7 @@ export async function POST(req: Request) {
     const evalRows: EvalRow[] = [];
     for (const p of pending) {
       if (done.has(p.id)) continue;
-      const dom = getDom(p.fuel_type);
+      const dom = getDom(p.region, p.fuel_type);
       const fromPrice = priceNear(dom, p.forecast_date);
       const toPrice = priceNear(dom, p.target_date);
       const actual = actualDirection(fromPrice, toPrice, cfg);
@@ -321,6 +341,7 @@ export async function POST(req: Request) {
     modelVersion: cfg.version,
     mode: backfill ? 'backfill' : 'daily',
     latestMarketDate,
+    regions: regions.length,
     forecastDates: forecastDates.length,
     created,
     skipped,
