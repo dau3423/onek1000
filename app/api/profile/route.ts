@@ -3,6 +3,7 @@
 // PATCH: 닉네임 변경(형식 검증 + 중복 검사 → 409). DB 유니크 인덱스로 최종 방어.
 //        또는 { resetImage: true }로 프로필 사진을 소셜 기본값으로 되돌림.
 //        또는 { alimtalkOptIn: boolean }로 카카오 알림톡 수신 동의 토글.
+//        또는 { forecastNotifyOptIn: boolean }로 주유 타이밍(가격 인상) 예측 알림 수신 토글.
 // POST: 프로필 사진 업로드(multipart/form-data, field 'avatar') → users.image_url 저장.
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -42,6 +43,7 @@ export async function GET(req: Request) {
       image: session.user.image ?? null,
       alimtalkOptIn: false,
       phone: null,
+      forecastNotifyOptIn: false,
     });
   }
 
@@ -65,12 +67,15 @@ export async function GET(req: Request) {
   let image: string | null = null;
   let alimtalkOptIn = false;
   let phone: string | null = null;
+  let forecastNotifyOptIn = false;
   const full = await sb
     .from('users')
-    .select('nickname, image_url, alimtalk_opt_in, phone')
+    .select('nickname, image_url, alimtalk_opt_in, phone, forecast_notify_opt_in')
     .eq('id', userId)
     .maybeSingle();
   if (full.error?.code === '42703') {
+    // alimtalk_opt_in(0017)/phone(0018)/forecast_notify_opt_in(0027) 중 일부 미적용 환경.
+    // 닉네임/사진만이라도 안전하게 조회되도록 기본 컬럼만으로 재조회한다.
     const fallback = await sb.from('users').select('nickname, image_url').eq('id', userId).maybeSingle();
     nickname = (fallback.data?.nickname as string | null) ?? null;
     image = (fallback.data?.image_url as string | null) ?? null;
@@ -79,8 +84,9 @@ export async function GET(req: Request) {
     image = (full.data?.image_url as string | null) ?? null;
     alimtalkOptIn = Boolean(full.data?.alimtalk_opt_in);
     phone = (full.data?.phone as string | null) ?? null;
+    forecastNotifyOptIn = Boolean(full.data?.forecast_notify_opt_in);
   }
-  return NextResponse.json({ nickname, image, alimtalkOptIn, phone });
+  return NextResponse.json({ nickname, image, alimtalkOptIn, phone, forecastNotifyOptIn });
 }
 
 export async function PATCH(req: Request) {
@@ -93,6 +99,7 @@ export async function PATCH(req: Request) {
     resetImage?: boolean;
     alimtalkOptIn?: boolean;
     phone?: string;
+    forecastNotifyOptIn?: boolean;
   };
 
   // 휴대폰번호 저장(본인 스코프). 알림톡 발송·결제 프리필 용도.
@@ -135,6 +142,25 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: '변경에 실패했어요.' }, { status: 500 });
     }
     return NextResponse.json({ alimtalkOptIn: body.alimtalkOptIn });
+  }
+
+  // 주유 타이밍(가격 인상) 예측 알림 수신 토글(본인 스코프). 발송은 forecast-notify 배치가 담당.
+  if (typeof body.forecastNotifyOptIn === 'boolean') {
+    const userId = await getUserId(session.user.email);
+    if (!userId) return NextResponse.json({ error: 'user not found' }, { status: 404 });
+    const sb = getSupabase();
+    const { error } = await sb
+      .from('users')
+      .update({ forecast_notify_opt_in: body.forecastNotifyOptIn })
+      .eq('id', userId);
+    if (error) {
+      // 0027 미적용 환경: 컬럼 없음(42703) → 마이그레이션 안내
+      if (error.code === '42703') {
+        return NextResponse.json({ error: '알림 설정 준비 중이에요. 잠시 후 다시 시도해 주세요.' }, { status: 503 });
+      }
+      return NextResponse.json({ error: '변경에 실패했어요.' }, { status: 500 });
+    }
+    return NextResponse.json({ forecastNotifyOptIn: body.forecastNotifyOptIn });
   }
 
   // 프로필 사진 되돌리기: image_url을 비워 다음 로그인 시 소셜 이미지로 백필되게 함.

@@ -13,6 +13,8 @@ import { BETA_FREE } from '@/lib/flags';
 import {
   BadgeSkeleton,
   FavoriteCount,
+  ForecastNotifySection,
+  ForecastNotifySkeleton,
   FuelLogCount,
   PushSection,
   PushSkeleton,
@@ -160,6 +162,12 @@ export default async function MyPage() {
         ) : (
           <p className="text-xs text-gray-400">푸시 알림은 1000냥 플랜 전용 기능입니다.</p>
         )}
+        {/* 주유 타이밍(가격 인상) 예측 알림 옵트인 — 푸시 켠 사용자에게 forecast-notify 배치가 발송. */}
+        {canQuery && userId ? (
+          <Suspense fallback={<ForecastNotifySkeleton />}>
+            <ForecastNotifySection userId={userId} />
+          </Suspense>
+        ) : null}
       </section>
 
       <section className="border-t border-gray-100 px-5 py-5">

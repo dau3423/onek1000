@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { CancelButton } from '@/components/billing/CancelButton';
 import { EnablePushButton } from '@/components/push/EnablePushButton';
+import { ForecastNotifyToggle } from '@/components/forecast/ForecastNotifyToggle';
 import { BETA_FREE } from '@/lib/flags';
 
 interface Sub {
@@ -152,6 +153,29 @@ export async function PushSection({ userId }: { userId: string }) {
   // 플래그 off 시 기존 isActive(서버 구독 검증)로 완전 원복.
   const allowPush = BETA_FREE || isActive;
   return <EnablePushButton isPremium={allowPush} />;
+}
+
+/** 주유 타이밍 예측 알림 토글 스켈레톤. */
+export function ForecastNotifySkeleton() {
+  return <div className="mt-2 h-[88px] animate-pulse rounded-xl bg-gray-100" />;
+}
+
+/**
+ * 주유 타이밍(가격 인상) 예측 알림 옵트인 토글 영역.
+ * 서버에서 users.forecast_notify_opt_in 을 조회해 초기값을 전달(0027 미적용 시 기본 false).
+ */
+export async function ForecastNotifySection({ userId }: { userId: string }) {
+  let optIn = false;
+  if (isSupabaseConfigured()) {
+    const sb = getSupabase();
+    const { data } = await sb
+      .from('users')
+      .select('forecast_notify_opt_in')
+      .eq('id', userId)
+      .maybeSingle();
+    optIn = Boolean((data as { forecast_notify_opt_in?: boolean } | null)?.forecast_notify_opt_in);
+  }
+  return <ForecastNotifyToggle initialOptIn={optIn} />;
 }
 
 // NOTE: 카카오 알림톡 수신 토글 + 휴대폰번호 입력 카드(AlimtalkSection/AlimtalkSkeleton)는

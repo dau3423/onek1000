@@ -224,6 +224,22 @@ curl "https://onek1000.kr/api/internal/forecast-accuracy" \
   -H "Authorization: Bearer ${CRON_SECRET}"
 ```
 
+```bash
+# 6) 주유 타이밍(가격 인상) 예측 알림 발송 — 1일 1회 01:05 KST (반드시 run-forecast 이후)
+#    오늘자 최신 예측이 direction='up' + 신뢰도 임계치 이상이면, 옵트인(users.forecast_notify_opt_in)
+#    + 푸시 구독이 있는 사용자에게 "향후 N일 상승 전망" 웹푸시를 보낸다.
+#    dedupe(forecast_notify_log)로 같은 상승 국면에서 반복 발송하지 않는다.
+gcloud scheduler jobs create http forecast-notify \
+  --project=onek1000 \
+  --location=asia-northeast3 \
+  --schedule="5 1 * * *" \
+  --time-zone="Asia/Seoul" \
+  --http-method=POST \
+  --uri="https://onek1000.kr/api/internal/forecast-notify" \
+  --headers="Authorization=Bearer ${CRON_SECRET}" \
+  --attempt-deadline=300s
+```
+
 `CRON_SECRET`은 6번 단계에서 등록한 secret과 동일한 값 사용. `${CRON_SECRET}`은 쉘에서 실제 값으로 치환하거나, 또는 `--oidc-service-account-email`로 더 보안 강화 가능.
 
 수정/삭제:
