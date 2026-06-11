@@ -118,6 +118,11 @@ const TOOLS: { href: string; title: string; desc: string }[] = [
     title: '일일 TOP10 SNS 도우미',
     desc: '오늘자 전국 최저가 TOP10을 SNS용 텍스트/이미지로 복사·다운로드.',
   },
+  {
+    href: '/admin/forecast',
+    title: '주유 타이밍 예측 정확도',
+    desc: '예측 누적 적중률(hit-rate)·유종/방향별·최근 예측 추적(내부용).',
+  },
 ];
 
 export default async function AdminPage() {
