@@ -30,6 +30,16 @@ env:
       - BUILD
       - RUNTIME
 
+  # ─── 초기 베타 전면무료 ───
+  # true: 프리미엄 기능을 로그인 사용자 전원에게 무료 개방 + 유료/결제 유도 노출 보류.
+  # 베타 종료 시 "false"로 바꾸고 재배포하면 기존(유료) 동작으로 완전 원복.
+  # (결제/PortOne 인프라는 무관하게 유지 — 노출/판정만 우회.)
+  - variable: NEXT_PUBLIC_BETA_FREE
+    value: "true"
+    availability:
+      - BUILD
+      - RUNTIME
+
   # ─── Supabase ───
   - variable: NEXT_PUBLIC_SUPABASE_URL
     value: "https://qaszteoadtykuzjzqukm.supabase.co"
