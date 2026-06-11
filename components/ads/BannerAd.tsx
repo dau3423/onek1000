@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { SHEET_PEEK_PX } from '@/components/ui/BottomSheet';
+import { BETA_FREE } from '@/lib/flags';
 
 declare global {
   interface Window {
@@ -43,13 +44,33 @@ export const BANNER_BOTTOM_PX = SHEET_PEEK_PX + BANNER_SHEET_GAP_PX;
 export const BANNER_HEIGHT_PX = 58;
 
 /**
+ * AdSense 설정 여부(실 광고 노출 가능 여부)의 단일 출처.
+ * 미설정이면 자체 "광고 OFF(월 1,000원)" 업셀 CTA 폴백으로 동작한다.
+ */
+function isAdsenseConfigured(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_ADSENSE_CLIENT && process.env.NEXT_PUBLIC_ADSENSE_BANNER_SLOT);
+}
+
+/**
+ * [베타 전면무료] BETA_FREE 가 켜지면 유료 유도 진입점인 "광고 OFF(월 1,000원)" 업셀 CTA를 숨긴다.
+ * 단, 실제 AdSense 광고 노출 로직은 영향받지 않는다(폴백 CTA에만 적용).
+ * → BETA_FREE && AdSense 미설정인 경우에만 배너 영역이 완전히 비는 셈이라 위치 계산도 이에 맞춘다.
+ */
+function shouldHideUpsellFallback(): boolean {
+  return BETA_FREE && !isAdsenseConfigured();
+}
+
+/**
  * 현재 세션에서 배너가 실제로 보이는지 여부.
  * GPS 버튼 위치 계산이 BannerAd와 동일한 표시 조건을 공유하도록 훅으로 제공한다.
  */
 export function useBannerVisible(hide?: boolean): boolean {
   const { data } = useSession();
   const isPremium = Boolean(data?.user?.isPremium);
-  return !hide && !isPremium;
+  if (hide || isPremium) return false;
+  // BETA_FREE에서 업셀 CTA만 노출되는 상황(AdSense 미설정)이라면 배너는 안 보이는 것으로 본다.
+  if (shouldHideUpsellFallback()) return false;
+  return true;
 }
 
 export function BannerAd({ hide, sheetOpen }: Props) {
@@ -87,6 +108,9 @@ export function BannerAd({ hide, sheetOpen }: Props) {
   // AdSense 미설정 → 자체 CTA 폴백
   // bottom은 BANNER_BOTTOM_PX(=시트 peek + 간격) 고정. safe-area는 더하지 않아 기기 무관 동일 간격.
   if (!client || !slot) {
+    // [베타 전면무료] 유료 유도(월 1,000원 → 광고 OFF) 업셀 CTA는 BETA_FREE면 숨긴다.
+    // (실제 AdSense 광고는 위 분기에서 그대로 노출 — 폴백 CTA에만 적용)
+    if (shouldHideUpsellFallback()) return null;
     return (
       <div
         className={`absolute inset-x-0 z-30 flex justify-center px-3 pb-2 transition-opacity duration-300 ${sheetHiddenCls}`}
