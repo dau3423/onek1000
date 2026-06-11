@@ -9,6 +9,7 @@ import { DeleteAccountButton } from '@/components/account/DeleteAccountButton';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { InstallButton } from '@/components/pwa/InstallButton';
 import { ReferralCard } from '@/components/referral/ReferralCard';
+import { BETA_FREE } from '@/lib/flags';
 import {
   BadgeSkeleton,
   FavoriteCount,
@@ -60,6 +61,14 @@ export default async function MyPage() {
           <Suspense fallback={<SubscriptionSkeleton />}>
             <SubscriptionSection userId={userId} />
           </Suspense>
+        ) : BETA_FREE ? (
+          // [베타 전면무료] DB 미설정/폴백 경로에서도 결제 유도(/pricing) 대신 무료 개방 안내.
+          // 플래그 off 시 아래 기존 "₩1,000으로 광고 끄기" CTA로 완전 원복.
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+            <div className="text-sm text-gray-700">
+              지금은 베타 기간이라 <strong>모든 기능을 무료로</strong> 쓸 수 있어요.
+            </div>
+          </div>
         ) : (
           <div className="rounded-xl bg-gray-50 p-4">
             <div className="text-sm text-gray-700">현재 무료 플랜이에요.</div>

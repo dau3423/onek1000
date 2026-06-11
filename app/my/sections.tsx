@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { CancelButton } from '@/components/billing/CancelButton';
 import { EnablePushButton } from '@/components/push/EnablePushButton';
+import { BETA_FREE } from '@/lib/flags';
 
 interface Sub {
   id: string;
@@ -108,6 +109,24 @@ export async function SubscriptionSection({ userId }: { userId: string }) {
     );
   }
 
+  // [베타 전면무료] 결제 유도 진입점(/pricing CTA)을 숨기고 무료 개방 안내로 대체.
+  // 플래그 off 시 기존 "₩1,000으로 광고 끄기" CTA로 완전 원복.
+  if (BETA_FREE) {
+    return (
+      <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+        <div className="flex items-center justify-between">
+          <span className="rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-white">
+            베타 무료
+          </span>
+          <span className="text-xs text-gray-500">Free</span>
+        </div>
+        <div className="mt-3 text-sm text-gray-700">
+          지금은 베타 기간이라 <strong>모든 기능을 무료로</strong> 쓸 수 있어요.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-xl bg-gray-50 p-4">
       <div className="text-sm text-gray-700">현재 무료 플랜이에요.</div>
@@ -128,7 +147,11 @@ export async function SubscriptionSection({ userId }: { userId: string }) {
 export async function PushSection({ userId }: { userId: string }) {
   const sub = await fetchSubscription(userId);
   const { isActive } = deriveStatus(sub);
-  return <EnablePushButton isPremium={isActive} />;
+  // [베타 전면무료] 로그인 사용자(userId 존재)면 푸시를 개방한다.
+  // 푸시 구독 API(/api/push/subscribe)도 session.user.isPremium 검사인데 베타 시 true가 되어 정합.
+  // 플래그 off 시 기존 isActive(서버 구독 검증)로 완전 원복.
+  const allowPush = BETA_FREE || isActive;
+  return <EnablePushButton isPremium={allowPush} />;
 }
 
 // NOTE: 카카오 알림톡 수신 토글 + 휴대폰번호 입력 카드(AlimtalkSection/AlimtalkSkeleton)는

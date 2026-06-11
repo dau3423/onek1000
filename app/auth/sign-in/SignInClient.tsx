@@ -14,6 +14,7 @@ import {
   openExternalBrowser,
   type InAppKind,
 } from '@/lib/inapp';
+import { BETA_FREE } from '@/lib/flags';
 
 function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }) {
   const params = useSearchParams();
@@ -100,8 +101,11 @@ function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }
       <p className="mt-1 text-sm text-gray-500">소셜 계정으로 1초만에 시작</p>
 
       {/* 가입 혜택 한 줄 — 외부 브라우저 유도/소셜 버튼과 함께 가입 동기를 살짝 보강. */}
+      {/* [베타 전면무료] 베타엔 광고 제거 포함 전 기능 무료 가치를 전면에 내세운다. 플래그 off 시 기존 카피로 원복. */}
       <p className="mt-2 text-center text-[12px] text-gray-400">
-        가격 하락 알림 · 즐겨찾기 · 내 주유기록까지 무료
+        {BETA_FREE
+          ? '광고 없이 · 가격 하락 알림 · 즐겨찾기까지 지금 전부 무료'
+          : '가격 하락 알림 · 즐겨찾기 · 내 주유기록까지 무료'}
       </p>
 
       {isInApp && (
@@ -208,15 +212,28 @@ function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }
         </div>
       )}
 
-      <p className="mt-8 text-center text-[11px] text-gray-400">
-        로그인하면{' '}
-        <Link href="/legal/terms" className="underline">이용약관</Link>
-        {', '}
-        <Link href="/legal/privacy" className="underline">개인정보처리방침</Link>
-        {' '}및{' '}
-        <Link href="/legal/payment" className="underline">유료 결제 이용약관</Link>
-        에 동의한 것으로 간주됩니다.
-      </p>
+      {/* [베타 전면무료] 베타엔 결제 신호를 낮춘다: 결제약관 링크는 보존하되 강조를 빼고
+          무료 가치 중심 문구로 톤다운한다(링크 삭제 아님). 플래그 off 시 기존 강조 문구로 원복. */}
+      {BETA_FREE ? (
+        <p className="mt-8 text-center text-[11px] text-gray-400">
+          로그인하면{' '}
+          <Link href="/legal/terms" className="underline">이용약관</Link>
+          {', '}
+          <Link href="/legal/privacy" className="underline">개인정보처리방침</Link>
+          에 동의한 것으로 간주됩니다.{' '}
+          <Link href="/legal/payment" className="text-gray-300 underline">결제 약관</Link>
+        </p>
+      ) : (
+        <p className="mt-8 text-center text-[11px] text-gray-400">
+          로그인하면{' '}
+          <Link href="/legal/terms" className="underline">이용약관</Link>
+          {', '}
+          <Link href="/legal/privacy" className="underline">개인정보처리방침</Link>
+          {' '}및{' '}
+          <Link href="/legal/payment" className="underline">유료 결제 이용약관</Link>
+          에 동의한 것으로 간주됩니다.
+        </p>
+      )}
 
       <a
         href="http://pf.kakao.com/_dcnGX/chat"

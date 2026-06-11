@@ -3,11 +3,15 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
+import { BETA_FREE } from '@/lib/flags';
 
 export function Header() {
   const { data, status } = useSession();
   const signedIn = status === 'authenticated';
-  const isPremium = Boolean(data?.user?.isPremium);
+  // [베타 전면무료] 베타엔 업그레이드 암시(프리미엄 배지)를 감추고 일반 프로필로 통일한다.
+  // 베타 시 로그인 사용자는 모두 프리미엄으로 간주되므로 배지를 끄지 않으면 전원이 프리미엄 배지가 된다.
+  // 플래그 off 시 기존 프리미엄 배지 동작으로 완전 원복.
+  const isPremium = !BETA_FREE && Boolean(data?.user?.isPremium);
   // 관리자(ADMIN_EMAILS)로 로그인한 경우에만 노출 — 서버 판정값(session.user.isAdmin)이라 위변조 불가.
   const isAdmin = Boolean(data?.user?.isAdmin);
 

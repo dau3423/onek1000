@@ -10,6 +10,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { getPremiumStatus, getDefaultProduct, getNickname, getAvatar, getSessionId, getSessionIdCached, primeSessionIdCache } from './session';
 import { isAdminEmail } from './admin';
+import { BETA_FREE } from '@/lib/flags';
 import { generateUniqueNickname } from '@/lib/nickname-db';
 import { ensureReferralCode } from '@/lib/referral';
 
@@ -302,7 +303,13 @@ export const authOptions: NextAuthOptions = {
         return session;
       }
       if (token.userId) session.user.id = token.userId;
-      session.user.isPremium = Boolean(token.isPremium);
+      // [베타 전면무료] BETA_FREE 가 켜지면 로그인 사용자(token.userId 있음)를 프리미엄으로 간주한다.
+      // 이 한 지점이 isPremium 판정의 단일 출처라, 광고 OFF·즐겨찾기 동기화·가격 변동 푸시 등
+      // isPremium 분기로 잠긴 모든 기능이 여기서 함께 개방된다(개별 컴포넌트 분기 불필요).
+      // 결제/구독 인프라(getPremiumStatus·token.isPremium)는 그대로 살아 있고, 여기서 노출만 우회한다.
+      // 플래그 off 시 기존 로직(token.isPremium)으로 완전 원복.
+      const betaFreePremium = BETA_FREE && Boolean(token.userId);
+      session.user.isPremium = betaFreePremium || Boolean(token.isPremium);
       session.user.subStatus = token.subStatus ?? 'none';
       session.user.defaultProduct = token.defaultProduct;
       session.user.nickname = token.nickname;
