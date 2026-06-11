@@ -198,6 +198,32 @@ curl -X POST "https://onek1000.kr/api/internal/sync-market?from=20240101" \
   -H "Authorization: Bearer ${CRON_SECRET}"
 ```
 
+```bash
+# 5) 주유 타이밍 예측 생성·평가 — 1일 1회 00:55 KST (반드시 market-sync 이후)
+#    오늘자 방향성(up/flat/down) 예측을 price_forecast 에 upsert 하고,
+#    target_date 지난 과거 예측을 실제 국내가 변화와 비교해 forecast_eval 에 채점한다.
+gcloud scheduler jobs create http run-forecast \
+  --project=onek1000 \
+  --location=asia-northeast3 \
+  --schedule="55 0 * * *" \
+  --time-zone="Asia/Seoul" \
+  --http-method=POST \
+  --uri="https://onek1000.kr/api/internal/run-forecast" \
+  --headers="Authorization=Bearer ${CRON_SECRET}" \
+  --attempt-deadline=120s
+```
+
+예측 누적 정확도(hit-rate) 즉시 채우기 — 적재된 과거 데이터로 소급 생성·평가(1회):
+```bash
+# 백필(과거 시점 예측을 미래정보 누설 없이 소급 산출 + 평가). from 생략 시 데이터 시작 이후 전체.
+curl -X POST "https://onek1000.kr/api/internal/run-forecast?backfill=1&from=2024-02-01" \
+  -H "Authorization: Bearer ${CRON_SECRET}"
+
+# 누적 정확도/최근 예측 조회(내부 검증용 JSON, 대시보드 UI 없음)
+curl "https://onek1000.kr/api/internal/forecast-accuracy" \
+  -H "Authorization: Bearer ${CRON_SECRET}"
+```
+
 `CRON_SECRET`은 6번 단계에서 등록한 secret과 동일한 값 사용. `${CRON_SECRET}`은 쉘에서 실제 값으로 치환하거나, 또는 `--oidc-service-account-email`로 더 보안 강화 가능.
 
 수정/삭제:
