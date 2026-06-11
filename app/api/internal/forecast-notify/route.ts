@@ -93,12 +93,15 @@ export async function POST(req: Request) {
   }
 
   // 1) 옵트인 사용자(forecast_notify_opt_in=true) 조회.
+  //    탈퇴자 제외(deleted_at IS NULL): 행을 지우지 않으므로 탈퇴자가 옵트인/푸시구독을 남겨도 발송 금지.
+  //    0028 미적용 환경(컬럼 부재 42703)은 아래 optErr graceful skip으로 흡수된다.
   const { data: optInUsers, error: optErr } = await sb
     .from('users')
     .select('id')
-    .eq('forecast_notify_opt_in', true);
+    .eq('forecast_notify_opt_in', true)
+    .is('deleted_at', null);
   if (optErr) {
-    // 0027 미적용(컬럼 없음 42703) 등 — graceful skip.
+    // 0027/0028 미적용(컬럼 없음 42703) 등 — graceful skip.
     return NextResponse.json({ skipped: true, reason: `opt-in not available: ${optErr.message}` });
   }
   const optInIds = (optInUsers ?? []).map((u) => (u as { id: string }).id);

@@ -8,7 +8,7 @@ import KakaoProvider from 'next-auth/providers/kakao';
 import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
-import { getPremiumStatus, getDefaultProduct, getNickname, getAvatar, getSessionId, getSessionIdCached, primeSessionIdCache } from './session';
+import { getPremiumStatus, getDefaultProduct, getNickname, getAvatar, getSessionId, getSessionIdCached, primeSessionIdCache, isUserDeleted } from './session';
 import { isAdminEmail } from './admin';
 import { BETA_FREE } from '@/lib/flags';
 import { generateUniqueNickname } from '@/lib/nickname-db';
@@ -176,11 +176,28 @@ export const authOptions: NextAuthOptions = {
       if (!isSupabaseConfigured()) return true; // 개발 환경 — DB 없어도 로그인 자체는 허용
 
       const sb = getSupabase();
-      const { data: existing } = await sb
+      // 마이그레이션 0028(deleted_at) 미적용 환경 방어: deleted_at 포함 select가 컬럼
+      // 부재(42703)로 실패하면 existing이 null이 되어 신규 가입 분기로 잘못 빠질 수 있다.
+      // → 실패 시 deleted_at 없이 재조회해 기존 행을 정상 매칭한다(복구는 컬럼이 있을 때만 시도).
+      type ExistingUser = { id: string; nickname: string | null; image_url: string | null; deleted_at?: string | null };
+      let existing: ExistingUser | null = null;
+      let hasDeletedAtCol = true;
+      const withDeleted = await sb
         .from('users')
-        .select('id, nickname, image_url')
+        .select('id, nickname, image_url, deleted_at')
         .eq('email', user.email)
         .maybeSingle();
+      if (withDeleted.error) {
+        hasDeletedAtCol = false;
+        const fallback = await sb
+          .from('users')
+          .select('id, nickname, image_url')
+          .eq('email', user.email)
+          .maybeSingle();
+        existing = (fallback.data as ExistingUser | null) ?? null;
+      } else {
+        existing = (withDeleted.data as ExistingUser | null) ?? null;
+      }
 
       // 1계정 1세션(last-login-wins): 이번 로그인의 세션 식별자를 새로 발급해 DB에 기록한다.
       // 기존 기기에 남아 있던 토큰의 sid는 더 이상 DB와 일치하지 않게 되어 무효화된다.
@@ -221,6 +238,12 @@ export const authOptions: NextAuthOptions = {
         // 프로필 사진(image_url)은 사용자가 직접 관리하므로 매 로그인마다 소셜
         // 이미지로 덮어쓰지 않는다. 단, 비어 있으면 소셜 이미지로 1회 백필.
         if (!existing.image_url && user.image) patch.image_url = user.image;
+        // 탈퇴(소프트삭제) 계정 재로그인 → deleted_at을 NULL로 되돌려 계정·데이터를 그대로 복원한다.
+        // 새 행을 만들지 않고 기존 행을 재사용(개인정보·연관 데이터 보존 정책). 컬럼이 있을 때만 시도.
+        if (hasDeletedAtCol && existing.deleted_at) {
+          patch.deleted_at = null;
+          console.info('[auth] 탈퇴 계정 재로그인 — deleted_at 복구', { userId: existing.id });
+        }
         await sb.from('users').update(patch).eq('id', existing.id);
       }
       return true;
@@ -271,6 +294,20 @@ export const authOptions: NextAuthOptions = {
           }
           // fresh === token.sid: 내가 현재 유효 기기 → revoke 안 함(이미 false 유지).
           // fresh === undefined: 검증 불가 → 기존 동작 유지(revoke 안 함).
+        }
+      }
+
+      // 잔존 세션 방어 — 탈퇴(소프트삭제) 사용자의 남은 토큰을 무효 처리한다.
+      //  - 신규 로그인(복구 경로)은 signIn 콜백에서 deleted_at을 이미 NULL로 되돌렸으므로 통과한다.
+      //    (isFreshLogin은 이 시점 통과 후 정상 토큰이 된다.)
+      //  - 잔존 토큰(재로그인 아님)은 여기서 sessionRevoked=true로 막아 session 콜백이 비인증으로 만든다.
+      //  - 검사는 isPremium 캐시 주기와 함께 묶어 매번 DB를 때리지 않는다(아래 stale 조건과 동일 주기).
+      const _now = Date.now();
+      const _stale = !token.premiumCheckedAt || _now - token.premiumCheckedAt > PREMIUM_CACHE_MS;
+      if (!isFreshLogin && token.userId && (trigger === 'update' || _stale)) {
+        if (await isUserDeleted(token.userId)) {
+          token.sessionRevoked = true;
+          return token; // 무효화 확정 — 이하 isPremium/닉네임 등 갱신 불필요.
         }
       }
 

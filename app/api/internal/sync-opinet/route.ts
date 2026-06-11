@@ -486,10 +486,28 @@ export async function POST(req: Request) {
 
   if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
     // 활성/체험 중인 프리미엄 사용자 목록
-    const { data: premiumUsers } = await sb
+    const { data: premiumUsers0 } = await sb
       .from('subscriptions')
       .select('user_id')
       .in('status', ['trial', 'active']);
+
+    // 탈퇴자 제외(deleted_at IS NULL): 탈퇴 시 구독이 canceled되어 위 목록에선 빠지지만,
+    // 방어적으로 활성 사용자만 남긴다(0028 미적용 시 컬럼 부재로 실패하면 원목록 유지).
+    let premiumUsers = premiumUsers0;
+    {
+      const premiumUserIds = [...new Set((premiumUsers0 ?? []).map((u) => u.user_id as string))];
+      if (premiumUserIds.length > 0) {
+        const { data: activeRows, error: activeErr } = await sb
+          .from('users')
+          .select('id')
+          .in('id', premiumUserIds)
+          .is('deleted_at', null);
+        if (!activeErr) {
+          const activeSet = new Set((activeRows ?? []).map((r) => r.id as string));
+          premiumUsers = (premiumUsers0 ?? []).filter((u) => activeSet.has(u.user_id as string));
+        }
+      }
+    }
 
     // 사용자별 기본 차량 유종 맵(일괄 조회로 N+1 회피).
     // 즐겨찾기 하락 알림은 "내 차 유종" 기준이어야 한다(예: 경유차에 경유 하락만).
@@ -588,6 +606,20 @@ export async function POST(req: Request) {
       if (subsByUser.size > 0) {
         // 푸시 구독이 있는 사용자의 관심 지역만 배치 조회 (사용자×지역 N+1 회피)
         const userIds = [...subsByUser.keys()];
+
+        // 탈퇴자 제외(deleted_at IS NULL): 행을 지우지 않으므로 탈퇴자 push_subscriptions/관심지역이
+        // 남아 있어도 발송하면 안 된다. 활성 사용자 id 집합을 1회 조회해 걸러낸다.
+        // (0028 미적용 환경에서 컬럼 부재로 실패하면 activeUserIds=null → 기존 동작 유지 = 전체 대상.)
+        let activeUserIds: Set<string> | null = null;
+        {
+          const { data: activeRows, error: activeErr } = await sb
+            .from('users')
+            .select('id')
+            .in('id', userIds)
+            .is('deleted_at', null);
+          if (!activeErr) activeUserIds = new Set((activeRows ?? []).map((r) => r.id as string));
+        }
+
         const { data: regions } = await sb
           .from('interest_regions')
           .select('id, user_id, name, lat, lng, radius_m, product, last_notified_price, last_notified_station_id, last_notified_station_ids, last_notified_at')
@@ -595,6 +627,8 @@ export async function POST(req: Request) {
 
         const nowMs = Date.now();
         for (const reg of regions ?? []) {
+          // 탈퇴자(deleted_at) 제외 — activeUserIds가 null(검증 불가)이면 기존 동작 유지.
+          if (activeUserIds && !activeUserIds.has(reg.user_id)) continue;
           const subs = subsByUser.get(reg.user_id);
           if (!subs || subs.length === 0) continue;
 

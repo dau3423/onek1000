@@ -109,6 +109,22 @@ export async function getAvatar(userId?: string): Promise<string | null> {
 }
 
 /**
+ * 사용자가 탈퇴(소프트삭제)되었는지 조회 — 잔존 세션 방어용.
+ * 반환 의미:
+ *  - true:  deleted_at 값이 있음(탈퇴 상태) → 잔존 세션을 무효 처리해야 함.
+ *  - false: 활성(또는 검증 불가) → 기존 동작 유지.
+ * 컬럼 부재(0028 미적용)·조회 실패 시에는 false(검증 불가 → 기존 동작 유지)로 폴백해
+ * 로그인/세션을 깨지 않는다. (재로그인 복구 경로는 signIn 콜백에서 별도로 처리한다.)
+ */
+export async function isUserDeleted(userId?: string): Promise<boolean> {
+  if (!userId || !isSupabaseConfigured()) return false;
+  const sb = getSupabase();
+  const { data, error } = await sb.from('users').select('deleted_at').eq('id', userId).maybeSingle();
+  if (error) return false; // 컬럼 부재 등 → 검증 불가, 기존 동작 유지
+  return Boolean((data as { deleted_at?: string | null } | null)?.deleted_at);
+}
+
+/**
  * 현재 유효한 세션 식별자(users.session_id) 조회 — 1계정 1세션 검증용.
  * 반환 의미:
  *  - string: DB에 기록된 최신 세션 식별자(이 값과 토큰 sid를 비교).

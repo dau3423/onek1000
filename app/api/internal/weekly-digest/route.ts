@@ -65,14 +65,17 @@ export async function POST(req: Request) {
 
   // 2) 그 사용자들 중 마지막 위치(last_lat/lng)가 있는 사람만 대상
   const userIds = [...subsByUser.keys()];
+  // 탈퇴자 제외(deleted_at IS NULL): 행을 지우지 않으므로 탈퇴자 push_subscriptions가 남아 있어도
+  // 발송하면 안 된다. 0028 미적용 환경(컬럼 부재 42703)은 아래 uErr graceful skip으로 흡수된다.
   const { data: users, error: uErr } = await sb
     .from('users')
     .select('id, last_lat, last_lng')
     .in('id', userIds)
+    .is('deleted_at', null)
     .not('last_lat', 'is', null)
     .not('last_lng', 'is', null);
   if (uErr) {
-    // 0024 미적용(컬럼 없음 42703) 등 — graceful skip.
+    // 0024/0028 미적용(컬럼 없음 42703) 등 — graceful skip.
     return NextResponse.json({ skipped: true, reason: `users location not available: ${uErr.message}` });
   }
 

@@ -82,9 +82,10 @@ async function loadStats(): Promise<Stat[]> {
     expStations,
     pricesLatest,
   ] = await Promise.all([
-    headCount((sb) => sb.from('users').select('*', { count: 'exact', head: true })),
-    headCount((sb) => sb.from('users').select('*', { count: 'exact', head: true }).gte('created_at', todayStart)),
-    headCount((sb) => sb.from('users').select('*', { count: 'exact', head: true }).gte('created_at', sevenDaysStart)),
+    // 회원 수 집계는 활성 회원만(탈퇴=소프트삭제 제외). 0028 미적용 환경은 headCount가 '-'로 안전 폴백.
+    headCount((sb) => sb.from('users').select('*', { count: 'exact', head: true }).is('deleted_at', null)),
+    headCount((sb) => sb.from('users').select('*', { count: 'exact', head: true }).is('deleted_at', null).gte('created_at', todayStart)),
+    headCount((sb) => sb.from('users').select('*', { count: 'exact', head: true }).is('deleted_at', null).gte('created_at', sevenDaysStart)),
     // 프리미엄: status∈(trial,active,canceled) & 기간 유효(periodEnd 폴백 일관성을 위해
     // current_period_end 기준으로 근사 — trial은 current_period_end=trial_end로 채워짐).
     headCount((sb) =>
