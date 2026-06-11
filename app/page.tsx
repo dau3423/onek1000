@@ -12,6 +12,7 @@ import { BannerAd, BANNER_BOTTOM_PX, BANNER_HEIGHT_PX, useBannerVisible } from '
 import { RadiusAlert } from '@/components/alert/RadiusAlert';
 import { RouteAlert } from '@/components/alert/RouteAlert';
 import { PriceTrendBanner } from '@/components/alert/PriceTrendBanner';
+import { ForecastCard } from '@/components/forecast/ForecastCard';
 import { NaviConfirm } from '@/components/alert/NaviConfirm';
 import { ProductSync } from '@/components/map/ProductSync';
 import { StationPopup } from '@/components/map/StationPopup';
@@ -1080,6 +1081,12 @@ export default function HomePage() {
 
       {/* 첫 접속 공지 모달(비로그인·디바이스당 1회) — 회원가입 시 1주일 무료 프리미엄 유도 */}
       {/* 노출 중단(요청에 의해 숨김). 되살리려면 위 import와 이 줄을 함께 복원: <WelcomePromo /> */}
+
+      {/* ④ 주유 타이밍 예측 카드 — 현재 선택 유종(전국) 기준 방향/추천/추이.
+          PriceTrendBanner(지도 상단 absolute 오버레이) 아래, 첫 화면(지도) 아래로 스크롤하면 노출되는
+          흐름 영역에 둔다(다른 절대배너와 자리 충돌 없이 '아래'에 배치). 신호 없음/비대상 유종이면
+          ForecastCard 내부에서 스스로 미표시(graceful). gas 레이어에서만 노출(충전소 무관). */}
+      {layer === 'gas' && <ForecastCard product={product} />}
 
       {/* 메인 하단 사업자 정보 푸터 — 첫 화면(지도) 아래로 스크롤하면 노출(카드사 심사용) */}
       <BusinessFooter />
