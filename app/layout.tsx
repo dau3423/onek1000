@@ -7,6 +7,7 @@ import { SessionGuard } from '@/components/SessionGuard';
 import { ReferralClaim } from '@/components/referral/ReferralClaim';
 import { AdsenseScript } from '@/components/ads/AdsenseScript';
 import { FirebaseAnalytics } from '@/components/FirebaseAnalytics';
+import { VisitPing } from '@/components/VisitPing';
 
 const pretendard = localFont({
   src: './fonts/PretendardVariable.woff2',
@@ -81,6 +82,7 @@ export default function RootLayout({
           <ReferralClaim />
           {children}
           <AdsenseScript />
+          <VisitPing />
           <Suspense fallback={null}>
             <FirebaseAnalytics />
           </Suspense>

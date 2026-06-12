@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getAdminOrNull } from '@/lib/auth/admin';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
+import { getTodayVisitorCount } from '@/lib/db/stats';
 
 export const metadata: Metadata = {
   title: '관리자 대시보드 (운영)',
@@ -61,6 +62,7 @@ async function loadStats(): Promise<Stat[]> {
     return [
       { label: '총 회원수', value: '-' },
       { label: '오늘 가입', value: '-' },
+      { label: '오늘 방문자수(KST)', value: '-' },
       { label: '최근 7일 가입', value: '-' },
       { label: '프리미엄 사용자', value: '-' },
       { label: '주유소 수', value: '-' },
@@ -76,6 +78,7 @@ async function loadStats(): Promise<Stat[]> {
   const [
     totalUsers,
     todayUsers,
+    todayVisitors,
     weekUsers,
     premiumUsers,
     stations,
@@ -85,6 +88,8 @@ async function loadStats(): Promise<Stat[]> {
     // 회원 수 집계는 활성 회원만(탈퇴=소프트삭제 제외). 0028 미적용 환경은 headCount가 '-'로 안전 폴백.
     headCount((sb) => sb.from('users').select('*', { count: 'exact', head: true }).is('deleted_at', null)),
     headCount((sb) => sb.from('users').select('*', { count: 'exact', head: true }).is('deleted_at', null).gte('created_at', todayStart)),
+    // 오늘 방문자(KST): page_visits의 고유 디바이스 수. 0029 미적용 환경은 null로 안전 폴백('-').
+    getTodayVisitorCount(),
     headCount((sb) => sb.from('users').select('*', { count: 'exact', head: true }).is('deleted_at', null).gte('created_at', sevenDaysStart)),
     // 프리미엄: status∈(trial,active,canceled) & 기간 유효(periodEnd 폴백 일관성을 위해
     // current_period_end 기준으로 근사 — trial은 current_period_end=trial_end로 채워짐).
@@ -103,6 +108,7 @@ async function loadStats(): Promise<Stat[]> {
   return [
     { label: '총 회원수', value: fmt(totalUsers) },
     { label: '오늘 가입(KST)', value: fmt(todayUsers) },
+    { label: '오늘 방문자수(KST)', value: fmt(todayVisitors) },
     { label: '최근 7일 가입', value: fmt(weekUsers) },
     { label: '프리미엄 사용자', value: fmt(premiumUsers) },
     { label: '주유소 수', value: fmt(stations) },
