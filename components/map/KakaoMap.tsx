@@ -1115,7 +1115,7 @@ export function KakaoMap({
       panToProgrammatic(pos);
     } else if (follow) {
       // 따라가기 모드: 위치 갱신마다 줌은 유지한 채 중심만 부드럽게 이동.
-      // 네비 스타일로 내 위치를 화면 하단부에 두어 진행 방향 앞이 더 보이게 한다(heading 있을 때).
+      // 네비 스타일로 내 위치를 진행 방향 앞쪽으로 치우치게 두어 가는 길이 더 보이게 한다(heading 있을 때).
       panToProgrammatic(pos, true);
     }
     // follow 변화만으로는 재이동하지 않고 위치 갱신 시점에만 추적 (의도치 않은 이동 방지)
@@ -1127,7 +1127,7 @@ export function KakaoMap({
     if (!ready || !mapRef.current || !myLocation || recenterSignal === 0) return;
     const map = mapRef.current;
     map.setLevel(MY_AREA_LEVEL);
-    // 따라가기 중이면 네비 오프셋(하단부 배치) 유지, 아니면 중앙.
+    // 따라가기 중이면 네비 오프셋(진행 방향 앞쪽 배치) 유지, 아니면 중앙.
     panToProgrammatic(new window.kakao.maps.LatLng(myLocation.lat, myLocation.lng), followRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recenterSignal]);
@@ -1153,25 +1153,36 @@ export function KakaoMap({
     }
   }, [heading, myLocation]);
 
-  // 네비 스타일 카메라: 따라가기(follow) 주행 중에는 내 위치를 화면 중앙이 아닌 하단부
-  // (세로 NAVI_USER_VERTICAL 지점, 기본 72%)에 두어 진행 방향 앞쪽 길을 더 보여준다.
-  // 가로(화면 x)는 heading과 무관하게 항상 정중앙을 유지하고, 세로(화면 y)만 오프셋을 준다.
-  // 화면 비율 + 현재 줌(projection)을 활용해 "지도 중심"을 화면 좌표 기준 위쪽으로 일정 픽셀만큼
-  // 당겨 잡는 방식이라 줌 레벨이 달라져도 화면상 위치 비율이 일정하게 유지된다.
-  // north-up(회전 없는) 지도이므로 화면 y = 북쪽 방향이며, 세로 오프셋만 적용하면 충분하다.
-  const NAVI_USER_VERTICAL = 0.72; // 내 위치를 화면 세로 72% 지점(아래쪽)에 배치
+  // 네비 스타일 카메라: 따라가기(follow) 주행 중에는 내 위치를 화면 중앙이 아닌 "진행 방향 앞"
+  // 쪽으로 치우치게 두어 가는 길을 더 보여준다. 가로(화면 x)는 항상 정중앙을 유지하고
+  // 세로(화면 y)만 오프셋을 준다. 화면 비율 + 현재 줌(projection)을 활용해 "지도 중심"을
+  // 화면 좌표 기준 위/아래로 일정 픽셀만큼 당겨 잡으므로 줌이 달라져도 화면상 비율이 일정하다.
+  //
+  // 이 지도는 north-up(회전 없음)이라 화면 y의 위쪽은 항상 북쪽이다. 따라서 단순히 마커를
+  // 화면 하단에 고정하면 "북쪽 = 앞"일 때만 진행 방향이 보이고, 남쪽 주행 시엔 오히려 지나온
+  // 뒤쪽(북)이 보인다. 이를 막기 위해 세로 오프셋의 크기/부호를 heading의 북-남 성분
+  // (cos: 북=+1, 남=-1, 동/서=0)으로 보정한다. 결과적으로 북쪽 주행→마커 하단(앞=북),
+  // 남쪽 주행→마커 상단(앞=남), 동/서 주행→세로 중앙(바이어스 0)이 된다.
+  // NAVI_USER_VERTICAL: 진행 방향이 화면 위(북)일 때 내 위치 마커가 가는 화면 세로 비율
+  // (0=최상단, 0.5=중앙, 1=최하단). 기본 0.72 → 북쪽 주행 시 마커가 화면 세로 72% 지점(하단부).
+  const NAVI_USER_VERTICAL = 0.72;
   function centerForFollow(pos: kakao.maps.LatLng): kakao.maps.LatLng {
     const map = mapRef.current;
     const container = containerRef.current;
     if (!map || !container) return pos;
-    // 네비 모드(follow)가 아니면 오프셋 없이 중앙 배치. heading 유무는 더 이상 보지 않는다
-    // (가로 중앙·세로 하단은 진행 방향과 무관하게 적용 가능하므로).
+    // 네비 모드(follow)가 아니면 오프셋 없이 중앙 배치.
     if (!followRef.current) return pos;
     const height = container.clientHeight;
     if (!height) return pos;
-    // 내 위치를 화면 세로 NAVI_USER_VERTICAL(예: 72%) 지점에 두려면, 지도 중심을
-    // 그만큼 화면상 위쪽(-y)으로 당긴다. 가로(x)는 0 오프셋이라 내 위치가 항상 가로 중앙.
-    const dy = -(NAVI_USER_VERTICAL - 0.5) * height;
+    // 최신 진행 방향(없으면 직전 방향 유지로 카메라 흔들림 방지). 한 번도 없으면 중앙 배치.
+    const headingDeg = lastHeadingRef.current;
+    if (headingDeg === null) return pos;
+    // 화면 y의 위쪽 = 북쪽이므로 북-남 성분(cos)으로 오프셋 크기/부호를 보정한다.
+    //  - 북쪽 주행(cos≈+1): dy<0 → 중심을 위로 당겨 마커가 화면 하단(앞=북).
+    //  - 남쪽 주행(cos≈-1): dy>0 → 중심을 아래로 당겨 마커가 화면 상단(앞=남).
+    //  - 동/서 주행(cos≈0): dy≈0 → 마커 세로 중앙.
+    const headingRad = (headingDeg * Math.PI) / 180;
+    const dy = -(NAVI_USER_VERTICAL - 0.5) * height * Math.cos(headingRad);
     try {
       const proj = map.getProjection();
       const pt = proj.containerPointFromCoords(pos);
@@ -1184,7 +1195,7 @@ export function KakaoMap({
   }
 
   // 프로그램적 중심 이동 — 따라가기 해제 트리거(dragstart)와 구분하기 위해 플래그를 잠깐 세운다.
-  // useNaviOffset=true면 네비 스타일 오프셋(내 위치를 화면 하단부)으로 중심을 보정한다.
+  // useNaviOffset=true면 네비 스타일 오프셋(내 위치를 진행 방향 앞쪽)으로 중심을 보정한다.
   function panToProgrammatic(pos: kakao.maps.LatLng, useNaviOffset = false) {
     const map = mapRef.current;
     if (!map) return;
