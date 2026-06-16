@@ -5,7 +5,7 @@ import { loadKakao } from './loadKakao';
 import type { StationWithPrice, NationalTop10Item, ProductCode, StationPoint, RoutePlan } from '@/types/station';
 import { BRAND_COLOR } from '@/types/station';
 import { priceTier, priceTierThresholds } from '@/lib/map/geo';
-import { TIER_FACE, faceMarkerSvg, numberMarkerSvg } from '@/lib/map/markerFace';
+import { TIER_FACE, faceMarkerSvg, numberMarkerSvg, skullMarkerSvg } from '@/lib/map/markerFace';
 import type { EvStationMarker } from '@/types/ev';
 import { buildEvMarkerContent } from '@/lib/map/evMarker';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
@@ -798,10 +798,8 @@ export function KakaoMap({
       const content = document.createElement('div');
       content.className = 'cursor-pointer select-none';
       content.style.transform = 'translate(-50%, -50%)';
-      // 작은 회색 원(가격/브랜드색/라벨 없음). 흰 외곽으로 지도 위에서 구분.
-      content.innerHTML =
-        '<div style="width:12px;height:12px;border-radius:50%;background:#9ca3af;'
-        + 'border:1.5px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.3)"></div>';
+      // 진회색 원 + 해골 표정(가격/브랜드색/라벨 없음). 순위권 표정 마커보다 작게 깔린다.
+      content.innerHTML = skullMarkerSvg(18);
       content.addEventListener('click', () => onMarkerClick?.(pointToStation(p)));
 
       const overlay = new window.kakao.maps.CustomOverlay({

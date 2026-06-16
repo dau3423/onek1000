@@ -130,6 +130,43 @@ export function faceMarkerSvg(
   return circleMarkerSvg(tier, size, faceSvgInner(tier), opts);
 }
 
+/** 순위에 들지 못한(가격 등급 없는) 주유소용 회색 마커의 배경색(진회색). */
+export const PLAIN_MARKER_COLOR = '#4b5563';
+
+/**
+ * 해골 표정 SVG 조각(눈구멍·코·이빨). viewBox 0 0 100 100, 원 중심 50,50 기준.
+ * 진회색 배경 위 대비를 위해 흰색 고정. 작은 마커에서도 "해골"로 인식되도록 단순 path만 사용.
+ */
+function skullFaceInner(): string {
+  const S = '#ffffff'; // 표정 선/채움 색(배경 대비 흰색)
+  return `
+    <circle cx="36" cy="44" r="11" fill="${S}"/>
+    <circle cx="64" cy="44" r="11" fill="${S}"/>
+    <path d="M50 56 l-7 11 14 0 Z" fill="${S}"/>
+    <path d="M38 76 h24" stroke="${S}" stroke-width="9" stroke-linecap="butt"/>
+    <path d="M44 71 v10 M50 71 v10 M56 71 v10" stroke="${S}" stroke-width="3"/>`;
+}
+
+/**
+ * 단일 색 원 배경 + 임의 inner 조각으로 이루어진 마커 SVG. tier에 묶이지 않은 마커용
+ * (회색점=가격 등급 없음). circleMarkerSvg와 동일한 외곽 반지름/그림자 규약을 따른다.
+ */
+function plainCircleMarkerSvg(color: string, size: number, inner: string): string {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 100 100" style="display:block;filter:drop-shadow(0 1px 3px rgba(0,0,0,.3))">
+    <circle cx="50" cy="50" r="48" fill="${color}"/>
+    ${inner}
+  </svg>`;
+}
+
+/**
+ * 순위권에 들지 못한 주유소용 마커: 진회색 원 + 해골 표정.
+ * faceMarkerSvg(순위권 표정 마커)와 같은 동심원/그림자 톤을 유지하되 tier 색·브랜드 테두리는 없다.
+ * - size: 한 변(px). 배경용으로 다수 깔리므로 순위권 마커보다 작게 호출한다.
+ */
+export function skullMarkerSvg(size: number): string {
+  return plainCircleMarkerSvg(PLAIN_MARKER_COLOR, size, skullFaceInner());
+}
+
 /**
  * faceMarkerSvg와 동일 구조의 마커에 "표정 대신 가격 순위 숫자"를 그린 SVG 문자열.
  * BottomSheet 활성 탭 목록의 가격순 순위(1=가장 쌈)를 지도 마커에 그대로 표시해
