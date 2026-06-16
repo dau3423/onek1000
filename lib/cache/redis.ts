@@ -82,6 +82,11 @@ export const keys = {
   priceTrend: (prod: string, q: string, r: number) => `trend:${prod}:${q}:r${r}`,
   // 방문 ping rate limit — IP당 분당 카운터(공개 POST /api/visit 남용 방어).
   visitRate: (ip: string) => `rl:visit:${ip}`,
+  // 비순위(가격 없는) 주유소 상세에서 on-demand로 받은 Opinet 실시간 가격 캐시(가격만).
+  // prices_latest에는 쓰지 않아 지도 마커 불변. KST 자정까지 TTL.
+  detailPrice: (id: string) => `detailprice:${id}`,
+  // Opinet 할당량 소진/연속 무효 응답 시 전역 쿨다운 플래그 — set 동안 상세에서 Opinet 헛호출 차단.
+  detailPriceCooldown: () => `detailprice:cooldown`,
 };
 
 /** 좌표 양자화: precision=3 → 약 110m 격자, 4 → 11m */

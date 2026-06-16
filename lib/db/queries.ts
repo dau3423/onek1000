@@ -7,6 +7,7 @@ import type { Bbox } from '@/lib/map/geo';
 import { getMockStations, getMockStationDetail } from '@/lib/mock/stations';
 import { distanceMeters, inBbox, topPriceRankMap } from '@/lib/map/geo';
 import { fetchStationDetail } from '@/lib/opinet/client';
+import { redis, keys } from '@/lib/cache/redis';
 
 interface RpcRow {
   id: string; name: string; brand_code: string; is_self: boolean;
@@ -371,45 +372,76 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
 }
 
 // 전체 적재 시 가격이 아직 없는 주유소는 상세 진입 시 Opinet detailById 1회로 가격을 채운다.
-// "상세=DB only" 원칙을 가격이 전무할 때에만 완화하고, 받은 가격은 DB(prices_latest)에 캐시해
-// 다음 진입부터는 DB만으로 표시되게 한다(재호출 최소화). Opinet 호출은 짧은 타임아웃으로 보호하고,
-// 실패/할당량 소진/빈 응답이면 DB 스냅샷(가격 없으면 '정보 없음')으로 폴백해 페이지가 깨지지 않게 한다.
+// "상세=DB only" 원칙을 가격이 전무할 때에만 완화한다. 단, 받은 가격은 prices_latest에 쓰지 않고
+// 별도 Redis 캐시(detailPrice)에만 저장한다 — prices_latest에 적재하면 지도 bbox/마커가 이 주유소를
+// '가격 있는 일반 마커'로 바꿔 비순위 마커가 사라지기 때문이다(마커 불변 보장). Opinet 호출은 짧은
+// 타임아웃으로 보호하고, 실패/할당량 소진/빈 응답이면 전역 쿨다운 플래그를 세워 이후 헛호출을 차단한다.
 const DETAIL_OPINET_TIMEOUT_MS = 7000;
+// Opinet 무효/실패 응답 후 전역 쿨다운(분). 이 동안 상세 조회는 Opinet을 호출하지 않는다.
+const DETAIL_COOLDOWN_MIN = 30;
+
+/** 현재 시각 기준 다음 KST(UTC+9) 자정까지 남은 초. 최소 60초 가드. (가격 캐시 TTL용) */
+function secondsUntilKstMidnight(): number {
+  const KST_OFFSET_MS = 9 * 3600 * 1000;
+  const nowKst = Date.now() + KST_OFFSET_MS;
+  const dayMs = 24 * 3600 * 1000;
+  const sinceMidnight = ((nowKst % dayMs) + dayMs) % dayMs; // KST 자정 이후 경과 ms
+  const remainMs = dayMs - sinceMidnight;
+  return Math.max(60, Math.floor(remainMs / 1000));
+}
 
 /**
  * 상세 페이지용 주유소 조회. DB 우선 조회 후, 가격이 하나도 없으면(전체 적재로 새로
- * 들어온 주유소 등) Opinet detailById를 1회 실시간 호출해 가격(+부가서비스)을 채우고
- * DB에 캐시한다. 가격이 이미 있으면 Opinet을 호출하지 않아 기존 동작/속도가 불변이다.
+ * 들어온 주유소 등) on-demand로 가격을 채운다. 우선순위:
+ *   a. DB 가격 있으면 그대로(Opinet 미호출)
+ *   b. Supabase 미설정(mock) → base 그대로(Opinet 미호출)
+ *   c. Redis 가격 캐시(detailPrice) 히트 → 머지 반환(Opinet 미호출)
+ *   d. 캐시 미스 & 쿨다운 없음 → Opinet detailById 1회(짧은 타임아웃)
+ *        - 유효 → 머지 + Redis 가격 캐시(KST 자정까지) + (미보강 시)부가서비스 보강
+ *        - 무효/빈/타임아웃 → base 그대로 + 전역 쿨다운 플래그 set
+ *   e. 쿨다운 플래그 있으면 → base 그대로(Opinet 미호출)
+ * 어느 경로든 가격은 절대 prices_latest에 쓰지 않아 지도 마커가 불변이다.
  */
 export async function queryStationDetailWithPriceFallback(id: string): Promise<StationDetail | null> {
   const base = await queryStationDetail(id);
   if (!base) return null;
 
-  // 가격이 이미 있거나, Supabase 미설정(mock 모드)이면 그대로 반환 — Opinet 미호출.
+  // a/b. 가격이 이미 있거나 Supabase 미설정(mock)이면 그대로 반환 — Opinet 미호출.
   if (!isSupabaseConfigured() || hasAnyPrice(base)) return base;
 
-  // 가격 전무 → Opinet detailById 1회 실시간 조회(짧은 타임아웃). 실패/빈 응답이면 DB 스냅샷 폴백.
+  // c. Redis 가격 캐시 히트 → 그 가격을 머지해 반환(Opinet 미호출).
+  const cached = await redis.getJson<StationDetail['prices']>(keys.detailPrice(id));
+  if (cached) {
+    return { ...base, prices: { ...base.prices, ...cached } };
+  }
+
+  // e. 전역 쿨다운(소진) 상태면 Opinet 호출 없이 base 그대로.
+  const cooling = await redis.getJson<number>(keys.detailPriceCooldown());
+  if (cooling) return base;
+
+  // d. 캐시 미스 & 쿨다운 없음 → Opinet detailById 1회 실시간 조회(짧은 타임아웃).
   let live: StationDetail | null = null;
   try {
     live = await withTimeout(fetchStationDetail(id), DETAIL_OPINET_TIMEOUT_MS, 'opinet detail');
   } catch {
-    return base; // 타임아웃/네트워크/할당량 → DB값으로 폴백(가격 미표시)
+    live = null; // 타임아웃/네트워크/할당량
   }
-  if (!live || !hasAnyPrice(live)) return base; // 빈 응답(OIL[])도 폴백
+  if (!live || !hasAnyPrice(live)) {
+    // 무효/빈/타임아웃 → 전역 쿨다운 플래그 set 후 base 폴백(이후 d 단락).
+    await redis.setJson(keys.detailPriceCooldown(), 1, DETAIL_COOLDOWN_MIN * 60);
+    return base;
+  }
 
-  // 받은 가격을 base에 머지(부가서비스는 Opinet 응답이 더 신선하면 보강).
-  const merged: StationDetail = {
-    ...base,
-    prices: { ...base.prices, ...live.prices },
-    hasCarwash: live.hasCarwash ?? base.hasCarwash,
-    hasCvs: live.hasCvs ?? base.hasCvs,
-    hasMaintenance: live.hasMaintenance ?? base.hasMaintenance,
-  };
+  // 유효 → 가격만 Redis 캐시(KST 자정까지). prices_latest에는 절대 쓰지 않는다.
+  await redis.setJson(keys.detailPrice(id), live.prices, secondsUntilKstMidnight());
 
-  // DB 캐시(prices_latest upsert). 실패해도 표시에는 영향 없게 best-effort.
-  await cacheStationPrices(id, live).catch(() => {});
+  // 부가서비스는 아직 미보강(amenities_updated_at null)일 때만 stations에 보강(best-effort).
+  if (base.amenitiesUpdatedAt == null) {
+    await cacheStationAmenities(id, live).catch(() => {});
+  }
 
-  return merged;
+  // 받은 가격을 base에 머지해 표시.
+  return { ...base, prices: { ...base.prices, ...live.prices } };
 }
 
 interface MyFuelLogRow {
@@ -537,24 +569,15 @@ export async function queryNationalAvgPrices(): Promise<Partial<Record<ProductCo
   return out;
 }
 
-/** Opinet detailById로 받은 가격을 prices_latest에 upsert(+stations 부가서비스 보강). best-effort. */
-async function cacheStationPrices(id: string, live: StationDetail): Promise<void> {
+/**
+ * Opinet detailById로 받은 부가서비스(세차/편의점/정비)를 stations에 보강(best-effort).
+ * 가격은 여기서 다루지 않는다(지도 마커 불변을 위해 prices_latest에 쓰지 않음).
+ * hasLpg/isKpetro는 fetchStationDetail이 매핑하지 않아(undefined) 건드리지 않는다 — sync 보강과 동일 컬럼셋만.
+ */
+async function cacheStationAmenities(id: string, live: StationDetail): Promise<void> {
   if (!isSupabaseConfigured()) return;
   const sb = getSupabase();
   const now = new Date().toISOString();
-  const rows = (Object.entries(live.prices) as Array<[ProductCode, { price: number; tradeDate: string } | null]>)
-    .filter(([, v]) => v != null)
-    .map(([product, v]) => ({
-      station_id: id,
-      product,
-      price: v!.price,
-      trade_dt: v!.tradeDate || now.slice(0, 10),
-      updated_at: now,
-    }));
-  if (rows.length === 0) return;
-  await sb.from('prices_latest').upsert(rows, { onConflict: 'station_id,product' });
-
-  // 부가서비스도 한 번 받은 김에 보강(아직 미보강이면 채워두면 다음 진입에 안내문구 대신 노출).
   await sb.from('stations').update({
     has_carwash: live.hasCarwash ?? null,
     has_cvs: live.hasCvs ?? null,
