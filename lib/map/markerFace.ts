@@ -134,28 +134,27 @@ export function faceMarkerSvg(
 export const PLAIN_MARKER_COLOR = '#4b5563';
 
 /**
- * 방독면(가스마스크) SVG 조각. viewBox 0 0 100 100, 원 중심 50,50 기준.
+ * 해골(skull) SVG 조각. viewBox 0 0 100 100, 원 중심 50,50 기준.
  * 진회색 배경 위 대비를 위해 흰색 고정. 작은 마커(24px)에서도 식별되도록 단순 도형만 사용.
- * 구성(이미지 참조): 둥근 마스크 외곽(두꺼운 흰 윤곽) + 큰 눈렌즈 2개 + 하단 원형 점박이 필터 + 측면 가로 탭.
+ * 구성: 흰 해골 두개골(둥근 머리 + 좁아지는 턱) + 진회색으로 뚫린 눈구멍 2개 + 역삼각 코구멍 +
+ *       하단 가로 입에 세로 칸으로 나뉜 이빨(teeth).
+ * 눈/코는 배경색(PLAIN_MARKER_COLOR)으로 "뚫어" 기존 흰색 톤과 일관되게 표현한다.
  */
-function gasMaskInner(): string {
-  const S = '#ffffff'; // 선/채움 색(배경 대비 흰색)
-  // 하단 필터(캐니스터)의 흡기 구멍 점들 — 중앙 1 + 바깥 6(원형 배치)으로 단순화.
-  const holes = [
-    [50, 76],
-    [50, 67], [58, 71], [58, 80], [50, 84], [42, 80], [42, 71],
-  ]
-    .map(([cx, cy]) => `<circle cx="${cx}" cy="${cy}" r="2.4" fill="${PLAIN_MARKER_COLOR}"/>`)
+function skullInner(): string {
+  const S = '#ffffff'; // 두개골 채움 색(배경 대비 흰색)
+  const H = PLAIN_MARKER_COLOR; // 눈/코/이빨 사이 — 배경색으로 뚫음
+  // 이빨 사이 세로 구분선(입을 칸으로 나눔). 입 박스 x:38~62, y:74~84 기준 3분할.
+  const teethGaps = [46, 54]
+    .map((x) => `<line x1="${x}" y1="74" x2="${x}" y2="84" stroke="${H}" stroke-width="3"/>`)
     .join('');
   return `
-    <path d="M50 20 C33 20 24 32 24 47 C24 58 31 65 39 68 C42 70 46 71 50 71 C54 71 58 70 61 68 C69 65 76 58 76 47 C76 32 67 20 50 20Z"
-      fill="none" stroke="${S}" stroke-width="9" stroke-linejoin="round"/>
-    <rect x="14" y="42" width="11" height="9" rx="2" fill="${S}"/>
-    <rect x="75" y="42" width="11" height="9" rx="2" fill="${S}"/>
-    <circle cx="38" cy="44" r="8.5" fill="${S}"/>
-    <circle cx="62" cy="44" r="8.5" fill="${S}"/>
-    <circle cx="50" cy="76" r="15" fill="${S}"/>
-    ${holes}`;
+    <path d="M50 18 C32 18 22 31 22 48 C22 60 29 67 35 70 L35 76 C35 80 38 83 42 83 L58 83 C62 83 65 80 65 76 L65 70 C71 67 78 60 78 48 C78 31 68 18 50 18Z"
+      fill="${S}"/>
+    <ellipse cx="37" cy="45" rx="9" ry="10" fill="${H}"/>
+    <ellipse cx="63" cy="45" rx="9" ry="10" fill="${H}"/>
+    <path d="M50 56 L45 65 L55 65 Z" fill="${H}"/>
+    <rect x="38" y="74" width="24" height="10" rx="2" fill="${S}"/>
+    ${teethGaps}`;
 }
 
 /**
@@ -170,12 +169,12 @@ function plainCircleMarkerSvg(color: string, size: number, inner: string): strin
 }
 
 /**
- * 순위권에 들지 못한 주유소용 마커: 진회색 원 + 방독면(가스마스크) 아이콘.
+ * 순위권에 들지 못한 주유소용 마커: 진회색 원 + 해골(skull) 아이콘.
  * faceMarkerSvg(순위권 표정 마커)와 같은 동심원/그림자 톤을 유지하되 tier 색·브랜드 테두리는 없다.
  * - size: 한 변(px). 배경용으로 다수 깔리므로 순위권 마커보다 조금 작게 호출한다.
  */
-export function gasMaskMarkerSvg(size: number): string {
-  return plainCircleMarkerSvg(PLAIN_MARKER_COLOR, size, gasMaskInner());
+export function skullMarkerSvg(size: number): string {
+  return plainCircleMarkerSvg(PLAIN_MARKER_COLOR, size, skullInner());
 }
 
 /**

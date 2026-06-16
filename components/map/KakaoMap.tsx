@@ -5,7 +5,7 @@ import { loadKakao } from './loadKakao';
 import type { StationWithPrice, NationalTop10Item, ProductCode, StationPoint, RoutePlan } from '@/types/station';
 import { BRAND_COLOR } from '@/types/station';
 import { priceTier, priceTierThresholds } from '@/lib/map/geo';
-import { TIER_FACE, faceMarkerSvg, numberMarkerSvg, gasMaskMarkerSvg } from '@/lib/map/markerFace';
+import { TIER_FACE, faceMarkerSvg, numberMarkerSvg, skullMarkerSvg } from '@/lib/map/markerFace';
 import type { EvStationMarker } from '@/types/ev';
 import { buildEvMarkerContent } from '@/lib/map/evMarker';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
@@ -798,8 +798,8 @@ export function KakaoMap({
       const content = document.createElement('div');
       content.className = 'cursor-pointer select-none';
       content.style.transform = 'translate(-50%, -50%)';
-      // 진회색 원 + 방독면(가스마스크) 아이콘(가격/브랜드색/라벨 없음). 순위권 표정 마커보다 조금 작게 깔린다.
-      content.innerHTML = gasMaskMarkerSvg(24);
+      // 진회색 원 + 해골(skull) 아이콘(가격/브랜드색/라벨 없음). 순위권 표정 마커보다 조금 작게 깔린다.
+      content.innerHTML = skullMarkerSvg(24);
       content.addEventListener('click', () => onMarkerClick?.(pointToStation(p)));
 
       const overlay = new window.kakao.maps.CustomOverlay({
