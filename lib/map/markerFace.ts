@@ -134,17 +134,28 @@ export function faceMarkerSvg(
 export const PLAIN_MARKER_COLOR = '#4b5563';
 
 /**
- * 해골 표정 SVG 조각(눈구멍·코·이빨). viewBox 0 0 100 100, 원 중심 50,50 기준.
- * 진회색 배경 위 대비를 위해 흰색 고정. 작은 마커에서도 "해골"로 인식되도록 단순 path만 사용.
+ * 방독면(가스마스크) SVG 조각. viewBox 0 0 100 100, 원 중심 50,50 기준.
+ * 진회색 배경 위 대비를 위해 흰색 고정. 작은 마커(24px)에서도 식별되도록 단순 도형만 사용.
+ * 구성(이미지 참조): 둥근 마스크 외곽(두꺼운 흰 윤곽) + 큰 눈렌즈 2개 + 하단 원형 점박이 필터 + 측면 가로 탭.
  */
-function skullFaceInner(): string {
-  const S = '#ffffff'; // 표정 선/채움 색(배경 대비 흰색)
+function gasMaskInner(): string {
+  const S = '#ffffff'; // 선/채움 색(배경 대비 흰색)
+  // 하단 필터(캐니스터)의 흡기 구멍 점들 — 중앙 1 + 바깥 6(원형 배치)으로 단순화.
+  const holes = [
+    [50, 76],
+    [50, 67], [58, 71], [58, 80], [50, 84], [42, 80], [42, 71],
+  ]
+    .map(([cx, cy]) => `<circle cx="${cx}" cy="${cy}" r="2.4" fill="${PLAIN_MARKER_COLOR}"/>`)
+    .join('');
   return `
-    <circle cx="36" cy="44" r="11" fill="${S}"/>
-    <circle cx="64" cy="44" r="11" fill="${S}"/>
-    <path d="M50 56 l-7 11 14 0 Z" fill="${S}"/>
-    <path d="M38 76 h24" stroke="${S}" stroke-width="9" stroke-linecap="butt"/>
-    <path d="M44 71 v10 M50 71 v10 M56 71 v10" stroke="${S}" stroke-width="3"/>`;
+    <path d="M50 20 C33 20 24 32 24 47 C24 58 31 65 39 68 C42 70 46 71 50 71 C54 71 58 70 61 68 C69 65 76 58 76 47 C76 32 67 20 50 20Z"
+      fill="none" stroke="${S}" stroke-width="9" stroke-linejoin="round"/>
+    <rect x="14" y="42" width="11" height="9" rx="2" fill="${S}"/>
+    <rect x="75" y="42" width="11" height="9" rx="2" fill="${S}"/>
+    <circle cx="38" cy="44" r="8.5" fill="${S}"/>
+    <circle cx="62" cy="44" r="8.5" fill="${S}"/>
+    <circle cx="50" cy="76" r="15" fill="${S}"/>
+    ${holes}`;
 }
 
 /**
@@ -159,12 +170,12 @@ function plainCircleMarkerSvg(color: string, size: number, inner: string): strin
 }
 
 /**
- * 순위권에 들지 못한 주유소용 마커: 진회색 원 + 해골 표정.
+ * 순위권에 들지 못한 주유소용 마커: 진회색 원 + 방독면(가스마스크) 아이콘.
  * faceMarkerSvg(순위권 표정 마커)와 같은 동심원/그림자 톤을 유지하되 tier 색·브랜드 테두리는 없다.
- * - size: 한 변(px). 배경용으로 다수 깔리므로 순위권 마커보다 작게 호출한다.
+ * - size: 한 변(px). 배경용으로 다수 깔리므로 순위권 마커보다 조금 작게 호출한다.
  */
-export function skullMarkerSvg(size: number): string {
-  return plainCircleMarkerSvg(PLAIN_MARKER_COLOR, size, skullFaceInner());
+export function gasMaskMarkerSvg(size: number): string {
+  return plainCircleMarkerSvg(PLAIN_MARKER_COLOR, size, gasMaskInner());
 }
 
 /**
