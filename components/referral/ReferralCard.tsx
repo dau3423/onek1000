@@ -3,7 +3,7 @@
 // 마이페이지 "친구 추천" 카드.
 // - 내 추천 링크(코드 포함) 표시 + [링크 복사]/[공유] 버튼.
 //   navigator.share 가능하면 공유 시트, 아니면 클립보드 복사로 폴백(lib/inapp copyCurrentUrl 재사용).
-// - 추천 성공 N명 + "추천하면 둘 다 1주일 무료" 안내.
+// - 추천 성공 N명 + "추천하면 둘 다 프리미엄 혜택 7일" 안내.
 //
 // 코드/성공수는 /api/referral/me에서 가져온다(없으면 lazy 발급됨). SSR 안전: fetch는 effect에서.
 
@@ -58,7 +58,7 @@ export function ReferralCard() {
       try {
         await navigator.share({
           title: '1000냥 주유소',
-          text: '내 주변 최저가 주유소 찾기! 가입하면 둘 다 1주일 무료 🎁',
+          text: '내 주변 최저가 주유소 찾기! 가입하면 둘 다 프리미엄 혜택 7일 🎁',
           url: link,
         });
         return;
@@ -74,10 +74,10 @@ export function ReferralCard() {
   return (
     <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
       <div className="text-sm font-bold text-gray-900">
-        친구 추천하면 둘 다 1주일 무료 🎁
+        친구 추천하면 둘 다 프리미엄 혜택 7일 🎁
       </div>
       <p className="mt-1 text-xs text-gray-600">
-        내 링크로 친구가 가입하면 친구와 나 모두 프리미엄 7일이 연장돼요.
+        내 링크로 친구가 가입하면 친구와 나 모두 프리미엄 혜택 7일이 연장돼요.
       </p>
 
       {loading ? (

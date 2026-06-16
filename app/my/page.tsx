@@ -10,7 +10,8 @@ import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { InstallButton } from '@/components/pwa/InstallButton';
 import { ReferralCard } from '@/components/referral/ReferralCard';
 import ForecastMiniCard from '@/components/forecast/ForecastMiniCard';
-import { BETA_FREE } from '@/lib/flags';
+// [구독 섹션 비노출] SubscriptionSection/SubscriptionSkeleton, BETA_FREE 는 구독 카드 전용이라
+// 현재 미사용. 재노출 대비로 ./sections, @/lib/flags 에는 그대로 보존되어 있다.
 import {
   BadgeSkeleton,
   FavoriteCount,
@@ -20,8 +21,6 @@ import {
   PushSection,
   PushSkeleton,
   RegionCount,
-  SubscriptionSection,
-  SubscriptionSkeleton,
   VehicleCount,
 } from './sections';
 
@@ -58,6 +57,9 @@ export default async function MyPage() {
         />
       </section>
 
+      {/* [구독 섹션 비노출] 유료/구독/결제 안내 UI를 사용자에게 전면 숨김.
+          되돌릴 때를 대비해 SubscriptionSection/SubscriptionSkeleton(./sections)와
+          BETA_FREE(@/lib/flags) 등 관련 코드/import는 보존하고, 렌더만 생략한다.
       <section className="border-t border-gray-100 px-5 py-5">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">구독</h2>
         {canQuery && userId ? (
@@ -84,6 +86,7 @@ export default async function MyPage() {
           </div>
         )}
       </section>
+      */}
 
       <section className="border-t border-gray-100 px-5 py-5">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">친구 추천</h2>
@@ -164,7 +167,7 @@ export default async function MyPage() {
             <PushSection userId={userId} />
           </Suspense>
         ) : (
-          <p className="text-xs text-gray-400">푸시 알림은 1000냥 플랜 전용 기능입니다.</p>
+          <p className="text-xs text-gray-400">로그인하면 푸시 알림을 설정할 수 있어요.</p>
         )}
         {/* 주유 타이밍(가격 인상) 예측 알림 옵트인 — 푸시 켠 사용자에게 forecast-notify 배치가 발송. */}
         {canQuery && userId ? (
