@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { loadKakao } from '@/components/map/loadKakao';
+import { ROUTE_ENTRY_FLAG } from '@/components/route/RouteLoginPrompt';
 import { useMapStore } from '@/stores/map';
 import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL, type BrandCode, type ProductCode, type StationWithPrice } from '@/types/station';
 import {
@@ -60,7 +61,7 @@ export default function RouteCheapestPage() {
 
 function RouteCheapestInner() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status: authStatus } = useSession();
   const setRoutePlan = useMapStore((s) => s.setRoutePlan);
   const [from, setFrom] = useState<Point | null>(null);
   const [to, setTo] = useState<Point | null>(null);
@@ -148,6 +149,15 @@ function RouteCheapestInner() {
         stations,
         path,
       });
+      // 비회원이 "경로 위 최저가 찾기"로 지도에 진입하면, 지도 화면에서 5초 뒤 로그인 유도
+      // 팝업(RouteLoginPrompt)을 띄우기 위한 플래그를 세운다. 로그인 사용자는 세우지 않는다.
+      if (authStatus === 'unauthenticated') {
+        try {
+          window.sessionStorage.setItem(ROUTE_ENTRY_FLAG, '1');
+        } catch {
+          /* 프라이빗 모드 등 sessionStorage 불가: 팝업 생략(앱 동작 영향 없음) */
+        }
+      }
       router.push('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

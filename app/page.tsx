@@ -23,6 +23,7 @@ import { MarkerLegend } from '@/components/ui/MarkerLegend';
 import { InstallBanner } from '@/components/pwa/InstallBanner';
 // 웰컴 프로모(1주일 무료 프리미엄 팝업) 노출 중단 — 되살리려면 이 import와 아래 <WelcomePromo /> 주석을 해제.
 // import { WelcomePromo } from '@/components/promo/WelcomePromo';
+import { RouteLoginPrompt } from '@/components/route/RouteLoginPrompt';
 import { BusinessFooter } from '@/components/legal/BusinessFooter';
 import { useMapStore, getInitialMapView, getInitialRoutePlan, type MapView } from '@/stores/map';
 import { useGeolocation } from '@/hooks/useGeolocation';
@@ -832,6 +833,8 @@ export default function HomePage() {
           내부 absolute 요소(GPS/배너/시트/알람/전체화면)는 모두 이 묶음 내부 기준이라 동작 불변. */}
       <div className="relative flex h-dvh flex-col">
         <ProductSync />
+        {/* 비회원이 "경로 위 최저가 찾기"로 진입한 경우 5초 뒤 로그인 유도 팝업(자체 가드). */}
+        <RouteLoginPrompt />
         <Header />
         <FilterBar />
 
