@@ -104,7 +104,7 @@ function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }
       {/* [베타 전면무료] 베타엔 광고 제거 포함 전 기능 무료 가치를 전면에 내세운다. 플래그 off 시 기존 카피로 원복. */}
       <p className="mt-2 text-center text-[12px] text-gray-400">
         {BETA_FREE
-          ? '광고 없이 · 가격 하락 알림 · 즐겨찾기까지 지금 전부 무료'
+          ? '광고 없이 · 가격 하락 알림 · 즐겨찾기까지 전부 무료'
           : '가격 하락 알림 · 즐겨찾기 · 내 주유기록까지 무료'}
       </p>
 
