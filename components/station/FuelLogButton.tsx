@@ -1,8 +1,9 @@
 'use client';
 
 // 주유소 상세 "여기서 주유" 버튼.
-// 누르면 인라인 입력 영역(리터/금액 단축칩 + 직접입력)을 펼친다.
-// 단축칩을 누르면 그 값과 함께 즉시 저장, 직접입력 후 "저장"도 가능. 값 없이 "그냥 저장"도 유지.
+// 누르면 인라인 입력 영역(리터/금액 단축칩 + 직접입력 + 현재 키로수)을 펼친다.
+// 단축칩은 해당 입력칸(리터/금액)에 값을 채우기만 한다(즉시 저장 안 함, 선택 강조만).
+// 리터/금액/키로수를 채운 뒤 단일 "저장" 버튼으로만 저장한다(전부 빈값이면 방문 기록만 저장).
 // 비로그인 시 signIn 유도. 단가/유종/시각은 서버가 보강한다(클라는 stationId + 선택값만 전송).
 import { useEffect, useRef, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
@@ -18,8 +19,8 @@ interface Props {
 
 type State = 'idle' | 'busy' | 'done';
 
-// 합리적 프리셋 — 리터/금액 단축칩.
-const LITER_PRESETS = [30, 50] as const; // L (가득은 직접입력)
+// 합리적 프리셋 — 리터/금액 단축칩. 누르면 해당 입력칸을 채운다(저장은 단일 버튼에서).
+const LITER_PRESETS = [30, 50] as const; // L
 const AMOUNT_PRESETS = [30000, 50000, 70000] as const; // 원
 
 export function FuelLogButton({ stationId, className, unitPrice }: Props) {
@@ -32,9 +33,6 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
   const [amount, setAmount] = useState('');
   // 현재 키로수(주행거리계). 마지막 값 프리필 후 뒷자리만 고쳐 저장하는 흐름.
   const [odometer, setOdometer] = useState('');
-  // 최근 기록 기반 기본값(가장 최근 gas 1건). 단축칩에 있으면 칩 선택 강조, 없으면 직접입력에 프리필.
-  const [recentLiters, setRecentLiters] = useState<number | null>(null);
-  const [recentAmount, setRecentAmount] = useState<number | null>(null);
   // 직전(마지막 저장) 주행거리계 — 프리필·안내·저장 직후 구간 연비 계산의 기준점.
   const [recentOdometer, setRecentOdometer] = useState<number | null>(null);
   // 저장 직후 보여줄 이번 구간 연비(km/L). 무효(거리 0 등)면 null.
@@ -53,17 +51,12 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
         const d = (await res.json()) as { logs?: FuelLog[] };
         const last = d.logs?.[0];
         if (!alive || !last) return;
-        setRecentLiters(last.liters);
-        setRecentAmount(last.amountWon);
         setRecentOdometer(last.odometer);
-        // 단축칩에 없는 값이면 직접입력 필드에 프리필(칩에 있으면 칩 강조로 표현).
+        // 최근 1건의 값을 입력 필드에 프리필(칩과 일치하면 칩이 자동 강조됨).
         if (!prefilled.current) {
           prefilled.current = true;
-          if (last.amountWon != null && !(AMOUNT_PRESETS as readonly number[]).includes(last.amountWon)) {
-            setAmount(String(last.amountWon));
-          } else if (last.liters != null && !(LITER_PRESETS as readonly number[]).includes(last.liters)) {
-            setLiters(String(last.liters));
-          }
+          if (last.amountWon != null) setAmount(String(last.amountWon));
+          else if (last.liters != null) setLiters(String(last.liters));
           // 마지막 키로수를 그대로 채워 둔다(뒷자리만 수정해 저장 → 입력 최소화).
           if (last.odometer != null) setOdometer(String(last.odometer));
         }
@@ -77,7 +70,7 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
   }, [status]);
 
   // 저장: payload에 liters/amountWon 포함(빈값은 미포함 → 서버는 null 처리).
-  // 현재 키로수 입력값은 모든 저장 경로(단축칩·입력값 저장·그냥 저장)에서 공통으로 합쳐 보낸다.
+  // 현재 키로수 입력값은 함께 합쳐 보낸다(빈값이면 미전송).
   const save = async (payload: { liters?: number; amountWon?: number }) => {
     if (status !== 'authenticated') {
       signIn(undefined, { callbackUrl: `/station/${encodeURIComponent(stationId)}` });
@@ -107,9 +100,7 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
       //   buildEconomy와 동일한 segmentKmPerL 규칙(거리>0·L>0·1~100 km/L) 적용.
       const kmPerL = segmentKmPerL(recentOdometer, odo ?? null, payload.liters ?? null);
       setLastKmPerL(kmPerL);
-      // 방금 저장한 값으로 최근값 갱신(다음에 열 때도 같은 칩이 강조/키로수 프리필되도록). 값 없는 저장은 유지.
-      if (payload.liters != null) setRecentLiters(payload.liters);
-      if (payload.amountWon != null) setRecentAmount(payload.amountWon);
+      // 방금 저장한 키로수를 기준점으로 갱신(다음 주유 때 구간 연비 계산·프리필). 값 없는 저장은 유지.
       if (odo != null) setRecentOdometer(odo);
       setState('done');
       setOpen(false);
@@ -124,7 +115,7 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
     }
   };
 
-  // 직접입력 저장(둘 중 입력된 값만 전송, 둘 다 입력 시 둘 다 전송).
+  // 단일 저장 핸들러: 입력된 값만 전송(둘 다 비어도 방문 기록으로 저장). 키로수는 save에서 합침.
   const saveManual = () => {
     const l = liters.trim() === '' ? undefined : Number(liters);
     const a = amount.trim() === '' ? undefined : Number(amount);
@@ -150,10 +141,12 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
 
   const chip =
     'rounded-full border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:border-primary hover:text-primary disabled:opacity-60';
-  // 최근 기록과 일치하는 칩 강조(이전에 고른 값을 미리 선택해 보이게).
+  // 칩 강조: 현재 입력 필드 값과 칩 값이 일치하면 선택 표시(칩은 입력칸을 채우는 동작).
   const chipActive = 'border-primary bg-primary/10 text-primary';
-  const literChipCls = (l: number) => (recentLiters === l ? `${chip} ${chipActive}` : chip);
-  const amountChipCls = (a: number) => (recentAmount === a ? `${chip} ${chipActive}` : chip);
+  const literActive = (l: number) => liters.trim() !== '' && Number(liters) === l;
+  const amountActive = (a: number) => amount.trim() !== '' && Number(amount) === a;
+  const literChipCls = (l: number) => (literActive(l) ? `${chip} ${chipActive}` : chip);
+  const amountChipCls = (a: number) => (amountActive(a) ? `${chip} ${chipActive}` : chip);
 
   // 단축입력 보조 표시: 현재가(휘발유)를 알면 입력값으로 반대편을 추정해 안내(저장값은 입력 그대로).
   const canEstimate = hasUsableUnitPrice(unitPrice);
@@ -196,14 +189,20 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
               <button
                 key={l}
                 className={literChipCls(l)}
-                aria-pressed={recentLiters === l}
+                aria-pressed={literActive(l)}
                 disabled={state === 'busy'}
-                onClick={() => void save({ liters: l })}
+                onClick={() => setLiters(String(l))}
               >
                 {l}L
               </button>
             ))}
-            <button className={chip} disabled={state === 'busy'} onClick={() => void save({})} title="가득 주유(주유량은 나중에 입력)">
+            <button
+              className={liters.trim() === '' ? `${chip} ${chipActive}` : chip}
+              aria-pressed={liters.trim() === ''}
+              disabled={state === 'busy'}
+              onClick={() => setLiters('')}
+              title="가득(주유량 미지정 — 나중에 입력)"
+            >
               가득
             </button>
           </div>
@@ -214,9 +213,9 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
               <button
                 key={a}
                 className={amountChipCls(a)}
-                aria-pressed={recentAmount === a}
+                aria-pressed={amountActive(a)}
                 disabled={state === 'busy'}
-                onClick={() => void save({ amountWon: a })}
+                onClick={() => setAmount(String(a))}
               >
                 ₩{a.toLocaleString()}
               </button>
@@ -269,21 +268,14 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
             )}
           </div>
 
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3">
             <button
               onClick={saveManual}
               disabled={state === 'busy'}
-              className="flex-1 rounded-lg bg-primary py-2 text-sm font-bold text-white disabled:opacity-60"
+              className="w-full rounded-lg bg-primary py-2.5 text-sm font-bold text-white disabled:opacity-60"
+              title="입력값(빈값은 방문 기록)으로 저장"
             >
-              입력값으로 저장
-            </button>
-            <button
-              onClick={() => void save({})}
-              disabled={state === 'busy'}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-600 disabled:opacity-60"
-              title="금액·주유량 없이 방문 기록만 저장"
-            >
-              그냥 저장
+              저장
             </button>
           </div>
           {canEstimate && estAmount != null && (
