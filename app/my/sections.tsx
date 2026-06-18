@@ -110,24 +110,9 @@ export async function SubscriptionSection({ userId }: { userId: string }) {
     );
   }
 
-  // [베타 전면무료] 결제 유도 진입점(/pricing CTA)을 숨기고 무료 개방 안내로 대체.
-  // 플래그 off 시 기존 "₩1,000으로 광고 끄기" CTA로 완전 원복.
-  if (BETA_FREE) {
-    return (
-      <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-        <div className="flex items-center justify-between">
-          <span className="rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-white">
-            베타 무료
-          </span>
-          <span className="text-xs text-gray-500">Free</span>
-        </div>
-        <div className="mt-3 text-sm text-gray-700">
-          지금은 베타 기간이라 <strong>모든 기능을 무료로</strong> 쓸 수 있어요.
-        </div>
-      </div>
-    );
-  }
-
+  // [구독 섹션 재노출] 비구독자에게는 BETA_FREE 여부와 무관하게 결제 CTA(/pricing)를 노출한다(앱·결제 심사용).
+  // 주의: BETA_FREE 플래그 자체는 유지 — 광고 OFF/헤더 배지/프리미엄 게이팅/PushSection.allowPush 등 다른 동작은 그대로다.
+  // (예전 "베타 무료" 안내 카드 분기는 결제 진입점 노출을 위해 제거. 되돌릴 땐 BETA_FREE 분기를 다시 추가.)
   return (
     <div className="rounded-xl bg-gray-50 p-4">
       <div className="text-sm text-gray-700">현재 무료 플랜이에요.</div>

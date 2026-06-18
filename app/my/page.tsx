@@ -10,8 +10,9 @@ import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { InstallButton } from '@/components/pwa/InstallButton';
 import { ReferralCard } from '@/components/referral/ReferralCard';
 import ForecastMiniCard from '@/components/forecast/ForecastMiniCard';
-// [구독 섹션 비노출] SubscriptionSection/SubscriptionSkeleton, BETA_FREE 는 구독 카드 전용이라
-// 현재 미사용. 재노출 대비로 ./sections, @/lib/flags 에는 그대로 보존되어 있다.
+// [구독 섹션 재노출] 결제/구독 진입점(/pricing CTA)을 다시 노출한다(앱·결제 심사용).
+// BETA_FREE 자체는 끄지 않는다(광고 OFF·헤더 배지 숨김·프리미엄 게이팅 등 다른 동작 유지).
+// → 마이페이지의 결제 CTA만 노출되도록 sections.tsx의 비구독 fallback을 CTA로 분기한다.
 import {
   BadgeSkeleton,
   FavoriteCount,
@@ -21,6 +22,8 @@ import {
   PushSection,
   PushSkeleton,
   RegionCount,
+  SubscriptionSection,
+  SubscriptionSkeleton,
   VehicleCount,
 } from './sections';
 
@@ -57,23 +60,16 @@ export default async function MyPage() {
         />
       </section>
 
-      {/* [구독 섹션 비노출] 유료/구독/결제 안내 UI를 사용자에게 전면 숨김.
-          되돌릴 때를 대비해 SubscriptionSection/SubscriptionSkeleton(./sections)와
-          BETA_FREE(@/lib/flags) 등 관련 코드/import는 보존하고, 렌더만 생략한다.
+      {/* [구독 섹션 재노출] 결제 진입점(/pricing CTA)을 노출한다(앱·결제 심사용).
+          - 로그인+DB 가능: SubscriptionSection이 구독자=상태카드, 비구독=결제 CTA를 렌더.
+          - DB 미설정/폴백 경로: BETA_FREE 여부와 무관하게 항상 결제 CTA를 노출(심사 요건).
+          비노출이 다시 필요하면 이 <section> 전체를 JSX 주석으로 감싸면 된다(코드 보존). */}
       <section className="border-t border-gray-100 px-5 py-5">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">구독</h2>
         {canQuery && userId ? (
           <Suspense fallback={<SubscriptionSkeleton />}>
             <SubscriptionSection userId={userId} />
           </Suspense>
-        ) : BETA_FREE ? (
-          // [베타 전면무료] DB 미설정/폴백 경로에서도 결제 유도(/pricing) 대신 무료 개방 안내.
-          // 플래그 off 시 아래 기존 "₩1,000으로 광고 끄기" CTA로 완전 원복.
-          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-            <div className="text-sm text-gray-700">
-              지금은 베타 기간이라 <strong>모든 기능을 무료로</strong> 쓸 수 있어요.
-            </div>
-          </div>
         ) : (
           <div className="rounded-xl bg-gray-50 p-4">
             <div className="text-sm text-gray-700">현재 무료 플랜이에요.</div>
@@ -86,7 +82,6 @@ export default async function MyPage() {
           </div>
         )}
       </section>
-      */}
 
       <section className="border-t border-gray-100 px-5 py-5">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">친구 추천</h2>
