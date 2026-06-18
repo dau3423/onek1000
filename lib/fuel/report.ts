@@ -3,6 +3,7 @@
 // 출력: 월별 주유비/요약/연비(km/L)/절약(추정).
 import type { ProductCode } from '@/types/station';
 import type { FuelLog } from '@/types/fuel-log';
+import { segmentKmPerL } from '@/lib/fuel/calc';
 import type {
   FuelEconomy,
   FuelReport,
@@ -101,13 +102,10 @@ export function buildEconomy(logs: FuelLog[]): FuelEconomy {
   for (let i = 1; i < gas.length; i++) {
     const prev = gas[i - 1];
     const cur = gas[i];
-    const dist = (cur.odometer ?? 0) - (prev.odometer ?? 0);
-    const liters = cur.liters ?? 0;
-    if (dist <= 0 || liters <= 0) continue; // 입력 누락/역주행 구간 제외
-    const kmPerL = dist / liters;
-    if (kmPerL > 100 || kmPerL < 1) continue; // 비현실적 값 방어(오타 등)
-    totalDist += dist;
-    totalLiters += liters;
+    // 유효 구간 판정은 공용 segmentKmPerL과 동일 규칙(거리>0·주유량>0·1~100 km/L).
+    if (segmentKmPerL(prev.odometer, cur.odometer, cur.liters) == null) continue;
+    totalDist += (cur.odometer ?? 0) - (prev.odometer ?? 0);
+    totalLiters += cur.liters ?? 0;
     segments += 1;
   }
 

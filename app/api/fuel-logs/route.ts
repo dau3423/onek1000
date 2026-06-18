@@ -141,6 +141,7 @@ export async function POST(req: Request) {
     amountWon?: unknown;
     liters?: unknown;
     kwh?: unknown;
+    odometer?: unknown;
   };
   const stationId = body.stationId;
   if (!stationId) return NextResponse.json({ error: 'stationId required' }, { status: 400 });
@@ -157,6 +158,10 @@ export async function POST(req: Request) {
   const kwh = parseDecimalField(body.kwh);
   if (kwh === 'invalid')
     return NextResponse.json({ error: '충전량은 0 이상 숫자여야 해요.' }, { status: 400 });
+  // 주행거리(현재 키로수). gas·ev 모두 허용(편집과 동일). 없으면 null.
+  const odometer = parseIntField(body.odometer);
+  if (odometer === 'invalid')
+    return NextResponse.json({ error: '주행거리는 0 이상 숫자여야 해요.' }, { status: 400 });
 
   const userId = await getUserId(session.user.email);
   if (!userId) return NextResponse.json({ error: 'user not found' }, { status: 404 });
@@ -173,6 +178,7 @@ export async function POST(req: Request) {
     unit_price: number | null;
     kind: 'gas' | 'ev';
     amount_won: number | null;
+    odometer: number | null;
     liters?: number | null;
     kwh?: number | null;
   };
@@ -197,6 +203,7 @@ export async function POST(req: Request) {
       unit_price: null,
       kind: 'ev',
       amount_won: amountWon,
+      odometer,
       kwh,
     };
   } else {
@@ -227,6 +234,7 @@ export async function POST(req: Request) {
       unit_price: priceRow?.price ?? null,
       kind: 'gas',
       amount_won: amountWon,
+      odometer,
       liters,
     };
   }

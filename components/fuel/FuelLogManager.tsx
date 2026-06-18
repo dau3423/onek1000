@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { PRODUCT_LABEL } from '@/types/station';
 import type { FuelLog, FuelLogStation } from '@/types/fuel-log';
-import { amountToQuantity, hasUsableUnitPrice, quantityToAmount } from '@/lib/fuel/calc';
+import { amountToQuantity, hasUsableUnitPrice, quantityToAmount, segmentKmPerL } from '@/lib/fuel/calc';
 import { MyStationsMap } from '@/components/fuel/MyStationsMap';
 
 function formatDate(iso: string): string {
@@ -25,6 +25,24 @@ interface Stats {
   totalSpent: number;
   /** 주유 기록 평균 단가(원/L). EV는 단위(원/kWh)가 달라 혼합하지 않는다. */
   avgUnitPrice: number | null;
+}
+
+/**
+ * 로드된 기록 내에서 gas 항목의 구간 연비(km/L)를 계산해 id→연비 맵으로 반환.
+ * gas만 시간순(과거→최신)으로 모아 인접 두 건으로 segmentKmPerL을 구하고 "이번(최신)" 항목에 귀속.
+ * 무효 구간/직전 기록 없는 경계 항목은 맵에서 제외(표시 안 함). 추가 fetch 없이 현재 배열만 사용.
+ */
+function computeKmPerLById(logs: FuelLog[]): Map<string, number> {
+  const gas = logs
+    .filter((l) => l.kind === 'gas')
+    .slice()
+    .sort((a, b) => new Date(a.loggedAt).getTime() - new Date(b.loggedAt).getTime());
+  const map = new Map<string, number>();
+  for (let i = 1; i < gas.length; i++) {
+    const kmPerL = segmentKmPerL(gas[i - 1].odometer, gas[i].odometer, gas[i].liters);
+    if (kmPerL != null) map.set(gas[i].id, kmPerL);
+  }
+  return map;
 }
 
 function computeStats(logs: FuelLog[]): Stats {
@@ -208,6 +226,7 @@ function ListTab({
 }) {
   const router = useRouter();
   const stats = computeStats(logs);
+  const kmPerLById = computeKmPerLById(logs); // gas 항목 구간 연비(현재 로드분 기준)
 
   // 기록 항목 탭 → 해당 주유소/충전소 상세로 이동(EV는 /ev/{statId}, 주유는 /station/{id}).
   // 편집/삭제 영역과 충돌하지 않게 정보 영역에만 핸들러를 둔다(영역 분리).
@@ -290,6 +309,9 @@ function ListTab({
                         )}
                         {l.unitPrice != null && <> · ₩{l.unitPrice.toLocaleString()}/L</>}
                         {l.odometer != null && <> · {l.odometer.toLocaleString()}km</>}
+                        {kmPerLById.has(l.id) && (
+                          <> · <span className="font-semibold text-primary">{kmPerLById.get(l.id)} km/L</span></>
+                        )}
                       </>
                     )}
                   </span>

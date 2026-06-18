@@ -20,3 +20,25 @@ export function amountToQuantity(amount: number, unitPrice: number | null | unde
   if (!Number.isFinite(amount) || amount < 0) return null;
   return Math.round((amount / unitPrice) * 100) / 100;
 }
+
+/**
+ * 구간 연비(km/L) — 직전 주행거리계 → 이번 주행거리계 사이를 이번 주유분으로 나눈 "탱크-투-탱크" 근사.
+ * 구간 연비 = (이번 odometer − 직전 odometer) / 이번 주유량(L), 한 자리 소수 반올림.
+ * 비정상 구간(거리<=0, 주유량<=0, 1~100 km/L 범위 밖)은 null(표시·집계에서 제외).
+ * buildEconomy(report.ts)·저장 직후 연비·목록 구간 연비가 모두 이 규칙을 공유한다.
+ */
+export function segmentKmPerL(
+  prevOdometer: number | null | undefined,
+  curOdometer: number | null | undefined,
+  liters: number | null | undefined,
+): number | null {
+  if (prevOdometer == null || curOdometer == null || liters == null) return null;
+  if (!Number.isFinite(prevOdometer) || !Number.isFinite(curOdometer) || !Number.isFinite(liters)) {
+    return null;
+  }
+  const dist = curOdometer - prevOdometer;
+  if (dist <= 0 || liters <= 0) return null; // 입력 누락/역주행/거리 0 구간 제외
+  const kmPerL = dist / liters;
+  if (kmPerL > 100 || kmPerL < 1) return null; // 비현실적 값 방어(오타 등)
+  return Math.round(kmPerL * 10) / 10;
+}

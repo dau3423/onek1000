@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import type { FuelLog } from '@/types/fuel-log';
-import { amountToQuantity, hasUsableUnitPrice, quantityToAmount } from '@/lib/fuel/calc';
+import { amountToQuantity, hasUsableUnitPrice, quantityToAmount, segmentKmPerL } from '@/lib/fuel/calc';
 
 interface Props {
   stationId: string;
@@ -30,9 +30,15 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
   // 직접입력 필드(둘 중 입력한 값만 저장에 사용)
   const [liters, setLiters] = useState('');
   const [amount, setAmount] = useState('');
+  // 현재 키로수(주행거리계). 마지막 값 프리필 후 뒷자리만 고쳐 저장하는 흐름.
+  const [odometer, setOdometer] = useState('');
   // 최근 기록 기반 기본값(가장 최근 gas 1건). 단축칩에 있으면 칩 선택 강조, 없으면 직접입력에 프리필.
   const [recentLiters, setRecentLiters] = useState<number | null>(null);
   const [recentAmount, setRecentAmount] = useState<number | null>(null);
+  // 직전(마지막 저장) 주행거리계 — 프리필·안내·저장 직후 구간 연비 계산의 기준점.
+  const [recentOdometer, setRecentOdometer] = useState<number | null>(null);
+  // 저장 직후 보여줄 이번 구간 연비(km/L). 무효(거리 0 등)면 null.
+  const [lastKmPerL, setLastKmPerL] = useState<number | null>(null);
   const prefilled = useRef(false); // 사용자가 만지기 전 1회만 프리필
 
   // 마운트 시 1회: 가장 최근 gas 기록을 가벼운 limit=1로 조회해 기본값 준비.
@@ -49,6 +55,7 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
         if (!alive || !last) return;
         setRecentLiters(last.liters);
         setRecentAmount(last.amountWon);
+        setRecentOdometer(last.odometer);
         // 단축칩에 없는 값이면 직접입력 필드에 프리필(칩에 있으면 칩 강조로 표현).
         if (!prefilled.current) {
           prefilled.current = true;
@@ -57,6 +64,8 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
           } else if (last.liters != null && !(LITER_PRESETS as readonly number[]).includes(last.liters)) {
             setLiters(String(last.liters));
           }
+          // 마지막 키로수를 그대로 채워 둔다(뒷자리만 수정해 저장 → 입력 최소화).
+          if (last.odometer != null) setOdometer(String(last.odometer));
         }
       } catch {
         /* 프리필은 베스트에포트 — 실패해도 무시 */
@@ -68,10 +77,21 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
   }, [status]);
 
   // 저장: payload에 liters/amountWon 포함(빈값은 미포함 → 서버는 null 처리).
+  // 현재 키로수 입력값은 모든 저장 경로(단축칩·입력값 저장·그냥 저장)에서 공통으로 합쳐 보낸다.
   const save = async (payload: { liters?: number; amountWon?: number }) => {
     if (status !== 'authenticated') {
       signIn(undefined, { callbackUrl: `/station/${encodeURIComponent(stationId)}` });
       return;
+    }
+    // 현재 키로수: 빈값이면 미전송, 음수/NaN이면 에러 안내(프리필값 그대로 저장은 허용).
+    let odo: number | undefined;
+    if (odometer.trim() !== '') {
+      const o = Number(odometer);
+      if (!Number.isFinite(o) || o < 0) {
+        setErr('현재 키로수는 0 이상 숫자로 입력해 주세요.');
+        return;
+      }
+      odo = Math.round(o);
     }
     setState('busy');
     setErr(null);
@@ -79,17 +99,24 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
       const res = await fetch('/api/fuel-logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stationId, ...payload }),
+        body: JSON.stringify({ stationId, ...payload, ...(odo != null ? { odometer: odo } : {}) }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? '저장에 실패했어요.');
-      // 방금 저장한 값으로 최근값 갱신(다음에 열 때도 같은 칩이 강조되도록). 값 없는 저장은 유지.
+      // 이번 구간 연비: 직전 키로수(프리필 소스) → 이번 키로수 / 이번 주유량. 무효면 null.
+      //   buildEconomy와 동일한 segmentKmPerL 규칙(거리>0·L>0·1~100 km/L) 적용.
+      const kmPerL = segmentKmPerL(recentOdometer, odo ?? null, payload.liters ?? null);
+      setLastKmPerL(kmPerL);
+      // 방금 저장한 값으로 최근값 갱신(다음에 열 때도 같은 칩이 강조/키로수 프리필되도록). 값 없는 저장은 유지.
       if (payload.liters != null) setRecentLiters(payload.liters);
       if (payload.amountWon != null) setRecentAmount(payload.amountWon);
+      if (odo != null) setRecentOdometer(odo);
       setState('done');
       setOpen(false);
       setLiters('');
       setAmount('');
+      // 키로수는 비우지 않고 방금 저장한 값을 유지(다음 주유 때 뒷자리만 수정).
+      if (odo != null) setOdometer(String(odo));
       window.setTimeout(() => setState('idle'), 2500);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -152,7 +179,13 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
           'block w-full rounded-xl bg-primary py-3.5 text-center font-bold text-white disabled:opacity-60'
         }
       >
-        {state === 'busy' ? '저장 중…' : state === 'done' ? '✓ 주유 기록 저장됨' : '⛽ 여기서 주유'}
+        {state === 'busy'
+          ? '저장 중…'
+          : state === 'done'
+            ? lastKmPerL != null
+              ? `✓ 주유 기록 저장됨 · 이번 연비 ${lastKmPerL} km/L`
+              : '✓ 주유 기록 저장됨'
+            : '⛽ 여기서 주유'}
       </button>
 
       {open && state !== 'done' && (
@@ -216,6 +249,24 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
                 className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none"
               />
             </label>
+          </div>
+
+          <p className="mt-3 text-xs font-semibold text-gray-700">현재 키로수(km)</p>
+          <div className="mt-1.5">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              value={odometer}
+              onChange={(e) => setOdometer(e.target.value)}
+              placeholder="예: 50120"
+              className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none"
+            />
+            {recentOdometer != null && (
+              <p className="mt-1 text-[11px] text-gray-500">
+                지난번 {recentOdometer.toLocaleString()}km · 입력하면 연비가 계산돼요.
+              </p>
+            )}
           </div>
 
           <div className="mt-3 flex gap-2">
