@@ -290,6 +290,12 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
                 <FaceChip tier="expensive" />
                 <span>{TIER_FACE.expensive.mood} ({TIER_FACE.expensive.hint})</span>
               </div>
+              {GRAY_DOTS_ENABLED && (
+                <div className="flex items-center gap-1.5">
+                  <SkullChip />
+                  <span>최악 (가격순위밖) - 확대시 표시</span>
+                </div>
+              )}
             </div>
             <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">안쪽 색 = 가격 수준(화면 내 비교, 줌·이동 시 바뀜)</p>
           </section>
@@ -334,12 +340,6 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
                   <span className="text-gray-500 dark:text-gray-400">)</span>
                 </span>
               </div>
-              {GRAY_DOTS_ENABLED && (
-                <div className="flex items-center gap-1.5">
-                  <SkullChip />
-                  <span>해골 = 그 외 주유소(가격 순위 밖, 확대 시 표시)</span>
-                </div>
-              )}
               <div className="flex items-center gap-1.5">
                 <Dot color={MY_COLOR} ring="#ffffff" />
                 <span>파란 점 = 내 현재 위치</span>
