@@ -140,7 +140,7 @@ export const PLAIN_MARKER_COLOR = '#4b5563';
  *       하단 가로 입에 세로 칸으로 나뉜 이빨(teeth).
  * 눈/코는 배경색(PLAIN_MARKER_COLOR)으로 "뚫어" 기존 흰색 톤과 일관되게 표현한다.
  */
-function skullInner(): string {
+export function skullInner(): string {
   const S = '#ffffff'; // 두개골 채움 색(배경 대비 흰색)
   const H = PLAIN_MARKER_COLOR; // 눈/코/이빨 사이 — 배경색으로 뚫음
   // 이빨 사이 세로 구분선(입을 칸으로 나눔). 입 박스 x:38~62, y:74~84 기준 3분할.

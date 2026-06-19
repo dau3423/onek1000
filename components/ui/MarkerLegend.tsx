@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import clsx from 'clsx';
 import { BRAND_COLOR } from '@/types/station';
 import type { PriceTier } from '@/lib/map/geo';
-import { TIER_FACE, faceSvgInner } from '@/lib/map/markerFace';
+import { TIER_FACE, faceSvgInner, skullInner, PLAIN_MARKER_COLOR } from '@/lib/map/markerFace';
 import { useMapStore } from '@/stores/map';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
 
@@ -96,14 +96,20 @@ function RingDot({ color }: { color: string }) {
 }
 
 /**
- * 비하이라이트(그 외) 주유소 칩 — 작은 회색 점 + 흰 외곽.
- * 실제 지도의 회색 점 마커(KakaoMap, #9ca3af + 흰 외곽)와 색·형태 일치.
+ * 비하이라이트(그 외) 주유소 칩 — 진회색 원 + 흰 해골 아이콘.
+ * 실제 지도의 해골 마커(KakaoMap skullMarkerSvg, PLAIN_MARKER_COLOR + 흰 해골)와 색·형태 일치.
+ * skullInner는 viewBox 0 0 100 100 기준 해골 조각만 반환 → 배경 원과 함께 합성(단일 출처).
  */
-function GrayDotChip() {
+function SkullChip() {
   return (
     <span
-      className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-      style={{ background: '#9ca3af', boxShadow: '0 0 0 1.5px #fff' }}
+      className="inline-block h-4 w-4 shrink-0"
+      dangerouslySetInnerHTML={{
+        __html: `<svg viewBox="0 0 100 100" width="16" height="16" style="display:block">
+          <circle cx="50" cy="50" r="48" fill="${PLAIN_MARKER_COLOR}"/>
+          ${skullInner()}
+        </svg>`,
+      }}
     />
   );
 }
@@ -330,8 +336,8 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
               </div>
               {GRAY_DOTS_ENABLED && (
                 <div className="flex items-center gap-1.5">
-                  <GrayDotChip />
-                  <span>회색 점 = 그 외 주유소(확대 시 표시)</span>
+                  <SkullChip />
+                  <span>해골 = 그 외 주유소(가격 순위 밖, 확대 시 표시)</span>
                 </div>
               )}
               <div className="flex items-center gap-1.5">
