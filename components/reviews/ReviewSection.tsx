@@ -8,9 +8,9 @@ import { ReviewList } from './ReviewList';
 import { ReviewForm } from './ReviewForm';
 import type { Review, ReviewStats } from '@/types/review';
 
-interface Props { stationId: string }
+interface Props { stationId: string; stationLat?: number; stationLng?: number }
 
-export function ReviewSection({ stationId }: Props) {
+export function ReviewSection({ stationId, stationLat, stationLng }: Props) {
   const [data, setData] = useState<{ reviews: Review[]; stats: ReviewStats } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [writing, setWriting] = useState(false);
@@ -75,6 +75,8 @@ export function ReviewSection({ stationId }: Props) {
         <div className="mb-4">
           <ReviewForm
             stationId={stationId}
+            stationLat={stationLat}
+            stationLng={stationLng}
             onCreated={() => { setWriting(false); load(); }}
             onCancel={() => setWriting(false)}
           />

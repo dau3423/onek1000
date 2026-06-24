@@ -100,8 +100,8 @@ export default async function StationDetailPage({ params }: Props) {
         <PriceHistoryChart stationId={detail.id} product="B027" />
       </section>
 
-      {/* 리뷰 */}
-      <ReviewSection stationId={detail.id} />
+      {/* 리뷰 — 주유소 좌표를 넘겨 작성 전 지오펜스(근처에서만 작성) 안내/검증 */}
+      <ReviewSection stationId={detail.id} stationLat={detail.lat} stationLng={detail.lng} />
 
       {/* 부가서비스 — 우리 DB(stations)만 조회. 값은 일 1회 sync의 회전 보강(detailById)으로 채워진다.
           amenitiesUpdatedAt이 null이면 아직 한 번도 보강되지 않은 주유소이므로

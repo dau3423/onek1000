@@ -6,7 +6,8 @@ import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { getSignedUrls } from '@/lib/storage/photos';
 import { listMockReviews, appendMockReview } from '@/lib/mock/reviews';
 import type { Review, ReviewStats, CreateReviewInput } from '@/types/review';
-import { REVIEW_CONTENT_MAX, REVIEW_PHOTO_MAX } from '@/types/review';
+import { REVIEW_CONTENT_MAX, REVIEW_PHOTO_MAX, REVIEW_GEOFENCE_M, REVIEW_GEOFENCE_ACCURACY_CAP_M } from '@/types/review';
+import { distanceMeters } from '@/lib/map/geo';
 
 export const runtime = 'nodejs';
 export const revalidate = 30;
@@ -131,6 +132,42 @@ export async function POST(
   }
 
   const sb = getSupabase();
+
+  // ─── 지오펜스: 해당 주유소 근처에서만 작성 가능 ───
+  // 클라가 보낸 현재 위치와 주유소 좌표의 거리를 서버가 검증한다(클라 차단은 UX용, 여기가 권위).
+  // 주유소 좌표가 없으면(데이터 누락, 드묾) 검증 불가 → 정상 사용자를 막지 않도록 통과시킨다.
+  {
+    const { lat, lng, accuracy } = body;
+    if (typeof lat !== 'number' || typeof lng !== 'number') {
+      return NextResponse.json(
+        { error: 'location required', code: 'location_required' },
+        { status: 400 },
+      );
+    }
+    const { data: st } = await sb
+      .from('stations')
+      .select('lat, lng')
+      .eq('id', params.id)
+      .maybeSingle();
+    if (st && typeof st.lat === 'number' && typeof st.lng === 'number') {
+      const dist = distanceMeters(lat, lng, st.lat, st.lng);
+      const allowed =
+        REVIEW_GEOFENCE_M +
+        Math.min(typeof accuracy === 'number' && accuracy > 0 ? accuracy : 0, REVIEW_GEOFENCE_ACCURACY_CAP_M);
+      if (dist > allowed) {
+        return NextResponse.json(
+          {
+            error: 'too far from station',
+            code: 'too_far',
+            distanceM: Math.round(dist),
+            allowedM: Math.round(allowed),
+          },
+          { status: 403 },
+        );
+      }
+    }
+  }
+
   const { data: user } = await sb.from('users').select('id').eq('email', session.user.email).maybeSingle();
   if (!user) return NextResponse.json({ error: 'user not found' }, { status: 404 });
 
