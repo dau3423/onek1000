@@ -125,6 +125,9 @@ export function SubscribeButton() {
           issueId: data.issueId!,
           issueName: data.orderName,
           redirectUrl,
+          // 이니시스 V2 모바일 빌링키 발급 필수: 서비스 제공 기간(제공주기).
+          // 정기구독은 매월(30일) 청구이므로 1개월 주기로 명시한다(`${n}d|m|y` 형식).
+          offerPeriod: { interval: '1m' },
           ...(isMobile ? { forceRedirect: true } : {}),
           customer,
         });
