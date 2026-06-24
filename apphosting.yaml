@@ -194,14 +194,14 @@ env:
     availability:
       - BUILD
       - RUNTIME
-  # 이니시스 라이브 채널 — 단건/정기 공용
+  # 이니시스 라이브 채널 — 단건(일반결제) / 정기결제 채널 분리
   - variable: NEXT_PUBLIC_PORTONE_CHANNEL_INICIS_ONETIME
     value: "channel-key-8262d492-f921-4b05-b83d-607b1cb070b6"
     availability:
       - BUILD
       - RUNTIME
   - variable: NEXT_PUBLIC_PORTONE_CHANNEL_INICIS_RECURRING
-    value: "channel-key-8262d492-f921-4b05-b83d-607b1cb070b6"
+    value: "channel-key-7206c60a-e74f-46f9-98e0-eddd4a6f3cc8"
     availability:
       - BUILD
       - RUNTIME
