@@ -24,6 +24,7 @@ import { InstallBanner } from '@/components/pwa/InstallBanner';
 // 웰컴 프로모(1주일 무료 프리미엄 팝업) 노출 중단 — 되살리려면 이 import와 아래 <WelcomePromo /> 주석을 해제.
 // import { WelcomePromo } from '@/components/promo/WelcomePromo';
 import { RouteLoginPrompt } from '@/components/route/RouteLoginPrompt';
+import { NoticePopup } from '@/components/notice/NoticePopup';
 import { BusinessFooter } from '@/components/legal/BusinessFooter';
 import { useMapStore, getInitialMapView, getInitialRoutePlan, type MapView } from '@/stores/map';
 import { useGeolocation } from '@/hooks/useGeolocation';
@@ -1084,6 +1085,10 @@ export default function HomePage() {
 
       {/* 첫 접속 공지 모달(비로그인·디바이스당 1회) — 회원가입 시 1주일 무료 프리미엄 유도 */}
       {/* 노출 중단(요청에 의해 숨김). 되살리려면 위 import와 이 줄을 함께 복원: <WelcomePromo /> */}
+
+      {/* 첫 화면 공지 팝업 — 관리자(/admin/notice)가 등록한 활성 공지 1건을 전체 사용자에게 노출.
+          이미지 터치 시 연결 링크로 이동, "오늘 하루 보지 않기" 지원. 활성 공지 없으면 미표시. */}
+      <NoticePopup />
 
       {/* ④ 주유 타이밍 예측 카드 — 현재 선택 유종(전국) 기준 방향/추천/추이.
           PriceTrendBanner(지도 상단 absolute 오버레이) 아래, 첫 화면(지도) 아래로 스크롤하면 노출되는

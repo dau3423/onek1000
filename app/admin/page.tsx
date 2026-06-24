@@ -120,6 +120,11 @@ async function loadStats(): Promise<Stat[]> {
 // 도구 허브 링크 카드 정의.
 const TOOLS: { href: string; title: string; desc: string }[] = [
   {
+    href: '/admin/notice',
+    title: '공지 팝업 관리',
+    desc: '첫 화면 공지 이미지 업로드 + 연결 링크 설정(단일 활성 공지).',
+  },
+  {
     href: '/admin/daily-top10',
     title: '일일 TOP10 SNS 도우미',
     desc: '오늘자 전국 최저가 TOP10을 SNS용 텍스트/이미지로 복사·다운로드.',
