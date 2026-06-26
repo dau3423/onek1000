@@ -27,6 +27,7 @@ function SignInInner() {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState(''); // 회원가입 시 비밀번호 확인용
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -90,6 +91,10 @@ function SignInInner() {
     }
     if (mode === 'signup' && password.length < 8) {
       setError('비밀번호는 8자 이상이어야 합니다.');
+      return;
+    }
+    if (mode === 'signup' && password !== confirm) {
+      setError('비밀번호가 일치하지 않습니다.');
       return;
     }
     setSubmitting(true);
@@ -230,6 +235,16 @@ function SignInInner() {
             autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
             className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
           />
+          {mode === 'signup' && (
+            <input
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="비밀번호 확인"
+              autoComplete="new-password"
+              className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+            />
+          )}
           {error && <p className="text-[12px] text-red-500">{error}</p>}
           <button
             type="submit"
@@ -252,7 +267,7 @@ function SignInInner() {
           {mode === 'signup' ? '이미 계정이 있나요? ' : '계정이 없나요? '}
           <button
             type="button"
-            onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); }}
+            onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); setConfirm(''); }}
             className="font-semibold text-orange-600 underline"
           >
             {mode === 'signup' ? '로그인' : '회원가입'}
