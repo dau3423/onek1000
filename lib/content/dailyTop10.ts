@@ -3,9 +3,9 @@
 // 데이터 소스: queryNationalTop10Detailed(DB/mock) + fetchNationalAvg(오피넷 공식 평균).
 // 외부 호출 실패에 강건하게: 데이터 0건/평균 null 이어도 throw 하지 않고 안내 텍스트를 채운다.
 
-import { queryNationalTop10Detailed } from '@/lib/db/queries';
+import { queryDailyTop10 } from '@/lib/db/queries';
 import { fetchNationalAvg } from '@/lib/opinet/client';
-import { PRODUCT_LABEL, BRAND_LABEL, type ProductCode, type DailyTop10Item } from '@/types/station';
+import { PRODUCT_LABEL, BRAND_LABEL, SIDO_NAME, type ProductCode, type DailyTop10Item } from '@/types/station';
 
 const APP_URL = 'onek1000.kr';
 const DEFAULT_PRODUCTS: ProductCode[] = ['B027', 'D047']; // 휘발유, 경유
@@ -47,7 +47,8 @@ const RANK_EMOJI: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
 function blogTableRow(it: DailyTop10Item): string {
   const rankCell = RANK_EMOJI[it.rank] ? `${RANK_EMOJI[it.rank]} ${it.rank}` : String(it.rank);
   const self = it.isSelf ? '셀프' : '-';
-  return `| ${rankCell} | ${it.region} | ${it.name} | ${BRAND_LABEL[it.brand] ?? it.brand} | ${won(it.price)} | ${self} |`;
+  const region = SIDO_NAME[it.sido] ?? it.sido;
+  return `| ${rankCell} | ${region} | ${it.name} | ${BRAND_LABEL[it.brand] ?? it.brand} | ${won(it.price)} | ${self} |`;
 }
 
 function blogSection(label: string, items: DailyTop10Item[], avg: number | null, date: string): string {
@@ -128,7 +129,8 @@ const TWEET_LIMIT = 280;
 
 /** TOP 항목 1줄 — 상호 포함. tooLong이면 지역만(상호 생략). */
 function tweetLine(it: DailyTop10Item, emoji: string, withName: boolean): string {
-  const place = withName ? `${it.region} ${it.name}` : it.region;
+  const region = SIDO_NAME[it.sido] ?? it.sido;
+  const place = withName ? `${region} ${it.name}` : region;
   return `${emoji} ${won(it.price)}원 · ${place}`;
 }
 
@@ -216,7 +218,7 @@ export async function buildDailyTop10Content(
   const results = await Promise.all(
     products.map(async (p) => {
       const [items, avg] = await Promise.all([
-        queryNationalTop10Detailed(p).catch(() => [] as DailyTop10Item[]),
+        queryDailyTop10(p).catch(() => [] as DailyTop10Item[]),
         fetchNationalAvg(p).catch(() => null),
       ]);
       return { product: p, label: PRODUCT_LABEL[p], items, avg };
@@ -228,12 +230,8 @@ export async function buildDailyTop10Content(
     productsMap[r.product] = { label: r.label, items: r.items, avg: r.avg };
   }
 
-  // 날짜 결정: opts.date > 결과 최대 tradeDt > 어제(KST)
-  let isoDate = opts?.date ?? '';
-  if (!isoDate) {
-    const allDts = results.flatMap((r) => r.items.map((it) => it.tradeDt)).filter(Boolean);
-    isoDate = allDts.length ? allDts.sort().slice(-1)[0] : yesterdayKstIso();
-  }
+  // 날짜 결정: DailyTop10Item에 거래일자 필드가 없으므로 opts.date > 어제(KST).
+  const isoDate = opts?.date || yesterdayKstIso();
   const date = formatKoreanDate(isoDate);
 
   const sections = results.map((r) => ({ label: r.label, items: r.items, avg: r.avg }));

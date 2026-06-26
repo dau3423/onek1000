@@ -154,6 +154,25 @@ export async function fetchAvgBySido(product: ProductCode) {
   return (raw.RESULT?.OIL ?? []).map((o) => ({ code: o.SIDOCD as SidoCode, price: o.PRICE }));
 }
 
+/**
+ * 전국 평균가(원/L) — SNS 게시 문구의 "전국 평균 대비 절감" 계산용.
+ * mock: 해당 유종 mock 주유소 가격 평균. real: 오피넷 전국 평균유가(avgAllPrice.do).
+ * 데이터 없음/실패 시 null을 반환해 호출부가 평균 코멘트를 생략하게 한다.
+ */
+export async function fetchNationalAvg(product: ProductCode): Promise<number | null> {
+  if (USE_MOCK) {
+    const all = getMockStations(product);
+    if (all.length === 0) return null;
+    return Math.round(all.reduce((sum, s) => sum + s.price, 0) / all.length);
+  }
+  type Raw = { RESULT: { OIL: Array<{ PRODCD: string; PRICE: number | string }> } };
+  const raw = await callOpinet<Raw>('avgAllPrice.do', {});
+  const row = (raw.RESULT?.OIL ?? []).find((o) => o.PRODCD === product);
+  if (!row) return null;
+  const price = typeof row.PRICE === 'string' ? Number(row.PRICE) : row.PRICE;
+  return Number.isFinite(price) ? Math.round(price) : null;
+}
+
 /** Real 모드에서 전국을 시도별 TOP20을 모아 풀로 만드는 헬퍼 (MVP는 mock 사용) */
 async function fetchAllStationsByRegion(product: ProductCode): Promise<StationWithPrice[]> {
   const sidos: SidoCode[] = ['01','02','03','04','05','06','07','08','09','10','11','14','15','16','17','18','19'];

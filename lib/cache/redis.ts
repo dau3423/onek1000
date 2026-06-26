@@ -87,6 +87,8 @@ export const keys = {
   detailPrice: (id: string) => `detailprice:${id}`,
   // Opinet 할당량 소진/연속 무효 응답 시 전역 쿨다운 플래그 — set 동안 상세에서 Opinet 헛호출 차단.
   detailPriceCooldown: () => `detailprice:cooldown`,
+  // 일일 최저가 TOP10 트윗 발행 멱등키 — 같은 날짜 중복 발행 방지(날짜별, TTL 3일).
+  dailyTweet: (date: string) => `tweet:posted:${date}`,
 };
 
 /** 좌표 양자화: precision=3 → 약 110m 격자, 4 → 11m */
