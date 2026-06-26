@@ -16,13 +16,15 @@ import {
 } from '@/lib/inapp';
 import { BETA_FREE } from '@/lib/flags';
 
-function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }) {
+function SignInInner() {
   const params = useSearchParams();
   const router = useRouter();
   const callbackUrl = params.get('callbackUrl') ?? '/';
   // 중복 로그인(다른 기기에서 새 로그인)으로 밀려나 강제 로그아웃된 경우 안내.
   const duplicateNotice = params.get('reason') === 'duplicate';
 
+  // 이메일 로그인/회원가입 폼 상태. mode로 로그인↔가입을 전환한다.
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -69,22 +71,47 @@ function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }
     signIn(provider, { callbackUrl });
   }
 
-  async function handleReviewerLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
-    setSubmitting(true);
-    const res = await signIn('credentials', {
-      email,
-      password,
-      redirect: false,
-      callbackUrl,
-    });
-    setSubmitting(false);
+  // 이메일 자격증명으로 로그인 → 성공 시 callbackUrl로 이동.
+  async function loginWithCredentials(): Promise<boolean> {
+    const res = await signIn('credentials', { email, password, redirect: false, callbackUrl });
     if (res?.error || !res?.ok) {
       setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+      return false;
+    }
+    return true;
+  }
+
+  async function handleEmailSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    if (!email.trim() || !password) {
+      setError('이메일과 비밀번호를 입력해 주세요.');
       return;
     }
-    router.push(callbackUrl);
+    if (mode === 'signup' && password.length < 8) {
+      setError('비밀번호는 8자 이상이어야 합니다.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      if (mode === 'signup') {
+        // 1) 회원가입(이메일 인증 없음) → 2) 곧바로 같은 자격증명으로 자동 로그인.
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          setError(data?.error ?? '가입 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+          return;
+        }
+      }
+      const ok = await loginWithCredentials();
+      if (ok) router.push(callbackUrl);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -176,41 +203,62 @@ function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }
         </button>
       </div>
 
-      {reviewerLoginEnabled && (
-        <div className="mt-6 w-full">
-          <div className="flex items-center gap-3">
-            <span className="h-px flex-1 bg-gray-200" />
-            <span className="text-[11px] text-gray-400">심사용 로그인</span>
-            <span className="h-px flex-1 bg-gray-200" />
-          </div>
-          <form onSubmit={handleReviewerLogin} className="mt-3 space-y-2">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="이메일"
-              autoComplete="username"
-              className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
-            />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="비밀번호"
-              autoComplete="current-password"
-              className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
-            />
-            {error && <p className="text-[12px] text-red-500">{error}</p>}
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full rounded-xl bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60"
-            >
-              {submitting ? '로그인 중...' : '심사용 로그인'}
-            </button>
-          </form>
+      {/* 이메일 로그인/회원가입 — 인앱 웹뷰(OAuth 차단 환경)에서도 가입할 수 있도록 항상 노출한다. */}
+      <div className="mt-6 w-full">
+        <div className="flex items-center gap-3">
+          <span className="h-px flex-1 bg-gray-200" />
+          <span className="text-[11px] text-gray-400">또는 이메일로</span>
+          <span className="h-px flex-1 bg-gray-200" />
         </div>
-      )}
+        <form onSubmit={handleEmailSubmit} className="mt-3 space-y-2">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="이메일"
+            autoComplete="email"
+            inputMode="email"
+            autoCapitalize="none"
+            spellCheck={false}
+            className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder={mode === 'signup' ? '비밀번호 (8자 이상)' : '비밀번호'}
+            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+            className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+          />
+          {error && <p className="text-[12px] text-red-500">{error}</p>}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded-xl bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60"
+          >
+            {submitting
+              ? mode === 'signup' ? '가입 중...' : '로그인 중...'
+              : mode === 'signup' ? '이메일로 가입하기' : '이메일로 로그인'}
+          </button>
+        </form>
+        {mode === 'login' && (
+          <p className="mt-2 text-center text-[12px]">
+            <Link href="/auth/forgot-password" className="text-gray-400 underline hover:text-gray-600">
+              비밀번호를 잊으셨나요?
+            </Link>
+          </p>
+        )}
+        <p className="mt-3 text-center text-[12px] text-gray-500">
+          {mode === 'signup' ? '이미 계정이 있나요? ' : '계정이 없나요? '}
+          <button
+            type="button"
+            onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); }}
+            className="font-semibold text-orange-600 underline"
+          >
+            {mode === 'signup' ? '로그인' : '회원가입'}
+          </button>
+        </p>
+      </div>
 
       {/* [베타 전면무료] 베타엔 결제 신호를 낮춘다: 결제약관 링크는 보존하되 강조를 빼고
           무료 가치 중심 문구로 톤다운한다(링크 삭제 아님). 플래그 off 시 기존 강조 문구로 원복. */}
@@ -247,10 +295,10 @@ function SignInInner({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }
   );
 }
 
-export default function SignInClient({ reviewerLoginEnabled }: { reviewerLoginEnabled: boolean }) {
+export default function SignInClient() {
   return (
     <Suspense fallback={<div className="flex min-h-dvh items-center justify-center text-sm text-gray-500">로딩 중...</div>}>
-      <SignInInner reviewerLoginEnabled={reviewerLoginEnabled} />
+      <SignInInner />
     </Suspense>
   );
 }

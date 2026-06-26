@@ -1,6 +1,6 @@
 // NextAuth 설정 — App Router용
-// 카카오/구글 OAuth, JWT 세션, 첫 로그인 시 Supabase users UPSERT
-// + (선택) 심사용 ID/비밀번호 로그인: REVIEWER_EMAIL/PASSWORD env가 모두 설정된 경우에만 활성
+// 카카오/구글 OAuth + 이메일/비밀번호 로그인, JWT 세션, 첫 로그인 시 Supabase users UPSERT
+// 이메일 로그인은 users.password_hash(scrypt)를 검증한다. 회원가입은 /api/auth/register에서 처리.
 
 import crypto from 'crypto';
 import type { NextAuthOptions } from 'next-auth';
@@ -13,33 +13,20 @@ import { isAdminEmail } from './admin';
 import { BETA_FREE } from '@/lib/flags';
 import { generateUniqueNickname } from '@/lib/nickname-db';
 import { ensureReferralCode } from '@/lib/referral';
+import { verifyPassword } from './password';
 
 const PREMIUM_CACHE_MS = 60_000;
 
-// 심사 계정 정규화 헬퍼.
-// secret(env)에 줄바꿈/공백이 섞이거나, 모바일 키보드가 이메일 첫 글자를 자동
-// 대문자로 바꾸는 경우에도 매칭이 깨지지 않도록 입력/secret 양쪽을 동일하게 정규화한다.
-//  - normPassword: trim만(비밀번호 대소문자는 보존). secret 끝 공백/줄바꿈 대비.
-//  - normEmail: trim + 소문자화(이메일은 본래 대소문자 구분 없음 → 모바일 자동 대문자 대비).
-function normPassword(v: string | undefined | null): string {
+// 이메일/비밀번호 입력 정규화 헬퍼.
+// 모바일 키보드가 이메일 첫 글자를 자동 대문자로 바꾸거나 앞뒤 공백이 섞여도
+// 가입/로그인 매칭이 깨지지 않도록 정규화한다.
+//  - normPassword: trim만(비밀번호 대소문자는 보존).
+//  - normEmail: trim + 소문자화(이메일은 본래 대소문자 구분 없음).
+export function normPassword(v: string | undefined | null): string {
   return (v ?? '').trim();
 }
-function normEmail(v: string | undefined | null): string {
+export function normEmail(v: string | undefined | null): string {
   return (v ?? '').trim().toLowerCase();
-}
-
-// 심사용 로그인 활성 여부(서버 전용 판단). 두 env가 모두 있어야 활성.
-// trim 후 truthy 판정(공백/줄바꿈만 든 secret은 미설정으로 취급).
-// 클라이언트엔 절대 값을 내리지 않고, 이 boolean만 별도 경로로 전달한다.
-export function isReviewerLoginEnabled(): boolean {
-  return Boolean(normEmail(process.env.REVIEWER_EMAIL) && normPassword(process.env.REVIEWER_PASSWORD));
-}
-
-// 타이밍 안전 문자열 비교(길이 노출 방지를 위해 양쪽을 SHA-256 후 고정 길이로 비교)
-function safeEqual(a: string, b: string): boolean {
-  const ha = crypto.createHash('sha256').update(a).digest();
-  const hb = crypto.createHash('sha256').update(b).digest();
-  return crypto.timingSafeEqual(ha, hb);
 }
 
 function buildProviders(): NextAuthOptions['providers'] {
@@ -63,34 +50,38 @@ function buildProviders(): NextAuthOptions['providers'] {
     }),
   ];
 
-  // 심사용 단일 계정 로그인: env가 모두 설정된 경우에만 providers에 추가.
-  // 미설정이면 provider 자체가 없어 일반 사용자에게 노출/위험이 없다.
-  if (isReviewerLoginEnabled()) {
-    // secret도 입력과 동일하게 정규화해 둔다(끝 공백/줄바꿈, 이메일 대문자 대비).
-    const reviewerEmail = normEmail(process.env.REVIEWER_EMAIL);
-    const reviewerPassword = normPassword(process.env.REVIEWER_PASSWORD);
-    providers.push(
-      CredentialsProvider({
-        id: 'credentials',
-        name: '심사용 로그인',
-        credentials: {
-          email: { label: '이메일', type: 'email' },
-          password: { label: '비밀번호', type: 'password' },
-        },
-        async authorize(credentials) {
-          // 입력값도 secret과 동일 규칙으로 정규화 후 비교한다.
-          const email = normEmail(credentials?.email);
-          const password = normPassword(credentials?.password);
-          // env 단일 심사 계정과 정확히 일치할 때만 허용(타이밍 안전 비교).
-          if (!email || !password) return null;
-          if (!safeEqual(email, reviewerEmail)) return null;
-          if (!safeEqual(password, reviewerPassword)) return null;
-          // email을 반드시 채워 signIn 콜백의 users UPSERT가 정상 동작하게 한다.
-          return { id: reviewerEmail, email: reviewerEmail, name: '심사 계정' };
-        },
-      })
-    );
-  }
+  // 이메일/비밀번호 로그인: users.password_hash(scrypt)를 검증한다.
+  // 회원가입(행 생성)은 /api/auth/register가 담당하고, 여기서는 인증만 한다.
+  // 인증 성공 시 반환한 user는 아래 signIn/jwt 콜백을 그대로 타서 세션·구독 처리가 OAuth와 동일하게 동작한다.
+  providers.push(
+    CredentialsProvider({
+      id: 'credentials',
+      name: '이메일 로그인',
+      credentials: {
+        email: { label: '이메일', type: 'email' },
+        password: { label: '비밀번호', type: 'password' },
+      },
+      async authorize(credentials) {
+        const email = normEmail(credentials?.email);
+        const password = normPassword(credentials?.password);
+        if (!email || !password) return null;
+        if (!isSupabaseConfigured()) return null;
+
+        const sb = getSupabase();
+        const { data } = await sb
+          .from('users')
+          .select('id, email, name, password_hash')
+          .eq('email', email)
+          .maybeSingle();
+        // password_hash가 없으면 미가입이거나 소셜 전용 계정 → 이메일 로그인 불가.
+        if (!data?.password_hash) return null;
+        const ok = await verifyPassword(password, data.password_hash as string);
+        if (!ok) return null;
+        // signIn 콜백의 users 매칭이 정상 동작하도록 email을 반드시 채운다.
+        return { id: data.id as string, email: data.email as string, name: (data.name as string | null) ?? null };
+      },
+    })
+  );
 
   return providers;
 }
@@ -111,7 +102,7 @@ const WELCOME_TRIAL_DAYS = 7;
  * - customer_key는 NOT NULL이라 채워야 한다. 무료 체험은 PG 거래가 없으므로
  *   결제 식별자가 없다 → 'welcome_trial:<userId>' 합성값을 넣는다(빌링 흐름과 충돌 없음).
  */
-async function grantWelcomeTrial(
+export async function grantWelcomeTrial(
   sb: ReturnType<typeof getSupabase>,
   userId: string,
 ): Promise<void> {
