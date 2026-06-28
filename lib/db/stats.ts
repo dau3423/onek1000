@@ -36,6 +36,79 @@ export async function recordVisit(device_id: string, user_id: string | null): Pr
 }
 
 /**
+ * 퍼널 이벤트 1건 기록. 방문 기록과 동일하게 throw 없이 graceful 처리(분석이 UX를 깨면 안 됨).
+ * visit_date(KST)는 서버에서 계산해 저장 → 일자별 집계가 단순해진다.
+ */
+export async function recordEvent(
+  event: string,
+  device_id: string,
+  user_id: string | null,
+  props: Record<string, unknown> | null,
+): Promise<void> {
+  if (!isSupabaseConfigured()) return;
+  try {
+    const sb = getSupabase();
+    await sb.from('funnel_events').insert({
+      event,
+      device_id,
+      user_id,
+      props: props ?? null,
+      visit_date: kstTodayDate(),
+    });
+  } catch {
+    /* 이벤트 기록 실패는 무시(사용자 경험 우선) */
+  }
+}
+
+/**
+ * 오늘(KST) 이벤트별 고유 디바이스 수. { signin_view: 12, oauth_click: 4, ... }.
+ * RPC(funnel_counts) 미적용/실패 시 null → 대시보드 '-' 폴백.
+ */
+export async function getTodayFunnel(): Promise<Record<string, number> | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const sb = getSupabase();
+    const { data, error } = await sb.rpc('funnel_counts', { d: kstTodayDate() });
+    if (error || !data) return null;
+    const out: Record<string, number> = {};
+    for (const row of data as Array<{ event: string; devices: number }>) {
+      out[row.event] = Number(row.devices) || 0;
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 리텐션 프록시: 서로 다른 날짜에 2회 이상 방문한 로그인 사용자 수. 미설정/실패 시 null.
+ */
+export async function getReturningUserCount(): Promise<number | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const sb = getSupabase();
+    const { data, error } = await sb.rpc('returning_user_count');
+    return error ? null : (typeof data === 'number' ? data : null);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 비교용: page_visits에 잡힌 고유 로그인 사용자 수(리텐션 분모). 미설정/실패 시 null.
+ */
+export async function getSignedInUserCount(): Promise<number | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const sb = getSupabase();
+    const { data, error } = await sb.rpc('signed_in_user_count');
+    return error ? null : (typeof data === 'number' ? data : null);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * 오늘(KST) 고유 방문 디바이스 수. 미설정/실패 시 null → 대시보드에서 '-' 표시.
  */
 export async function getTodayVisitorCount(): Promise<number | null> {

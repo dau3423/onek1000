@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { track } from '@/lib/analytics';
 
 // 방문 ping — 마운트 시 1회 /api/visit 호출(경로 변경마다가 아니라 앱 로드당 1회).
 // 서버가 device_id 쿠키 발급 + page_visits 업서트를 처리한다(관리자 "오늘 방문자수(KST)" 카드용).
@@ -23,6 +24,9 @@ export function VisitPing() {
     } catch {
       /* localStorage 접근 불가(사파리 프라이빗 등)면 그냥 ping 시도 */
     }
+
+    // 퍼널 최상단: 앱 진입(일 단위 고유 디바이스). 방문 ping과 동일 주기로 1회 전송.
+    track('landing_view');
 
     let cancelled = false;
     (async () => {

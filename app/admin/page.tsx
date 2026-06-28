@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getAdminOrNull } from '@/lib/auth/admin';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
-import { getTodayVisitorCount } from '@/lib/db/stats';
+import { getTodayVisitorCount, getTodayFunnel, getReturningUserCount, getSignedInUserCount } from '@/lib/db/stats';
 
 export const metadata: Metadata = {
   title: '관리자 대시보드 (운영)',
@@ -68,6 +68,11 @@ async function loadStats(): Promise<Stat[]> {
       { label: '주유소 수', value: '-' },
       { label: '고속도로(EXP) 주유소', value: '-' },
       { label: '최신가 행 수', value: '-' },
+      { label: '[퍼널] 오늘 진입(디바이스)', value: '-' },
+      { label: '[퍼널] → 로그인화면', value: '-' },
+      { label: '[퍼널] → 가입/로그인 시도', value: '-' },
+      { label: '[퍼널] → 성공', value: '-' },
+      { label: '[리텐션] 재방문 가입자', value: '-' },
     ];
   }
 
@@ -105,6 +110,24 @@ async function loadStats(): Promise<Stat[]> {
     headCount((sb) => sb.from('prices_latest').select('*', { count: 'exact', head: true })),
   ]);
 
+  // 오늘 퍼널(이벤트별 고유 디바이스) + 리텐션(재방문 가입자). 0033 미적용/실패 시 '-'.
+  const [funnel, returningUsers, signedInUsers] = await Promise.all([
+    getTodayFunnel(),
+    getReturningUserCount(),
+    getSignedInUserCount(),
+  ]);
+  // 시도/성공은 이메일+소셜을 합산해서 본다(distinct device가 아니라 단순 합 — 대략적 폭 비교용).
+  const fv = (k: string): number | null => (funnel ? funnel[k] ?? 0 : null);
+  const sumOrNull = (...ks: string[]): number | null =>
+    funnel ? ks.reduce((a, k) => a + (funnel[k] ?? 0), 0) : null;
+  const attempts = sumOrNull('oauth_click', 'email_submit');
+  const success = sumOrNull('signup_success', 'auth_success');
+  // 리텐션 비율(재방문 가입자 / 로그인 사용자) 문자열.
+  const retentionPct =
+    returningUsers != null && signedInUsers != null && signedInUsers > 0
+      ? ` (${Math.round((returningUsers / signedInUsers) * 100)}%)`
+      : '';
+
   return [
     { label: '총 회원수', value: fmt(totalUsers) },
     { label: '오늘 가입(KST)', value: fmt(todayUsers) },
@@ -114,6 +137,13 @@ async function loadStats(): Promise<Stat[]> {
     { label: '주유소 수', value: fmt(stations) },
     { label: '고속도로(EXP) 주유소', value: fmt(expStations) },
     { label: '최신가 행 수', value: fmt(pricesLatest) },
+    // ── 전환 퍼널(오늘, 고유 디바이스) — 위에서 아래로 좁아지는지 보면 이탈 지점이 보인다.
+    { label: '[퍼널] 오늘 진입(디바이스)', value: fmt(fv('landing_view')) },
+    { label: '[퍼널] → 로그인화면', value: fmt(fv('signin_view')) },
+    { label: '[퍼널] → 가입/로그인 시도', value: fmt(attempts) },
+    { label: '[퍼널] → 성공', value: fmt(success) },
+    // ── 리텐션: 가입자가 다른 날 다시 오는지(재방문 가입자 / 로그인 사용자).
+    { label: '[리텐션] 재방문 가입자', value: `${fmt(returningUsers)}${retentionPct}` },
   ];
 }
 

@@ -15,6 +15,7 @@ import {
   type InAppKind,
 } from '@/lib/inapp';
 import { BETA_FREE } from '@/lib/flags';
+import { track } from '@/lib/analytics';
 
 function SignInInner() {
   const params = useSearchParams();
@@ -40,6 +41,8 @@ function SignInInner() {
   useEffect(() => {
     setInAppKind(getInAppKind());
     setIsIos(getPlatform() === 'ios');
+    // 퍼널 최상단: 로그인 화면 도달. (방문 → 로그인화면 전환율의 기준점)
+    track('signin_view');
   }, []);
 
   const isInApp = inAppKind !== null;
@@ -65,6 +68,8 @@ function SignInInner() {
   // 인앱 웹뷰에서 OAuth(카카오/구글) 시도 시: 바로 OAuth를 태우지 않고 외부 열기를 유도한다.
   // (구글은 disallowed_useragent로 차단, 카카오도 깨질 수 있어 가입 실패를 막는다.)
   function handleOAuth(provider: 'kakao' | 'google') {
+    // 소셜 가입 시도. 인앱 웹뷰면 OAuth 대신 외부 열기를 유도하므로 그 분기도 함께 기록한다.
+    track('oauth_click', { provider, inApp: isInApp });
     if (isInApp) {
       handleOpenExternal();
       return;
@@ -98,6 +103,8 @@ function SignInInner() {
       return;
     }
     setSubmitting(true);
+    // 이메일 로그인/가입 시도(실제 제출 시점). 가입 시도 대비 성공률을 본다.
+    track('email_submit', { mode });
     try {
       if (mode === 'signup') {
         // 1) 회원가입(이메일 인증 없음) → 2) 곧바로 같은 자격증명으로 자동 로그인.
@@ -111,9 +118,13 @@ function SignInInner() {
           setError(data?.error ?? '가입 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
           return;
         }
+        track('signup_success');
       }
       const ok = await loginWithCredentials();
-      if (ok) router.push(callbackUrl);
+      if (ok) {
+        track('auth_success', { method: 'email', mode });
+        router.push(callbackUrl);
+      }
     } finally {
       setSubmitting(false);
     }
