@@ -322,6 +322,56 @@ export async function queryDailyTop10(
   });
 }
 
+/**
+ * 특정 시도(sido)의 해당 유종 최저가 TOP10 — SEO 지역 랜딩 페이지용.
+ * queryDailyTop10과 동일하게 "가격 오름차순 상위 10"이되, stations.sido_code로 지역을 한정한다.
+ * Supabase 미설정 시 mock 폴백(해당 sido만 필터).
+ */
+export async function queryRegionDailyTop10(
+  sido: SidoCode,
+  product: ProductCode,
+  limit = 10,
+): Promise<DailyTop10Item[]> {
+  if (!isSupabaseConfigured()) {
+    return getMockStations(product)
+      .filter((s) => s.sido === sido)
+      .sort((a, b) => a.price - b.price)
+      .slice(0, limit)
+      .map((s, i) => ({
+        rank: i + 1, id: s.id, name: s.name, brand: s.brand,
+        sido: s.sido, isSelf: s.isSelf, price: s.price,
+      }));
+  }
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('prices_latest')
+    .select('station_id, price, stations!inner(name, brand_code, sido_code, is_self)')
+    .eq('product', product)
+    .eq('stations.sido_code', sido)
+    .order('price', { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(`region daily top10 query failed: ${error.message}`);
+  type Row = {
+    station_id: string;
+    price: number;
+    stations:
+      | { name: string; brand_code: string; sido_code: string; is_self: boolean }
+      | Array<{ name: string; brand_code: string; sido_code: string; is_self: boolean }>;
+  };
+  return (data as Row[] ?? []).map((r, i) => {
+    const st = Array.isArray(r.stations) ? r.stations[0] : r.stations;
+    return {
+      rank: i + 1,
+      id: r.station_id,
+      name: st?.name ?? '',
+      brand: (st?.brand_code as BrandCode) ?? 'ETC',
+      sido: (st?.sido_code as SidoCode) ?? sido,
+      isSelf: !!st?.is_self,
+      price: r.price,
+    };
+  });
+}
+
 export async function queryStationDetail(id: string): Promise<StationDetail | null> {
   if (!isSupabaseConfigured()) return getMockStationDetail(id) as StationDetail | null;
   const sb = getSupabase();
