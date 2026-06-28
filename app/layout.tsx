@@ -45,6 +45,10 @@ export const metadata: Metadata = {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
   },
+  // 구글 서치콘솔 사이트 소유 확인 — <meta name="google-site-verification" content="..."> 자동 노출.
+  verification: {
+    google: 'lVf5mGCSx2llL2Bndze0gDU7__ez5z_zpYK8RUu_o-M',
+  },
   // AdSense 사이트 소유 확인 meta (로그인/프리미엄 여부와 무관하게 모든 페이지 head에 노출)
   other: {
     'google-adsense-account': ADSENSE_ACCOUNT,
