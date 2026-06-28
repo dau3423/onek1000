@@ -45,9 +45,14 @@ export const metadata: Metadata = {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
   },
-  // 구글 서치콘솔 사이트 소유 확인 — <meta name="google-site-verification" content="..."> 자동 노출.
+  // 검색엔진 사이트 소유 확인 meta — 전 페이지 head에 자동 노출.
+  //  - 구글 서치콘솔: <meta name="google-site-verification" ...>
+  //  - 네이버 서치어드바이저: <meta name="naver-site-verification" ...> (verification.other)
   verification: {
     google: 'lVf5mGCSx2llL2Bndze0gDU7__ez5z_zpYK8RUu_o-M',
+    other: {
+      'naver-site-verification': '60e71a0297d2959920e93293ef98987535b98b0c',
+    },
   },
   // AdSense 사이트 소유 확인 meta (로그인/프리미엄 여부와 무관하게 모든 페이지 head에 노출)
   other: {
