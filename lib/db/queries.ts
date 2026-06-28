@@ -372,6 +372,47 @@ export async function queryRegionDailyTop10(
   });
 }
 
+/**
+ * 특정 시군구(sigungu_code, opinet 4자리)의 해당 유종 최저가 TOP10 — SEO 시군구 랜딩용.
+ * queryRegionDailyTop10(시도)과 동일하되 stations.sigungu_code로 더 좁힌다.
+ * mock 모드는 시군구 데이터를 모델링하지 않으므로 빈 배열(페이지는 '집계중' 표시).
+ */
+export async function queryRegionDailyTop10BySigungu(
+  sigunguCode: string,
+  product: ProductCode,
+  limit = 10,
+): Promise<DailyTop10Item[]> {
+  if (!isSupabaseConfigured()) return [];
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('prices_latest')
+    .select('station_id, price, stations!inner(name, brand_code, sido_code, is_self, sigungu_code)')
+    .eq('product', product)
+    .eq('stations.sigungu_code', sigunguCode)
+    .order('price', { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(`sigungu daily top10 query failed: ${error.message}`);
+  type Row = {
+    station_id: string;
+    price: number;
+    stations:
+      | { name: string; brand_code: string; sido_code: string; is_self: boolean }
+      | Array<{ name: string; brand_code: string; sido_code: string; is_self: boolean }>;
+  };
+  return (data as Row[] ?? []).map((r, i) => {
+    const st = Array.isArray(r.stations) ? r.stations[0] : r.stations;
+    return {
+      rank: i + 1,
+      id: r.station_id,
+      name: st?.name ?? '',
+      brand: (st?.brand_code as BrandCode) ?? 'ETC',
+      sido: (st?.sido_code as SidoCode) ?? '01',
+      isSelf: !!st?.is_self,
+      price: r.price,
+    };
+  });
+}
+
 export async function queryStationDetail(id: string): Promise<StationDetail | null> {
   if (!isSupabaseConfigured()) return getMockStationDetail(id) as StationDetail | null;
   const sb = getSupabase();

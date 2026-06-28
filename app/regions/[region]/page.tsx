@@ -6,16 +6,15 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { REGIONS, regionBySlug } from '@/lib/regions';
+import { REGIONS, regionBySlug, sigungusBySido } from '@/lib/regions';
 import { queryRegionDailyTop10, queryNationalAvgPrices } from '@/lib/db/queries';
-import { PRODUCT_LABEL, BRAND_LABEL, type ProductCode, type DailyTop10Item } from '@/types/station';
+import { PRODUCT_LABEL, type ProductCode, type DailyTop10Item } from '@/types/station';
+import { PriceTable } from '@/components/seo/PriceTable';
 
 export const revalidate = 3600; // 1시간마다 가격 갱신(ISR)
 
 const SITE = 'https://onek1000.kr';
 const PRODUCTS: ProductCode[] = ['B027', 'D047']; // 휘발유, 경유
-const won = (n: number) => n.toLocaleString('ko-KR');
-
 function kstTodayLabel(): string {
   const k = new Date(Date.now() + 9 * 3600 * 1000);
   return `${k.getUTCFullYear()}. ${k.getUTCMonth() + 1}. ${k.getUTCDate()}.`;
@@ -51,52 +50,6 @@ export function generateMetadata({ params }: { params: { region: string } }): Me
   };
 }
 
-function PriceTable({ label, items, avg }: { label: string; items: DailyTop10Item[]; avg: number | null }) {
-  if (items.length === 0) {
-    return (
-      <section className="mt-8">
-        <h2 className="text-lg font-bold text-gray-900">{label} 최저가 TOP10</h2>
-        <p className="mt-2 text-sm text-gray-500">해당 지역의 {label} 가격이 아직 집계되지 않았습니다. 잠시 후 다시 확인해 주세요.</p>
-      </section>
-    );
-  }
-  const cheapest = items[0].price;
-  const diff = avg != null ? avg - cheapest : null;
-  return (
-    <section className="mt-8">
-      <h2 className="text-lg font-bold text-gray-900">{label} 최저가 TOP10</h2>
-      {avg != null && (
-        <p className="mt-1 text-[13px] text-gray-500">
-          전국 평균 {won(avg)}원
-          {diff != null && diff > 0 && <> · 1위는 리터당 <b className="text-orange-600">{won(diff)}원</b> 저렴 (50L 가득 시 약 {won(diff * 50)}원 차이)</>}
-        </p>
-      )}
-      <div className="mt-3 overflow-hidden rounded-xl border border-gray-200">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="bg-gray-50 text-gray-500">
-              <th className="px-3 py-2 text-left font-medium">순위</th>
-              <th className="px-3 py-2 text-left font-medium">주유소</th>
-              <th className="px-3 py-2 text-left font-medium">브랜드</th>
-              <th className="px-3 py-2 text-right font-medium">가격(원/L)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((it) => (
-              <tr key={it.id} className="border-t border-gray-100">
-                <td className="px-3 py-2 text-gray-700">{it.rank}</td>
-                <td className="px-3 py-2 text-gray-900">{it.name}{it.isSelf && <span className="ml-1 rounded bg-gray-100 px-1 text-[11px] text-gray-500">셀프</span>}</td>
-                <td className="px-3 py-2 text-gray-500">{BRAND_LABEL[it.brand] ?? it.brand}</td>
-                <td className="px-3 py-2 text-right font-semibold text-gray-900">{won(it.price)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
 export default async function RegionPage({ params }: { params: { region: string } }) {
   const region = regionBySlug(params.region);
   if (!region) notFound();
@@ -108,6 +61,7 @@ export default async function RegionPage({ params }: { params: { region: string 
     { product: 'B027' as ProductCode, items: gasoline, avg: avgs['B027'] ?? null },
     { product: 'D047' as ProductCode, items: diesel, avg: avgs['D047'] ?? null },
   ];
+  const districts = sigungusBySido(region.code);
 
   // JSON-LD: 빵부스러기 + 휘발유 최저가 목록(ItemList). 가격을 구조화 데이터로 노출.
   const jsonLd = {
@@ -151,6 +105,24 @@ export default async function RegionPage({ params }: { params: { region: string 
       {sections.map((s) => (
         <PriceTable key={s.product} label={PRODUCT_LABEL[s.product]} items={s.items} avg={s.avg} />
       ))}
+
+      {/* 시군구별 세부 페이지 링크(내부 링크 + "강남구 주유소" 류 세부 검색어 타겟) */}
+      {districts.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-base font-bold text-gray-900">{region.name} 시·군·구별 최저가</h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {districts.map((d) => (
+              <Link
+                key={d.code}
+                href={`/regions/${region.slug}/${d.code}`}
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-[13px] text-gray-700 hover:border-orange-300 hover:bg-orange-50"
+              >
+                {d.name}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* 전환 CTA — 검색으로 들어온 사람을 지도/가입으로 보낸다. */}
       <section className="mt-10 rounded-2xl border border-orange-200 bg-orange-50 p-5">

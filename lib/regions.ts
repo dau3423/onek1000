@@ -1,6 +1,7 @@
 // SEO 지역 랜딩용 지역(시도) 메타. URL 슬러그는 ASCII(안정성)로 두고,
 // 한국어 검색어("서울 최저가 주유소")는 페이지 제목·H1·본문에서 잡는다.
 import { SIDO_NAME, type SidoCode } from '@/types/station';
+import { SIGUNGU, type Sigungu } from '@/lib/sigungu-data';
 
 export const SIDO_SLUG: Record<SidoCode, string> = {
   '01': 'seoul', '02': 'gyeonggi', '03': 'gangwon', '04': 'chungbuk', '05': 'chungnam',
@@ -28,4 +29,19 @@ const SLUG_TO_CODE = Object.fromEntries(REGIONS.map((r) => [r.slug, r.code])) as
 export function regionBySlug(slug: string): Region | null {
   const code = SLUG_TO_CODE[slug];
   return code ? { code, slug, name: SIDO_NAME[code] } : null;
+}
+
+// ─── 시군구(기초자치단체) ───
+// 시군구 페이지 URL: /regions/{시도슬러그}/{시군구코드}. 코드는 ASCII·고유·안정적이라 슬러그로 쓴다.
+
+const SIGUNGU_BY_CODE = new Map(SIGUNGU.map((s) => [s.code, s]));
+
+/** 특정 시도(sido code)에 속한 시군구 목록(이름 가나다순). */
+export function sigungusBySido(sido: SidoCode): Sigungu[] {
+  return SIGUNGU.filter((s) => s.sido === sido).sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+}
+
+/** 시군구 코드 → 메타. 없으면 null. */
+export function sigunguByCode(code: string): Sigungu | null {
+  return SIGUNGU_BY_CODE.get(code) ?? null;
 }
