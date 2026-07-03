@@ -65,14 +65,14 @@ export default async function MyPage() {
           - DB 미설정/폴백 경로: BETA_FREE 여부와 무관하게 항상 결제 CTA를 노출(심사 요건).
           비노출이 다시 필요하면 이 <section> 전체를 JSX 주석으로 감싸면 된다(코드 보존). */}
       <section className="border-t border-gray-100 px-5 py-5">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">구독</h2>
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">광고 차단</h2>
         {canQuery && userId ? (
           <Suspense fallback={<SubscriptionSkeleton />}>
             <SubscriptionSection userId={userId} />
           </Suspense>
         ) : (
           <div className="rounded-xl bg-gray-50 p-4">
-            <div className="text-sm text-gray-700">현재 무료 플랜이에요.</div>
+            <div className="text-sm text-gray-700">지금은 광고가 표시돼요.</div>
             <Link
               href="/pricing"
               className="mt-3 inline-flex rounded-full bg-primary px-4 py-2 text-xs font-bold text-white"

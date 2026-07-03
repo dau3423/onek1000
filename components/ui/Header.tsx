@@ -61,13 +61,13 @@ export function Header() {
         <Link
           href={signedIn ? '/my' : '/auth/sign-in'}
           className="tap-press flex h-12 w-12 items-center justify-center rounded-full hover:bg-gray-100"
-          aria-label={signedIn ? (isPremium ? '마이페이지 (프리미엄 회원)' : '마이페이지') : '로그인'}
-          title={signedIn && isPremium ? '프리미엄 회원' : (data?.user?.email ?? '로그인')}
+          aria-label={signedIn ? (isPremium ? '마이페이지 (광고 차단 이용 중)' : '마이페이지') : '로그인'}
+          title={signedIn && isPremium ? '광고 차단 이용 중' : (data?.user?.email ?? '로그인')}
         >
           {signedIn ? (
             isPremium ? (
-              // 프리미엄 회원 아이콘 (유료 구독)
-              <Image src="/icons/icon_premium.png" alt="프리미엄 회원" width={32} height={32} />
+              // 광고 차단 이용 중 아이콘 (결제 사용자)
+              <Image src="/icons/icon_premium.png" alt="광고 차단 이용 중" width={32} height={32} />
             ) : (
               // 프로필 아이콘 (일반 로그인 상태)
               <Image src="/icons/icon_profile.png" alt="" width={32} height={32} />

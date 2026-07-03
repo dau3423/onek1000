@@ -19,11 +19,11 @@ export default function BillingSuccessPage({
       {/* 결제 성공 직후 세션을 갱신해 프리미엄 상태를 즉시 반영 */}
       <SessionRefresher />
       <div className="text-5xl">🎉</div>
-      <h1 className="text-xl font-bold">1000냥 시작!</h1>
+      <h1 className="text-xl font-bold">광고 차단 완료!</h1>
       <p className="text-sm text-gray-500">
         {isOnetime
           ? '결제가 완료됐어요. 지금부터 1개월간 광고 없이 이용하실 수 있어요.'
-          : '7일 무료 체험이 시작됐어요. 체험 종료 후 매월 ₩1,000이 자동결제됩니다.'}
+          : '결제가 완료됐어요. 지금부터 광고 없이 이용하실 수 있어요.'}
       </p>
       <Link href="/my" className="mt-2 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white">
         마이페이지로 이동

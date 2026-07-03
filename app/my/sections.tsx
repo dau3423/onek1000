@@ -8,7 +8,6 @@ import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { CancelButton } from '@/components/billing/CancelButton';
 import { EnablePushButton } from '@/components/push/EnablePushButton';
 import { ForecastNotifyToggle } from '@/components/forecast/ForecastNotifyToggle';
-import { BETA_FREE } from '@/lib/flags';
 
 interface Sub {
   id: string;
@@ -89,11 +88,9 @@ export async function SubscriptionSection({ userId }: { userId: string }) {
           <span className="rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-white">
             {isTrial
               ? '무료 체험 중'
-              : isOnetime
-                ? '1개월권'
-                : isCanceled
-                  ? '해지 예정'
-                  : '정기 구독'}
+              : isCanceled
+                ? '해지 예정'
+                : '광고 차단 이용 중'}
           </span>
           <span className="text-xs text-gray-500">{priceLabel}</span>
         </div>
@@ -115,7 +112,7 @@ export async function SubscriptionSection({ userId }: { userId: string }) {
   // (예전 "베타 무료" 안내 카드 분기는 결제 진입점 노출을 위해 제거. 되돌릴 땐 BETA_FREE 분기를 다시 추가.)
   return (
     <div className="rounded-xl bg-gray-50 p-4">
-      <div className="text-sm text-gray-700">현재 무료 플랜이에요.</div>
+      <div className="text-sm text-gray-700">지금은 광고가 표시돼요.</div>
       <Link
         href="/pricing"
         className="mt-3 inline-flex rounded-full bg-primary px-4 py-2 text-xs font-bold text-white"
@@ -127,16 +124,14 @@ export async function SubscriptionSection({ userId }: { userId: string }) {
 }
 
 /**
- * 알림(푸시) 버튼 영역. 프리미엄 판정은 서버에서 DB로 검증한 isActive를 그대로 전달(SEC-5).
- * 클라 세션(useSession) 갱신 타이밍과 무관하게 결제 직후 즉시 정확하게 반영된다.
+ * 알림(푸시) 버튼 영역. 광고 차단 전용 모델에선 모든 기능이 무료이므로
+ * 결제(isPremium)와 무관하게 로그인 사용자면 누구나 푸시를 켤 수 있다.
  */
 export async function PushSection({ userId }: { userId: string }) {
-  const sub = await fetchSubscription(userId);
-  const { isActive } = deriveStatus(sub);
-  // [베타 전면무료] 로그인 사용자(userId 존재)면 푸시를 개방한다.
-  // 푸시 구독 API(/api/push/subscribe)도 session.user.isPremium 검사인데 베타 시 true가 되어 정합.
-  // 플래그 off 시 기존 isActive(서버 구독 검증)로 완전 원복.
-  const allowPush = BETA_FREE || isActive;
+  // [광고 차단 전용 모델] 모든 기능은 무료 → 푸시는 로그인 사용자면 누구나 개방한다.
+  // 이 컴포넌트는 로그인(userId 존재) 시에만 렌더되므로 항상 허용.
+  // 결제(isPremium)와 무관. 푸시 구독 API(/api/push/subscribe)도 로그인만 검사하도록 개방됨.
+  const allowPush = Boolean(userId);
   return <EnablePushButton isPremium={allowPush} />;
 }
 

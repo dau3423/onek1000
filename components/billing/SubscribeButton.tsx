@@ -43,7 +43,9 @@ function detectMobile(): boolean {
 
 export function SubscribeButton() {
   const { status } = useSession();
-  const [plan, setPlan] = useState<PlanCode>('monthly_1000');
+  // [광고 차단 전용] 신규 결제는 단건(1개월권)만 노출한다. 정기(monthly_1000)는 UI에서 숨긴다.
+  // plan은 항상 'onetime_1000' 고정 → 정기(빌링키) 경로는 실행되지 않는다(백엔드 인프라는 보존).
+  const [plan] = useState<PlanCode>('onetime_1000');
   const [loading, setLoading] = useState(false);
   const [phone, setPhone] = useState('');
   const [phoneError, setPhoneError] = useState('');
@@ -168,22 +170,15 @@ export function SubscribeButton() {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2">
-        <PlanCard
-          selected={plan === 'monthly_1000'}
-          onSelect={() => setPlan('monthly_1000')}
-          badge="7일 무료"
-          title="정기 구독"
-          price="월 ₩1,000"
-          desc="7일 무료 후 매월 자동결제"
-        />
-        <PlanCard
-          selected={plan === 'onetime_1000'}
-          onSelect={() => setPlan('onetime_1000')}
-          title="1개월권"
-          price="₩1,000"
-          desc="1회 결제 · 1개월 후 만료"
-        />
+      {/* [광고 차단 전용] 단건(1개월권)만 안내한다. 요금제 선택 UI 없이 가격 한 줄로 대체. */}
+      <div className="rounded-xl border border-gray-200 bg-white p-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-gray-700">광고 차단 1개월권</span>
+          <span className="text-lg font-extrabold text-gray-900">₩1,000</span>
+        </div>
+        <p className="mt-1 text-[11px] leading-tight text-gray-600">
+          1회 결제 · 1개월 후 만료 (자동결제 없음)
+        </p>
       </div>
 
       {/* 휴대폰 번호 입력: 이니시스 V2 결제 필수 항목.
@@ -228,10 +223,8 @@ export function SubscribeButton() {
         {loading
           ? '결제 창 여는 중...'
           : status === 'authenticated'
-            ? plan === 'monthly_1000'
-              ? '7일 무료 후 월 ₩1,000 시작하기'
-              : '₩1,000 결제하고 시작하기'
-            : '로그인 후 시작하기'}
+            ? '₩1,000 결제하고 광고 끄기'
+            : '로그인 후 결제하기'}
       </button>
 
       {/* 결제창 진입 실패 메시지(모바일에서 alert가 가려질 수 있어 인라인으로도 노출) */}
@@ -247,55 +240,3 @@ export function SubscribeButton() {
   );
 }
 
-interface PlanCardProps {
-  selected: boolean;
-  onSelect: () => void;
-  title: string;
-  price: string;
-  desc: string;
-  badge?: string;
-}
-
-// 요금제 카드: 가격 강조형. 선택 강조는 "텍스트 색"이 아니라
-// 테두리(primary ring/border) + 배지 + 체크 아이콘으로 표현한다.
-// 연한 주황 배경(bg-primary/5) 위에 주황 글씨를 올리면 대비가 깨지므로,
-// 제목/가격/설명은 selected 여부와 무관하게 항상 본문 가독 색을 쓴다.
-function PlanCard({ selected, onSelect, title, price, desc, badge }: PlanCardProps) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={selected}
-      className={`relative rounded-xl border p-3 text-left transition ${
-        selected
-          ? 'border-primary bg-primary/5 ring-1 ring-primary'
-          : 'border-gray-200 bg-white'
-      }`}
-    >
-      {badge && (
-        <span className="absolute -top-2 right-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-white">
-          {badge}
-        </span>
-      )}
-      <div className="flex items-center gap-1">
-        {/* 선택 강조는 색이 아닌 체크 아이콘으로 — 색각 의존 회피 */}
-        {selected && (
-          <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-primary" aria-hidden>
-            <path
-              fillRule="evenodd"
-              d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 9.7a1 1 0 0 1 1.4-1.4l3.8 3.8 6.8-6.8a1 1 0 0 1 1.4 0Z"
-              clipRule="evenodd"
-            />
-          </svg>
-        )}
-        <span className="text-xs font-semibold text-gray-700">{title}</span>
-      </div>
-      <div className="mt-0.5 text-lg font-extrabold text-gray-900">
-        {price}
-      </div>
-      <div className="mt-1 text-[11px] leading-tight text-gray-600">
-        {desc}
-      </div>
-    </button>
-  );
-}

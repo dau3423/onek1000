@@ -123,7 +123,7 @@ export function BannerAd({ hide, sheetOpen }: Props) {
         >
           <div>
             <div className="text-[11px] opacity-90">광고가 거슬리신가요?</div>
-            <div className="text-sm font-bold">월 1,000원 → 광고 OFF</div>
+            <div className="text-sm font-bold">광고 끄기 ₩1,000</div>
           </div>
           <span className="text-xs font-bold">자세히 →</span>
         </Link>

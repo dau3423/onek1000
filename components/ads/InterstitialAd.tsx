@@ -50,7 +50,7 @@ export function InterstitialAd() {
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center">
         <div className="text-4xl">⛽</div>
         <h2 className="mt-3 text-lg font-bold text-gray-900">1000냥으로 광고 OFF</h2>
-        <p className="mt-2 text-sm text-gray-600">월 ₩1,000으로 깔끔하게 — 7일 무료 체험</p>
+        <p className="mt-2 text-sm text-gray-600">₩1,000으로 광고 끄기</p>
         <button
           onClick={() => router.push('/pricing')}
           className="mt-5 w-full rounded-xl bg-primary py-3 font-bold text-white"

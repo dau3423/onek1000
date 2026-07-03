@@ -1,4 +1,4 @@
-// 푸시 구독/해지 — 유료(isPremium) 사용자만 등록 가능
+// 푸시 구독/해지 — 광고 차단 전용 모델: 모든 기능 무료 → 로그인 사용자면 누구나 등록 가능
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/options';
@@ -9,7 +9,6 @@ export const runtime = 'nodejs';
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  if (!session.user.isPremium) return NextResponse.json({ error: 'premium only' }, { status: 402 });
   if (!isSupabaseConfigured()) return NextResponse.json({ error: 'db not configured' }, { status: 503 });
 
   const body = await req.json() as {

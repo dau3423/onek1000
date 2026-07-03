@@ -11,13 +11,14 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
 }
 
 /**
- * @param isPremium 서버에서 검증한 구독 상태(SEC-5: 서버 검증 우선).
- *   넘기면 클라 세션 갱신 타이밍과 무관하게 즉시 정확하다.
- *   미지정 시 useSession() 값으로 폴백(다른 위치 재사용 대비).
+ * @param isPremium 푸시 버튼 노출 허용 여부. 광고 차단 전용 모델에선 결제가 아니라
+ *   "로그인 여부"를 의미한다(모든 기능 무료 → 로그인 사용자면 누구나 허용).
+ *   호출부(PushSection)가 로그인 기준값을 넘긴다. 미지정 시 로그인 여부로 폴백.
  */
-export function EnablePushButton({ isPremium: isPremiumProp }: { isPremium?: boolean } = {}) {
+export function EnablePushButton({ isPremium: allowProp }: { isPremium?: boolean } = {}) {
   const { data } = useSession();
-  const isPremium = isPremiumProp ?? Boolean(data?.user?.isPremium);
+  // 로그인만 되어 있으면 허용(결제 무관). 넘어온 값이 있으면 우선.
+  const allow = allowProp ?? Boolean(data?.user?.id);
   const [subscribed, setSubscribed] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -30,9 +31,9 @@ export function EnablePushButton({ isPremium: isPremiumProp }: { isPremium?: boo
     });
   }, []);
 
-  if (!isPremium) {
+  if (!allow) {
     return (
-      <p className="text-xs text-gray-400">푸시 알림은 1000냥 플랜 전용 기능입니다.</p>
+      <p className="text-xs text-gray-400">로그인하면 푸시 알림을 설정할 수 있어요.</p>
     );
   }
 
