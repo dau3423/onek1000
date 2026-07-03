@@ -1,7 +1,7 @@
 // 공지(notices) 도메인 쿼리 — 단일 활성 공지 정책.
 // Supabase 미설정(mock) 시에는 공지 없음(null)으로 graceful 폴백한다.
 
-import { getSupabase, isSupabaseConfigured } from './supabase';
+import { getSupabase, getSupabaseFresh, isSupabaseConfigured } from './supabase';
 import { deleteNoticeImage } from '@/lib/storage/notices';
 import type { Notice } from '@/types/notice';
 
@@ -43,7 +43,8 @@ function mockNotice(): Notice | null {
 /** 현재 노출할 활성 공지 1건(없으면 null). 공개 API/팝업용. */
 export async function getActiveNotice(): Promise<Notice | null> {
   if (!isSupabaseConfigured()) return mockNotice();
-  const sb = getSupabase();
+  // 항상 최신값 필요(관리자가 공지를 바꾸면 즉시 반영) → no-store 강제 클라이언트로 조회.
+  const sb = getSupabaseFresh();
   const { data, error } = await sb
     .from('notices')
     .select('id, image_url, image_path, link_url, is_active, created_at')
