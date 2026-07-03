@@ -19,9 +19,9 @@ const pretendard = localFont({
 // Google AdSense 사이트 소유 확인용 publisher ID (env 우선, 없으면 하드코딩 폴백)
 const ADSENSE_ACCOUNT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT || 'ca-pub-6206539456344377';
 
-const SITE_TITLE = '1000냥 주유소 - 내 주변 최저가 주유소';
+const SITE_TITLE = '1000냥 주유소 - 전국 주유소 최저가·기름값, 제일 싼 주유소 찾기';
 const SITE_DESCRIPTION =
-  '전국 주유소 최저가를 한눈에. 내 주변·경로별 최저가, 가격 하락 알림까지.';
+  '전국 주유소 실시간 기름값과 최저가를 지도로 비교하세요. 내 주변·경로 위에서 제일 싼 셀프 주유소(저렴한 주유소)를 찾고, 가격 하락 알림까지. 회원가입만 하면 모두 무료.';
 
 export const metadata: Metadata = {
   // 상대 경로(opengraph-image 등)를 절대 URL로 변환하는 기준. OG/트위터 이미지가 절대화돼야 SNS가 인식.
