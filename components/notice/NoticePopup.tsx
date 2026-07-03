@@ -32,7 +32,8 @@ export function NoticePopup() {
   // 활성 공지 조회 + "오늘 하루 보지 않기" 판정.
   useEffect(() => {
     const ac = new AbortController();
-    fetch('/api/notice', { signal: ac.signal, cache: 'no-store' })
+    // 캐시버스터(t=) — 앞단 CDN이 경로 기준으로 캐시해도 공지 변경이 즉시 반영되게 한다.
+    fetch(`/api/notice?t=${Date.now()}`, { signal: ac.signal, cache: 'no-store' })
       .then((r) => (r.ok ? (r.json() as Promise<ActiveNoticeResponse>) : null))
       .then((data) => {
         const n = data?.notice;
