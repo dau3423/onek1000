@@ -60,11 +60,12 @@ function deriveStatus(sub: Sub | null) {
   const periodEnd = sub?.expires_at ?? sub?.current_period_end ?? sub?.trial_end;
   const periodEndValid = periodEnd ? new Date(periodEnd).getTime() > Date.now() : false;
   const periodEndStr = periodEnd ? new Date(periodEnd).toLocaleDateString('ko-KR') : null;
-  // 정기(trial/active)는 항상, canceled여도 만료 전이면 프리미엄 유지
+  // 프리미엄 활성 = 상태가 trial/active/canceled 이면서 "기간이 아직 유효"할 때만.
+  // (단건은 만료돼도 status가 'active'로 남으므로 status만 보면 안 되고 만료일을 함께 확인한다.
+  //  getPremiumStatus(세션 isPremium)와 동일 기준 — 마이페이지 표시가 실제 광고 상태와 어긋나지 않게.)
   const isActive =
-    sub?.status === 'active' ||
-    sub?.status === 'trial' ||
-    (sub?.status === 'canceled' && periodEndValid);
+    periodEndValid &&
+    (sub?.status === 'active' || sub?.status === 'trial' || sub?.status === 'canceled');
   const isCanceled = sub?.status === 'canceled';
   // 무료 체험(welcome trial 포함): 결제가 없는 상태 → 표시/노출을 별도로 분기한다.
   const isTrial = sub?.status === 'trial';
