@@ -398,7 +398,7 @@ model: opus
 ## 2. 실행 페이즈 (사용자 승인 후 재호출 시)
 
 1. 사이클 폴더의 plan.md(+design.md)를 읽는다. 승인 메시지에 수정 지시가 있으면 product-planner/ux-designer로 문서를 먼저 갱신한다.
-2. **구현**: `senior-developer` — plan.md(+design.md) 경로를 주고 "이 기준대로 구현, typecheck/lint 통과까지" 지시한다.
+2. **구현**: `senior-developer` — plan.md(+design.md) 경로를 주고 "이 기준대로 구현, typecheck/lint/build 통과까지" 지시한다.
 3. **리뷰**: `code-reviewer` — 판정이 ⚠️/❌면 지적 사항 전문을 senior-developer에게 전달해 수정시키고 재리뷰한다. **최대 2회 루프.** 2회 후에도 ❌면 실패 종료.
 4. **QA**: `qa-tester` — plan.md 경로와 변경 파일 목록을 준다.
    - **실패**: 리포트의 발견 문제를 senior-developer에게 전달해 수정 → qa-tester 재검증 **1회**. 재실패면 실패 종료.
