@@ -14,6 +14,7 @@
 | 주제 선정 | 하이브리드 — 사용자가 주제를 주면 그대로, 없으면 `researcher`의 백로그 분석 후 PM이 최고 가치 1개 자율 선정 |
 | QA 방식 | 정적 검증(typecheck/lint/build) + Mock 모드 dev 서버 + Chrome 브라우저 자동화 실화면 시나리오 검증 |
 | 결과 처리 | QA 통과 시 한국어 컨벤션(`feat:`/`fix:`)으로 **커밋까지만**. push/배포는 사용자가 직접 수행 |
+| 모델 배정 | 자료조사·기획·디자인(researcher, product-planner, ux-designer) = `fable` / 개발·리뷰·QA·총괄(senior-developer, code-reviewer, qa-tester, pm) = `opus` (기존 2개는 `inherit`→`opus` 수정) |
 
 ## 2. 에이전트 구성
 
