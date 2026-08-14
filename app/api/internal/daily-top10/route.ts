@@ -31,7 +31,8 @@ export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET ?? '';
   const auth = req.headers.get('authorization') ?? '';
   const querySecret = url.searchParams.get('secret') ?? '';
-  const authorized = auth === `Bearer ${secret}` || (secret.length > 0 && querySecret === secret);
+  // CRON_SECRET 빈값 가드 — 미설정 시 무조건 거부(헤더 "Bearer "·빈 쿼리 우회 차단).
+  const authorized = secret.length > 0 && (auth === `Bearer ${secret}` || querySecret === secret);
   if (!authorized) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }

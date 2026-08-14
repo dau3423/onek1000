@@ -240,6 +240,34 @@ gcloud scheduler jobs create http forecast-notify \
   --attempt-deadline=300s
 ```
 
+```bash
+# 7) 데일리 트윗(X) 자동발행 — 매일 07:30 KST (어제자 데이터 확정 + 출근 시간대)
+#    "어제자 전국 최저가 TOP10" 스레드를 X에 발행한다. X env 4종 미설정 시 발행 skip + 미리보기만 반환.
+#    (X env: X_API_KEY / X_API_SECRET / X_ACCESS_TOKEN / X_ACCESS_SECRET — .env.example 참고)
+gcloud scheduler jobs create http post-daily-tweet \
+  --project=onek1000 \
+  --location=asia-northeast3 \
+  --schedule="30 7 * * *" \
+  --time-zone="Asia/Seoul" \
+  --http-method=POST \
+  --uri="https://onek1000.kr/api/internal/post-daily-tweet" \
+  --headers="Authorization=Bearer ${CRON_SECRET}" \
+  --attempt-deadline=120s
+
+# 8) 주간 최저가 다이제스트 웹푸시 — 매주 월 07:00 KST
+#    푸시 구독(프리미엄)이 있고 last_lat/lng가 있는 회원에게 "이번 주 내 지역 최저가 TOP3 + 전망"을 발송.
+#    VAPID/Supabase 미설정 시 graceful skip. maxDuration=300 감안 attempt-deadline=300s.
+gcloud scheduler jobs create http weekly-digest \
+  --project=onek1000 \
+  --location=asia-northeast3 \
+  --schedule="0 7 * * 1" \
+  --time-zone="Asia/Seoul" \
+  --http-method=POST \
+  --uri="https://onek1000.kr/api/internal/weekly-digest" \
+  --headers="Authorization=Bearer ${CRON_SECRET}" \
+  --attempt-deadline=300s
+```
+
 `CRON_SECRET`은 6번 단계에서 등록한 secret과 동일한 값 사용. `${CRON_SECRET}`은 쉘에서 실제 값으로 치환하거나, 또는 `--oidc-service-account-email`로 더 보안 강화 가능.
 
 수정/삭제:

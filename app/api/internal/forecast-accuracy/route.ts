@@ -22,8 +22,10 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
+  // CRON_SECRET 빈값 가드 — 미설정 시 무조건 거부(Authorization: Bearer undefined 우회 차단).
+  const secret = process.env.CRON_SECRET ?? '';
   const auth = req.headers.get('authorization') ?? '';
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (secret.length === 0 || auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
