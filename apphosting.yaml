@@ -164,6 +164,17 @@ env:
   # ─── 관리자 카톡 알림(나에게 보내기) refresh_token ───
   - variable: ADMIN_KAKAO_REFRESH_TOKEN
     secret: ADMIN_KAKAO_REFRESH_TOKEN
+  # ─── X(트위터) 데일리 트윗 자동발행 ───
+  # 4종 모두 서버 전용 시크릿. 미설정 시 post-daily-tweet은 발행 skip + 미리보기만 반환.
+  # 발급: developer.x.com — App permissions를 Read and Write로 바꾼 "뒤에" Access Token을 생성해야 쓰기 가능.
+  - variable: X_API_KEY
+    secret: X_API_KEY
+  - variable: X_API_SECRET
+    secret: X_API_SECRET
+  - variable: X_ACCESS_TOKEN
+    secret: X_ACCESS_TOKEN
+  - variable: X_ACCESS_SECRET
+    secret: X_ACCESS_SECRET
   # ─── 심사용 로그인 (심사 종료 후 제거) ───
   - variable: REVIEWER_EMAIL
     value: "test@onek1000.kr"
