@@ -10,7 +10,15 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getAdminOrNull } from '@/lib/auth/admin';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
-import { getTodayVisitorCount, getTodayFunnel, getReturningUserCount, getSignedInUserCount } from '@/lib/db/stats';
+import {
+  getTodayVisitorCount,
+  getTodayFunnel,
+  getReturningUserCount,
+  getSignedInUserCount,
+  getRetentionD1,
+  getRetentionD7,
+  getTodayChannels,
+} from '@/lib/db/stats';
 
 export const metadata: Metadata = {
   title: '관리자 대시보드 (운영)',
@@ -20,10 +28,11 @@ export const metadata: Metadata = {
 // 매 요청 시 최신 DB 값으로(캐시 안 함).
 export const dynamic = 'force-dynamic';
 
-// 통계 카드 1개 — 숫자 또는 '-'(조회 실패/미설정).
+// 통계 카드 1개 — 숫자 또는 '-'(조회 실패/미설정). hint는 카드 하단 보조설명(선택).
 interface Stat {
   label: string;
   value: string;
+  hint?: string;
 }
 
 // KST(UTC+9) 기준 오늘 00:00 / N일 전 00:00의 ISO 문자열을 만든다.
@@ -73,6 +82,10 @@ async function loadStats(): Promise<Stat[]> {
       { label: '[퍼널] → 가입/로그인 시도', value: '-' },
       { label: '[퍼널] → 성공', value: '-' },
       { label: '[리텐션] 재방문 가입자', value: '-' },
+      { label: '[리텐션] D1 (최근 7일)', value: '-', hint: '디바이스(쿠키) 기준 · 절대값보다 추이 참고' },
+      { label: '[리텐션] D7 (최근 4주)', value: '-', hint: '디바이스(쿠키) 기준 · 절대값보다 추이 참고' },
+      { label: '[유입] 오늘 채널 TOP3', value: '-' },
+      { label: '[행동] 오늘 상세진입/길찾기', value: '-' },
     ];
   }
 
@@ -110,11 +123,15 @@ async function loadStats(): Promise<Stat[]> {
     headCount((sb) => sb.from('prices_latest').select('*', { count: 'exact', head: true })),
   ]);
 
-  // 오늘 퍼널(이벤트별 고유 디바이스) + 리텐션(재방문 가입자). 0033 미적용/실패 시 '-'.
-  const [funnel, returningUsers, signedInUsers] = await Promise.all([
+  // 오늘 퍼널(이벤트별 고유 디바이스) + 리텐션(재방문 가입자) + D1/D7 코호트 + 오늘 채널.
+  // 0033/0034 미적용/실패 시 각 카드만 '-'(페이지는 정상 렌더).
+  const [funnel, returningUsers, signedInUsers, d1, d7, channels] = await Promise.all([
     getTodayFunnel(),
     getReturningUserCount(),
     getSignedInUserCount(),
+    getRetentionD1(7),
+    getRetentionD7(4),
+    getTodayChannels(3),
   ]);
   // 시도/성공은 이메일+소셜을 합산해서 본다(distinct device가 아니라 단순 합 — 대략적 폭 비교용).
   const fv = (k: string): number | null => (funnel ? funnel[k] ?? 0 : null);
@@ -127,6 +144,18 @@ async function loadStats(): Promise<Stat[]> {
     returningUsers != null && signedInUsers != null && signedInUsers > 0
       ? ` (${Math.round((returningUsers / signedInUsers) * 100)}%)`
       : '';
+  // D1/D7 백분율 표시(소수1자리 유지, null이면 '-').
+  const pct = (v: number | null): string => (typeof v === 'number' ? `${v}%` : '-');
+  // 오늘 채널 TOP3 — "직접 92 · google.com 31 · naver.com 12". 데이터 없으면 '-'.
+  const channelsText =
+    channels && channels.length > 0
+      ? channels.map((c) => `${c.channel} ${c.visits.toLocaleString('ko-KR')}`).join(' · ')
+      : '-';
+  // 오늘 핵심 행동(고유 디바이스) — 상세진입 / 길찾기. funnel 미조회 시 '-'.
+  const detailViews = fv('station_detail_view');
+  const naviClicks = fv('navi_click');
+  const behaviorText =
+    detailViews == null && naviClicks == null ? '-' : `상세 ${fmt(detailViews)} · 길찾 ${fmt(naviClicks)}`;
 
   return [
     { label: '총 회원수', value: fmt(totalUsers) },
@@ -144,6 +173,12 @@ async function loadStats(): Promise<Stat[]> {
     { label: '[퍼널] → 성공', value: fmt(success) },
     // ── 리텐션: 가입자가 다른 날 다시 오는지(재방문 가입자 / 로그인 사용자).
     { label: '[리텐션] 재방문 가입자', value: `${fmt(returningUsers)}${retentionPct}` },
+    // ── 디바이스 코호트 리텐션(소급 산출). 쿠키 기준이라 절대값보다 추이로 본다.
+    { label: '[리텐션] D1 (최근 7일)', value: pct(d1), hint: '디바이스(쿠키) 기준 · 절대값보다 추이 참고' },
+    { label: '[리텐션] D7 (최근 4주)', value: pct(d7), hint: '디바이스(쿠키) 기준 · 절대값보다 추이 참고' },
+    // ── 유입 채널(오늘 first-touch) + 핵심 행동(오늘 고유 디바이스).
+    { label: '[유입] 오늘 채널 TOP3', value: channelsText },
+    { label: '[행동] 오늘 상세진입/길찾기', value: behaviorText },
   ];
 }
 
@@ -195,9 +230,15 @@ export default async function AdminPage() {
             className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
           >
             <div className="text-xs font-medium text-gray-500">{s.label}</div>
-            <div className="mt-1 text-2xl font-bold tabular-nums text-gray-900">
+            {/* 값이 길면(채널 TOP3·행동 등 텍스트 카드) 폰트를 줄여 줄바꿈 가독성 유지. */}
+            <div
+              className={`mt-1 font-bold tabular-nums text-gray-900 ${
+                s.value.length > 10 ? 'break-words text-sm leading-snug' : 'text-2xl'
+              }`}
+            >
               {s.value}
             </div>
+            {s.hint && <div className="mt-1 text-[10px] leading-tight text-gray-400">{s.hint}</div>}
           </div>
         ))}
       </section>

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { usePwaInstall } from '@/hooks/usePwaInstall';
 import { IosInstallGuide } from '@/components/pwa/IosInstallGuide';
 import { ChevronRightIcon, InstallIcon } from '@/components/icons';
+import { track } from '@/lib/analytics';
 
 /**
  * 마이페이지 "지원" 섹션용 앱 설치 버튼.
@@ -20,9 +21,12 @@ export function InstallButton() {
 
   const handleClick = async () => {
     if (canPrompt) {
-      // 네이티브 설치 프롬프트. 결과(accepted/dismissed)는 별도 처리 불필요 —
-      // 수락 시 appinstalled 이벤트로 버튼이 자동으로 숨겨진다.
-      await promptInstall();
+      // 네이티브 설치 프롬프트. 수락 시 appinstalled 이벤트로 버튼이 자동으로 숨겨진다.
+      // 결과(accepted/dismissed)는 성장 계기판용으로만 계측('unsupported'는 제외).
+      const outcome = await promptInstall();
+      if (outcome === 'accepted' || outcome === 'dismissed') {
+        track('pwa_install', { outcome });
+      }
       return;
     }
     // iOS 등: 수동 안내

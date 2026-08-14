@@ -10,6 +10,7 @@ import { BackButton } from '@/components/common/BackButton';
 import { CloseIcon, PinIcon } from '@/components/icons';
 import { ROUTE_ENTRY_FLAG } from '@/components/route/RouteLoginPrompt';
 import { useMapStore } from '@/stores/map';
+import { track } from '@/lib/analytics';
 import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL, type BrandCode, type ProductCode, type StationWithPrice } from '@/types/station';
 import {
   getRecentPlaces,
@@ -108,6 +109,8 @@ function RouteCheapestInner() {
     // 우리 DB + 서버 경유 directions 조회라 클라이언트 인증과 무관하다.
     // (외부 길안내 시작(NaviButton)만 별도로 회원 가드를 유지한다 — 메인 지도 측에서 처리.)
     if (!from || !to) { setError('출발/도착을 먼저 지정해주세요.'); return; }
+    // 경로 최저가 검색 실행 계측 — 좌표/검색어는 담지 않는다(props 없음). fire-and-forget.
+    track('route_search');
     setError(null); setLoading(true);
     try {
       const q = new URLSearchParams({

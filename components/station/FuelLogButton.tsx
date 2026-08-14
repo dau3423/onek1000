@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import type { FuelLog } from '@/types/fuel-log';
 import { amountToQuantity, hasUsableUnitPrice, quantityToAmount, segmentKmPerL } from '@/lib/fuel/calc';
+import { track } from '@/lib/analytics';
 import { CheckIcon, FuelIcon } from '@/components/icons';
 
 interface Props {
@@ -97,6 +98,8 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? '저장에 실패했어요.');
+      // 주유 기록 저장 성공 계측 — 좌표/금액 등은 담지 않는다(props 없음). fire-and-forget.
+      track('fuel_log_saved');
       // 이번 구간 연비: 직전 키로수(프리필 소스) → 이번 키로수 / 이번 주유량. 무효면 null.
       //   buildEconomy와 동일한 segmentKmPerL 규칙(거리>0·L>0·1~100 km/L) 적용.
       const kmPerL = segmentKmPerL(recentOdometer, odo ?? null, payload.liters ?? null);

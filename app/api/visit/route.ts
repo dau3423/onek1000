@@ -41,7 +41,36 @@ function clientIp(req: NextRequest): string {
   return req.headers.get('x-real-ip')?.trim() || 'unknown';
 }
 
+// 유입 채널 body(모두 선택) — referrer 호스트 + utm 3종. 문자열만 신뢰(그 외 무시).
+interface VisitChannel {
+  ref_host: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+}
+
+// body에서 채널 필드만 안전 추출(파싱 실패/형식 오류는 전부 null → 방문 기록엔 영향 없음).
+function readChannel(body: unknown): VisitChannel {
+  const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+  const str = (v: unknown): string | null =>
+    typeof v === 'string' && v.trim() ? v.trim().slice(0, 100) : null;
+  return {
+    ref_host: str(b.ref_host),
+    utm_source: str(b.utm_source),
+    utm_medium: str(b.utm_medium),
+    utm_campaign: str(b.utm_campaign),
+  };
+}
+
 export async function POST(req: NextRequest) {
+  // 0) 유입 채널 body 파싱(선택) — 실패해도 방문 기록은 진행(전부 null).
+  let channel: VisitChannel = { ref_host: null, utm_source: null, utm_medium: null, utm_campaign: null };
+  try {
+    channel = readChannel(await req.json());
+  } catch {
+    /* body 없음/파싱 실패는 무시(채널 없이 기록) */
+  }
+
   // 1) device_id: 쿠키에서 읽고, 없거나 형식이 깨졌으면 새로 발급.
   const existing = req.cookies.get(DEVICE_COOKIE)?.value;
   const isValid = typeof existing === 'string' && UUID_RE.test(existing);
@@ -65,7 +94,7 @@ export async function POST(req: NextRequest) {
 
   // 4) 한도 초과가 아니면 방문 기록(멱등 upsert). 내부에서 미설정/에러를 graceful 처리.
   //    초과 시엔 행을 쓰지 않고 조용히 통과(쿠키는 아래에서 기존대로 발급).
-  if (!limited) await recordVisit(deviceId, userId);
+  if (!limited) await recordVisit(deviceId, userId, channel);
 
   const res = NextResponse.json({ ok: true });
   // 새 디바이스면 영속 쿠키 발급(클라가 읽을 필요 없어 httpOnly).

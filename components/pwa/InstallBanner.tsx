@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { usePwaInstall } from '@/hooks/usePwaInstall';
 import { IosInstallGuide } from '@/components/pwa/IosInstallGuide';
 import { InstallIcon } from '@/components/icons';
+import { track } from '@/lib/analytics';
 
 const DISMISS_KEY = 'pwa-install-banner-dismissed';
 
@@ -45,8 +46,11 @@ export function InstallBanner() {
   const handleInstall = async () => {
     if (canPrompt) {
       const outcome = await promptInstall();
-      // 설치 수락 시 appinstalled로 자동 숨김. 거절해도 배너는 닫아 방해를 줄인다.
-      if (outcome === 'accepted' || outcome === 'dismissed') close();
+      // 네이티브 프롬프트 결과(accepted/dismissed)만 계측. 'unsupported'는 제외.
+      if (outcome === 'accepted' || outcome === 'dismissed') {
+        track('pwa_install', { outcome });
+        close();
+      }
       return;
     }
     setGuideOpen(true);

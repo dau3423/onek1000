@@ -96,7 +96,8 @@ export default async function EvStationDetailPage({ params }: Props) {
       {/* CTA */}
       <section className="mt-auto space-y-2 border-t border-gray-100 bg-gray-50 px-5 py-4 pb-[calc(16px+env(safe-area-inset-bottom))]">
         <EvChargeLogButton statId={detail.statId} />
-        <NaviButton name={detail.name} lat={detail.lat} lng={detail.lng} />
+        {/* statId=한국환경공단 공개 충전소 ID(개인정보 아님) → EV에서도 navi_click 발화 */}
+        <NaviButton name={detail.name} lat={detail.lat} lng={detail.lng} stationId={detail.statId} />
         {detail.busiCall && (
           <a
             href={`tel:${detail.busiCall}`}

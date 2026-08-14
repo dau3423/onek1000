@@ -4,11 +4,17 @@ import { useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import { startKakaoNavi, type NaviOrigin } from '@/lib/map/navi';
+import { track } from '@/lib/analytics';
 
 interface Props {
   name: string;
   lat: number;
   lng: number;
+  /**
+   * 계측용 공개 시설 ID(있으면 navi_click 이벤트에 동봉). 주유소=오피넷 ID, EV=환경공단 충전소 ID.
+   * 둘 다 개인정보가 아닌 공개 식별자다. 좌표/이름은 전송하지 않는다.
+   */
+  stationId?: string;
 }
 
 /**
@@ -16,7 +22,7 @@ interface Props {
  * 클릭 시 현재 위치(GPS)를 1회 획득해 출발지로 넘기고, 실패/거부 시 도착지만으로
  * graceful 하게 길안내를 시작한다. (BottomSheet의 startKakaoNavi 방식과 통일)
  */
-export function NaviButton({ name, lat, lng }: Props) {
+export function NaviButton({ name, lat, lng, stationId }: Props) {
   const [starting, setStarting] = useState(false);
   const { status } = useSession();
   const pathname = usePathname();
@@ -45,6 +51,8 @@ export function NaviButton({ name, lat, lng }: Props) {
       signIn(undefined, { callbackUrl: pathname ?? '/' });
       return;
     }
+    // 길찾기 CTA 클릭 계측 — fire-and-forget(전송 실패/차단도 아래 이동을 지연/차단하지 않음).
+    if (stationId) track('navi_click', { stationId });
     setStarting(true);
     try {
       const origin = await getOrigin();

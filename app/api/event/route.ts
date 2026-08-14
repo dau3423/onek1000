@@ -26,12 +26,20 @@ const RATE_LIMIT = 60;
 
 // 화이트리스트 — 임의 문자열 오염을 막고 집계 대상을 고정한다.
 const ALLOWED_EVENTS = new Set([
-  'landing_view',    // 첫 화면(지도) 진입
-  'signin_view',     // 로그인 화면 도달
-  'oauth_click',     // 카카오/구글 버튼 클릭(props.provider, props.inApp)
-  'email_submit',    // 이메일 폼 제출(props.mode = login|signup)
-  'signup_success',  // 이메일 회원가입 성공
-  'auth_success',    // 로그인 성공(props.method, props.mode)
+  'landing_view',        // 첫 화면(지도) 진입
+  'signin_view',         // 로그인 화면 도달
+  'oauth_click',         // 카카오/구글 버튼 클릭(props.provider, props.inApp)
+  'email_submit',        // 이메일 폼 제출(props.mode = login|signup)
+  'signup_success',      // 이메일 회원가입 성공
+  'auth_success',        // 로그인 성공(props.method, props.mode)
+  // ── 핵심 가치 행동(성장 계기판). props에는 stationId(공개 오피넷 ID)까지만 허용 —
+  //    좌표·주소·검색어 등 위치/개인정보성 값은 절대 넣지 않는다.
+  'station_detail_view', // 주유소 상세 화면 열림(props.stationId) — 열릴 때마다 1건
+  'navi_click',          // 길찾기 CTA 클릭(props.stationId)
+  'forecast_view',       // 주유 타이밍 예측 카드 열람/펼침(props.direction?)
+  'route_search',        // 경로 최저가 검색 실행(props 없음)
+  'fuel_log_saved',      // 주유 기록 저장 성공(props 없음)
+  'pwa_install',         // 설치 프롬프트 결과(props.outcome = accepted|dismissed)
 ]);
 
 function clientIp(req: NextRequest): string {

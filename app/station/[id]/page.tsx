@@ -9,6 +9,7 @@ import { ReviewSection } from '@/components/reviews/ReviewSection';
 import { NaviButton } from '@/components/station/NaviButton';
 import { FuelLogButton } from '@/components/station/FuelLogButton';
 import { MyFuelLogsSection } from '@/components/station/MyFuelLogsSection';
+import { StationViewTracker } from '@/components/station/StationViewTracker';
 import { PinIcon, PhoneIcon } from '@/components/icons';
 
 interface Props { params: { id: string } }
@@ -37,6 +38,8 @@ export default async function StationDetailPage({ params }: Props) {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
+      {/* 상세 열람 계측(렌더 결과 없음) — 열릴 때마다 station_detail_view 1건 */}
+      <StationViewTracker stationId={detail.id} />
       <InterstitialAd />
       {/* 헤더 */}
       <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-gray-100 bg-white/95 px-3 backdrop-blur">
@@ -129,7 +132,7 @@ export default async function StationDetailPage({ params }: Props) {
       {/* CTA */}
       <section className="mt-auto space-y-2 border-t border-gray-100 bg-gray-50 px-5 py-4 pb-[calc(16px+env(safe-area-inset-bottom))]">
         <FuelLogButton stationId={detail.id} unitPrice={detail.prices.B027?.price ?? null} />
-        <NaviButton name={detail.name} lat={detail.lat} lng={detail.lng} />
+        <NaviButton name={detail.name} lat={detail.lat} lng={detail.lng} stationId={detail.id} />
         {detail.tel && (
           <a
             href={`tel:${detail.tel}`}

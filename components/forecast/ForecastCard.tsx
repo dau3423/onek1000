@@ -11,6 +11,7 @@
 //   useEffect + fetch 패턴을 따른다(코드베이스에 react-query 미도입 — 불필요 의존성 추가 회피).
 
 import { useEffect, useRef, useState } from 'react';
+import { track } from '@/lib/analytics';
 import { FuelIcon } from '@/components/icons';
 import type { ProductCode } from '@/types/station';
 import { PRODUCT_LABEL, SIDO_NAME } from '@/types/station';
@@ -262,7 +263,12 @@ export function ForecastCard({ product, region = 'nation' }: Props) {
         {data?.series.length ? (
           <button
             type="button"
-            onClick={() => setExpanded((v) => !v)}
+            onClick={() => {
+              // 펼치는 순간(접힘→펼침)에만 열람 1건 계측. StrictMode(dev) 이중발화를 피하려
+              // setState 업데이터 밖, 현재 expanded 값 기준으로 판정한다. direction 외 값은 담지 않는다.
+              if (!expanded) track('forecast_view', { direction });
+              setExpanded((v) => !v);
+            }}
             className="rounded-full px-2 py-0.5 font-medium text-primary hover:bg-primary/10"
             aria-expanded={expanded}
           >
