@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { ProductCode } from '@/types/station';
 import { PRODUCT_LABEL } from '@/types/station';
+import { ChevronRightIcon } from '@/components/icons';
 
 type Direction = 'up' | 'flat' | 'down';
 
@@ -56,7 +57,10 @@ export default function ForecastMiniCard({ product = 'B027' }: { product?: Produ
           </span>
           {PRODUCT_LABEL[product]} {meta.label}
         </span>
-        <span className="text-sm text-primary">자세히 →</span>
+        <span className="inline-flex items-center gap-0.5 text-sm text-primary">
+          자세히
+          <ChevronRightIcon className="h-3.5 w-3.5" />
+        </span>
       </Link>
     </section>
   );

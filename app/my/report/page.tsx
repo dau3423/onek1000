@@ -1,7 +1,7 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/options';
+import { BackButton } from '@/components/common/BackButton';
 import { FuelReport } from '@/components/fuel/FuelReport';
 
 // 차계부 / 주유비 리포트 페이지 — 모든 회원 무료(프리미엄 게이트 없음).
@@ -13,13 +13,7 @@ export default async function FuelReportPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
       <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-gray-100 bg-white/95 px-3 backdrop-blur">
-        <Link
-          href="/my"
-          aria-label="뒤로가기"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-lg text-gray-900 hover:bg-gray-100"
-        >
-          ←
-        </Link>
+        <BackButton href="/my" />
         <h1 className="font-bold text-gray-900">주유 리포트</h1>
       </header>
 

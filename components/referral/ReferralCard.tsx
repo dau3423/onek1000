@@ -8,6 +8,7 @@
 // 코드/성공수는 /api/referral/me에서 가져온다(없으면 lazy 발급됨). SSR 안전: fetch는 effect에서.
 
 import { useEffect, useState } from 'react';
+import { GiftIcon } from '@/components/icons';
 import { copyCurrentUrl } from '@/lib/inapp';
 
 const SITE_ORIGIN = 'https://onek1000.kr';
@@ -74,7 +75,8 @@ export function ReferralCard() {
   return (
     <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
       <div className="text-sm font-bold text-gray-900">
-        친구 추천하면 둘 다 프리미엄 혜택 7일 🎁
+        친구 추천하면 둘 다 프리미엄 혜택 7일{' '}
+        <GiftIcon className="inline-block h-4 w-4 align-[-0.125em]" />
       </div>
       <p className="mt-1 text-xs text-gray-600">
         내 링크로 친구가 가입하면 친구와 나 모두 프리미엄 혜택 7일이 연장돼요.

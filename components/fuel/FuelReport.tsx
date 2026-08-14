@@ -8,6 +8,7 @@ import Link from 'next/link';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
 } from 'recharts';
+import { BoltIcon, ChartIcon, ChevronRightIcon } from '@/components/icons';
 import { PRODUCT_LABEL, type ProductCode } from '@/types/station';
 import type { FuelReport as FuelReportData } from '@/types/fuel-report';
 
@@ -54,7 +55,7 @@ export function FuelReport() {
   if (!report || (report.summary.count === 0 && report.ev.count === 0)) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-        <div className="text-5xl">📊</div>
+        <ChartIcon className="h-12 w-12 text-gray-300" />
         <p className="text-sm text-gray-600">아직 리포트가 없어요.</p>
         <p className="text-xs leading-relaxed text-gray-400">
           주유 기록을 남기면 월별 주유비·연비·절약 리포트가 쌓여요.
@@ -137,7 +138,9 @@ export function FuelReport() {
       {/* EV 참고(있을 때만) */}
       {ev.count > 0 && (
         <section className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
-          <h3 className="mb-2 text-xs font-bold text-emerald-700">⚡ 전기차 충전 (참고)</h3>
+          <h3 className="mb-2 flex items-center gap-1 text-xs font-bold text-emerald-700">
+            <BoltIcon className="h-4 w-4" />전기차 충전 (참고)
+          </h3>
           <div className="grid grid-cols-3 gap-2 text-center">
             <div>
               <div className="text-[11px] text-gray-500">충전 횟수</div>
@@ -161,9 +164,9 @@ export function FuelReport() {
 
       <Link
         href="/my/fuel-logs"
-        className="block rounded-lg border border-gray-200 py-2.5 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50"
+        className="flex items-center justify-center gap-0.5 rounded-lg border border-gray-200 py-2.5 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50"
       >
-        기록 보기 · 편집 →
+        기록 보기 · 편집<ChevronRightIcon className="h-4 w-4" />
       </Link>
     </div>
   );

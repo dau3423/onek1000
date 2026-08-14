@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { BoltIcon, ChartIcon, ChevronRightIcon, FuelIcon, MapIcon } from '@/components/icons';
 import { PRODUCT_LABEL } from '@/types/station';
 import type { FuelLog, FuelLogStation } from '@/types/fuel-log';
 import { amountToQuantity, hasUsableUnitPrice, quantityToAmount, segmentKmPerL } from '@/lib/fuel/calc';
@@ -105,7 +106,7 @@ export function FuelLogManager() {
   if (logs.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-        <div className="text-5xl">⛽</div>
+        <FuelIcon className="h-12 w-12 text-gray-300" />
         <p className="text-sm text-gray-500">아직 기록이 없어요.</p>
         <p className="text-xs leading-relaxed text-gray-400">
           주유소·충전소 상세에서 “여기서 주유 / 여기서 충전” 버튼 한 번으로 기록할 수 있어요.
@@ -187,7 +188,10 @@ function MapTab() {
   if (stations.length === 0) {
     return (
       <div className="flex h-[420px] flex-col items-center justify-center gap-2 rounded-xl border border-gray-100 bg-gray-50 text-center">
-        <div className="text-4xl">🗺️</div>
+        {/* text-4xl 이모지(줄 박스 40px)를 SVG로 교체 — 래퍼 h-10으로 원래 높이 고정(§1-4). */}
+        <div className="flex h-10 items-center justify-center">
+          <MapIcon className="h-9 w-9 text-gray-300" />
+        </div>
         <p className="text-sm text-gray-500">아직 주유 기록이 없어요.</p>
         <p className="text-xs text-gray-400">좌표가 있는 주유소 기록이 생기면 지도에 표시돼요.</p>
       </div>
@@ -242,8 +246,10 @@ function ListTab({
         href="/my/report"
         className="flex items-center justify-between rounded-xl bg-primary/5 px-4 py-3 text-sm font-semibold text-primary hover:bg-primary/10"
       >
-        <span>📊 월별 주유비 · 연비 · 절약 리포트</span>
-        <span aria-hidden>→</span>
+        <span className="flex items-center gap-1.5">
+          <ChartIcon className="h-4 w-4" />월별 주유비 · 연비 · 절약 리포트
+        </span>
+        <ChevronRightIcon className="h-4 w-4" />
       </Link>
 
       {/* 간단 통계 (현재 로드된 기록 기준) */}
@@ -271,20 +277,15 @@ function ListTab({
                   <span className="flex items-center gap-2">
                     <span className="truncate font-semibold text-gray-900">{l.stationName}</span>
                     {l.kind === 'ev' ? (
-                      <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                        ⚡ 충전
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                        <BoltIcon className="h-3.5 w-3.5" />충전
                       </span>
                     ) : (
-                      <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600">
-                        ⛽ {PRODUCT_LABEL[l.product]}
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600">
+                        <FuelIcon className="h-3.5 w-3.5" />{PRODUCT_LABEL[l.product]}
                       </span>
                     )}
-                    <span
-                      aria-hidden
-                      className="shrink-0 text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-gray-400"
-                    >
-                      ›
-                    </span>
+                    <ChevronRightIcon className="h-4 w-4 shrink-0 text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-gray-400" />
                   </span>
                   <span className="mt-0.5 block text-xs text-gray-500">
                     {formatDate(l.loggedAt)}

@@ -4,6 +4,7 @@
 
 import { cache } from 'react';
 import Link from 'next/link';
+import { ChevronRightIcon } from '@/components/icons';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { CancelButton } from '@/components/billing/CancelButton';
 import { EnablePushButton } from '@/components/push/EnablePushButton';
@@ -116,9 +117,10 @@ export async function SubscriptionSection({ userId }: { userId: string }) {
       <div className="text-sm text-gray-700">지금은 광고가 표시돼요.</div>
       <Link
         href="/pricing"
-        className="mt-3 inline-flex rounded-full bg-primary px-4 py-2 text-xs font-bold text-white"
+        className="mt-3 inline-flex items-center gap-1 rounded-full bg-primary px-4 py-2 text-xs font-bold text-white"
       >
-        ₩1,000으로 광고 끄기 →
+        ₩1,000으로 광고 끄기
+        <ChevronRightIcon className="h-3.5 w-3.5" />
       </Link>
     </div>
   );
@@ -182,7 +184,9 @@ export async function FuelLogCount({ userId }: { userId: string }) {
   return n > 0 ? (
     <span className="text-sm font-bold text-gray-900">{n}개</span>
   ) : (
-    <span className="text-sm text-primary">보기 →</span>
+    <span className="inline-flex items-center gap-0.5 text-sm text-primary">
+      보기<ChevronRightIcon className="h-3.5 w-3.5" />
+    </span>
   );
 }
 
@@ -191,7 +195,9 @@ export async function VehicleCount({ userId }: { userId: string }) {
   return n > 0 ? (
     <span className="text-sm font-bold text-gray-900">{n}개</span>
   ) : (
-    <span className="text-sm text-primary">관리 →</span>
+    <span className="inline-flex items-center gap-0.5 text-sm text-primary">
+      관리<ChevronRightIcon className="h-3.5 w-3.5" />
+    </span>
   );
 }
 
@@ -200,7 +206,9 @@ export async function RegionCount({ userId }: { userId: string }) {
   return n > 0 ? (
     <span className="text-sm font-bold text-gray-900">{n}개</span>
   ) : (
-    <span className="text-sm text-primary">관리 →</span>
+    <span className="inline-flex items-center gap-0.5 text-sm text-primary">
+      관리<ChevronRightIcon className="h-3.5 w-3.5" />
+    </span>
   );
 }
 

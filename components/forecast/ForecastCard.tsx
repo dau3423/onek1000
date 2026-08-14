@@ -11,6 +11,7 @@
 //   useEffect + fetch 패턴을 따른다(코드베이스에 react-query 미도입 — 불필요 의존성 추가 회피).
 
 import { useEffect, useRef, useState } from 'react';
+import { FuelIcon } from '@/components/icons';
 import type { ProductCode } from '@/types/station';
 import { PRODUCT_LABEL, SIDO_NAME } from '@/types/station';
 import { ForecastChart, type ForecastSeriesPoint, type ForecastBand } from './ForecastChart';
@@ -167,8 +168,8 @@ export function ForecastCard({ product, region = 'nation' }: Props) {
       const sidoName = SIDO_NAME[selectedRegion as keyof typeof SIDO_NAME] ?? '이 지역';
       return (
         <section className="mx-3 mb-3 mt-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-          <div className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
-            ⛽ {PRODUCT_LABEL[product]} 주유 타이밍 전망
+          <div className="flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+            <FuelIcon className="h-4 w-4" />{PRODUCT_LABEL[product]} 주유 타이밍 전망
           </div>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
             {sidoName} 지역은 데이터 축적 중이에요.
@@ -209,8 +210,8 @@ export function ForecastCard({ product, region = 'nation' }: Props) {
     <section ref={cardRef} className="mx-3 mb-3 mt-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
-            ⛽ {productLabel} 주유 타이밍 전망
+          <div className="flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+            <FuelIcon className="h-4 w-4" />{productLabel} 주유 타이밍 전망
           </div>
           <div className="mt-1 flex items-center gap-1.5">
             <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${badgeClass}`}>

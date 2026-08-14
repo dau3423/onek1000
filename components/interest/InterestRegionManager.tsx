@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { CheckIcon, PinIcon } from '@/components/icons';
 import { PRODUCT_LABEL, type ProductCode } from '@/types/station';
 import {
   INTEREST_REGION_MAX,
@@ -105,7 +106,7 @@ export function InterestRegionManager() {
         <ul className="divide-y divide-gray-100 rounded-xl border border-gray-100">
           {regions.map((r) => (
             <li key={r.id} className="flex items-center gap-3 px-4 py-3">
-              <span className="text-lg">📍</span>
+              <PinIcon className="h-4 w-4 text-gray-500" />
               <div className="flex-1">
                 <div className="font-semibold text-gray-900">{r.name}</div>
                 <div className="text-xs text-gray-500">
@@ -140,9 +141,19 @@ export function InterestRegionManager() {
             type="button"
             onClick={useCurrentLocation}
             disabled={locating}
-            className="w-full rounded-lg border border-gray-200 bg-white py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-60"
           >
-            {locating ? '위치 확인 중…' : coords ? '✓ 현재 위치 사용 중 (다시 가져오기)' : '📍 현재 위치 가져오기'}
+            {locating ? (
+              '위치 확인 중…'
+            ) : coords ? (
+              <>
+                <CheckIcon className="h-3.5 w-3.5" />현재 위치 사용 중 (다시 가져오기)
+              </>
+            ) : (
+              <>
+                <PinIcon className="h-4 w-4" />현재 위치 가져오기
+              </>
+            )}
           </button>
 
           <div className="flex gap-2">

@@ -5,6 +5,7 @@
 //  - 실측 변화율은 % 표기로 근사한다(원 환산하지 않음 — 유종/지역 평균가 기준 변동이라 단순 %가 정직).
 //  - 보합(flat)도 그대로 표시. API가 최근 20건으로 cap 하므로 전체 리스트를 렌더한다.
 
+import { CheckCircleIcon, ChevronRightIcon, XCircleIcon } from '@/components/icons';
 import type { ForecastHistoryItem, Direction } from './ForecastCard';
 
 const DIR_LABEL: Record<Direction, string> = {
@@ -33,10 +34,20 @@ export default function ForecastHistory({ history }: { history: ForecastHistoryI
           >
             <span className="min-w-0">
               <span className="text-gray-400">{h.forecastDate.slice(5)}</span>{' '}
-              {DIR_LABEL[h.direction]} → 실제 {fmtPct(h.actualChangePct)}
+              {DIR_LABEL[h.direction]}
+              <ChevronRightIcon className="mx-0.5 inline-block h-3 w-3 align-[-0.125em]" />
+              실제 {fmtPct(h.actualChangePct)}
             </span>
-            <span className={`shrink-0 ${h.hit ? 'text-gray-500 dark:text-gray-400' : 'text-gray-400'}`}>
-              {h.hit ? '✅ 적중' : '❌ 빗나감'}
+            <span className={`flex shrink-0 items-center gap-1 ${h.hit ? 'text-gray-500 dark:text-gray-400' : 'text-gray-400'}`}>
+              {h.hit ? (
+                <>
+                  <CheckCircleIcon className="h-4 w-4 text-green-600 dark:text-green-400" />적중
+                </>
+              ) : (
+                <>
+                  <XCircleIcon className="h-4 w-4 text-red-500 dark:text-red-400" />빗나감
+                </>
+              )}
             </span>
           </li>
         ))}

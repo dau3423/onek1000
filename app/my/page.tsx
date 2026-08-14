@@ -4,6 +4,18 @@ import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/options';
 import { isSupabaseConfigured } from '@/lib/db/supabase';
+import { BackButton } from '@/components/common/BackButton';
+import {
+  BoltIcon,
+  CarIcon,
+  ChartIcon,
+  ChatIcon,
+  ChevronRightIcon,
+  FuelIcon,
+  HeartIcon,
+  MailIcon,
+  PinIcon,
+} from '@/components/icons';
 import { SignOutButton } from '@/components/SignOutButton';
 import { DeleteAccountButton } from '@/components/account/DeleteAccountButton';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
@@ -45,9 +57,7 @@ export default async function MyPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
       <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-gray-100 bg-white/95 px-3 backdrop-blur">
-        <Link href="/" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100">
-          ←
-        </Link>
+        <BackButton href="/" ariaLabel="홈으로" />
         <h1 className="font-bold text-gray-900">마이페이지</h1>
       </header>
 
@@ -75,9 +85,10 @@ export default async function MyPage() {
             <div className="text-sm text-gray-700">지금은 광고가 표시돼요.</div>
             <Link
               href="/pricing"
-              className="mt-3 inline-flex rounded-full bg-primary px-4 py-2 text-xs font-bold text-white"
+              className="mt-3 inline-flex items-center gap-1 rounded-full bg-primary px-4 py-2 text-xs font-bold text-white"
             >
-              ₩1,000으로 광고 끄기 →
+              ₩1,000으로 광고 끄기
+              <ChevronRightIcon className="h-3.5 w-3.5" />
             </Link>
           </div>
         )}
@@ -92,7 +103,9 @@ export default async function MyPage() {
       <section className="border-t border-gray-100 px-5 py-5">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">즐겨찾기</h2>
         <Link href="/my/favorites" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
-          <span className="text-sm text-gray-700">♡ 저장한 주유소</span>
+          <span className="flex items-center gap-1.5 text-sm text-gray-700">
+            <HeartIcon className="h-4 w-4 text-gray-500" />저장한 주유소
+          </span>
           {canQuery && userId ? (
             <Suspense fallback={<BadgeSkeleton />}>
               <FavoriteCount userId={userId} />
@@ -106,32 +119,48 @@ export default async function MyPage() {
       <section className="border-t border-gray-100 px-5 py-5">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">내 기록</h2>
         <Link href="/my/fuel-logs" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
-          <span className="text-sm text-gray-700">⛽⚡ 주유 · 충전 기록</span>
+          <span className="flex items-center gap-1.5 text-sm text-gray-700">
+            <span className="flex items-center gap-1">
+              <FuelIcon className="h-4 w-4 text-gray-500" />
+              <BoltIcon className="h-4 w-4 text-gray-500" />
+            </span>
+            주유 · 충전 기록
+          </span>
           {canQuery && userId ? (
             <Suspense fallback={<BadgeSkeleton />}>
               <FuelLogCount userId={userId} />
             </Suspense>
           ) : (
-            <span className="text-sm text-primary">보기 →</span>
+            <span className="inline-flex items-center gap-0.5 text-sm text-primary">
+              보기<ChevronRightIcon className="h-3.5 w-3.5" />
+            </span>
           )}
         </Link>
         {/* 차계부/주유비 리포트 — 모든 회원 무료. 월별 주유비·연비·절약 통계. */}
         <Link href="/my/report" className="mt-2 flex items-center justify-between rounded-xl bg-gray-50 p-4">
-          <span className="text-sm text-gray-700">📊 주유 리포트 (월별 · 연비 · 절약)</span>
-          <span className="text-sm text-primary">보기 →</span>
+          <span className="flex items-center gap-1.5 text-sm text-gray-700">
+            <ChartIcon className="h-4 w-4 text-gray-500" />주유 리포트 (월별 · 연비 · 절약)
+          </span>
+          <span className="inline-flex items-center gap-0.5 text-sm text-primary">
+            보기<ChevronRightIcon className="h-3.5 w-3.5" />
+          </span>
         </Link>
       </section>
 
       <section className="border-t border-gray-100 px-5 py-5">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">내 차량</h2>
         <Link href="/my/vehicles" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
-          <span className="text-sm text-gray-700">🚗 차량 / 기름 종류</span>
+          <span className="flex items-center gap-1.5 text-sm text-gray-700">
+            <CarIcon className="h-4 w-4 text-gray-500" />차량 / 기름 종류
+          </span>
           {canQuery && userId ? (
             <Suspense fallback={<BadgeSkeleton />}>
               <VehicleCount userId={userId} />
             </Suspense>
           ) : (
-            <span className="text-sm text-primary">관리 →</span>
+            <span className="inline-flex items-center gap-0.5 text-sm text-primary">
+              관리<ChevronRightIcon className="h-3.5 w-3.5" />
+            </span>
           )}
         </Link>
       </section>
@@ -139,13 +168,17 @@ export default async function MyPage() {
       <section className="border-t border-gray-100 px-5 py-5">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">관심 지역</h2>
         <Link href="/my/interest-regions" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
-          <span className="text-sm text-gray-700">📍 관심 지역 최저가 알림</span>
+          <span className="flex items-center gap-1.5 text-sm text-gray-700">
+            <PinIcon className="h-4 w-4 text-gray-500" />관심 지역 최저가 알림
+          </span>
           {canQuery && userId ? (
             <Suspense fallback={<BadgeSkeleton />}>
               <RegionCount userId={userId} />
             </Suspense>
           ) : (
-            <span className="text-sm text-primary">관리 →</span>
+            <span className="inline-flex items-center gap-0.5 text-sm text-primary">
+              관리<ChevronRightIcon className="h-3.5 w-3.5" />
+            </span>
           )}
         </Link>
       </section>
@@ -181,15 +214,23 @@ export default async function MyPage() {
           rel="noopener noreferrer"
           className="mt-2 flex items-center justify-between rounded-xl bg-gray-50 p-4"
         >
-          <span className="text-sm text-gray-700">💬 1:1 문의 (카카오톡 채널)</span>
-          <span className="text-sm text-primary">채팅 열기 →</span>
+          <span className="flex items-center gap-1.5 text-sm text-gray-700">
+            <ChatIcon className="h-4 w-4 text-gray-500" />1:1 문의 (카카오톡 채널)
+          </span>
+          <span className="inline-flex items-center gap-0.5 text-sm text-primary">
+            채팅 열기<ChevronRightIcon className="h-3.5 w-3.5" />
+          </span>
         </a>
         <a
           href="mailto:junicode0901@gmail.com?subject=%5B1000%EB%83%A5%20%EC%A3%BC%EC%9C%A0%EC%86%8C%5D%20%EB%AC%B8%EC%9D%98"
           className="mt-2 flex items-center justify-between rounded-xl bg-gray-50 p-4"
         >
-          <span className="text-sm text-gray-700">✉️ 문의하기</span>
-          <span className="text-sm text-primary">이메일 보내기 →</span>
+          <span className="flex items-center gap-1.5 text-sm text-gray-700">
+            <MailIcon className="h-4 w-4 text-gray-500" />문의하기
+          </span>
+          <span className="inline-flex items-center gap-0.5 text-sm text-primary">
+            이메일 보내기<ChevronRightIcon className="h-3.5 w-3.5" />
+          </span>
         </a>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs text-gray-400">
           <Link href="/legal/terms" className="hover:underline">이용약관</Link>

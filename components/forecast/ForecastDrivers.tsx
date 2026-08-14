@@ -61,9 +61,9 @@ export default function ForecastDrivers({
               원/달러 환율 {fmtPct(usdkrwChangePct)}{' '}
               <span className="text-gray-400">
                 {usdkrwChangePct > 0
-                  ? '(원화 약세→수입가 상승)'
+                  ? '(원화 약세로 수입가 상승)'
                   : usdkrwChangePct < 0
-                    ? '(원화 강세→수입가 하락)'
+                    ? '(원화 강세로 수입가 하락)'
                     : ''}
               </span>
             </p>

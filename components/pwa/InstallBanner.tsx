@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePwaInstall } from '@/hooks/usePwaInstall';
 import { IosInstallGuide } from '@/components/pwa/IosInstallGuide';
+import { InstallIcon } from '@/components/icons';
 
 const DISMISS_KEY = 'pwa-install-banner-dismissed';
 
@@ -54,9 +55,7 @@ export function InstallBanner() {
   return (
     <>
       <div className="absolute left-3 right-16 top-3 z-30 flex items-center gap-3 rounded-2xl bg-white/95 p-3 shadow-lg backdrop-blur dark:bg-gray-800/95">
-        <span className="text-xl" aria-hidden>
-          📲
-        </span>
+        <InstallIcon className="h-4 w-4 shrink-0 text-gray-700 dark:text-gray-200" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold text-gray-900 dark:text-gray-50">앱으로 더 빠르게</p>
           <p className="truncate text-xs text-gray-500 dark:text-gray-400">

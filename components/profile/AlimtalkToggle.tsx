@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ChatIcon, SmartphoneIcon } from '@/components/icons';
 import { normalizePhone, isValidPhone, formatPhone } from '@/lib/phone';
 
 /**
@@ -90,7 +91,9 @@ export function AlimtalkToggle({
       <div className="rounded-xl bg-gray-50 p-4">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-gray-700">💬 카카오 알림톡 수신</div>
+            <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+              <ChatIcon className="h-4 w-4" />카카오 알림톡 수신
+            </div>
             <p className="mt-0.5 text-xs text-gray-500">주유 할인·이벤트 소식을 카카오 알림톡으로 받기</p>
           </div>
           <button
@@ -124,7 +127,9 @@ export function AlimtalkToggle({
 
       {/* 휴대폰번호 입력/저장 — 알림톡 발송·결제에 사용 */}
       <div className="rounded-xl bg-gray-50 p-4">
-        <div className="text-sm font-semibold text-gray-700">📱 휴대폰 번호</div>
+        <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+          <SmartphoneIcon className="h-4 w-4" />휴대폰 번호
+        </div>
         <p className="mt-0.5 text-xs text-gray-500">
           {hasPhone ? `등록됨: ${maskPhone(savedPhone)}` : '알림톡 발송·결제에 사용돼요.'}
         </p>

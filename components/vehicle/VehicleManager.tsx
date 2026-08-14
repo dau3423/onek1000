@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { CarIcon } from '@/components/icons';
 import { PRODUCT_LABEL, type ProductCode } from '@/types/station';
 import { VEHICLE_MAX, type Vehicle } from '@/types/vehicle';
 
@@ -91,7 +92,7 @@ export function VehicleManager() {
         <ul className="divide-y divide-gray-100 rounded-xl border border-gray-100">
           {vehicles.map((v) => (
             <li key={v.id} className="flex items-center gap-3 px-4 py-3">
-              <span className="text-lg">🚗</span>
+              <CarIcon className="h-5 w-5 text-gray-500" />
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-gray-900">{v.name}</span>

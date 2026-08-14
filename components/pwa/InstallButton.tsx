@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { usePwaInstall } from '@/hooks/usePwaInstall';
 import { IosInstallGuide } from '@/components/pwa/IosInstallGuide';
+import { ChevronRightIcon, InstallIcon } from '@/components/icons';
 
 /**
  * 마이페이지 "지원" 섹션용 앱 설치 버튼.
@@ -34,8 +35,13 @@ export function InstallButton() {
         onClick={handleClick}
         className="mb-3 flex w-full items-center justify-between rounded-xl bg-gray-50 p-4 text-left hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700"
       >
-        <span className="text-sm text-gray-700 dark:text-gray-200">📲 홈 화면에 앱 설치</span>
-        <span className="text-sm text-primary">{isIos && !canPrompt ? '방법 보기 →' : '설치 →'}</span>
+        <span className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-200">
+          <InstallIcon className="h-4 w-4" />홈 화면에 앱 설치
+        </span>
+        <span className="inline-flex items-center gap-0.5 text-sm text-primary">
+          {isIos && !canPrompt ? '방법 보기' : '설치'}
+          <ChevronRightIcon className="h-3.5 w-3.5" />
+        </span>
       </button>
       {guideOpen && <IosInstallGuide onClose={() => setGuideOpen(false)} />}
     </>

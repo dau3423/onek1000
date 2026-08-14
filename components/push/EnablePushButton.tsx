@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { BellIcon, BellOffIcon } from '@/components/icons';
 
 function urlBase64ToUint8Array(base64: string): Uint8Array {
   const padding = '='.repeat((4 - (base64.length % 4)) % 4);
@@ -73,9 +74,17 @@ export function EnablePushButton({ isPremium: allowProp }: { isPremium?: boolean
     <button
       onClick={toggle}
       disabled={busy}
-      className="w-full rounded-lg border border-gray-200 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+      className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-200 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
     >
-      {subscribed ? '🔔 푸시 알림 끄기' : '🔕 즐겨찾기 가격 변동 알림 받기'}
+      {subscribed ? (
+        <>
+          <BellIcon className="h-4 w-4" />푸시 알림 끄기
+        </>
+      ) : (
+        <>
+          <BellOffIcon className="h-4 w-4" />즐겨찾기 가격 변동 알림 받기
+        </>
+      )}
     </button>
   );
 }

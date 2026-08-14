@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { TrendUpIcon } from '@/components/icons';
 
 /**
  * 주유 타이밍(가격 인상) 예측 알림 토글.
@@ -43,7 +44,9 @@ export function ForecastNotifyToggle({ initialOptIn }: { initialOptIn: boolean }
     <div className="mt-2 rounded-xl bg-gray-50 p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-gray-700">📈 주유 타이밍 예측 알림</div>
+          <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+            <TrendUpIcon className="h-4 w-4" />주유 타이밍 예측 알림
+          </div>
           <p className="mt-0.5 text-xs text-gray-500">기름값 상승이 전망될 때 미리 알려드려요</p>
         </div>
         <button
