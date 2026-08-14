@@ -8,3 +8,11 @@ researcher 에이전트가 추가하고, pm 에이전트가 주제 자율 선정
 
 | 추가일 | 아이디어 | 기대 가치 | 예상 비용 | 상태 | 근거/메모 |
 |---|---|---|---|---|---|
+| 2026-08-14 | 1km 알람 임계값 설정(마이페이지) | 중 | 중 | 후보 | SRS FR-2.3 미완, `app/page.tsx:45` 하드코딩. 니즈 규모 미검증 |
+| 2026-08-14 | 셀프/등유 필터 칩 추가 | 중 | 소~중 | 후보 | SRS FR-1.3·docs04와 구현 괴리. `is_self`는 이미 API 응답에 존재 |
+| 2026-08-14 | 상세 페이지 가격추이 유종 탭 | 중 | 중 | 후보 | `app/station/[id]/page.tsx:99` B027 고정. PriceHistoryChart가 product prop 이미 지원 |
+| 2026-08-14 | 검색 결과 유종 반영 | 중 | 중 | 후보 | `app/api/search/route.ts:36,46` B027 하드코딩. 경유/LPG 차량 사용자 비교 불가 |
+| 2026-08-14 | 다크모드 미적용 페이지 정합 | 중 | 대 | 후보 | 상세/검색/마이/pricing에 `dark:` 부재, NFR-8 위반. 페이지 단위 분할 필요. **주의: 아이콘 사이클(2026-08-14)에서 이 페이지들 아이콘에 라이트 전용 색(text-gray-*, text-green-600 등)을 넣었으므로, 다크 도입 시 해당 아이콘 색도 함께 `dark:` 보정 필요(design.md 미해결 8)** |
+| 2026-08-14 | 이모지 아이콘 → 공용 SVG 전면 교체 + 뒤로가기/닫기/즐겨찾기 UX | 상 | 중~대 | 완료 | [2026-08-14-ux-polish-emoji-to-icons](2026-08-14-ux-polish-emoji-to-icons/) — FR-1/FR-2 전량 구현(G1~G4), 이월 없음. 리뷰 ✅, QA 조건부 통과(브라우저 자동화 미수행) |
+| 2026-08-14 | 방향 배지 글리프(▲▼─·↑) SVG화 | 소 | 소 | 후보 | ForecastCard/ForecastMiniCard `meta.arrow`, PriceTrendBanner "+N% ↑" 등. AC-1-1 grep 범위 밖이라 이번 교체 대상 아니었음. 일관성 차원 후속 정리 후보 |
+| 2026-08-14 | 기존 인라인 SVG의 공용 아이콘 세트 치환 | 소 | 소 | 후보 | FilterBar 셰브런/체크, page.tsx ⓘ 범례, NoticePopup, InstallBanner 등 기존 인라인 SVG를 `components/icons/`로 점진 수렴(중복 제거). 동작 영향 없는 리팩터 |
