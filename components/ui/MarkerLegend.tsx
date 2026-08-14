@@ -7,6 +7,7 @@ import type { PriceTier } from '@/lib/map/geo';
 import { TIER_FACE, faceSvgInner, skullInner, PLAIN_MARKER_COLOR } from '@/lib/map/markerFace';
 import { useMapStore } from '@/stores/map';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
+import { CrownIcon } from '@/components/icons';
 
 // EV 마커 색(단일 출처는 lib/map/evMarker.ts — 범례는 시각 일관성을 위해 동일 값을 사용).
 const EV_AVAILABLE_COLOR = '#16A34A'; // 초록 — 사용가능
@@ -322,7 +323,8 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
                   <TopPinChip body={TIER_NORMAL} ring={BRAND_COLOR.GSC} />
                 </span>
                 <span>
-                  👑 + 순위 숫자(물방울 핀) = 전국 최저가 TOP 10
+                  <CrownIcon className="mr-0.5 inline-block h-3.5 w-3.5 align-[-0.15em] text-amber-600 dark:text-amber-400" />
+                  + 순위 숫자(물방울 핀) = 전국 최저가 TOP 10
                   <span className="text-gray-500 dark:text-gray-400"> (가격 라벨</span>
                   <span style={{ color: HL_COLOR }} className="font-semibold"> 앰버</span>
                   <span className="text-gray-500 dark:text-gray-400">)</span>

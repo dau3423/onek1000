@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMapStore } from '@/stores/map';
 import { PRODUCT_LABEL, type ProductCode } from '@/types/station';
 import { BrandFilter } from './BrandFilter';
+import { BoltIcon } from '@/components/icons';
 import clsx from 'clsx';
 
 // 휘발유 드롭다운에 묶을 유종(일반/고급). 칩 라벨은 현재 선택을 반영한다.
@@ -145,7 +146,8 @@ export function FilterBar() {
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
           )}
         >
-          <span aria-hidden>⚡</span>
+          {/* 선택 시 흰색(currentColor)을 상속받는다 */}
+          <BoltIcon className="h-3.5 w-3.5" />
           <span>EV</span>
         </button>
       </div>

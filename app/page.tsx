@@ -33,6 +33,7 @@ import { useFullscreen } from '@/hooks/useFullscreen';
 import { quantize, distanceMeters, distancePointToPath } from '@/lib/map/geo';
 import { ensureNotifyPermission } from '@/lib/sound';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
+import { RouteIcon, ChevronRightIcon, CloseIcon, LocationOffIcon, LoaderIcon, FullscreenIcon, FullscreenExitIcon, FuelIcon } from '@/components/icons';
 import type { BboxResponse, RadiusResponse, StationWithPrice, NationalTop10Item, NationalTop10Response, StationPoint, StationsInBboxResponse, RoutePlan, ProductCode } from '@/types/station';
 import type { EvBboxResponse, EvStationMarker } from '@/types/ev';
 
@@ -844,22 +845,25 @@ export default function HomePage() {
             오른쪽: 닫기(✕)로 경로 해제. */}
         {layer === 'gas' && routePlan && (
           <div className="flex items-center gap-2 border-b border-gray-100 bg-white px-3 py-1.5 dark:border-gray-800 dark:bg-gray-900">
-            <span className="shrink-0 text-sm">🛣️</span>
+            <RouteIcon className="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" />
             <div className="min-w-0 flex-1 truncate text-xs">
               <span className="font-bold text-gray-900 dark:text-gray-100">
-                {routePlan.from.name ?? '출발'} → {routePlan.to.name ?? '도착'}
+                {routePlan.from.name ?? '출발'}
+                <ChevronRightIcon className="mx-0.5 inline-block h-3 w-3 align-[-0.1em] text-gray-400" />
+                {routePlan.to.name ?? '도착'}
               </span>
               <span className="ml-1.5 text-gray-500 dark:text-gray-400">
                 · 최저가 {routePlan.stations.length}곳
               </span>
             </div>
+            {/* 표준형 44px. 표시줄 py-1.5 안에서 버튼(h-11)이 세로로 겹치므로 -my-1로 시각 높이 불변 처리(§4-2). */}
             <button
               onClick={() => clearRoutePlan()}
               aria-label="경로 표시 해제"
               title="경로 표시 해제"
-              className="shrink-0 rounded-full p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+              className="-my-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
             >
-              ✕
+              <CloseIcon className="h-5 w-5" />
             </button>
           </div>
         )}
@@ -933,6 +937,11 @@ export default function HomePage() {
           aria-hidden={sheetOpen}
           tabIndex={sheetOpen ? -1 : undefined}
           className={`absolute right-3 z-30 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full text-lg text-gray-700 transition-opacity duration-300 hover:opacity-90 dark:text-gray-200 ${
+            // denied/locating 아이콘 상태에서만 흰 칩 배경(지도 위 가독성). 기본(PNG)은 배경 없음(§3-3).
+            geo.status === 'denied' || geo.status === 'locating'
+              ? 'bg-white/90 shadow-md backdrop-blur dark:bg-gray-800/90'
+              : ''
+          } ${
             sheetOpen ? 'pointer-events-none opacity-0' : 'opacity-100'
           }`}
           aria-label={follow ? '따라가기 모드 켜짐 — 내 위치 추적 중' : '내 위치로 이동'}
@@ -945,9 +954,9 @@ export default function HomePage() {
           }
         >
           {geo.status === 'denied'
-            ? '🚫'
+            ? <LocationOffIcon className="h-5 w-5 text-red-500 dark:text-red-400" />
             : geo.status === 'locating'
-              ? '⏳'
+              ? <LoaderIcon className="h-5 w-5 animate-spin text-gray-600 motion-reduce:animate-none dark:text-gray-300" />
               : (
                 // 따라가기 ON/OFF 모두 같은 아이콘(icon_gps.png)을 쓴다.
                 // ON(선택): 원본 컬러. OFF(비선택): CSS grayscale로 회색 처리해 "비활성" 느낌.
@@ -998,7 +1007,7 @@ export default function HomePage() {
             aria-pressed={fullscreen.isFullscreen}
             title={fullscreen.isFullscreen ? '전체화면 종료' : '전체화면으로 보기'}
           >
-            {fullscreen.isFullscreen ? '🗗' : '⛶'}
+            {fullscreen.isFullscreen ? <FullscreenExitIcon className="h-5 w-5" /> : <FullscreenIcon className="h-5 w-5" />}
           </button>
         )}
 
@@ -1168,9 +1177,9 @@ export default function HomePage() {
       {fuelSavedToast && (
         <div
           role="status"
-          className="pointer-events-none fixed bottom-[calc(2rem+env(safe-area-inset-bottom))] left-1/2 z-[70] -translate-x-1/2 rounded-full bg-gray-900/90 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur"
+          className="pointer-events-none fixed bottom-[calc(2rem+env(safe-area-inset-bottom))] left-1/2 z-[70] flex -translate-x-1/2 items-center gap-1 rounded-full bg-gray-900/90 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur"
         >
-          ⛽ 주유 기록을 저장했어요
+          <FuelIcon className="h-4 w-4" /> 주유 기록을 저장했어요
         </div>
       )}
     </div>

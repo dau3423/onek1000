@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import { BETA_FREE } from '@/lib/flags';
+import { SettingsIcon } from '@/components/icons';
 
 export function Header() {
   const { data, status } = useSession();
@@ -39,7 +40,7 @@ export function Header() {
             title="관리자 콘솔"
             className="tap-press mr-0.5 flex h-7 shrink-0 items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 text-xs font-bold text-primary hover:bg-primary/20"
           >
-            <span aria-hidden>⚙️</span>
+            <SettingsIcon className="h-4 w-4" />
             <span className="hidden sm:inline">관리자</span>
           </Link>
         )}

@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import type { StationWithPrice } from '@/types/station';
 import { BRAND_LABEL } from '@/types/station';
 import { playAlertChime } from '@/lib/sound';
+import { WarningIcon, CloseIcon } from '@/components/icons';
 
 interface Props {
   station: StationWithPrice;
@@ -40,17 +41,21 @@ export function RadiusAlert({ station, averagePrice, onClick, onDismiss, onNavig
     >
       {/* 닫기: 배너 우측 상단 모서리에 고정. 반투명 원형 배경 + 굵은 ✕로 초록 배경에서도 또렷하게.
           상세 이동/길안내와 클릭 영역이 겹치지 않도록 절대 위치 + stopPropagation. */}
+      {/* 배너형 예외 40px(h-10): 3줄 배너 텍스트가 좁아 44px 히트영역은 본문(가격/주소)을 침범한다.
+          right-1 top-1 오프셋으로 배너 박스 크기는 불변(§4-2). */}
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); onDismiss(); }}
         aria-label="닫기"
-        className="absolute right-1.5 top-1.5 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/20 text-lg font-bold leading-none text-white hover:bg-black/35 active:bg-black/40"
+        className="absolute right-1 top-1 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/20 text-white hover:bg-black/35 active:bg-black/40"
       >
-        ✕
+        <CloseIcon className="h-5 w-5" />
       </button>
       <div className="min-w-0 flex-1 cursor-pointer" onClick={onClick}>
         {/* 1행(헤더) */}
-        <div className="text-[11px] opacity-90">⚠ 1km 안에 더 싼 곳!</div>
+        <div className="flex items-center gap-1 text-[11px] opacity-90">
+          <WarningIcon className="h-3.5 w-3.5" />1km 안에 더 싼 곳!
+        </div>
         {/* 2행 + 3행 */}
         <div className="mt-0.5 text-base font-bold">
           ₩{station.price.toLocaleString()}

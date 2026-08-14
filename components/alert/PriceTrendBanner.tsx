@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react';
 import type { ProductCode } from '@/types/station';
 import { PRODUCT_LABEL } from '@/types/station';
+import { TrendUpIcon, CloseIcon } from '@/components/icons';
 
 interface PriceTrendResponse {
   trend: 'up' | 'down' | 'flat' | null;
@@ -96,19 +97,21 @@ export function PriceTrendBanner({ lat, lng, product }: Props) {
 
   return (
     <div
-      className="pointer-events-auto absolute inset-x-2 top-[calc(56px+44px+8px+env(safe-area-inset-top))] z-30 flex items-center gap-2 rounded-xl bg-expensive/95 px-3 py-3 text-white shadow-lg backdrop-blur"
+      className="pointer-events-auto absolute inset-x-2 top-[calc(56px+44px+8px+env(safe-area-inset-top))] z-30 flex items-center gap-2 rounded-xl bg-expensive/95 py-3 pl-3 pr-12 text-white shadow-lg backdrop-blur"
       role="status"
     >
+      {/* 배너형 예외 40px(h-10): 배너 텍스트 폭이 좁아 44px 히트영역은 본문을 침범한다.
+          right-1 top-1 오프셋으로 배너 박스 크기는 불변(§4-2). */}
+      <button
+        onClick={onDismiss}
+        aria-label="알림 닫기"
+        className="absolute right-1 top-1 z-10 flex h-10 w-10 items-center justify-center rounded-full text-white/90 hover:bg-white/15 hover:text-white"
+      >
+        <CloseIcon className="h-5 w-5" />
+      </button>
       <div className="flex-1">
-        <div className="flex items-start justify-between gap-2">
-          <div className="text-[11px] opacity-90">📈 내 지역 기름값 오름세</div>
-          <button
-            onClick={onDismiss}
-            aria-label="알림 닫기"
-            className="-mr-1 -mt-1 shrink-0 rounded-full p-1 text-white/80 hover:bg-white/15 hover:text-white"
-          >
-            ✕
-          </button>
+        <div className="flex items-center gap-1 text-[11px] opacity-90">
+          <TrendUpIcon className="h-3.5 w-3.5" />내 지역 기름값 오름세
         </div>
         <div className="mt-0.5 text-base font-bold">오르기 전에 채우세요</div>
         <div className="text-[11px] opacity-90">

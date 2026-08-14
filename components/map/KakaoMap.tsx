@@ -9,6 +9,7 @@ import { TIER_FACE, faceMarkerSvg, numberMarkerSvg, skullMarkerSvg } from '@/lib
 import type { EvStationMarker } from '@/types/ev';
 import { buildEvMarkerContent } from '@/lib/map/evMarker';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
+import { SPARKLE_SVG_STRING } from '@/components/icons';
 
 /** BottomSheet와 공유하는 활성 탭 타입. 'area'=이 지역, 'nearby'=내 주변 10km. */
 export type MapListTab = 'area' | 'nearby';
@@ -631,8 +632,8 @@ export function KakaoMap({
       const glowPin = `<div class="top10-glow" style="animation:top10-gold-glow 2.4s ease-in-out infinite">
         <div class="top10-pin">
           ${pin}
-          <span class="top10-sparkle top10-sparkle--a">✦</span>
-          <span class="top10-sparkle top10-sparkle--b">✦</span>
+          <span class="top10-sparkle top10-sparkle--a">${SPARKLE_SVG_STRING}</span>
+          <span class="top10-sparkle top10-sparkle--b">${SPARKLE_SVG_STRING}</span>
         </div>
       </div>`;
       // 가격 라벨: 단색 앰버 → 황금 그라데이션 + shimmer 빛줄기로 "반짝이는 황금색" 강조.

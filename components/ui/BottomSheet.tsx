@@ -9,6 +9,7 @@ import { BRAND_LABEL, BRAND_COLOR } from '@/types/station';
 import { priceTier, priceTierThresholds } from '@/lib/map/geo';
 import type { EvStationMarker } from '@/types/ev';
 import { rankEvStations, type EvStationRanked, type EvSortOrigin } from '@/lib/ev/sort';
+import { CrownIcon, ChevronRightIcon, BoltFilledIcon } from '@/components/icons';
 
 type Tab = 'area' | 'nearby';
 
@@ -213,8 +214,10 @@ export function BottomSheet({
                         <div className="flex items-center gap-1.5">
                           <span className="truncate text-sm font-semibold text-gray-900 dark:text-gray-50">{s.name}</span>
                           {isNationalTop && (
-                            <span className="top10-shimmer shrink-0 rounded-full border border-amber-300 bg-gradient-to-r from-amber-300 to-amber-500 px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-amber-950 shadow-sm">
-                              👑 전국 {nationalRank}위
+                            <span className="top10-shimmer inline-flex shrink-0 items-center gap-0.5 rounded-full border border-amber-300 bg-gradient-to-r from-amber-300 to-amber-500 px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-amber-950 shadow-sm">
+                              {/* 색 미지정 — 배지 텍스트색(amber-950)을 currentColor로 상속 */}
+                              <CrownIcon className="h-3 w-3" />
+                              전국 {nationalRank}위
                             </span>
                           )}
                         </div>
@@ -229,10 +232,10 @@ export function BottomSheet({
                         </div>
                         <Link
                           href={`/station/${encodeURIComponent(s.id)}`}
-                          className="text-[11px] text-primary hover:underline"
+                          className="inline-flex items-center gap-0.5 text-[11px] text-primary hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          상세 →
+                          상세 <ChevronRightIcon className="h-3 w-3" />
                         </Link>
                       </div>
                     </button>
@@ -290,8 +293,8 @@ function EvRow({
             <div className="flex items-center gap-1.5">
               <span className="truncate text-sm font-semibold text-gray-900 dark:text-gray-50">{station.name}</span>
               {station.hasFast && (
-                <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold leading-none text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                  ⚡급속
+                <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold leading-none text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                  <BoltFilledIcon className="h-3.5 w-3.5" />급속
                 </span>
               )}
             </div>
