@@ -1,19 +1,22 @@
 import Link from 'next/link';
 import { SubscribeButton } from '@/components/billing/SubscribeButton';
 import { BUSINESS_INFO } from '@/lib/business';
+import { BackButton } from '@/components/common/BackButton';
+import { CoinIcon, SparklesIcon, CheckIcon, CloseIcon } from '@/components/icons';
 
 export default function PricingPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
       <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-gray-100 bg-white/95 px-3 backdrop-blur">
-        <Link href="/" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100">
-          ←
-        </Link>
+        <BackButton href="/" ariaLabel="홈으로" />
         <h1 className="font-bold text-gray-900">광고 차단</h1>
       </header>
 
       <section className="bg-gradient-to-b from-primary/10 to-white px-6 py-10 text-center">
-        <div className="text-4xl">💸</div>
+        {/* text-4xl(40px) 줄 박스 유지: 래퍼로 40px 고정(§1-4) */}
+        <div className="flex h-10 items-center justify-center">
+          <CoinIcon className="h-9 w-9 text-primary" />
+        </div>
         <h2 className="mt-3 text-2xl font-extrabold text-gray-900">광고 없이 깔끔하게</h2>
         <p className="mt-4 text-4xl font-black text-primary">₩1,000</p>
         <p className="mt-1 text-xs text-gray-500">₩1,000 한 번 결제로 광고 제거 · 1개월 이용</p>
@@ -29,7 +32,12 @@ export default function PricingPage() {
             <tr className="border-b border-gray-100 text-left text-xs text-gray-500">
               <th className="py-2 font-medium">기능</th>
               <th className="py-2 text-center font-medium">무료</th>
-              <th className="py-2 text-center font-bold text-primary">광고 차단 ✨</th>
+              <th className="py-2 text-center font-bold text-primary">
+                <span className="inline-flex items-center justify-center gap-1">
+                  광고 차단
+                  <SparklesIcon className="h-4 w-4" />
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -95,11 +103,24 @@ function Row({ name, free, pro, freeText, proText }: RowProps) {
     <tr>
       <td className="py-3 text-gray-700">{name}</td>
       <td className="py-3 text-center text-gray-500">
-        {freeText ?? (free ? '✓' : '—')}
+        {freeText ?? <Mark on={!!free} />}
       </td>
       <td className="py-3 text-center font-semibold text-primary">
-        {proText ?? (pro ? '✓' : '—')}
+        {proText ?? <Mark on={!!pro} />}
       </td>
     </tr>
+  );
+}
+
+// 표의 ✓/─ 대체: 지원=초록 체크, 미지원=회색 X. 셀 중앙 정렬.
+function Mark({ on }: { on: boolean }) {
+  return (
+    <span className="flex justify-center">
+      {on ? (
+        <CheckIcon className="h-4 w-4 text-green-600" />
+      ) : (
+        <CloseIcon className="h-4 w-4 text-gray-300" />
+      )}
+    </span>
   );
 }

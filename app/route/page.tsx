@@ -6,6 +6,8 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { loadKakao } from '@/components/map/loadKakao';
+import { BackButton } from '@/components/common/BackButton';
+import { CloseIcon, PinIcon } from '@/components/icons';
 import { ROUTE_ENTRY_FLAG } from '@/components/route/RouteLoginPrompt';
 import { useMapStore } from '@/stores/map';
 import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL, type BrandCode, type ProductCode, type StationWithPrice } from '@/types/station';
@@ -169,9 +171,7 @@ function RouteCheapestInner() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
       <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-gray-100 bg-white/95 px-3 backdrop-blur">
-        <Link href="/" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100">
-          ←
-        </Link>
+        <BackButton href="/" ariaLabel="홈으로" />
         <h1 className="font-bold text-gray-900">경로별 최저가</h1>
       </header>
 
@@ -238,9 +238,11 @@ function RouteCheapestInner() {
                     type="button"
                     aria-label={`${p.name} 삭제`}
                     onClick={() => setRecent(removeRecentPlace(p))}
-                    className="ml-0.5 flex h-5 w-5 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                    // 초소형 예외(§4-2): 칩 컨테이너가 40px 미만이라 44/40px 히트영역을 못 지킨다.
+                    // 버튼을 h-7 w-7(28px)까지 키우고 -my-1로 칩 시각 높이를 유지한다.
+                    className="-my-1 ml-0.5 flex h-7 w-7 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600"
                   >
-                    ✕
+                    <CloseIcon className="h-4 w-4" />
                   </button>
                 </span>
               </li>
@@ -296,7 +298,8 @@ function PointPicker({
   const [searchError, setSearchError] = useState<string | null>(null);
 
   // 외부에서 확정된 지점(value)의 이름을 입력란에 반영한다.
-  // - "내 위치" 선택 → 입력란에 "📍 내 위치" 표시(좌표만 잡히던 모호함 해소)
+  // - "내 위치" 선택 → 입력란에 플레인 텍스트 "내 위치" 표시(이모지 없음, AC-1-5).
+  //   시각 구분은 아래 입력 래퍼의 좌측 PinIcon(query === '내 위치'일 때만)으로 처리한다(§5 A안).
   // - 장소 검색 후 선택 → 그 장소명으로 덮어쓰기
   // 부모는 지점 확정 시마다 새 객체를 만들므로, value 참조가 바뀔 때만 동기화한다.
   // (사용자가 입력란에 직접 타이핑하는 동안에는 value가 그대로라 검색어가 보존된다.)
@@ -305,9 +308,13 @@ function PointPicker({
     if (value === lastSyncedValue.current) return;
     lastSyncedValue.current = value;
     if (value?.name) {
-      setQuery(value.name === '내 위치' ? '📍 내 위치' : value.name);
+      setQuery(value.name);
     }
   }, [value]);
+
+  // "내 위치"가 선택된 상태(query가 정확히 "내 위치")일 때만 좌측 Pin을 노출한다.
+  // 한 글자라도 수정하면 조건이 깨져 일반 입력 상태로 복귀한다(§5 A안).
+  const isMyLocation = query === '내 위치';
 
   const runSearch = async () => {
     const keyword = query.trim();
@@ -374,19 +381,24 @@ function PointPicker({
       </div>
 
       <div className="mb-2 flex gap-2">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              runSearch();
-            }
-          }}
-          placeholder="장소·주소 검색 (예: 강남역)"
-          className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:bg-white focus:outline-none"
-          enterKeyHint="search"
-        />
+        <div className="relative min-w-0 flex-1">
+          {isMyLocation && (
+            <PinIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+          )}
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                runSearch();
+              }
+            }}
+            placeholder="장소·주소 검색 (예: 강남역)"
+            className={`w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:bg-white focus:outline-none ${isMyLocation ? 'pl-9' : 'pl-3'}`}
+            enterKeyHint="search"
+          />
+        </div>
         <button
           onClick={runSearch}
           disabled={searching || !query.trim()}
@@ -420,8 +432,9 @@ function PointPicker({
         </div>
       )}
 
-      <button onClick={onMyLocation} className="w-full rounded-lg bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-200">
-        📍 내 위치
+      <button onClick={onMyLocation} className="flex w-full items-center justify-center gap-1 rounded-lg bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-200">
+        <PinIcon className="h-4 w-4" />
+        내 위치
       </button>
     </div>
   );

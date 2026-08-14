@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useMapStore } from '@/stores/map';
+import { RouteIcon, BellIcon, FuelIcon } from '@/components/icons';
 
 // "경로 위 최저가 찾기"로 지도에 진입했음을 알리는 sessionStorage 플래그 키.
 // route 페이지(search)가 비회원으로 진입할 때 세우고, 지도 화면 마운트 시 소비한다.
@@ -121,19 +122,19 @@ export function RouteLoginPrompt() {
 
         <ul className="mt-5 space-y-2.5">
           <li className="flex items-start gap-2.5">
-            <span aria-hidden className="mt-0.5 text-base leading-none">🛣️</span>
+            <RouteIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <span className="text-sm font-medium leading-snug text-gray-800 dark:text-gray-200">
               경로 위 실시간 최저가 주유소
             </span>
           </li>
           <li className="flex items-start gap-2.5">
-            <span aria-hidden className="mt-0.5 text-base leading-none">🔔</span>
+            <BellIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <span className="text-sm font-medium leading-snug text-gray-800 dark:text-gray-200">
               가격 하락 알림 · 즐겨찾기
             </span>
           </li>
           <li className="flex items-start gap-2.5">
-            <span aria-hidden className="mt-0.5 text-base leading-none">⛽</span>
+            <FuelIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <span className="text-sm font-medium leading-snug text-gray-800 dark:text-gray-200">
               내 주유 기록까지 전부 무료
             </span>

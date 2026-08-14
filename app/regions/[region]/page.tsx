@@ -10,6 +10,7 @@ import { REGIONS, regionBySlug, sigungusBySido } from '@/lib/regions';
 import { queryRegionDailyTop10, queryNationalAvgPrices } from '@/lib/db/queries';
 import { PRODUCT_LABEL, type ProductCode, type DailyTop10Item } from '@/types/station';
 import { PriceTable } from '@/components/seo/PriceTable';
+import { ChevronRightIcon } from '@/components/icons';
 
 export const revalidate = 3600; // 1시간마다 가격 갱신(ISR)
 
@@ -92,7 +93,7 @@ export default async function RegionPage({ params }: { params: { region: string 
 
       <nav className="text-[12px] text-gray-400">
         <Link href="/regions" className="hover:text-gray-600">지역별 최저가</Link>
-        <span className="mx-1">›</span>
+        <ChevronRightIcon className="mx-1 inline h-3 w-3 align-middle text-gray-400" />
         <span className="text-gray-600">{region.name}</span>
       </nav>
 

@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { BRAND_LABEL, BRAND_COLOR, type BrandCode } from '@/types/station';
+import { BackButton } from '@/components/common/BackButton';
 
 interface Result {
   id: string; name: string; brand: BrandCode; address: string;
@@ -11,7 +12,6 @@ interface Result {
 }
 
 function SearchInner() {
-  const router = useRouter();
   const params = useSearchParams();
   const initialQ = params.get('q') ?? '';
   const [q, setQ] = useState(initialQ);
@@ -35,12 +35,7 @@ function SearchInner() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
       <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-gray-100 bg-white/95 px-3 backdrop-blur">
-        <button
-          onClick={() => router.back()}
-          className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100"
-        >
-          ←
-        </button>
+        <BackButton ariaLabel="뒤로 가기" />
         <input
           autoFocus
           value={q}

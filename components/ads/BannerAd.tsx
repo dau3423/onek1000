@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { SHEET_PEEK_PX } from '@/components/ui/BottomSheet';
 import { BETA_FREE } from '@/lib/flags';
+import { ChevronRightIcon } from '@/components/icons';
 
 declare global {
   interface Window {
@@ -125,7 +126,10 @@ export function BannerAd({ hide, sheetOpen }: Props) {
             <div className="text-[11px] opacity-90">광고가 거슬리신가요?</div>
             <div className="text-sm font-bold">광고 끄기 ₩1,000</div>
           </div>
-          <span className="text-xs font-bold">자세히 →</span>
+          <span className="inline-flex items-center gap-0.5 text-xs font-bold">
+            자세히
+            <ChevronRightIcon className="h-3 w-3" />
+          </span>
         </Link>
       </div>
     );

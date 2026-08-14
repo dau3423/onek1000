@@ -1,5 +1,6 @@
 // 결제 실패/취소 결과 페이지. (returnUrl 승인 실패 또는 사용자 취소 시 진입)
 import Link from 'next/link';
+import { CardIcon } from '@/components/icons';
 
 const REASON_LABEL: Record<string, string> = {
   parse: '결제 결과를 읽지 못했어요.',
@@ -24,7 +25,9 @@ export default function BillingFailPage({
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
-      <div className="text-5xl">💳</div>
+      <div className="flex justify-center">
+        <CardIcon className="h-12 w-12 text-gray-400" />
+      </div>
       <h1 className="text-xl font-bold">결제가 완료되지 않았어요</h1>
       <p className="text-sm text-gray-500">
         {detail ?? '결제는 진행되지 않았습니다. 언제든지 다시 시도하실 수 있어요.'}

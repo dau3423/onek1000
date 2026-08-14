@@ -1,12 +1,15 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { BackButton } from '@/components/common/BackButton';
 
 export default function LegalLayout({ children }: { children: ReactNode }) {
   return (
     <main className="mx-auto min-h-dvh max-w-3xl px-6 py-10">
-      <Link href="/" className="text-sm text-primary hover:underline">
-        ← 1000냥 주유소 홈으로
-      </Link>
+      <BackButton
+        href="/"
+        label="1000냥 주유소 홈으로"
+        className="inline-flex items-center gap-1.5 py-3 text-sm text-primary hover:underline"
+      />
       <article className="mt-6 space-y-5 text-sm leading-relaxed text-gray-700 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:text-gray-900 [&_h2]:mt-8 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-gray-900 [&_li]:ml-5 [&_li]:list-disc [&_ul]:space-y-1">
         {children}
       </article>

@@ -173,7 +173,7 @@ function SignInInner() {
             <div className="mt-3 rounded-xl bg-white/70 p-3 text-[12px] leading-relaxed text-orange-800">
               {isIos ? (
                 <p>
-                  자동 전환이 안 되면 <b>우측 상단 메뉴(···) → &ldquo;Safari로 열기&rdquo;</b>를
+                  자동 전환이 안 되면 <b>우측 상단 메뉴(···)에서 &ldquo;Safari로 열기&rdquo;</b>를
                   눌러주세요. 또는 아래 버튼으로 링크를 복사해 브라우저 주소창에 붙여넣어도 됩니다.
                 </p>
               ) : (

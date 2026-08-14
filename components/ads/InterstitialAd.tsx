@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { FuelIcon } from '@/components/icons';
 
 const STORAGE_KEY = '1000n_interstitial_last';
 
@@ -48,7 +49,10 @@ export function InterstitialAd() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center">
-        <div className="text-4xl">⛽</div>
+        {/* text-4xl(40px) 줄 박스 유지: 래퍼로 40px 고정(§1-4) */}
+        <div className="flex h-10 items-center justify-center">
+          <FuelIcon className="h-9 w-9 text-gray-300" />
+        </div>
         <h2 className="mt-3 text-lg font-bold text-gray-900">1000냥으로 광고 OFF</h2>
         <p className="mt-2 text-sm text-gray-600">₩1,000으로 광고 끄기</p>
         <button
