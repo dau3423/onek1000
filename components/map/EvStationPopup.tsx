@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import type { EvStationMarker } from '@/types/ev';
 import { relativeFromNow } from '@/lib/ev/format';
+import { BoltIcon, CloseIcon } from '@/components/icons';
 
 interface Props {
   station: EvStationMarker;
@@ -48,7 +49,10 @@ export function EvStationPopup({ station, onClose, onDetail, onNavigate }: Props
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400" aria-hidden>⚡ 전기차 충전소</span>
+              <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400" aria-hidden>
+                <BoltIcon className="h-3.5 w-3.5" />
+                전기차 충전소
+              </span>
             </div>
             <h2 className="mt-1 truncate text-base font-bold text-gray-900 dark:text-gray-50">
               {station.name}
@@ -60,9 +64,9 @@ export function EvStationPopup({ station, onClose, onDetail, onNavigate }: Props
           <button
             onClick={onClose}
             aria-label="닫기"
-            className="-mr-1 -mt-1 shrink-0 rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+            className="-mr-1.5 -mt-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
           >
-            ✕
+            <CloseIcon className="h-5 w-5" />
           </button>
         </div>
 

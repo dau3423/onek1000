@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import type { StationWithPrice } from '@/types/station';
 import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL } from '@/types/station';
+import { CloseIcon } from '@/components/icons';
 
 interface Props {
   station: StationWithPrice;
@@ -75,9 +76,9 @@ export function StationPopup({ station, onClose, onDetail, onNavigate }: Props) 
           <button
             onClick={onClose}
             aria-label="닫기"
-            className="-mr-1 -mt-1 shrink-0 rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+            className="-mr-1.5 -mt-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
           >
-            ✕
+            <CloseIcon className="h-5 w-5" />
           </button>
         </div>
 

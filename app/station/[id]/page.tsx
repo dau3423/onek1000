@@ -9,6 +9,7 @@ import { ReviewSection } from '@/components/reviews/ReviewSection';
 import { NaviButton } from '@/components/station/NaviButton';
 import { FuelLogButton } from '@/components/station/FuelLogButton';
 import { MyFuelLogsSection } from '@/components/station/MyFuelLogsSection';
+import { PinIcon, PhoneIcon } from '@/components/icons';
 
 interface Props { params: { id: string } }
 
@@ -62,8 +63,16 @@ export default async function StationDetailPage({ params }: Props) {
             </span>
           )}
         </div>
-        <p className="mt-2 text-sm text-gray-600">📍 {detail.address}</p>
-        {detail.tel && <p className="mt-1 text-sm text-gray-600">📞 {detail.tel}</p>}
+        <p className="mt-2 flex items-center gap-1.5 text-sm text-gray-600">
+          <PinIcon className="h-4 w-4 shrink-0 text-gray-400" />
+          {detail.address}
+        </p>
+        {detail.tel && (
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-600">
+            <PhoneIcon className="h-4 w-4 shrink-0 text-gray-400" />
+            {detail.tel}
+          </p>
+        )}
       </section>
 
       {/* 유종별 가격 */}
@@ -124,9 +133,10 @@ export default async function StationDetailPage({ params }: Props) {
         {detail.tel && (
           <a
             href={`tel:${detail.tel}`}
-            className="block w-full rounded-xl border border-gray-200 bg-white py-3.5 text-center font-semibold text-gray-700 hover:bg-gray-50"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white py-3.5 text-center font-semibold text-gray-700 hover:bg-gray-50"
           >
-            ☎ 전화걸기
+            <PhoneIcon className="h-4 w-4" />
+            전화걸기
           </a>
         )}
       </section>

@@ -7,6 +7,7 @@ import { StarRating } from './StarRating';
 import { ReviewList } from './ReviewList';
 import { ReviewForm } from './ReviewForm';
 import type { Review, ReviewStats } from '@/types/review';
+import { PencilIcon } from '@/components/icons';
 
 interface Props { stationId: string; stationLat?: number; stationLng?: number }
 
@@ -34,9 +35,10 @@ export function ReviewSection({ stationId, stationLat, stationLng }: Props) {
         {!writing && data && (
           <button
             onClick={() => setWriting(true)}
-            className="rounded-full bg-primary px-3 py-1.5 text-[11px] font-bold text-white"
+            className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-[11px] font-bold text-white"
           >
-            ✍️ 리뷰 쓰기
+            <PencilIcon className="h-4 w-4" />
+            리뷰 쓰기
           </button>
         )}
       </div>

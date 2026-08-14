@@ -6,6 +6,7 @@ import { EvChargerStatusPanel } from '@/components/ev/EvChargerStatusPanel';
 import { EvChargeLogButton } from '@/components/ev/EvChargeLogButton';
 import { MyEvLogsSection } from '@/components/ev/MyEvLogsSection';
 import type { EvStationDetail } from '@/types/ev';
+import { BoltIcon, BuildingIcon, PinIcon, PhoneIcon, ClockIcon } from '@/components/icons';
 
 interface Props { params: { statId: string } }
 
@@ -36,12 +37,35 @@ export default async function EvStationDetailPage({ params }: Props) {
       {/* 운영기관 + 주소 */}
       <section className="px-5 py-4">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-emerald-600" aria-hidden>⚡ 전기차 충전소</span>
+          <span className="flex items-center gap-1 text-sm font-semibold text-emerald-600" aria-hidden>
+            <BoltIcon className="h-4 w-4" />
+            전기차 충전소
+          </span>
         </div>
-        {detail.busiNm && <p className="mt-2 text-sm text-gray-600">🏢 {detail.busiNm}</p>}
-        {detail.address && <p className="mt-1 text-sm text-gray-600">📍 {detail.address}</p>}
-        {detail.busiCall && <p className="mt-1 text-sm text-gray-600">📞 {detail.busiCall}</p>}
-        {detail.useTime && <p className="mt-1 text-sm text-gray-600">🕒 {detail.useTime}</p>}
+        {detail.busiNm && (
+          <p className="mt-2 flex items-center gap-1.5 text-sm text-gray-600">
+            <BuildingIcon className="h-4 w-4 shrink-0 text-gray-400" />
+            {detail.busiNm}
+          </p>
+        )}
+        {detail.address && (
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-600">
+            <PinIcon className="h-4 w-4 shrink-0 text-gray-400" />
+            {detail.address}
+          </p>
+        )}
+        {detail.busiCall && (
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-600">
+            <PhoneIcon className="h-4 w-4 shrink-0 text-gray-400" />
+            {detail.busiCall}
+          </p>
+        )}
+        {detail.useTime && (
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-600">
+            <ClockIcon className="h-4 w-4 shrink-0 text-gray-400" />
+            {detail.useTime}
+          </p>
+        )}
         <div className="mt-2 flex flex-wrap gap-1.5">
           {detail.hasFast && (
             <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">급속</span>
@@ -76,9 +100,10 @@ export default async function EvStationDetailPage({ params }: Props) {
         {detail.busiCall && (
           <a
             href={`tel:${detail.busiCall}`}
-            className="block w-full rounded-xl border border-gray-200 bg-white py-3.5 text-center font-semibold text-gray-700 hover:bg-gray-50"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white py-3.5 text-center font-semibold text-gray-700 hover:bg-gray-50"
           >
-            ☎ 운영기관 전화
+            <PhoneIcon className="h-4 w-4" />
+            운영기관 전화
           </a>
         )}
       </section>

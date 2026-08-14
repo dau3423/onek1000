@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { HeartIcon, HeartFilledIcon } from '@/components/icons';
 
 interface Props { stationId: string }
 
@@ -51,9 +52,14 @@ export function FavoriteButton({ stationId }: Props) {
       onClick={toggle}
       disabled={busy}
       aria-label="즐겨찾기"
-      className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-50"
+      aria-pressed={fav}
+      className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-50"
     >
-      {fav ? '♥' : '♡'}
+      {fav ? (
+        <HeartFilledIcon className="h-6 w-6 text-red-500 transition-colors motion-reduce:transition-none" />
+      ) : (
+        <HeartIcon className="h-6 w-6 text-gray-500 transition-colors motion-reduce:transition-none" />
+      )}
     </button>
   );
 }

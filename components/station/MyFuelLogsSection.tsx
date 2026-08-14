@@ -6,6 +6,7 @@ import { authOptions } from '@/lib/auth/options';
 import { queryMyFuelLogsAtStation } from '@/lib/db/queries';
 import { PRODUCT_LABEL } from '@/types/station';
 import type { FuelLog } from '@/types/fuel-log';
+import { BoltIcon, FuelIcon } from '@/components/icons';
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -44,12 +45,14 @@ export async function MyFuelLogsSection({ stationId }: { stationId: string }) {
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-gray-900">{formatDate(l.loggedAt)}</span>
               {l.kind === 'ev' ? (
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                  ⚡ 충전
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                  <BoltIcon className="h-3.5 w-3.5" />
+                  충전
                 </span>
               ) : (
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600">
-                  ⛽ {PRODUCT_LABEL[l.product]}
+                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600">
+                  <FuelIcon className="h-3.5 w-3.5" />
+                  {PRODUCT_LABEL[l.product]}
                 </span>
               )}
             </div>

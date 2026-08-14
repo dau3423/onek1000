@@ -5,6 +5,7 @@
 // 입력용:   <StarRating value={rating} onChange={setRating} />
 
 import clsx from 'clsx';
+import { StarFilledIcon, StarOutlineIcon } from '@/components/icons';
 
 interface Props {
   value: number;            // 0~5 (소수 가능 — readOnly 모드에서만)
@@ -13,15 +14,37 @@ interface Props {
   readOnly?: boolean;
 }
 
-const SIZES = { sm: 'text-base', md: 'text-2xl', lg: 'text-4xl' };
+// 별 크기 매핑(§3-1): sm→h-4, md→h-6, lg→h-9. 기존 SIZES(text-*)를 SVG 크기로 대체.
+const STAR_SIZES = { sm: 'h-4 w-4', md: 'h-6 w-6', lg: 'h-9 w-9' } as const;
+
+// 3-상태 별 하나를 렌더. half는 오버레이 클리핑(바닥 빈 별 + 좌 50% 채운 별)으로 실제 반 채움.
+// SVG defs clipPath/gradient 대신 CSS overflow-hidden 클리핑 사용(같은 화면 다수 렌더 시 id 충돌 회피).
+function Star({ state, sizeCls }: { state: 'filled' | 'half' | 'empty'; sizeCls: string }) {
+  if (state === 'filled') {
+    return <StarFilledIcon className={clsx(sizeCls, 'text-primary')} />;
+  }
+  if (state === 'empty') {
+    return <StarOutlineIcon className={clsx(sizeCls, 'text-gray-300 dark:text-gray-600')} />;
+  }
+  // half: 바닥 빈 별 위에 좌측 50%만 보이는 채운 별을 겹친다.
+  return (
+    <span className={clsx('relative inline-block', sizeCls)}>
+      <StarOutlineIcon className={clsx(sizeCls, 'text-gray-300 dark:text-gray-600')} />
+      <span className="absolute inset-0 w-1/2 overflow-hidden">
+        <StarFilledIcon className={clsx(sizeCls, 'text-primary')} />
+      </span>
+    </span>
+  );
+}
 
 export function StarRating({ value, onChange, size = 'md', readOnly = false }: Props) {
+  const sizeCls = STAR_SIZES[size];
   return (
-    <div className={clsx('inline-flex items-center gap-0.5 leading-none', SIZES[size])}>
+    <div className="inline-flex items-center gap-0.5 leading-none">
       {[1, 2, 3, 4, 5].map((n) => {
         const filled = value >= n;
         const half = !filled && value >= n - 0.5;
-        const symbol = filled ? '★' : half ? '★' : '☆';
+        const state = filled ? 'filled' : half ? 'half' : 'empty';
         return (
           <button
             key={n}
@@ -30,13 +53,13 @@ export function StarRating({ value, onChange, size = 'md', readOnly = false }: P
             disabled={readOnly}
             aria-label={`${n}점`}
             className={clsx(
-              'transition',
-              !readOnly && 'cursor-pointer hover:scale-110',
+              'transition motion-reduce:transition-none',
+              // 입력용 별은 p-1로 별 간 실탭 영역 확보(별 5개 가로 나열이라 44px 강제 시 폼 폭 초과 — 예외).
+              !readOnly && 'cursor-pointer p-1 hover:scale-110',
               readOnly && 'cursor-default',
-              filled ? 'text-primary' : half ? 'text-primary/60' : 'text-gray-300',
             )}
           >
-            {symbol}
+            <Star state={state} sizeCls={sizeCls} />
           </button>
         );
       })}

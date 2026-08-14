@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import type { FuelLog } from '@/types/fuel-log';
 import { amountToQuantity, hasUsableUnitPrice, quantityToAmount, segmentKmPerL } from '@/lib/fuel/calc';
+import { CheckIcon, FuelIcon } from '@/components/icons';
 
 interface Props {
   stationId: string;
@@ -172,13 +173,21 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
           'block w-full rounded-xl bg-primary py-3.5 text-center font-bold text-white disabled:opacity-60'
         }
       >
-        {state === 'busy'
-          ? '저장 중…'
-          : state === 'done'
-            ? lastKmPerL != null
-              ? `✓ 주유 기록 저장됨 · 이번 연비 ${lastKmPerL} km/L`
-              : '✓ 주유 기록 저장됨'
-            : '⛽ 여기서 주유'}
+        {state === 'busy' ? (
+          '저장 중…'
+        ) : state === 'done' ? (
+          <span className="inline-flex items-center justify-center gap-1.5">
+            <CheckIcon className="h-4 w-4" />
+            {lastKmPerL != null
+              ? `주유 기록 저장됨 · 이번 연비 ${lastKmPerL} km/L`
+              : '주유 기록 저장됨'}
+          </span>
+        ) : (
+          <span className="inline-flex items-center justify-center gap-1.5">
+            <FuelIcon className="h-4 w-4" />
+            여기서 주유
+          </span>
+        )}
       </button>
 
       {open && state !== 'done' && (

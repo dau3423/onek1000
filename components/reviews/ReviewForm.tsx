@@ -13,6 +13,7 @@ import {
 } from '@/types/review';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { distanceMeters } from '@/lib/map/geo';
+import { PinIcon, CheckIcon, CameraIcon, CloseIcon } from '@/components/icons';
 
 interface Props {
   stationId: string;
@@ -194,12 +195,13 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
             <div key={p.path} className="relative h-16 w-16 overflow-hidden rounded-lg">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={p.signedUrl} alt="" className="h-full w-full object-cover" />
+              {/* 초소형 예외(§4-2): 64px 썸네일 내라 44/40px 히트영역 불가 → h-7 w-7(28px)로 확대 상한. */}
               <button
                 onClick={() => removePhoto(p.path)}
-                className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-[10px] font-bold text-white hover:bg-black/80"
+                className="absolute right-0.5 top-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
                 aria-label="삭제"
               >
-                ✕
+                <CloseIcon className="h-3.5 w-3.5" />
               </button>
             </div>
           ))}
@@ -210,7 +212,10 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
       <div className="mt-3">
         {geo.status === 'denied' ? (
           <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
-            <span>📍 위치 권한이 필요해요. 주유소 근처에서 위치를 허용해 주세요.</span>
+            <span className="flex items-start gap-1">
+              <PinIcon className="mt-px h-3.5 w-3.5 shrink-0" />
+              위치 권한이 필요해요. 주유소 근처에서 위치를 허용해 주세요.
+            </span>
             <button
               onClick={geo.request}
               className="shrink-0 rounded-md border border-amber-300 px-2 py-1 font-semibold hover:bg-amber-100"
@@ -219,24 +224,29 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
             </button>
           </div>
         ) : geo.status === 'unavailable' ? (
-          <div className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
-            📍 이 기기에서 위치를 사용할 수 없어 리뷰를 작성할 수 없어요.
+          <div className="flex items-start gap-1 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
+            <PinIcon className="mt-px h-3.5 w-3.5 shrink-0" />
+            이 기기에서 위치를 사용할 수 없어 리뷰를 작성할 수 없어요.
           </div>
         ) : !geo.coords ? (
-          <div className="rounded-lg bg-gray-50 px-3 py-2 text-[11px] text-gray-500">
-            📍 현재 위치 확인 중…
+          <div className="flex items-start gap-1 rounded-lg bg-gray-50 px-3 py-2 text-[11px] text-gray-500">
+            <PinIcon className="mt-px h-3.5 w-3.5 shrink-0" />
+            현재 위치 확인 중…
           </div>
         ) : tooFar && distanceM != null ? (
-          <div className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
-            📍 주유소에서 약 {fmtDist(distanceM)} 떨어져 있어요. 주유소 근처(약 {REVIEW_GEOFENCE_M}m 이내)에서 작성할 수 있어요.
+          <div className="flex items-start gap-1 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
+            <PinIcon className="mt-px h-3.5 w-3.5 shrink-0" />
+            주유소에서 약 {fmtDist(distanceM)} 떨어져 있어요. 주유소 근처(약 {REVIEW_GEOFENCE_M}m 이내)에서 작성할 수 있어요.
           </div>
         ) : distanceM != null ? (
-          <div className="rounded-lg bg-green-50 px-3 py-2 text-[11px] text-green-700">
-            ✓ 주유소 근처예요 (약 {fmtDist(distanceM)}). 리뷰를 작성할 수 있어요.
+          <div className="flex items-start gap-1 rounded-lg bg-green-50 px-3 py-2 text-[11px] text-green-700">
+            <CheckIcon className="mt-px h-3.5 w-3.5 shrink-0" />
+            주유소 근처예요 (약 {fmtDist(distanceM)}). 리뷰를 작성할 수 있어요.
           </div>
         ) : (
-          <div className="rounded-lg bg-green-50 px-3 py-2 text-[11px] text-green-700">
-            ✓ 위치 확인 완료. 리뷰를 작성할 수 있어요.
+          <div className="flex items-start gap-1 rounded-lg bg-green-50 px-3 py-2 text-[11px] text-green-700">
+            <CheckIcon className="mt-px h-3.5 w-3.5 shrink-0" />
+            위치 확인 완료. 리뷰를 작성할 수 있어요.
           </div>
         )}
       </div>
@@ -247,7 +257,8 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
           disabled={uploading || photos.length >= REVIEW_PHOTO_MAX}
           className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
-          📷 {uploading ? '업로드 중…' : '사진 추가'}
+          <CameraIcon className="h-4 w-4" />
+          {uploading ? '업로드 중…' : '사진 추가'}
         </button>
         <input
           ref={fileRef}

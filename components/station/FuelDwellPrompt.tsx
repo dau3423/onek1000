@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FuelLog } from '@/types/fuel-log';
 import { amountToQuantity, hasUsableUnitPrice, quantityToAmount } from '@/lib/fuel/calc';
+import { CloseIcon, FuelIcon } from '@/components/icons';
 
 // FuelLogButton과 동일 프리셋(일관성).
 const LITER_PRESETS = [30, 50] as const; // L (가득은 직접입력)
@@ -129,14 +130,15 @@ export function FuelDwellPrompt({ stationId, stationName, unitPrice, onClose, on
       >
         <div className="flex items-start justify-between gap-2">
           <p className="text-base font-bold text-gray-900">
-            방금 <span className="text-primary">{stationName}</span>에서 주유하셨나요? ⛽
+            방금 <span className="text-primary">{stationName}</span>에서 주유하셨나요?{' '}
+            <FuelIcon className="ml-0.5 inline-block h-5 w-5 align-text-bottom text-primary" />
           </p>
           <button
             onClick={onClose}
             aria-label="닫기"
-            className="-mr-1 -mt-1 shrink-0 rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            className="-mr-1.5 -mt-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700"
           >
-            ✕
+            <CloseIcon className="h-5 w-5" />
           </button>
         </div>
         <p className="mt-1 text-xs text-gray-500">리터나 금액만 골라 기록하세요. 단가·유종·시각은 자동 입력돼요.</p>

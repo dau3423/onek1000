@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import type { FuelLog } from '@/types/fuel-log';
+import { CheckIcon, BoltIcon } from '@/components/icons';
 
 interface Props {
   statId: string;
@@ -132,7 +133,19 @@ export function EvChargeLogButton({ statId, className }: Props) {
           'block w-full rounded-xl bg-emerald-600 py-3.5 text-center font-bold text-white disabled:opacity-60'
         }
       >
-        {state === 'busy' ? '저장 중…' : state === 'done' ? '✓ 충전 기록 저장됨' : '⚡ 여기서 충전'}
+        {state === 'busy' ? (
+          '저장 중…'
+        ) : state === 'done' ? (
+          <span className="inline-flex items-center justify-center gap-1.5">
+            <CheckIcon className="h-4 w-4" />
+            충전 기록 저장됨
+          </span>
+        ) : (
+          <span className="inline-flex items-center justify-center gap-1.5">
+            <BoltIcon className="h-4 w-4" />
+            여기서 충전
+          </span>
+        )}
       </button>
 
       {open && state !== 'done' && (

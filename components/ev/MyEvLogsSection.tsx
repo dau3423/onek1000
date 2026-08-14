@@ -6,6 +6,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/options';
 import { queryMyFuelLogsAtStation } from '@/lib/db/queries';
 import type { FuelLog } from '@/types/fuel-log';
+import { BoltIcon } from '@/components/icons';
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -43,8 +44,9 @@ export async function MyEvLogsSection({ statId }: { statId: string }) {
           <li key={l.id} className="px-4 py-2.5">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-gray-900">{formatDate(l.loggedAt)}</span>
-              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                ⚡ 충전
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                <BoltIcon className="h-3.5 w-3.5" />
+                충전
               </span>
             </div>
             <div className="mt-0.5 text-xs text-gray-500">
