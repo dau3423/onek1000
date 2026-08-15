@@ -177,14 +177,16 @@ function buildTweetThread(
   gasoline: { label: string; items: DailyTop10Item[]; avg: number | null },
   diesel: { label: string; items: DailyTop10Item[]; avg: number | null },
 ): string[] {
-  // [0] 인트로 + 휘발유 TOP5
+  // [0] 인트로 + 휘발유 TOP5 — 타임라인에는 이 트윗만 노출되므로 링크·해시태그를 반드시 포함한다
+  //     (스레드 하단에만 링크를 두면 유입 CTA가 묻힌다 — 2026-08-15 운영 피드백).
+  const t0link = `내 주변 최저가 👉 https://${APP_URL}/?${X_UTM}\n#기름값 #주유소 #최저가주유소`;
   const t0 = gasoline.items.length
     ? fitTweet(
         `[1/3] ⛽ 오늘(${date}) 전국 ${gasoline.label} 최저가 TOP10 🧵\n오늘 1위는 리터당 ${won(gasoline.items[0].price)}원!`,
         gasoline.items.slice(0, 5),
-        '',
+        t0link,
       )
-    : `[1/3] ⛽ 오늘(${date}) ${gasoline.label} 최저가 정보는 잠시 후 업데이트됩니다.`;
+    : `[1/3] ⛽ 오늘(${date}) ${gasoline.label} 최저가 정보는 잠시 후 업데이트됩니다.\n\n${t0link}`;
 
   // [1] 휘발유 6~10위
   const rest = gasoline.items.slice(5, 10);
