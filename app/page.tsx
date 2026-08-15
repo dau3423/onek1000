@@ -96,7 +96,7 @@ function routeIdentityKey(plan: RoutePlan): string {
 export default function HomePage() {
   const router = useRouter();
   const { data: session, status: authStatus } = useSession();
-  const { product, brands, selfOnly, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, setRoutePlan, clearRoutePlan, setProduct } = useMapStore();
+  const { product, brands, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, setRoutePlan, clearRoutePlan, setProduct } = useMapStore();
 
   // 회원 전용 동작 가드 — 길찾기/길안내 시작·따라가기는 로그인 회원만 사용(FR-5 기반 UX 정책).
   // 비로그인(unauthenticated)이면 기존 인증 유도 패턴(next-auth signIn, 현재 화면으로 복귀)을
@@ -531,15 +531,12 @@ export default function HomePage() {
     () => (b: string) => brandSet.size === 0 || brandSet.has(b as never),
     [brandSet],
   );
-  // 표시 집합 공통 필터: 브랜드(빈=전체) AND 셀프(off=전체). isSelf를 가진 목록에만 적용.
-  // 전국 TOP10 크라운 핀(NationalTop10Item)은 isSelf가 없어 셀프 필터 대상이 아니다(FR-3 예외).
+  // 표시 집합 공통 필터: 브랜드(빈=전체).
   const filterDisplay = useMemo(
     () =>
       <T extends { brand: string; isSelf: boolean }>(list: T[]): T[] =>
-        brandSet.size === 0 && !selfOnly
-          ? list
-          : list.filter((s) => matchBrand(s.brand) && (!selfOnly || s.isSelf)),
-    [brandSet, matchBrand, selfOnly],
+        brandSet.size === 0 ? list : list.filter((s) => matchBrand(s.brand)),
+    [brandSet, matchBrand],
   );
   const visibleStations = useMemo(
     () => filterDisplay(stations),

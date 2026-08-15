@@ -13,7 +13,7 @@ const GASOLINE_OPTIONS: ProductCode[] = ['B027', 'B034'];
 const SIMPLE_PRODUCTS: ProductCode[] = ['D047', 'C004'];
 
 export function FilterBar() {
-  const { product, setProduct, layer, setLayer, selfOnly, toggleSelfOnly } = useMapStore();
+  const { product, setProduct, layer, setLayer } = useMapStore();
   // 휘발유 드롭다운 열림 여부
   const [gasOpen, setGasOpen] = useState(false);
   const gasRef = useRef<HTMLDivElement>(null);
@@ -151,22 +151,6 @@ export function FilterBar() {
           <span>EV</span>
         </button>
 
-        {/* 셀프 토글 칩 — gas 레이어에서만. 유종 칩과 달리 다른 칩을 해제하지 않는 독립 토글.
-            즉시 클라이언트 필터(마커/시트 좁힘). EV 레이어에선 미노출이나 상태는 유지된다. */}
-        {!isEv && (
-          <button
-            onClick={toggleSelfOnly}
-            aria-pressed={selfOnly}
-            className={clsx(
-              'shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition',
-              selfOnly
-                ? 'bg-primary text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
-            )}
-          >
-            셀프
-          </button>
-        )}
       </div>
 
       {/* 브랜드별 보기(회원 전용) — 맨 뒤(우측)에 고정. 주유소(gas) 레이어에서만 의미 있음. */}
