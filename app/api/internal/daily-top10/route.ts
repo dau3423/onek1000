@@ -53,12 +53,16 @@ export async function GET(req: Request) {
   }
 
   // md: 블로그 마크다운 + 트윗(단일/스레드)을 한 덩어리로 — 복사해서 바로 쓰기 쉽게.
+  const regionalBlock = content.regional
+    ? `\n\n[지역 로테이션 트윗 · ${content.regional.sidoName}]\n${content.regional.tweet}`
+    : '';
   const text =
     content.blogMarkdown +
     '\n\n---\n\n[단일 트윗]\n' +
     content.tweetSingle +
     '\n\n[스레드]\n' +
-    content.tweetThread.join('\n---\n');
+    content.tweetThread.join('\n---\n') +
+    regionalBlock;
 
   return new NextResponse(text, {
     status: 200,

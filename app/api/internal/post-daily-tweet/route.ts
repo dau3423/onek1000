@@ -4,7 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { buildDailyTop10Content } from '@/lib/content/dailyTop10';
-import { postThread, isXConfigured } from '@/lib/social/xClient';
+import { postThread, postTweet, isXConfigured } from '@/lib/social/xClient';
 import { redis, keys } from '@/lib/cache/redis';
 
 export const runtime = 'nodejs';
@@ -17,6 +17,7 @@ const POSTED_TTL_SEC = 259200;
 interface PostedRecord {
   date: string;
   tweetIds: string[];
+  regionalTweetId?: string;
   partial?: boolean;
 }
 
@@ -45,6 +46,9 @@ export async function POST(req: Request) {
         reason: 'X not configured',
         date: content.date,
         preview: content.tweetThread,
+        regionalPreview: content.regional
+          ? { sido: content.regional.sidoName, tweet: content.regional.tweet }
+          : null,
       });
     }
 
@@ -58,16 +62,38 @@ export async function POST(req: Request) {
         reason: 'already posted',
         date: content.date,
         tweetIds: prior.tweetIds,
+        regionalTweetId: prior.regionalTweetId,
       });
     }
 
     const { ids: tweetIds, error } = await postThread(content.tweetThread);
 
-    // 최소 1건이라도 성공 발행됐으면 멱등키에 기록(중복 발행 방지).
-    // 완전 실패(0건)면 기록하지 않아 재시도를 허용한다.
-    const partial = Boolean(error);
+    // 지역 로테이션 트윗 — 스레드와 독립된 톱레벨 트윗으로 발행.
+    // 실패해도 스레드 발행 결과에 영향을 주지 않도록 개별 try/catch 로 흡수(부분 실패 로깅 패턴).
+    // 로테이션 시도의 데이터가 0건이면 placeholder 발행 대신 skip(전국 hasData=false 패턴과 일관).
+    let regionalTweetId: string | undefined;
+    let regionalError: string | undefined;
+    if (!content.regional || content.regional.items.length === 0) {
+      console.warn(
+        `[post-daily-tweet] regional tweet skipped: no data for ${content.regional?.sidoName ?? 'unknown'}`,
+      );
+    } else {
+      try {
+        const r = await postTweet(content.regional.tweet);
+        regionalTweetId = r?.id;
+      } catch (e) {
+        regionalError = (e as Error).message;
+        console.error(`[post-daily-tweet] regional tweet failed: ${regionalError}`);
+      }
+    }
+
+    // 멱등 레코드 기록 여부는 스레드 기준으로만 판단한다(tweetIds.length > 0).
+    // 지역 트윗만 성공한 경우까지 기록하면, 스레드 완전 실패(0건) 시 그날 스레드가
+    // 'already posted'로 영영 재발행 불가가 되므로 절대 기록 조건에 포함하지 않는다.
+    // 지역 트윗 발행 여부는 레코드 안 부가 정보(regionalTweetId)로만 남긴다.
+    const partial = Boolean(error) || Boolean(regionalError);
     if (tweetIds.length > 0) {
-      const record: PostedRecord = { date: content.date, tweetIds, partial };
+      const record: PostedRecord = { date: content.date, tweetIds, regionalTweetId, partial };
       await redis.setJson(postedKey, record, POSTED_TTL_SEC);
     }
 
@@ -81,12 +107,23 @@ export async function POST(req: Request) {
           error,
           date: content.date,
           tweetIds,
+          regionalTweetId,
+          regionalError,
         },
         { status: tweetIds.length > 0 ? 207 : 500 },
       );
     }
 
-    return NextResponse.json({ posted: true, tweetIds, date: content.date });
+    return NextResponse.json({
+      posted: true,
+      tweetIds,
+      regionalTweetId,
+      regionalError,
+      regional: content.regional
+        ? { sido: content.regional.sidoName, slug: content.regional.slug }
+        : null,
+      date: content.date,
+    });
   } catch (e) {
     return NextResponse.json({ posted: false, error: (e as Error).message }, { status: 500 });
   }

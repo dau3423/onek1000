@@ -339,13 +339,13 @@ export async function queryRegionDailyTop10(
       .slice(0, limit)
       .map((s, i) => ({
         rank: i + 1, id: s.id, name: s.name, brand: s.brand,
-        sido: s.sido, isSelf: s.isSelf, price: s.price,
+        sido: s.sido, isSelf: s.isSelf, price: s.price, address: s.address,
       }));
   }
   const sb = getSupabase();
   const { data, error } = await sb
     .from('prices_latest')
-    .select('station_id, price, stations!inner(name, brand_code, sido_code, is_self)')
+    .select('station_id, price, stations!inner(name, brand_code, sido_code, is_self, address)')
     .eq('product', product)
     .eq('stations.sido_code', sido)
     .order('price', { ascending: true })
@@ -355,8 +355,8 @@ export async function queryRegionDailyTop10(
     station_id: string;
     price: number;
     stations:
-      | { name: string; brand_code: string; sido_code: string; is_self: boolean }
-      | Array<{ name: string; brand_code: string; sido_code: string; is_self: boolean }>;
+      | { name: string; brand_code: string; sido_code: string; is_self: boolean; address?: string }
+      | Array<{ name: string; brand_code: string; sido_code: string; is_self: boolean; address?: string }>;
   };
   return (data as Row[] ?? []).map((r, i) => {
     const st = Array.isArray(r.stations) ? r.stations[0] : r.stations;
@@ -368,6 +368,7 @@ export async function queryRegionDailyTop10(
       sido: (st?.sido_code as SidoCode) ?? sido,
       isSelf: !!st?.is_self,
       price: r.price,
+      address: st?.address,
     };
   });
 }

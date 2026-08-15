@@ -3,16 +3,31 @@
 // 데이터 소스: queryNationalTop10Detailed(DB/mock) + fetchNationalAvg(오피넷 공식 평균).
 // 외부 호출 실패에 강건하게: 데이터 0건/평균 null 이어도 throw 하지 않고 안내 텍스트를 채운다.
 
-import { queryDailyTop10 } from '@/lib/db/queries';
+import { queryDailyTop10, queryRegionDailyTop10 } from '@/lib/db/queries';
 import { fetchNationalAvg } from '@/lib/opinet/client';
-import { PRODUCT_LABEL, BRAND_LABEL, SIDO_NAME, type ProductCode, type DailyTop10Item } from '@/types/station';
+import { SIDO_SLUG, REGIONS } from '@/lib/regions';
+import { PRODUCT_LABEL, BRAND_LABEL, SIDO_NAME, type ProductCode, type DailyTop10Item, type SidoCode } from '@/types/station';
 
 const APP_URL = 'onek1000.kr';
 // 채널별 유입 계측용 UTM (admin 대시보드 '오늘 유입 채널'에 잡힌다).
 // 블로그(네이버)와 X 발행물의 링크에만 붙인다 — 화면 노출 텍스트(👉 onek1000.kr)는 짧게 유지.
 const BLOG_UTM = 'utm_source=naver_blog&utm_medium=social&utm_campaign=daily_top10';
 const X_UTM = 'utm_source=x&utm_medium=social&utm_campaign=daily_top10';
+// 지역 로테이션 트윗은 별도 캠페인으로 계측(전국 스레드와 분리).
+const X_UTM_REGIONAL = 'utm_source=x&utm_medium=social&utm_campaign=regional_top5';
 const DEFAULT_PRODUCTS: ProductCode[] = ['B027', 'D047']; // 휘발유, 경유
+
+// 17개 시도 로테이션 순서 — REGIONS(SIDO_SLUG 키 순서)를 그대로 사용해 안정적 순회.
+const ROTATION_SIDOS: SidoCode[] = REGIONS.map((r) => r.code);
+
+export interface RegionalTweet {
+  sido: SidoCode;
+  sidoName: string; // 한국어 시도명
+  slug: string; // 지역 랜딩 슬러그(SIDO_SLUG)
+  url: string; // 랜딩 URL(UTM 포함)
+  items: DailyTop10Item[]; // 해당 시도 휘발유 최저가(최대 5)
+  tweet: string; // 발행 텍스트(280자 맞춤 완료)
+}
 
 export interface DailyTop10Content {
   date: string; // "YYYY. M. D." (한국식)
@@ -20,6 +35,7 @@ export interface DailyTop10Content {
   blogMarkdown: string;
   tweetSingle: string;
   tweetThread: string[];
+  regional: RegionalTweet | null; // 지역 로테이션 트윗(휘발유 TOP5). 데이터 없어도 안내 텍스트로 채움.
 }
 
 // ─────────────────────────────────────────────
@@ -38,6 +54,29 @@ function formatKoreanDate(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   if (!m) return iso;
   return `${m[1]}. ${Number(m[2])}. ${Number(m[3])}.`;
+}
+
+/** "YYYY-MM-DD" → 연중 일수(1~366). 파싱 실패 시 0. 지역 로테이션 결정에 사용. */
+function dayOfYear(iso: string): number {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return 0;
+  const y = Number(m[1]);
+  const start = Date.UTC(y, 0, 0);
+  const cur = Date.UTC(y, Number(m[2]) - 1, Number(m[3]));
+  return Math.round((cur - start) / 86400000);
+}
+
+/** KST 날짜(연중 일수) 기준 결정적 시도 선택 — 같은 날 재실행 시 같은 지역. */
+function pickRotationSido(iso: string): SidoCode {
+  const idx = ((dayOfYear(iso) % ROTATION_SIDOS.length) + ROTATION_SIDOS.length) % ROTATION_SIDOS.length;
+  return ROTATION_SIDOS[idx];
+}
+
+/** 주소에서 시군구(두 번째 행정토큰) 추출 — 실패 시 fallback(보통 시도명). */
+function sigunguFromAddress(address: string | undefined, fallback: string): string {
+  if (!address) return fallback;
+  const parts = address.trim().split(/\s+/);
+  return parts[1] || parts[0] || fallback;
 }
 
 const won = (n: number) => n.toLocaleString('ko-KR');
@@ -131,9 +170,13 @@ function tweetWeight(text: string): number {
 
 const TWEET_LIMIT = 280;
 
+/** 항목의 지역 표기 — 기본은 시도명. placeOf 로 시군구 등 다른 라벨을 주입할 수 있다. */
+type PlaceOf = (it: DailyTop10Item) => string;
+const defaultPlaceOf: PlaceOf = (it) => SIDO_NAME[it.sido] ?? it.sido;
+
 /** TOP 항목 1줄 — 상호 포함. tooLong이면 지역만(상호 생략). */
-function tweetLine(it: DailyTop10Item, emoji: string, withName: boolean): string {
-  const region = SIDO_NAME[it.sido] ?? it.sido;
+function tweetLine(it: DailyTop10Item, emoji: string, withName: boolean, placeOf: PlaceOf): string {
+  const region = placeOf(it);
   const place = withName ? `${region} ${it.name}` : region;
   return `${emoji} ${won(it.price)}원 · ${place}`;
 }
@@ -143,10 +186,17 @@ const NUM_EMOJI = ['', '🥇', '🥈', '🥉', '4️⃣', '5️⃣', '6️⃣', 
 /**
  * 항목 목록을 줄로 렌더하되, header+lines+footer 합산 가중치가 limit 이내가 되도록
  * 필요하면 상호를 생략(지역만)한다. 그래도 길면 항목 수를 줄인다.
+ * placeOf 로 줄의 지역 라벨을 커스터마이즈(지역 트윗은 시군구 사용).
  */
-function fitTweet(header: string, items: DailyTop10Item[], footer: string, limit = TWEET_LIMIT): string {
+function fitTweet(
+  header: string,
+  items: DailyTop10Item[],
+  footer: string,
+  limit = TWEET_LIMIT,
+  placeOf: PlaceOf = defaultPlaceOf,
+): string {
   const render = (withName: boolean, count: number) => {
-    const lines = items.slice(0, count).map((it) => tweetLine(it, NUM_EMOJI[it.rank] ?? `${it.rank}`, withName));
+    const lines = items.slice(0, count).map((it) => tweetLine(it, NUM_EMOJI[it.rank] ?? `${it.rank}`, withName, placeOf));
     return [header, '', ...lines, footer ? '' : '', footer].filter((s, i, a) => !(s === '' && a[i - 1] === '')).join('\n').trim();
   };
   // 1) 상호 포함 전체 → 2) 지역만 → 3) 지역만 + 항목 축소
@@ -212,6 +262,31 @@ function buildTweetThread(
 }
 
 // ─────────────────────────────────────────────
+// 지역 로테이션 트윗 (휘발유 TOP5, 별도 톱레벨 트윗)
+// ─────────────────────────────────────────────
+
+/** 지역 트윗 1건을 만든다 — 라벨은 시군구(주소 2번째 토큰) 위주, 링크는 지역 랜딩. */
+function buildRegionalTweet(date: string, sido: SidoCode, items: DailyTop10Item[]): RegionalTweet {
+  const sidoName = SIDO_NAME[sido];
+  const slug = SIDO_SLUG[sido];
+  const url = `https://${APP_URL}/regions/${slug}?${X_UTM_REGIONAL}`;
+  const hashtags = `#기름값 #${sidoName}주유소 #최저가주유소`;
+
+  let tweet: string;
+  if (items.length === 0) {
+    tweet = `⛽ 오늘(${date}) ${sidoName} 휘발유 최저가 정보는 잠시 후 업데이트됩니다.\n\n전체 순위·내 주변 최저가 👉 ${url}\n${hashtags}`;
+  } else {
+    const header = `⛽ 오늘(${date}) ${sidoName} 휘발유 최저가 TOP5`;
+    const footer = `\n전체 순위·내 주변 최저가 👉 ${url}\n${hashtags}`;
+    // 같은 시도라 시도명 반복은 무의미 → 시군구로 표기(주소에서 추출).
+    tweet = fitTweet(header, items.slice(0, 5), footer, TWEET_LIMIT, (it) =>
+      sigunguFromAddress(it.address, sidoName),
+    );
+  }
+  return { sido, sidoName, slug, url, items: items.slice(0, 5), tweet };
+}
+
+// ─────────────────────────────────────────────
 // 메인
 // ─────────────────────────────────────────────
 
@@ -254,5 +329,11 @@ export async function buildDailyTop10Content(
   const tweetSingle = buildTweetSingle(date, gasoline);
   const tweetThread = buildTweetThread(date, gasoline, diesel);
 
-  return { date, products: productsMap, blogMarkdown, tweetSingle, tweetThread };
+  // 지역 로테이션 트윗 — KST 날짜 기준 결정적으로 1개 시도 선택 후 휘발유(B027) 최저가 TOP5.
+  // 전국 스레드가 수집한 데이터는 시도별 상위를 담지 못하므로 해당 시도만 별도 조회한다.
+  const rotSido = pickRotationSido(isoDate);
+  const regionItems = await queryRegionDailyTop10(rotSido, 'B027', 5).catch(() => [] as DailyTop10Item[]);
+  const regional = buildRegionalTweet(date, rotSido, regionItems);
+
+  return { date, products: productsMap, blogMarkdown, tweetSingle, tweetThread, regional };
 }

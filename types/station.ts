@@ -160,6 +160,7 @@ export interface DailyTop10Item {
   sido: SidoCode;
   isSelf: boolean;
   price: number; // 원/L
+  address?: string; // 지역 트윗에서 시군구 추출용(선택) — 전국 TOP10 쿼리는 채우지 않음
 }
 
 export interface AvgPriceResponse {
