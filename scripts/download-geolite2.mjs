@@ -13,7 +13,7 @@
 //   최신 mmdb가 포함되고, 없으면(로컬/CI) 조용히 건너뛴다 — 앱은 지역 미상으로 정상 동작한다.
 //   --optional 모드에서는 다운로드 "실패"도 빌드를 깨지 않는다(경고 후 exit 0).
 
-import { createWriteStream, existsSync, mkdirSync, readdirSync, rmSync, renameSync, statSync } from 'node:fs';
+import { copyFileSync, createWriteStream, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
@@ -101,7 +101,8 @@ async function main() {
     throw new Error('압축 결과에서 GeoLite2-City.mmdb 를 찾지 못했습니다.');
   }
   rmSync(OUT_FILE, { force: true });
-  renameSync(mmdb, OUT_FILE);
+  // rename은 /tmp(작업)와 출력 경로가 다른 파일시스템이면 EXDEV로 실패한다(Cloud Build 실증) — 복사 사용.
+  copyFileSync(mmdb, OUT_FILE);
   rmSync(work, { recursive: true, force: true });
 
   console.log(`[geoip:download] 완료: ${OUT_FILE}`);
