@@ -3,7 +3,16 @@
 import { useState } from 'react';
 import type { StationWithPrice } from '@/types/station';
 import { BRAND_LABEL } from '@/types/station';
-import { startKakaoNavi, type NaviOrigin } from '@/lib/map/navi';
+import {
+  startNavi,
+  getPreferredNavi,
+  setPreferredNavi,
+  availableNaviProviders,
+  NAVI_PROVIDER_LABEL,
+  type NaviOrigin,
+  type NaviProvider,
+} from '@/lib/map/navi';
+import { NaviAppButtons } from '@/components/alert/NaviApps';
 
 interface Props {
   station: StationWithPrice;
@@ -14,10 +23,19 @@ interface Props {
 
 /**
  * "이 주유소로 길안내를 시작할까요?" 확인 모달.
- * 허용 시 카카오맵으로 도착지(가능하면 출발지까지) 설정된 길안내를 시작한다.
+ * 저장된 선호 앱이 있으면 원버튼으로 그 앱을 실행하고(+ "다른 앱으로" 전환),
+ * 없으면 앱 목록에서 고르게 한다. 선택한 앱은 다음을 위해 기억한다.
  */
 export function NaviConfirm({ station, origin, onClose }: Props) {
   const [starting, setStarting] = useState(false);
+  // 선호 앱: 이 모달은 클릭 시에만 마운트되고 SSR되지 않으므로, lazy initializer에서
+  // 동기 조회해 초기값을 바로 계산한다(마운트 후 useEffect 플립으로 인한 깜빡임 방지).
+  const [preferred] = useState<NaviProvider | null>(() => {
+    const saved = getPreferredNavi();
+    return saved && availableNaviProviders().includes(saved) ? saved : null;
+  });
+  // 화면 모드 — false: 선호앱 원버튼 확인 / true: 앱 목록. 선호 앱이 없으면 곧장 목록.
+  const [picking, setPicking] = useState(() => !preferred);
 
   const distanceText = station.distance != null
     ? station.distance < 1000
@@ -25,15 +43,18 @@ export function NaviConfirm({ station, origin, onClose }: Props) {
       : `${(station.distance / 1000).toFixed(1)}km`
     : null;
 
-  async function handleStart() {
+  async function run(provider: NaviProvider) {
     setStarting(true);
     try {
-      await startKakaoNavi({ name: station.name, lat: station.lat, lng: station.lng }, origin);
+      setPreferredNavi(provider);
+      await startNavi(provider, { name: station.name, lat: station.lat, lng: station.lng }, origin);
     } finally {
       setStarting(false);
       onClose();
     }
   }
+
+  const preferredLabel = preferred ? NAVI_PROVIDER_LABEL[preferred] : null;
 
   return (
     <div
@@ -48,7 +69,7 @@ export function NaviConfirm({ station, origin, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <p className="text-base font-bold text-gray-900 dark:text-gray-50">
-          이 주유소로 길안내를 시작할까요?
+          {picking ? '어떤 앱으로 길안내할까요?' : '이 주유소로 길안내를 시작할까요?'}
         </p>
         <div className="mt-3 rounded-xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
           <div className="text-sm font-semibold text-gray-900 dark:text-gray-50">{station.name}</div>
@@ -58,28 +79,56 @@ export function NaviConfirm({ station, origin, onClose }: Props) {
             {' · '}₩{station.price.toLocaleString()}
           </div>
         </div>
-        <p className="mt-3 text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
-          {origin
-            ? '현재 위치에서 이 주유소까지 카카오맵 길안내가 시작됩니다.'
-            : '카카오맵에서 이 주유소로 길안내가 시작됩니다.'}
-          {' '}앱이 없으면 웹 길찾기로 열립니다.
-        </p>
-        <div className="mt-4 flex gap-2">
-          <button
-            onClick={onClose}
-            disabled={starting}
-            className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-          >
-            취소
-          </button>
-          <button
-            onClick={handleStart}
-            disabled={starting}
-            className="flex-1 rounded-xl bg-primary py-3 text-sm font-bold text-white shadow-md hover:bg-primary-dark disabled:opacity-60"
-          >
-            {starting ? '실행 중…' : '길안내 시작'}
-          </button>
-        </div>
+
+        {picking ? (
+          <>
+            <div className="mt-4">
+              <NaviAppButtons onPick={run} disabled={starting} />
+            </div>
+            <p className="mt-3 text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
+              선택한 앱은 다음에 자동으로 사용돼요. 앱이 없으면 스토어/웹 안내로 연결됩니다.
+            </p>
+            <button
+              onClick={onClose}
+              disabled={starting}
+              className="mt-3 w-full rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+            >
+              취소
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="mt-3 text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
+              {origin
+                ? `현재 위치에서 이 주유소까지 ${preferredLabel} 길안내가 시작됩니다.`
+                : `${preferredLabel}에서 이 주유소로 길안내가 시작됩니다.`}
+              {' '}앱이 없으면 웹/스토어 안내로 열립니다.
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={onClose}
+                disabled={starting}
+                className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => preferred && run(preferred)}
+                disabled={starting || !preferred}
+                className="flex-1 rounded-xl bg-primary py-3 text-sm font-bold text-white shadow-md hover:bg-primary-dark disabled:opacity-60"
+              >
+                {starting ? '실행 중…' : `길안내 시작${preferredLabel ? ` (${preferredLabel})` : ''}`}
+              </button>
+            </div>
+            <button
+              onClick={() => setPicking(true)}
+              disabled={starting}
+              className="mt-1 w-full py-2 text-center text-xs font-medium text-gray-400 underline underline-offset-2 hover:text-gray-600 disabled:opacity-60 dark:text-gray-500 dark:hover:text-gray-300"
+            >
+              다른 앱으로
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
