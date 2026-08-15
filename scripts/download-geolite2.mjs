@@ -13,7 +13,7 @@
 //   최신 mmdb가 포함되고, 없으면(로컬/CI) 조용히 건너뛴다 — 앱은 지역 미상으로 정상 동작한다.
 //   --optional 모드에서는 다운로드 "실패"도 빌드를 깨지 않는다(경고 후 exit 0).
 
-import { createWriteStream, existsSync, mkdirSync, readdirSync, rmSync, renameSync } from 'node:fs';
+import { createWriteStream, existsSync, mkdirSync, readdirSync, rmSync, renameSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
@@ -90,7 +90,11 @@ async function main() {
   execFileSync('tar', ['-xzf', tarPath, '-C', work]);
 
   // 추출된 GeoLite2-City_YYYYMMDD/GeoLite2-City.mmdb 를 찾아 OUT_FILE로 이동.
-  const sub = readdirSync(work).find((d) => d.startsWith('GeoLite2-City'));
+  // 주의: work에는 방금 받은 GeoLite2-City.tar.gz 파일도 있어 이름 prefix만으로 찾으면
+  // (리눅스 정렬상 tar.gz가 먼저 걸려) 실패한다 — 반드시 "디렉터리"만 대상으로 한다.
+  const sub = readdirSync(work).find(
+    (d) => d.startsWith('GeoLite2-City') && statSync(join(work, d)).isDirectory(),
+  );
   const mmdb = sub ? join(work, sub, 'GeoLite2-City.mmdb') : null;
   if (!mmdb || !existsSync(mmdb)) {
     rmSync(work, { recursive: true, force: true });
