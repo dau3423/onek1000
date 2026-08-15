@@ -8,6 +8,10 @@ import { fetchNationalAvg } from '@/lib/opinet/client';
 import { PRODUCT_LABEL, BRAND_LABEL, SIDO_NAME, type ProductCode, type DailyTop10Item } from '@/types/station';
 
 const APP_URL = 'onek1000.kr';
+// 채널별 유입 계측용 UTM (admin 대시보드 '오늘 유입 채널'에 잡힌다).
+// 블로그(네이버)와 X 발행물의 링크에만 붙인다 — 화면 노출 텍스트(👉 onek1000.kr)는 짧게 유지.
+const BLOG_UTM = 'utm_source=naver_blog&utm_medium=social&utm_campaign=daily_top10';
+const X_UTM = 'utm_source=x&utm_medium=social&utm_campaign=daily_top10';
 const DEFAULT_PRODUCTS: ProductCode[] = ['B027', 'D047']; // 휘발유, 경유
 
 export interface DailyTop10Content {
@@ -90,12 +94,12 @@ function buildBlogMarkdown(
   const cta =
     `### ⛽ 내 주변 최저가는 1000냥 주유소로\n\n` +
     `전국 최저가까지 갈 필요 없이, **내 주변에서 제일 싼 곳**만 찾아도 충분히 절약됩니다.\n` +
-    `[**1000냥 주유소**](https://${APP_URL})는 전국 주유소 실시간 가격을 지도로 보여주고, ` +
+    `[**1000냥 주유소**](https://${APP_URL}/?${BLOG_UTM})는 전국 주유소 실시간 가격을 지도로 보여주고, ` +
     `내 주변·경로 위의 최저가를 자동으로 찾아줍니다.\n\n` +
     `- 🗺️ 지도 줌만 하면 그 영역 최저가 자동 정렬\n` +
     `- 📍 내 주변 평균보다 싼 곳이 있으면 자동 알림\n` +
     `- 🛣️ 출발지→도착지 경로 위 최저가 주유소 추천\n\n` +
-    `👉 ${APP_URL}\n\n` +
+    `👉 https://${APP_URL}/?${BLOG_UTM}\n\n` +
     `\`#기름값 #주유소 #최저가주유소 #주유비절약\`\n\n` +
     `> 가격은 발행 시점(${date}) 오피넷 기준이며 실시간으로 변동될 수 있습니다.\n` +
     `> 데이터 제공: 한국석유공사 오피넷`;
@@ -159,12 +163,12 @@ function fitTweet(header: string, items: DailyTop10Item[], footer: string, limit
 
 function buildTweetSingle(date: string, gasoline: { label: string; items: DailyTop10Item[]; avg: number | null }): string {
   if (gasoline.items.length === 0) {
-    return `⛽ 오늘(${date}) 전국 ${gasoline.label} 최저가 정보는 잠시 후 업데이트됩니다.\n\n내 주변 최저가 👉 ${APP_URL}\n#기름값 #주유소 #최저가주유소`;
+    return `⛽ 오늘(${date}) 전국 ${gasoline.label} 최저가 정보는 잠시 후 업데이트됩니다.\n\n내 주변 최저가 👉 https://${APP_URL}/?${X_UTM}\n#기름값 #주유소 #최저가주유소`;
   }
   const top5 = gasoline.items.slice(0, 5);
   const avgLine = gasoline.avg != null ? `\n전국 평균 ${won(gasoline.avg)}원 · 최대 ${won(Math.max(0, gasoline.avg - top5[0].price))}원 ↓` : '';
   const header = `⛽ 오늘(${date}) 전국 ${gasoline.label} 최저가 TOP5`;
-  const footer = `${avgLine}\nTOP10 + 내 주변 최저가 👉 ${APP_URL}\n#기름값 #주유소 #최저가주유소`;
+  const footer = `${avgLine}\nTOP10 + 내 주변 최저가 👉 https://${APP_URL}/?${X_UTM}\n#기름값 #주유소 #최저가주유소`;
   return fitTweet(header, top5, footer);
 }
 
@@ -197,7 +201,7 @@ function buildTweetThread(
   const t2head = diesel.items.length
     ? `[3/3] 🚜 ${diesel.label} 최저가 TOP5`
     : `[3/3] 내 주변 최저가는 지도에서 1초 만에 👇`;
-  const t2footer = `${avgComment}\n내 주변 최저가 👉 ${APP_URL}\n#기름값절약 #주유비 #최저가주유소`;
+  const t2footer = `${avgComment}\n내 주변 최저가 👉 https://${APP_URL}/?${X_UTM}\n#기름값절약 #주유비 #최저가주유소`;
   const t2 = diesel.items.length
     ? fitTweet(t2head, diesel.items.slice(0, 5), t2footer)
     : `${t2head}${t2footer}`;
