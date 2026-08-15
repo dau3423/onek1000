@@ -128,6 +128,14 @@ interface MapState {
   setBrands: (b: BrandCode[]) => void;
   clearBrands: () => void;
 
+  /**
+   * 셀프 주유소만 보기(gas 레이어 전용). true면 지도 마커·회색 점·하단 시트 표시 집합을
+   * 셀프 업소로 좁히는 client-side 필터에 사용(브랜드 필터와 AND 결합).
+   * EV 레이어에선 UI 미노출이나 상태는 유지되어 gas 복귀 시 재적용된다.
+   */
+  selfOnly: boolean;
+  toggleSelfOnly: () => void;
+
   selectedStationId: string | null;
   selectStation: (id: string | null) => void;
 
@@ -166,6 +174,9 @@ export const useMapStore = create<MapState>((set) => ({
     })),
   setBrands: (b) => set({ brands: b }),
   clearBrands: () => set({ brands: [] }),
+
+  selfOnly: false,
+  toggleSelfOnly: () => set((s) => ({ selfOnly: !s.selfOnly })),
 
   selectedStationId: null,
   selectStation: (id) => set({ selectedStationId: id }),

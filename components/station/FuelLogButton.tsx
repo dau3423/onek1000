@@ -15,8 +15,10 @@ import { CheckIcon, FuelIcon } from '@/components/icons';
 interface Props {
   stationId: string;
   className?: string;
-  /** 보조 표시용 휘발유 현재가(원/L). 단축입력 시 리터↔금액 추정에 사용. 없으면 표시 생략. */
+  /** 보조 표시용 선택 유종 현재가(원/L). 단축입력 시 리터↔금액 추정에 사용. 없으면 표시 생략. */
   unitPrice?: number | null;
+  /** 추정 캡션에 표기할 유종 라벨(예: '경유'). 기본 '휘발유'. */
+  productLabel?: string;
 }
 
 type State = 'idle' | 'busy' | 'done';
@@ -25,7 +27,7 @@ type State = 'idle' | 'busy' | 'done';
 const LITER_PRESETS = [30, 50] as const; // L
 const AMOUNT_PRESETS = [30000, 50000, 70000] as const; // 원
 
-export function FuelLogButton({ stationId, className, unitPrice }: Props) {
+export function FuelLogButton({ stationId, className, unitPrice, productLabel = '휘발유' }: Props) {
   const { status } = useSession();
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<State>('idle');
@@ -152,7 +154,7 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
   const literChipCls = (l: number) => (literActive(l) ? `${chip} ${chipActive}` : chip);
   const amountChipCls = (a: number) => (amountActive(a) ? `${chip} ${chipActive}` : chip);
 
-  // 단축입력 보조 표시: 현재가(휘발유)를 알면 입력값으로 반대편을 추정해 안내(저장값은 입력 그대로).
+  // 단축입력 보조 표시: 현재가(선택 유종)를 알면 입력값으로 반대편을 추정해 안내(저장값은 입력 그대로).
   const canEstimate = hasUsableUnitPrice(unitPrice);
   const litersNum = liters.trim() === '' ? null : Number(liters);
   const amountNum = amount.trim() === '' ? null : Number(amount);
@@ -292,12 +294,12 @@ export function FuelLogButton({ stationId, className, unitPrice }: Props) {
           </div>
           {canEstimate && estAmount != null && (
             <p className="mt-1.5 text-[11px] text-gray-500">
-              약 ₩{estAmount.toLocaleString()} (휘발유 단가 ₩{unitPrice!.toLocaleString()}/L 기준)
+              약 ₩{estAmount.toLocaleString()} ({productLabel} 단가 ₩{unitPrice!.toLocaleString()}/L 기준)
             </p>
           )}
           {canEstimate && estLiters != null && (
             <p className="mt-1.5 text-[11px] text-gray-500">
-              약 {estLiters}L (휘발유 단가 ₩{unitPrice!.toLocaleString()}/L 기준)
+              약 {estLiters}L ({productLabel} 단가 ₩{unitPrice!.toLocaleString()}/L 기준)
             </p>
           )}
           <p className="mt-1.5 text-[11px] text-gray-500">단가는 현재가로 자동 입력돼요. 값은 나중에 편집할 수 있어요.</p>

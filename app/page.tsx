@@ -96,7 +96,7 @@ function routeIdentityKey(plan: RoutePlan): string {
 export default function HomePage() {
   const router = useRouter();
   const { data: session, status: authStatus } = useSession();
-  const { product, brands, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, setRoutePlan, clearRoutePlan, setProduct } = useMapStore();
+  const { product, brands, selfOnly, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, setRoutePlan, clearRoutePlan, setProduct } = useMapStore();
 
   // 회원 전용 동작 가드 — 길찾기/길안내 시작·따라가기는 로그인 회원만 사용(FR-5 기반 UX 정책).
   // 비로그인(unauthenticated)이면 기존 인증 유도 패턴(next-auth signIn, 현재 화면으로 복귀)을
@@ -524,24 +524,34 @@ export default function HomePage() {
       .slice(0, NEARBY_TOP_N);
   }, [radiusStations, geo.coords]);
 
-  // 브랜드 필터(회원 전용, 빈 배열=전체) — 지도 마커 표시 집합에 일관 적용.
+  // 브랜드 필터(회원 전용, 빈 배열=전체) + 셀프 필터(off=전체) — 지도 마커 표시 집합에 일관 적용.
   // 알람/하단 시트 등 '내 주변 데이터' 본연의 동작에는 영향을 주지 않고, 마커 노출만 좁힌다.
   const brandSet = useMemo(() => new Set(brands), [brands]);
   const matchBrand = useMemo(
     () => (b: string) => brandSet.size === 0 || brandSet.has(b as never),
     [brandSet],
   );
+  // 표시 집합 공통 필터: 브랜드(빈=전체) AND 셀프(off=전체). isSelf를 가진 목록에만 적용.
+  // 전국 TOP10 크라운 핀(NationalTop10Item)은 isSelf가 없어 셀프 필터 대상이 아니다(FR-3 예외).
+  const filterDisplay = useMemo(
+    () =>
+      <T extends { brand: string; isSelf: boolean }>(list: T[]): T[] =>
+        brandSet.size === 0 && !selfOnly
+          ? list
+          : list.filter((s) => matchBrand(s.brand) && (!selfOnly || s.isSelf)),
+    [brandSet, matchBrand, selfOnly],
+  );
   const visibleStations = useMemo(
-    () => (brandSet.size === 0 ? stations : stations.filter((s) => matchBrand(s.brand))),
-    [stations, brandSet, matchBrand],
+    () => filterDisplay(stations),
+    [stations, filterDisplay],
   );
   const visibleNationalTop10 = useMemo(
     () => (brandSet.size === 0 ? nationalTop10 : nationalTop10.filter((s) => matchBrand(s.brand))),
     [nationalTop10, brandSet, matchBrand],
   );
   const visibleNearbyTop10 = useMemo(
-    () => (brandSet.size === 0 ? nearbyTop10 : nearbyTop10.filter((s) => matchBrand(s.brand))),
-    [nearbyTop10, brandSet, matchBrand],
+    () => filterDisplay(nearbyTop10),
+    [nearbyTop10, filterDisplay],
   );
   // 전국 최저가 TOP10 id→순위 맵. 하단 시트 목록에서 해당 주유소 행을 "반짝이는 황금색"으로
   // 강조하기 위해 전달한다(목록은 bbox/radius 기반이라 전국 TOP10이 보일 때만 적용됨).
@@ -554,13 +564,13 @@ export default function HomePage() {
   // averagePrice는 1km 알람 판정(평균-50원) 기준으로 사용한다. 마커 색상은 별도로
   // 화면 표시 집합의 상대 분포(분위수)로 산정한다(KakaoMap/BottomSheet 내부).
   const visibleNearbyStations = useMemo(
-    () => (brandSet.size === 0 ? radiusStations : radiusStations.filter((s) => matchBrand(s.brand))),
-    [radiusStations, brandSet, matchBrand],
+    () => filterDisplay(radiusStations),
+    [radiusStations, filterDisplay],
   );
-  // 회색 점도 동일 브랜드 필터 적용(표시 집합 일관성).
+  // 회색 점도 동일 브랜드/셀프 필터 적용(표시 집합 일관성).
   const visibleAllStations = useMemo(
-    () => (brandSet.size === 0 ? allStations : allStations.filter((s) => matchBrand(s.brand))),
-    [allStations, brandSet, matchBrand],
+    () => filterDisplay(allStations),
+    [allStations, filterDisplay],
   );
 
   // 1km 반경 최저가 (알람 판정용)

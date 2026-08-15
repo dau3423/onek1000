@@ -4,10 +4,11 @@ import { BackButton } from '@/components/common/BackButton';
 import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL, type ProductCode, type StationDetail } from '@/types/station';
 import { InterstitialAd } from '@/components/ads/InterstitialAd';
 import { FavoriteButton } from '@/components/FavoriteButton';
-import { PriceHistoryChart } from '@/components/charts/PriceHistoryChart';
 import { ReviewSection } from '@/components/reviews/ReviewSection';
 import { NaviButton } from '@/components/station/NaviButton';
-import { FuelLogButton } from '@/components/station/FuelLogButton';
+import { FuelSelectionProvider } from '@/components/station/FuelSelectionProvider';
+import { PriceTrendSection } from '@/components/station/PriceTrendSection';
+import { FuelLogSelectedButton } from '@/components/station/FuelLogSelectedButton';
 import { MyFuelLogsSection } from '@/components/station/MyFuelLogsSection';
 import { StationViewTracker } from '@/components/station/StationViewTracker';
 import { PinIcon, PhoneIcon } from '@/components/icons';
@@ -106,43 +107,47 @@ export default async function StationDetailPage({ params }: Props) {
       {/* 내 주유 기록 — 로그인 사용자의 이 주유소 기록(없으면/비로그인은 자동 숨김) */}
       <MyFuelLogsSection stationId={detail.id} />
 
-      {/* 가격 추이 (휘발유 최근 30일) */}
-      <section className="border-t border-gray-100 px-5 py-4">
-        <h2 className="mb-2 text-sm font-bold text-gray-800">휘발유 30일 추이</h2>
-        <PriceHistoryChart stationId={detail.id} product="B027" />
-      </section>
+      {/*
+        유종 선택 공유 스코프 — 가격 추이 탭과 CTA 주유기록 버튼이 같은 선택 유종을 쓴다.
+        FuelSelectionProvider(Context.Provider)는 DOM 노드를 만들지 않으므로 아래 서버 섹션들을
+        children으로 감싸도 추이 → 리뷰 → 부가서비스 → CTA의 시각/DOM 순서는 그대로 보존된다.
+      */}
+      <FuelSelectionProvider prices={detail.prices}>
+        {/* 가격 추이 (선택 유종 최근 30일) — non-null 유종 탭, 홈 유종을 기본 선택 */}
+        <PriceTrendSection stationId={detail.id} />
 
-      {/* 리뷰 — 주유소 좌표를 넘겨 작성 전 지오펜스(근처에서만 작성) 안내/검증 */}
-      <ReviewSection stationId={detail.id} stationLat={detail.lat} stationLng={detail.lng} />
+        {/* 리뷰 — 주유소 좌표를 넘겨 작성 전 지오펜스(근처에서만 작성) 안내/검증 */}
+        <ReviewSection stationId={detail.id} stationLat={detail.lat} stationLng={detail.lng} />
 
-      {/* 부가서비스 — 우리 DB(stations)만 조회. 값은 일 1회 sync의 회전 보강(detailById)으로 채워진다.
-          amenitiesUpdatedAt이 null이면 아직 한 번도 보강되지 않은 주유소이므로
-          "없음" 오표시 대신 안내 문구로 대체한다. */}
-      <section className="border-t border-gray-100 px-5 py-4">
-        <h2 className="mb-3 text-sm font-bold text-gray-800">부가서비스</h2>
-        {detail.amenitiesUpdatedAt ? (
-          <AmenityList detail={detail} />
-        ) : (
-          <p className="rounded-lg bg-gray-50 px-3 py-2.5 text-xs leading-snug text-gray-500">
-            부가서비스 정보가 아직 수집되지 않았습니다.
-          </p>
-        )}
-      </section>
+        {/* 부가서비스 — 우리 DB(stations)만 조회. 값은 일 1회 sync의 회전 보강(detailById)으로 채워진다.
+            amenitiesUpdatedAt이 null이면 아직 한 번도 보강되지 않은 주유소이므로
+            "없음" 오표시 대신 안내 문구로 대체한다. */}
+        <section className="border-t border-gray-100 px-5 py-4">
+          <h2 className="mb-3 text-sm font-bold text-gray-800">부가서비스</h2>
+          {detail.amenitiesUpdatedAt ? (
+            <AmenityList detail={detail} />
+          ) : (
+            <p className="rounded-lg bg-gray-50 px-3 py-2.5 text-xs leading-snug text-gray-500">
+              부가서비스 정보가 아직 수집되지 않았습니다.
+            </p>
+          )}
+        </section>
 
-      {/* CTA */}
-      <section className="mt-auto space-y-2 border-t border-gray-100 bg-gray-50 px-5 py-4 pb-[calc(16px+env(safe-area-inset-bottom))]">
-        <FuelLogButton stationId={detail.id} unitPrice={detail.prices.B027?.price ?? null} />
-        <NaviButton name={detail.name} lat={detail.lat} lng={detail.lng} stationId={detail.id} />
-        {detail.tel && (
-          <a
-            href={`tel:${detail.tel}`}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white py-3.5 text-center font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            <PhoneIcon className="h-4 w-4" />
-            전화걸기
-          </a>
-        )}
-      </section>
+        {/* CTA */}
+        <section className="mt-auto space-y-2 border-t border-gray-100 bg-gray-50 px-5 py-4 pb-[calc(16px+env(safe-area-inset-bottom))]">
+          <FuelLogSelectedButton stationId={detail.id} prices={detail.prices} />
+          <NaviButton name={detail.name} lat={detail.lat} lng={detail.lng} stationId={detail.id} />
+          {detail.tel && (
+            <a
+              href={`tel:${detail.tel}`}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white py-3.5 text-center font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              <PhoneIcon className="h-4 w-4" />
+              전화걸기
+            </a>
+          )}
+        </section>
+      </FuelSelectionProvider>
 
       <footer className="border-t border-gray-100 bg-white px-5 py-3 text-center text-[10px] text-gray-400">
         데이터 제공: 한국석유공사 오피넷
