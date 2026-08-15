@@ -8,6 +8,9 @@ researcher 에이전트가 추가하고, pm 에이전트가 주제 자율 선정
 
 | 추가일 | 아이디어 | 기대 가치 | 예상 비용 | 상태 | 근거/메모 |
 |---|---|---|---|---|---|
+| 2026-08-15 | 관리자 지역별 접속 집계 지도(시도 단계구분도) + IP→시도 GeoIP 파이프라인 | 중 | 중 | 완료 | [2026-08-15-admin-region-heatmap](2026-08-15-admin-region-heatmap/) — FR-1/2/3 전량 구현(0035 마이그레이션 파일 + lib/geoip graceful null + /admin 스키매틱 SVG 타일 지도). 리뷰 ✅, QA 조건부 통과(/admin 로그인 게이트로 시각화 육안 미검증→코드 갈음). **후속: 0035 프로덕션 적용 + MaxMind 키·mmdb 도입 + x-fah-client-ip 실측은 운영자 몫(docs/운영_GeoIP_도입절차.md)** |
+| 2026-08-15 | 접속 지역 시군구 단위 집계(v2) | 중 | 중~대 | 후보 | admin-region-heatmap Out 이관. v1은 시도 17개만. 운영 데이터로 GeoIP 도시 정확도·수요 확인 후 `lib/sigungu-data.ts` 재사용 |
+| 2026-08-15 | 지역 통계 신뢰도(미상 비율 카드 + 봇/데이터센터 IP 필터) | 소~중 | 중 | 후보 | admin-region-heatmap Out 이관. 모바일 통신사 IP 수도권 편중·봇 혼입 대응. GeoIP hosting/proxy 플래그 활용 |
 | 2026-08-15 | A4 공유 루프(상세/TOP10 공유 버튼 + 주유소별 동적 OG) | 상 | 중 | 후보 | growth 사이클 Out 이관. 사용자 화면 변경 → ux-designer 필요. 계기판(계측) 구축 완료됐으므로 `share_click` 이벤트를 화이트리스트에 추가해 공유 효과 측정 가능 |
 | 2026-08-15 | B3 푸시 옵트인 관문 완화(비로그인 개방) | 중 | 중~대 | 후보 | growth 사이클 Out 이관. 구독 API·발송 대상 쿼리 구조 변경. BETA_FREE 종료 계획과 함께 설계 필요(research 미해결 5) |
 | 2026-08-15 | B4 PWA 설치 배너 재노출 정책 | 중 | 소~중 | 후보 | growth 사이클 Out 이관. 이번 사이클 `pwa_install` 계측으로 설치·거절율 기초선 확보 후 정책 결정 |

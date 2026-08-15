@@ -18,7 +18,9 @@ import {
   getRetentionD1,
   getRetentionD7,
   getTodayChannels,
+  getRegionVisits,
 } from '@/lib/db/stats';
+import RegionVisitsSection from '@/components/admin/RegionTileMap';
 
 export const metadata: Metadata = {
   title: '관리자 대시보드 (운영)',
@@ -205,7 +207,7 @@ export default async function AdminPage() {
   const admin = await getAdminOrNull();
   if (!admin) notFound();
 
-  const stats = await loadStats();
+  const [stats, regionRows] = await Promise.all([loadStats(), getRegionVisits(7)]);
 
   return (
     // 관리 도구는 가독성 우선 — OS 다크모드와 무관하게 라이트 배경+진한 글자로 고정.
@@ -241,6 +243,12 @@ export default async function AdminPage() {
             {s.hint && <div className="mt-1 text-[10px] leading-tight text-gray-400">{s.hint}</div>}
           </div>
         ))}
+      </section>
+
+      {/* 지역별 접속 (최근 7일) — 시도 단계구분도 + 수치 표. 집계 전용(개인 좌표·핀 없음). */}
+      <section aria-label="지역별 접속" className="mt-8">
+        <h2 className="mb-3 text-sm font-bold text-gray-700">지역별 접속 (최근 7일)</h2>
+        <RegionVisitsSection rows={regionRows} />
       </section>
 
       {/* 도구 허브 */}

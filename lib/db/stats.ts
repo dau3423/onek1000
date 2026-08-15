@@ -33,19 +33,25 @@ export interface VisitChannel {
  * 유입 채널(channel)은 하루 첫 방문에만 남는다(ignoreDuplicates 특성상 첫 행만 insert되는
  * first-touch — 의도된 동작).
  *
- * [배포 안전성] 코드가 마이그레이션(0034)보다 먼저 배포되는 창에서 채널 컬럼이 아직 없을 수
- * 있다. 이때 채널 필드 포함 upsert는 PostgREST 컬럼 부재 에러(error)를 돌려주는데, 그대로
- * 두면 방문 자체가 유실된다. 그래서 채널 필드 포함 upsert가 실패하면 채널 없이 기존 3필드만으로
- * 1회 fallback upsert를 재시도한다 → 채널값이 있는 방문도 최소한 방문 자체는 절대 유실되지 않는다.
+ * 접속 지역(sido_code, 0035)도 채널과 동일한 first-touch 의미론으로 하루 첫 방문에만 남는다.
+ * IP 원본은 여기(및 어디에도) 저장하지 않는다 — 서버(/api/visit)가 IP를 시도 코드로 변환한
+ * 결과만 넘어온다(0029 IP 미저장 원칙).
+ *
+ * [배포 안전성] 코드가 마이그레이션(0034 채널 / 0035 지역)보다 먼저 배포되는 창에서 해당 컬럼이
+ * 아직 없을 수 있다. 이때 그 필드를 포함한 upsert는 PostgREST 컬럼 부재 에러(error)를 돌려주는데,
+ * 그대로 두면 방문 자체가 유실된다. 그래서 실패하면 단계적으로 필드를 덜어내며 재시도한다:
+ *   전체(채널+지역) → 채널만(지역 제외, 0035 미적용 방어) → base 3필드만.
+ * 어느 단계에서 성공하든 방문 자체는 절대 유실되지 않는다.
  */
 export async function recordVisit(
   device_id: string,
   user_id: string | null,
   channel?: VisitChannel,
+  sido_code?: string | null,
 ): Promise<void> {
   if (!isSupabaseConfigured()) return;
   const base: Record<string, unknown> = { visit_date: kstTodayDate(), device_id, user_id };
-  // 값이 있는 채널 필드만 수집 — 전부 null/미전달이면 예전과 동일하게 3필드만 insert.
+  // 값이 있는 채널 필드만 수집(0034) — 전부 null/미전달이면 예전과 동일하게 base만 insert.
   const channelFields: Record<string, unknown> = {};
   if (channel) {
     if (channel.ref_host) channelFields.ref_host = channel.ref_host;
@@ -53,16 +59,25 @@ export async function recordVisit(
     if (channel.utm_medium) channelFields.utm_medium = channel.utm_medium;
     if (channel.utm_campaign) channelFields.utm_campaign = channel.utm_campaign;
   }
+  // 접속 지역(0035) — 값이 있을 때만 포함.
+  const sidoField: Record<string, unknown> = sido_code ? { sido_code } : {};
+  const hasChannel = Object.keys(channelFields).length > 0;
+  const hasSido = Object.keys(sidoField).length > 0;
   const opts = { onConflict: 'visit_date,device_id', ignoreDuplicates: true } as const;
   try {
     const sb = getSupabase();
-    if (Object.keys(channelFields).length > 0) {
-      // 1차: 채널 컬럼 포함. ignoreDuplicates라 중복 충돌은 error가 아니므로, error가 오면
-      // 컬럼 부재(0034 미적용) 등 실제 실패다 → 방문 유실 방지를 위해 아래 fallback로 넘어간다.
+    // 1차: 전체(채널+지역). ignoreDuplicates라 중복 충돌은 error가 아니므로, error면 컬럼 부재 등
+    // 실제 실패다 → 방문 유실 방지를 위해 아래 단계로 넘어간다.
+    if (hasChannel || hasSido) {
+      const { error } = await sb.from('page_visits').upsert({ ...base, ...channelFields, ...sidoField }, opts);
+      if (!error) return;
+    }
+    // 2차: 지역 컬럼(0035)만 제외하고 채널까지는 유지 — 0035 미적용 창에서 채널 데이터 유실 최소화.
+    if (hasSido && hasChannel) {
       const { error } = await sb.from('page_visits').upsert({ ...base, ...channelFields }, opts);
       if (!error) return;
     }
-    // fallback(또는 채널 없음): 기존 3필드만으로 방문을 기록 — 방문 자체는 절대 유실하지 않는다.
+    // 3차 fallback: base 3필드만 — 방문 자체는 절대 유실하지 않는다.
     await sb.from('page_visits').upsert(base, opts);
   } catch {
     /* 방문 기록 실패는 무시(사용자 경험 우선) */
@@ -198,6 +213,59 @@ export async function getTodayChannels(limit = 3): Promise<ChannelCount[] | null
     return (data as Array<{ channel: string; visits: number }>)
       .slice(0, limit)
       .map((r) => ({ channel: String(r.channel), visits: Number(r.visits) || 0 }));
+  } catch {
+    return null;
+  }
+}
+
+/** 시도별 방문 집계 1건 — sidoCode(null='미상') + 방문 수. */
+export interface RegionVisitRow {
+  /** Opinet 시도 코드('01'~'19'). 지역 추정 실패(GeoIP 미도입/실패)는 null('미상'). */
+  sidoCode: string | null;
+  visits: number;
+}
+
+// [Mock 고정 집계] 지도·표 UI는 데이터가 없으면 검증 자체가 불가하므로, 다른 카드들의 '-' 폴백
+// 관례를 의도적으로 이탈해 17개 시도 + '미상'(NULL)의 고정 목 집계를 반환한다(plan Mock 전략).
+// 값 분포는 분위(quantile) 4단계가 실제로 갈리도록 설계했다(전부 동일값 금지 — design.md 예시).
+const MOCK_REGION_VISITS: RegionVisitRow[] = [
+  { sidoCode: '01', visits: 132 }, // 서울
+  { sidoCode: '02', visits: 118 }, // 경기
+  { sidoCode: '15', visits: 41 }, // 인천
+  { sidoCode: '10', visits: 38 }, // 부산
+  { sidoCode: '09', visits: 27 }, // 경남
+  { sidoCode: '14', visits: 24 }, // 대구
+  { sidoCode: '05', visits: 19 }, // 충남
+  { sidoCode: '08', visits: 17 }, // 경북
+  { sidoCode: '17', visits: 15 }, // 대전
+  { sidoCode: '06', visits: 12 }, // 전북
+  { sidoCode: '16', visits: 11 }, // 광주
+  { sidoCode: '18', visits: 9 }, // 울산
+  { sidoCode: '03', visits: 8 }, // 강원
+  { sidoCode: '04', visits: 7 }, // 충북
+  { sidoCode: '07', visits: 6 }, // 전남
+  { sidoCode: '11', visits: 4 }, // 제주
+  { sidoCode: '19', visits: 2 }, // 세종
+  { sidoCode: null, visits: 33 }, // 미상(지역 추정 실패)
+];
+
+/**
+ * 최근 days일(KST, 오늘 포함) 시도별 방문 수. NULL 그룹('미상')도 포함해 반환한다.
+ * getTodayChannels 패턴 + Mock 분기: RPC(visit_regions, 0035) 미적용/실패 시 null → 섹션 폴백.
+ * Mock 모드(NEXT_PUBLIC_USE_MOCK 또는 Supabase 미설정)에서는 고정 목 집계를 반환한다(위 주석 참조).
+ */
+export async function getRegionVisits(days = 7): Promise<RegionVisitRow[] | null> {
+  if (process.env.NEXT_PUBLIC_USE_MOCK === 'true' || !isSupabaseConfigured()) {
+    return MOCK_REGION_VISITS;
+  }
+  try {
+    const sb = getSupabase();
+    const { data, error } = await sb.rpc('visit_regions', { days });
+    if (error || !data) return null;
+    return (data as Array<{ sido_code: string | null; visits: number }>).map((r) => ({
+      sidoCode: r.sido_code == null ? null : String(r.sido_code),
+      visits: Number(r.visits) || 0,
+    }));
   } catch {
     return null;
   }

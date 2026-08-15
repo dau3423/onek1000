@@ -14,6 +14,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/options';
 import { recordVisit } from '@/lib/db/stats';
+import { lookupSido } from '@/lib/geoip/lookup';
 import { redis, keys } from '@/lib/cache/redis';
 
 export const runtime = 'nodejs';
@@ -30,9 +31,13 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const RATE_WINDOW_SEC = 60;
 const RATE_LIMIT = 10;
 
-// 클라이언트 IP 추출: x-forwarded-for 첫 값 → x-real-ip → 'unknown'.
+// 클라이언트 IP 추출: x-fah-client-ip(최우선) → x-forwarded-for 첫 값 → x-real-ip → 'unknown'.
+// Firebase App Hosting 전용 헤더(x-fah-client-ip)를 최우선으로 신뢰한다: XFF 첫 값은 위조
+// 가능하므로 지역 추정 통계 소스로는 신뢰도 낮음. 헤더가 전무하면 기존과 동일하게 'unknown'.
 // (이 코드베이스엔 공용 파서가 없어 route 내 소형 헬퍼로 처리)
 function clientIp(req: NextRequest): string {
+  const fah = req.headers.get('x-fah-client-ip')?.trim();
+  if (fah) return fah;
   const xff = req.headers.get('x-forwarded-for');
   if (xff) {
     const first = xff.split(',')[0]?.trim();
@@ -94,7 +99,12 @@ export async function POST(req: NextRequest) {
 
   // 4) 한도 초과가 아니면 방문 기록(멱등 upsert). 내부에서 미설정/에러를 graceful 처리.
   //    초과 시엔 행을 쓰지 않고 조용히 통과(쿠키는 아래에서 기존대로 발급).
-  if (!limited) await recordVisit(deviceId, userId, channel);
+  //    지역 추정: IP를 시도 코드로 변환해 recordVisit에 넘긴다. lookupSido는 DB/키 부재·불량 IP에
+  //    항상 null(throw 없음) → 지역 없이도 방문 기록은 정상. IP 원본은 저장·로깅하지 않는다.
+  if (!limited) {
+    const sido = await lookupSido(ip);
+    await recordVisit(deviceId, userId, channel, sido);
+  }
 
   const res = NextResponse.json({ ok: true });
   // 새 디바이스면 영속 쿠키 발급(클라가 읽을 필요 없어 httpOnly).

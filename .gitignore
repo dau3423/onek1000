@@ -9,6 +9,9 @@ firebase-debug.log
 secrets/
 next-env.d.ts
 
+# GeoIP DB (MaxMind GeoLite2, ~60MB) — 운영자가 다운로드, 리포 커밋 금지
+/data/geoip/
+
 # 마케팅/임시 자료 (저장소 제외)
 1000냥_주유소_IR.pptx
 마케팅_*.html
