@@ -164,6 +164,11 @@ env:
   # ─── 관리자 카톡 알림(나에게 보내기) refresh_token ───
   - variable: ADMIN_KAKAO_REFRESH_TOKEN
     secret: ADMIN_KAKAO_REFRESH_TOKEN
+  # ─── GeoIP(GeoLite2) 다운로드 키 — prebuild에서 mmdb 다운로드에만 사용(런타임 앱은 미사용) ───
+  - variable: MAXMIND_LICENSE_KEY
+    secret: MAXMIND_LICENSE_KEY
+    availability:
+      - BUILD
   # ─── X(트위터) 데일리 트윗 자동발행 ───
   # 4종 모두 서버 전용 시크릿. 미설정 시 post-daily-tweet은 발행 skip + 미리보기만 반환.
   # 발급: developer.x.com — App permissions를 Read and Write로 바꾼 "뒤에" Access Token을 생성해야 쓰기 가능.
@@ -283,6 +288,8 @@ env:
       - RUNTIME
   - variable: EX_API_KEY
     secret: EX_API_KEY
+  - variable: MAXMIND_LICENSE_KEY
+    secret: MAXMIND_LICENSE_KEY
   # - variable: NEXT_PUBLIC_ADSENSE_BANNER_SLOT
   #   value: "1234567890"
   #   availability:

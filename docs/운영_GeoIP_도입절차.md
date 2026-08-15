@@ -30,18 +30,18 @@
   - `MAXMIND_LICENSE_KEY` — 다운로드 스크립트 전용(런타임 앱은 사용하지 않음).
   - `GEOIP_DB_PATH`(선택) — mmdb 경로 오버라이드. 미설정 시 기본값 `data/geoip/GeoLite2-City.mmdb`.
 
-### 3) mmdb 다운로드
+### 3) mmdb 다운로드 — 배포 빌드에 자동 연결됨 (2026-08-15)
 
-```bash
-MAXMIND_LICENSE_KEY=발급받은키 npm run geoip:download
-```
-
-- `data/geoip/GeoLite2-City.mmdb`로 저장된다. 키가 없으면 안내 후 비정상 종료하며, **빌드에는 연결되지 않는다**.
+- `package.json`의 `prebuild`가 `download-geolite2.mjs --optional`을 실행한다:
+  빌드 환경에 `MAXMIND_LICENSE_KEY`(apphosting.yaml에 BUILD availability 시크릿으로 등록됨)가 있으면
+  **빌드마다 최신 mmdb를 자동 다운로드**해 포함하고, 없거나 다운로드가 실패하면 경고 후 건너뛴다
+  (빌드는 깨지지 않고 앱은 지역 미상으로 동작).
+- 수동 실행도 가능: `MAXMIND_LICENSE_KEY=발급받은키 npm run geoip:download` (키 없으면 exit 1).
 
 ### 4) 배포에 mmdb 포함
 
-- 위 파일을 배포 산출물에 포함하거나, 배포 파이프라인의 빌드 단계 이전에 `geoip:download`를 한 번 실행해
-  런타임에서 `GEOIP_DB_PATH` 경로로 읽을 수 있게 한다.
+- 위 prebuild 연결로 자동 포함된다. 별도 파이프라인을 쓰는 경우에만 빌드 전에 `geoip:download`를
+  실행해 런타임에서 `GEOIP_DB_PATH` 경로로 읽을 수 있게 한다.
 - GeoLite2-City mmdb는 약 60MB다. 서버 메모리 여유(예: `memoryMiB`)를 확인한다. lazy-load(첫 조회 시 1회)로
   완화되어 있으나, OOM 발생 시 메모리 상향 또는 경량 테이블 도입을 검토한다.
 

@@ -1,14 +1,17 @@
 #!/usr/bin/env node
-// GeoLite2-City mmdb 다운로드 스크립트 — 운영자 전용, 빌드와 무관한 독립 실행형.
+// GeoLite2-City mmdb 다운로드 스크립트.
 //
 // 사용법:
-//   MAXMIND_LICENSE_KEY=xxxx npm run geoip:download
+//   MAXMIND_LICENSE_KEY=xxxx npm run geoip:download        # 수동 실행 — 키 없으면 exit 1
+//   node scripts/download-geolite2.mjs --optional           # prebuild 자동 실행 — 키 없으면 skip(exit 0)
 //
 // 동작: MaxMind 다운로드 엔드포인트에서 GeoLite2-City를 tar.gz로 받아 압축을 풀고,
 //   data/geoip/GeoLite2-City.mmdb 로 저장한다(lib/geoip/lookup.ts 기본 경로 GEOIP_DB_PATH와 일치).
 //
-// 주의: MAXMIND_LICENSE_KEY가 없으면 안내 후 비정상 종료(exit 1)한다. 이 스크립트는 build/CI에
-//   자동 연결하지 않는다 — 실제 DB 도입·배포 반영은 운영자 몫이다(docs/운영_GeoIP_도입절차.md).
+// 배포 연결: package.json의 `prebuild`가 --optional 모드로 이 스크립트를 실행한다.
+//   배포 환경(App Hosting)에 MAXMIND_LICENSE_KEY 시크릿(BUILD availability)이 있으면 빌드마다
+//   최신 mmdb가 포함되고, 없으면(로컬/CI) 조용히 건너뛴다 — 앱은 지역 미상으로 정상 동작한다.
+//   --optional 모드에서는 다운로드 "실패"도 빌드를 깨지 않는다(경고 후 exit 0).
 
 import { createWriteStream, existsSync, mkdirSync, readdirSync, rmSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
@@ -19,6 +22,12 @@ import https from 'node:https';
 const LICENSE_KEY = process.env.MAXMIND_LICENSE_KEY;
 const OUT_DIR = process.env.GEOIP_OUT_DIR || join(process.cwd(), 'data', 'geoip');
 const OUT_FILE = join(OUT_DIR, 'GeoLite2-City.mmdb');
+const OPTIONAL = process.argv.includes('--optional');
+
+if (!LICENSE_KEY && OPTIONAL) {
+  console.log('[geoip:download] MAXMIND_LICENSE_KEY 없음 — GeoIP DB 다운로드 건너뜀(선택 단계).');
+  process.exit(0);
+}
 
 if (!LICENSE_KEY) {
   console.error(
@@ -97,5 +106,6 @@ async function main() {
 
 main().catch((err) => {
   console.error(`[geoip:download] 오류: ${err instanceof Error ? err.message : String(err)}`);
-  process.exit(1);
+  // --optional(prebuild) 모드에서는 다운로드 실패가 빌드를 깨면 안 된다 — 지역 미상으로 동작.
+  process.exit(OPTIONAL ? 0 : 1);
 });
