@@ -13,6 +13,50 @@ interface RpcRow {
   id: string; name: string; brand_code: string; is_self: boolean;
   lat: number; lng: number; price: number; trade_dt: string;
   distance_m?: number;
+  has_carwash?: boolean;
+}
+
+/**
+ * 세차 파라미터(p_carwash)/반환(has_carwash)을 지원하는 RPC(마이그레이션 0036) 지원 여부에 대한
+ * 낙관적 폴백 상태. 불리언을 영구히 내리지 않고 "언제까지 미지원으로 볼지"를 시각으로 들고 있어
+ * 전역·비가역으로 굳는 것을 막는다.
+ *
+ *   - 초기(=0): 지원한다고 가정하고 항상 세차 시그니처로 먼저 시도.
+ *   - 미지원 감지 시: now+TTL 을 저장해 그 사이에는 구 시그니처로만 호출(미적용 환경 이중 왕복 방지).
+ *   - TTL 경과 후: 다시 낙관적으로 재시도 → 마이그레이션이 뒤늦게 적용되거나 스키마 캐시가
+ *     회복되면 자동 복구(self-heal). 배포 시 모듈 재로드로도 초기화된다.
+ *
+ * TTL 을 두는 이유: PostgREST 는 임의의 DDL(마이그레이션 적용 등) 직후 스키마 캐시 리로드 수 초
+ * 동안, 함수가 실제로 존재해도 PGRST202(Could not find function … in the schema cache)를
+ * 일시적으로 반환할 수 있다. 이 짧은 창에 요청 1건이 걸려 플래그가 굳으면 세차 필터가 재배포
+ * 전까지 앱 전역에서 조용히 비활성된다. TTL self-heal 로 그 false-positive 를 자동 회복한다.
+ */
+const CARWASH_UNSUPPORTED_TTL_MS = 10 * 60 * 1000; // 10분
+let carwashUnsupportedUntil = 0;
+
+/** 지금 세차 시그니처로 시도해도 되는지(미지원 창이 지났으면 다시 낙관적으로 시도). */
+function carwashRpcSupported(): boolean {
+  return Date.now() >= carwashUnsupportedUntil;
+}
+
+/** 세차 시그니처 미지원 감지 → TTL 만큼만 폴백 유지(전역·영구 비활성 금지). */
+function markCarwashUnsupported(): void {
+  carwashUnsupportedUntil = Date.now() + CARWASH_UNSUPPORTED_TTL_MS;
+}
+
+/**
+ * 세차 시그니처 미지원(=0036 미적용 또는 함수/파라미터 부재)으로 볼 에러인지.
+ * PostgREST 는 요청한 함수/파라미터 시그니처를 못 찾으면 code 'PGRST202' 를 준다. 이 코드만
+ * 폴백 대상으로 삼아 네트워크/타임아웃/권한 등 무관한 오류로는 플래그가 흔들리지 않게 한다.
+ * (일시적 스키마 캐시 리로드도 PGRST202 를 줄 수 있으나, 그 false-positive 는 위 TTL self-heal 로
+ *  자동 회복되므로 여기서 굳혀도 안전하다.) code 가 비어 오는 드문 경우를 위해, '함수/파라미터
+ * 부재'에 특정한 문구(+p_carwash)만 좁게 병행 매칭한다 — 순수 캐시 리로드 등 일반 문구는 제외.
+ */
+function isCarwashUnsupported(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  if (error.code === 'PGRST202') return true;
+  const msg = error.message ?? '';
+  return /could not find (the )?function/i.test(msg) && /p_carwash/i.test(msg);
 }
 
 export async function queryStationsByBbox(
@@ -20,35 +64,52 @@ export async function queryStationsByBbox(
   // 단일 브랜드만 조회할 때 지정(예: 'EXP'=고속도로만). 지정 시 그 브랜드만 limit 안에 담아
   // 줌 아웃(넓은 bbox)에서도 가격 상한에 밀려 누락되지 않게 한다. 미지정이면 기존 동작(전체).
   brand?: BrandCode,
+  // 세차 필터(FR-1). true면 has_carwash=true 주유소만(서버측 조건, 마이그레이션 0036).
+  carwash = false,
 ): Promise<StationWithPrice[]> {
   if (!isSupabaseConfigured()) {
     return getMockStations(product)
       .filter((s) => inBbox(s.lat, s.lng, bbox))
       .filter((s) => (brand ? s.brand === brand : true))
+      .filter((s) => (!carwash || s.hasCarwash))
       .sort((a, b) => a.price - b.price)
       .slice(0, limit);
   }
   const sb = getSupabase();
   // 브랜드 지정 시 brand 필터 RPC(0021)로 그 브랜드만 조회한다. 미지정이면 기존 RPC 그대로.
-  const { data, error } = brand
-    ? await sb.rpc('rpc_stations_by_bbox_brand', {
+  // withCarwash=true면 p_carwash 파라미터를 실어 보낸다(0036 적용 환경). 미적용이면 아래에서 폴백.
+  const run = (withCarwash: boolean) => brand
+    ? sb.rpc('rpc_stations_by_bbox_brand', {
         p_product: product, p_brand: brand,
         p_sw_lng: bbox.swLng, p_sw_lat: bbox.swLat,
         p_ne_lng: bbox.neLng, p_ne_lat: bbox.neLat,
         p_limit: limit,
+        ...(withCarwash ? { p_carwash: carwash } : {}),
       })
-    : await sb.rpc('rpc_stations_by_bbox', {
+    : sb.rpc('rpc_stations_by_bbox', {
         p_product: product,
         p_sw_lng: bbox.swLng, p_sw_lat: bbox.swLat,
         p_ne_lng: bbox.neLng, p_ne_lat: bbox.neLat,
         p_limit: limit,
+        ...(withCarwash ? { p_carwash: carwash } : {}),
       });
+
+  let withCarwash = carwashRpcSupported();
+  let { data, error } = await run(withCarwash);
+  // 0036 미적용(파라미터/함수 부재)으로 실패하면 구 시그니처로 1회 폴백(세차 필터 미적용).
+  if (error && withCarwash && isCarwashUnsupported(error)) {
+    markCarwashUnsupported();
+    withCarwash = false;
+    ({ data, error } = await run(false));
+  }
   if (error) throw new Error(`bbox query failed: ${error.message}`);
   return (data as RpcRow[]).map((r) => ({
     id: r.id, name: r.name, brand: (r.brand_code as BrandCode) ?? 'ETC',
     isSelf: r.is_self, sido: '01' as SidoCode, address: '',
     lat: r.lat, lng: r.lng,
     product, price: r.price, tradeDate: r.trade_dt,
+    // has_carwash 가 RPC 반환에 없으면(구 시그니처) undefined → 배지 미표시.
+    hasCarwash: r.has_carwash ?? undefined,
   }));
 }
 
@@ -89,19 +150,31 @@ export async function queryStationsInBbox(
 export async function queryStationsByRadius(
   lat: number, lng: number, radiusM: number,
   product: ProductCode, limit: number,
+  // 세차 필터(FR-1). true면 has_carwash=true 주유소만(서버측 조건, 마이그레이션 0036).
+  carwash = false,
 ): Promise<StationWithPrice[]> {
   if (!isSupabaseConfigured()) {
     return getMockStations(product)
       .map((s) => ({ ...s, distance: distanceMeters(lat, lng, s.lat, s.lng) }))
       .filter((s) => (s.distance ?? Infinity) <= radiusM)
+      .filter((s) => (!carwash || s.hasCarwash))
       .sort((a, b) => a.price - b.price)
       .slice(0, limit);
   }
   const sb = getSupabase();
-  const { data, error } = await sb.rpc('rpc_stations_by_radius', {
+  const run = (withCarwash: boolean) => sb.rpc('rpc_stations_by_radius', {
     p_lat: lat, p_lng: lng, p_radius_m: radiusM,
     p_product: product, p_limit: limit,
+    ...(withCarwash ? { p_carwash: carwash } : {}),
   });
+
+  let withCarwash = carwashRpcSupported();
+  let { data, error } = await run(withCarwash);
+  if (error && withCarwash && isCarwashUnsupported(error)) {
+    markCarwashUnsupported();
+    withCarwash = false;
+    ({ data, error } = await run(false));
+  }
   if (error) throw new Error(`radius query failed: ${error.message}`);
   return (data as RpcRow[]).map((r) => ({
     id: r.id, name: r.name, brand: (r.brand_code as BrandCode) ?? 'ETC',
@@ -109,6 +182,7 @@ export async function queryStationsByRadius(
     lat: r.lat, lng: r.lng,
     product, price: r.price, tradeDate: r.trade_dt,
     distance: r.distance_m,
+    hasCarwash: r.has_carwash ?? undefined,
   }));
 }
 

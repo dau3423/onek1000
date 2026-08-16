@@ -84,6 +84,8 @@ export const keys = {
   visitRate: (ip: string) => `rl:visit:${ip}`,
   // 퍼널 이벤트 rate limit — IP당 분당 카운터(공개 POST /api/event 남용 방어, 방문보다 빈번).
   eventRate: (ip: string) => `rl:event:${ip}`,
+  // 세차 지수 조회 rate limit — IP당 분당 카운터(공개 GET /api/carwash-index 남용 방어, SEC-3 준용).
+  carwashIndexRate: (ip: string) => `rl:carwash:${ip}`,
   // 비순위(가격 없는) 주유소 상세에서 on-demand로 받은 Opinet 실시간 가격 캐시(가격만).
   // prices_latest에는 쓰지 않아 지도 마커 불변. KST 자정까지 TTL.
   detailPrice: (id: string) => `detailprice:${id}`,

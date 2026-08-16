@@ -40,6 +40,9 @@ const ALLOWED_EVENTS = new Set([
   'route_search',        // 경로 최저가 검색 실행(props 없음)
   'fuel_log_saved',      // 주유 기록 저장 성공(props 없음)
   'pwa_install',         // 설치 프롬프트 결과(props.outcome = accepted|dismissed)
+  // ── 세차 묶음(FR-1/FR-3) — 위치/개인정보성 값은 담지 않는다.
+  'carwash_filter_on',   // 세차 필터 칩 OFF→ON 전이(props 없음)
+  'carwash_card_click',  // 세차 카드 CTA 클릭(props.bestDay=YYYY-MM-DD, props.grade)
 ]);
 
 function clientIp(req: NextRequest): string {

@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useMapStore } from '@/stores/map';
 import { PRODUCT_LABEL, type ProductCode } from '@/types/station';
 import { BrandFilter } from './BrandFilter';
-import { BoltIcon } from '@/components/icons';
+import { BoltIcon, DropletIcon } from '@/components/icons';
+import { track } from '@/lib/analytics';
 import clsx from 'clsx';
 
 // 휘발유 드롭다운에 묶을 유종(일반/고급). 칩 라벨은 현재 선택을 반영한다.
@@ -13,7 +14,7 @@ const GASOLINE_OPTIONS: ProductCode[] = ['B027', 'B034'];
 const SIMPLE_PRODUCTS: ProductCode[] = ['D047', 'C004'];
 
 export function FilterBar() {
-  const { product, setProduct, layer, setLayer } = useMapStore();
+  const { product, setProduct, layer, setLayer, carwashOnly, toggleCarwashOnly } = useMapStore();
   // 휘발유 드롭다운 열림 여부
   const [gasOpen, setGasOpen] = useState(false);
   const gasRef = useRef<HTMLDivElement>(null);
@@ -151,6 +152,27 @@ export function FilterBar() {
           <span>EV</span>
         </button>
 
+        {/* 세차 칩 — 주유소(gas) 레이어에서만 노출. 유종/레이어를 바꾸지 않는 "필터 토글"이며,
+            켜면 세차 가능(has_carwash) 주유소만 조회한다. 브랜드 필터와 AND 교집합. */}
+        {!isEv && (
+          <button
+            onClick={() => {
+              // OFF→ON 전이에만 계측 1건(현재 값 기준 판정 — 켜질 때만).
+              if (!carwashOnly) track('carwash_filter_on');
+              toggleCarwashOnly();
+            }}
+            aria-pressed={carwashOnly}
+            className={clsx(
+              'flex shrink-0 items-center gap-0.5 rounded-full px-3 py-1.5 text-xs font-semibold transition',
+              carwashOnly
+                ? 'bg-primary text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
+            )}
+          >
+            <DropletIcon className="h-3.5 w-3.5" />
+            <span>세차</span>
+          </button>
+        )}
       </div>
 
       {/* 브랜드별 보기(회원 전용) — 맨 뒤(우측)에 고정. 주유소(gas) 레이어에서만 의미 있음. */}

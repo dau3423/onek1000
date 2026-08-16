@@ -13,6 +13,7 @@ import { RadiusAlert } from '@/components/alert/RadiusAlert';
 import { RouteAlert } from '@/components/alert/RouteAlert';
 import { PriceTrendBanner } from '@/components/alert/PriceTrendBanner';
 import { ForecastCard } from '@/components/forecast/ForecastCard';
+import { CarwashDayCard } from '@/components/carwash/CarwashDayCard';
 import { NaviConfirm } from '@/components/alert/NaviConfirm';
 import { ProductSync } from '@/components/map/ProductSync';
 import { StationPopup } from '@/components/map/StationPopup';
@@ -96,7 +97,7 @@ function routeIdentityKey(plan: RoutePlan): string {
 export default function HomePage() {
   const router = useRouter();
   const { data: session, status: authStatus } = useSession();
-  const { product, brands, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, setRoutePlan, clearRoutePlan, setProduct } = useMapStore();
+  const { product, brands, carwashOnly, setCarwashOnly, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, setRoutePlan, clearRoutePlan, setProduct } = useMapStore();
 
   // 회원 전용 동작 가드 — 길찾기/길안내 시작·따라가기는 로그인 회원만 사용(FR-5 기반 UX 정책).
   // 비로그인(unauthenticated)이면 기존 인증 유도 패턴(next-auth signIn, 현재 화면으로 복귀)을
@@ -132,6 +133,16 @@ export default function HomePage() {
   // 옛 렌더 클로저로 발화해도 실제 bbox 요청이 현재 브랜드 필터 기준으로 나가게 한다.
   const brandsRef = useRef(brands);
   useEffect(() => { brandsRef.current = brands; }, [brands]);
+
+  // 세차 필터도 동일하게 최신값을 ref로 참조 — idle(onBoundsChange) 클로저가 옛 렌더로 발화해도
+  // bbox 요청이 현재 세차 필터 기준으로 나가게 한다(brandsRef와 동형).
+  const carwashOnlyRef = useRef(carwashOnly);
+  useEffect(() => { carwashOnlyRef.current = carwashOnly; }, [carwashOnly]);
+
+  // 홈 세차 카드 CTA 딥링크로 하단 시트를 열기 위한 신호(값 증가 시 BottomSheet가 펼침).
+  const [sheetOpenSignal, setSheetOpenSignal] = useState(0);
+  // 딥링크 시 지도 최상단으로 스크롤하기 위한 스크롤 루트(바깥 overflow 컨테이너) 참조.
+  const scrollRootRef = useRef<HTMLDivElement>(null);
 
   // 마운트 시점에 1회 고정: 직전에 보던 지도 시점(상세 왕복/새로고침 복원).
   // 있으면 그 시점을 초기값으로 쓰고, 자동 위치 센터링을 억제한다.
@@ -270,7 +281,7 @@ export default function HomePage() {
     // (회색 점(allStations)은 가격과 무관하므로 재조회하지 않는다 — 줌 게이팅은 bounds/layer effect 담당.)
     fetchStations(b);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [product, brands]);
+  }, [product, brands, carwashOnly]);
 
   // 유종 변경 시 전국 최저가 TOP10 재조회 (마운트 1회 + product 변경 시).
   // 화면 영역과 무관하므로 bbox 패닝/줌에는 재호출하지 않는다(캐시/rate limit 보호).
@@ -326,6 +337,8 @@ export default function HomePage() {
     if (reqBrands.length === 1 && reqBrands[0] === 'EXP') {
       params.set('brand', 'EXP');
     }
+    // 세차 칩 ON이면 서버측 세차 필터(has_carwash=true)를 적용한다(FR-1).
+    if (carwashOnlyRef.current) params.set('carwash', '1');
     fetch(`/api/stations/bbox?${params}`, { signal: bboxAbort.current.signal })
       .then(async (r) => {
         if (!r.ok) throw new Error(`bbox ${r.status}`);
@@ -466,7 +479,8 @@ export default function HomePage() {
   // 의미있는 이동(약 100m 이상)에서만 재조회한다 (FR-2.2, rate limit 보호).
   useEffect(() => {
     if (!geo.coords) return;
-    const key = quantize(geo.coords.lat, geo.coords.lng, 3);
+    // 세차 필터를 키에 포함 — 좌표가 그대로여도 세차 칩 토글 시 반경 목록을 재조회하게 한다.
+    const key = `${quantize(geo.coords.lat, geo.coords.lng, 3)}${carwashOnly ? ':cw' : ''}`;
     if (key === lastRadiusKeyRef.current) return;
     lastRadiusKeyRef.current = key;
 
@@ -476,6 +490,8 @@ export default function HomePage() {
       lat: String(geo.coords.lat), lng: String(geo.coords.lng),
       r: String(NEARBY_RADIUS_M), product, limit: String(NEARBY_LIMIT),
     });
+    // 세차 칩 ON이면 '내 주변' 반경 목록도 세차 가능만 조회(하단 시트 '내 주변' 탭 일관성).
+    if (carwashOnly) params.set('carwash', '1');
     fetch(`/api/stations/radius?${params}`, { signal: radiusAbort.current.signal })
       .then(async (r) => {
         if (!r.ok) throw new Error(`radius ${r.status}`);
@@ -491,7 +507,7 @@ export default function HomePage() {
       });
     // geo.coords 전체가 아닌 위경도 변화에만 반응 (양자화 게이트로 재조회 빈도 제어)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [geo.coords?.lat, geo.coords?.lng, product, resetAlert]);
+  }, [geo.coords?.lat, geo.coords?.lng, product, resetAlert, carwashOnly]);
 
   // 로그인 사용자 마지막 위치 저장(③ 주간 다이제스트 cron이 "내 지역"을 알기 위함).
   // 과호출 방지: 직전 저장 대비 1km 이상 이동했거나 하루(24h) 지났을 때만 POST. best-effort(실패 무시).
@@ -565,9 +581,10 @@ export default function HomePage() {
     [radiusStations, filterDisplay],
   );
   // 회색 점도 동일 브랜드/셀프 필터 적용(표시 집합 일관성).
+  // 세차 칩 ON일 때는 회색 점 레이어를 숨긴다 — 표시 집합 일관성(세차 마커만 보이도록, FR-1).
   const visibleAllStations = useMemo(
-    () => filterDisplay(allStations),
-    [allStations, filterDisplay],
+    () => (carwashOnly ? [] : filterDisplay(allStations)),
+    [allStations, filterDisplay, carwashOnly],
   );
 
   // 1km 반경 최저가 (알람 판정용)
@@ -834,10 +851,18 @@ export default function HomePage() {
   }, []);
   useFuelDwellDetect(geo.coords ?? null, dwellEnabled, handleDwellDetect);
 
+  // 홈 세차 카드 CTA(FR-3) — 세차 칩 활성 + 지도 최상단 스크롤 + 하단 시트 펼침.
+  // (스토어 세팅·스크롤·시트 열기는 부모가 수행 — 카드는 지도 내부 구현을 모른다.)
+  const handleCarwashCta = useCallback(() => {
+    setCarwashOnly(true);
+    scrollRootRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    setSheetOpenSignal((n) => n + 1);
+  }, [setCarwashOnly]);
+
   return (
     // 바깥 래퍼: 세로 스크롤 가능. 첫 뷰포트(헤더+필터바+지도)는 한 화면(h-dvh)을 채우고,
     // 그 아래로 스크롤하면 사업자 정보 푸터가 나온다(카드사 심사: 메인 하단 사업자 정보).
-    <div className="h-dvh overflow-y-auto">
+    <div ref={scrollRootRef} className="h-dvh overflow-y-auto">
       {/* 첫 화면: 기존 전체화면 지도 UX 유지. 지도 영역(map-container)은 한 화면을 채운다.
           내부 absolute 요소(GPS/배너/시트/알람/전체화면)는 모두 이 묶음 내부 기준이라 동작 불변. */}
       <div className="relative flex h-dvh flex-col">
@@ -1082,6 +1107,9 @@ export default function HomePage() {
           onNavigate={(s) => requireAuth(() => setNaviTarget(s))}
           onOpenChange={setSheetOpen}
           onTabChange={handleTabChange}
+          carwashOnly={carwashOnly}
+          onDisableCarwash={() => setCarwashOnly(false)}
+          openSignal={sheetOpenSignal}
           layer={layer}
           evStations={evStations}
           evOrigin={evOrigin}
@@ -1110,6 +1138,16 @@ export default function HomePage() {
           PriceTrendBanner(지도 상단 absolute 오버레이) 아래, 첫 화면(지도) 아래로 스크롤하면 노출되는
           흐름 영역에 둔다(다른 절대배너와 자리 충돌 없이 '아래'에 배치). 신호 없음/비대상 유종이면
           ForecastCard 내부에서 스스로 미표시(graceful). gas 레이어에서만 노출(충전소 무관). */}
+      {/* 세차하기 좋은 날 카드(FR-3) — ForecastCard 위(더 컴팩트·시한성). gas 레이어 한정.
+          지수 데이터 없으면 카드 내부에서 스스로 미표시(graceful). 좌표는 내 위치 → 지도 중심 폴백. */}
+      {layer === 'gas' && (
+        <CarwashDayCard
+          onCta={handleCarwashCta}
+          lat={(myLocation ?? mapCenter)?.lat ?? null}
+          lng={(myLocation ?? mapCenter)?.lng ?? null}
+        />
+      )}
+
       {layer === 'gas' && <ForecastCard product={product} />}
 
       {/* 메인 하단 사업자 정보 푸터 — 첫 화면(지도) 아래로 스크롤하면 노출(카드사 심사용) */}

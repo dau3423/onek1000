@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import clsx from 'clsx';
@@ -9,7 +9,7 @@ import { BRAND_LABEL, BRAND_COLOR } from '@/types/station';
 import { priceTier, priceTierThresholds } from '@/lib/map/geo';
 import type { EvStationMarker } from '@/types/ev';
 import { rankEvStations, type EvStationRanked, type EvSortOrigin } from '@/lib/ev/sort';
-import { CrownIcon, ChevronRightIcon, BoltFilledIcon } from '@/components/icons';
+import { CrownIcon, ChevronRightIcon, BoltFilledIcon, DropletIcon } from '@/components/icons';
 
 type Tab = 'area' | 'nearby';
 
@@ -40,6 +40,18 @@ interface Props {
   onNavigate?: (s: StationWithPrice) => void;
   /** 열림/접힘 상태 변화 통지 (부모가 GPS 버튼 위치 등을 연동) */
   onOpenChange?: (open: boolean) => void;
+  /**
+   * 세차 필터(FR-1) 활성 여부. true면 타이틀/빈 상태 문구를 세차 문맥으로 전환한다.
+   * 목록 필터 자체는 서버(carwash=1)에서 이미 적용되어 stations/nearbyStations에 반영된다.
+   */
+  carwashOnly?: boolean;
+  /** 세차 빈 상태 탈출구 — "세차 필터 끄기" 탭 시 호출(carwashOnly를 끈다). */
+  onDisableCarwash?: () => void;
+  /**
+   * 외부에서 시트를 여는 신호(홈 CarwashDayCard CTA 딥링크용). 값이 바뀌면(증가) 시트를
+   * 펼치고 onOpenChange(true)를 통지한다. 내부 open 상태가 외부에서 열 수 없는 문제를 최소 침습으로 해결.
+   */
+  openSignal?: number;
   /**
    * 활성 탭 변화 통지 (부모가 지도 마커 숫자 표시 집합을 연동).
    * 실제 활성 탭은 nearbyEnabled 여부를 반영한 값(area/nearby)을 전달한다.
@@ -77,6 +89,9 @@ export function BottomSheet({
   onNavigate,
   onOpenChange,
   onTabChange,
+  carwashOnly = false,
+  onDisableCarwash,
+  openSignal,
   layer = 'gas',
   evStations = [],
   evOrigin = null,
@@ -85,6 +100,16 @@ export function BottomSheet({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('area');
+
+  // 외부 열기 신호(딥링크): openSignal 이 바뀌면(증가) 시트를 펼치고 상태를 부모에 통지한다.
+  // 마운트 시엔 초기값과 같아 발화하지 않는다(증가분에만 반응).
+  const openSignalRef = useRef(openSignal);
+  useEffect(() => {
+    if (openSignal === openSignalRef.current) return;
+    openSignalRef.current = openSignal;
+    setOpen(true);
+    onOpenChange?.(true);
+  }, [openSignal, onOpenChange]);
 
   function toggleOpen() {
     setOpen((v) => {
@@ -124,9 +149,13 @@ export function BottomSheet({
 
   const title = isEv
     ? `이 지역 충전소 ${evRanked.length}곳`
-    : activeTab === 'nearby'
-      ? `내 주변 ${radiusKm} 최저가 TOP ${NEARBY_LIMIT}`
-      : `이 지역 최저가 TOP ${Math.min(areaSorted.length, AREA_LIMIT)}`;
+    : carwashOnly
+      ? activeTab === 'nearby'
+        ? `내 주변 ${radiusKm} 세차 가능 최저가`
+        : `이 지역 세차 가능 최저가 TOP ${Math.min(areaSorted.length, AREA_LIMIT)}`
+      : activeTab === 'nearby'
+        ? `내 주변 ${radiusKm} 최저가 TOP ${NEARBY_LIMIT}`
+        : `이 지역 최저가 TOP ${Math.min(areaSorted.length, AREA_LIMIT)}`;
 
   return (
     <div
@@ -185,11 +214,31 @@ export function BottomSheet({
       /* 시트 높이(SHEET_OPEN_VH=70vh)에서 손잡이/탭 영역(SHEET_PEEK_PX=96px)을 뺀 스크롤 영역 */
       <div className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
         {list.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
-            {activeTab === 'nearby'
-              ? `반경 ${radiusKm} 안에 주유소 정보가 없어요.`
-              : '이 영역에 표시할 주유소가 없어요. 지도를 이동해보세요.'}
-          </p>
+          carwashOnly ? (
+            // 세차 필터 빈 상태(AC-4) — DropletIcon + 안내 + 탈출구("세차 필터 끄기").
+            <div className="flex flex-col items-center px-5 py-8 text-center">
+              <DropletIcon className="h-8 w-8 text-gray-300 dark:text-gray-600" />
+              <p className="mt-2 text-sm text-gray-400 dark:text-gray-500">
+                {activeTab === 'nearby'
+                  ? `반경 ${radiusKm} 안에 세차 가능으로 확인된 주유소가 아직 없어요 — 정보 수집 중`
+                  : '이 지역엔 세차 가능으로 확인된 주유소가 아직 없어요 — 정보 수집 중'}
+              </p>
+              {onDisableCarwash && (
+                <button
+                  onClick={onDisableCarwash}
+                  className="mt-3 rounded-full px-4 py-2.5 text-xs font-semibold text-primary hover:bg-primary/10"
+                >
+                  세차 필터 끄기
+                </button>
+              )}
+            </div>
+          ) : (
+            <p className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+              {activeTab === 'nearby'
+                ? `반경 ${radiusKm} 안에 주유소 정보가 없어요.`
+                : '이 영역에 표시할 주유소가 없어요. 지도를 이동해보세요.'}
+            </p>
+          )
         ) : (
           <ul className="divide-y divide-gray-100 dark:divide-gray-800">
             {list.map((s, i) => {
@@ -218,6 +267,12 @@ export function BottomSheet({
                               {/* 색 미지정 — 배지 텍스트색(amber-950)을 currentColor로 상속 */}
                               <CrownIcon className="h-3 w-3" />
                               전국 {nationalRank}위
+                            </span>
+                          )}
+                          {/* 세차 배지 — hasCarwash 확정 시 상시 노출(상세 AmenityList emerald 톤과 정합). */}
+                          {s.hasCarwash && (
+                            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold leading-none text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                              <DropletIcon className="h-3 w-3" />세차
                             </span>
                           )}
                         </div>

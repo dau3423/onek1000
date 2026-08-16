@@ -128,6 +128,14 @@ interface MapState {
   setBrands: (b: BrandCode[]) => void;
   clearBrands: () => void;
 
+  /**
+   * 세차 필터(FR-1). true면 세차 가능(has_carwash) 주유소만 조회/표시한다.
+   * brands 패턴과 동형의 단순 토글이며, 세션 저장은 하지 않는다(새로고침 시 off).
+   */
+  carwashOnly: boolean;
+  toggleCarwashOnly: () => void;
+  setCarwashOnly: (v: boolean) => void;
+
   selectedStationId: string | null;
   selectStation: (id: string | null) => void;
 
@@ -166,6 +174,10 @@ export const useMapStore = create<MapState>((set) => ({
     })),
   setBrands: (b) => set({ brands: b }),
   clearBrands: () => set({ brands: [] }),
+
+  carwashOnly: false,
+  toggleCarwashOnly: () => set((s) => ({ carwashOnly: !s.carwashOnly })),
+  setCarwashOnly: (v) => set({ carwashOnly: v }),
 
   selectedStationId: null,
   selectStation: (id) => set({ selectedStationId: id }),

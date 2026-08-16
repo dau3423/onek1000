@@ -26,6 +26,8 @@ export async function GET(req: Request) {
   // 단일 브랜드만 보기(예: '고속도로만' 필터). 화이트리스트에 든 값만 허용, 그 외엔 무시.
   const brandParam = url.searchParams.get('brand');
   const brand = brandParam && ALLOWED_BRANDS.has(brandParam) ? (brandParam as BrandCode) : undefined;
+  // 세차 필터(FR-1). carwash=1이면 세차 가능 주유소만 서버측 조회.
+  const carwash = url.searchParams.get('carwash') === '1';
 
   if ([swLat, swLng, neLat, neLng].some((n) => !Number.isFinite(n))) {
     return NextResponse.json({ error: 'invalid bbox' }, { status: 400 });
@@ -38,7 +40,8 @@ export async function GET(req: Request) {
   const cy = (swLng + neLng) / 2;
   const precision = zoom >= 12 ? 2 : 1;     // 줌 인일수록 캐시 분해능을 높임 (≈10km/100km)
   // 브랜드 조회는 응답 집합이 다르므로 캐시 키를 브랜드별로 분리(일반/브랜드 응답 혼선 방지).
-  const cacheKey = `${keys.bbox(zoom, product, geoQuantize(cx, cy, precision))}${brand ? `:${brand}` : ''}`;
+  // 세차 필터도 응답 집합이 달라 캐시 차원에 포함한다(캐시 오염 방지).
+  const cacheKey = `${keys.bbox(zoom, product, geoQuantize(cx, cy, precision))}${brand ? `:${brand}` : ''}${carwash ? ':cw' : ''}`;
 
   const cached = await redis.getJson<BboxResponse>(cacheKey);
   if (cached) {
@@ -47,7 +50,7 @@ export async function GET(req: Request) {
     });
   }
 
-  const stations = await queryStationsByBbox({ swLat, swLng, neLat, neLng }, product, limit, brand);
+  const stations = await queryStationsByBbox({ swLat, swLng, neLat, neLng }, product, limit, brand, carwash);
 
   const body: BboxResponse = {
     stations,

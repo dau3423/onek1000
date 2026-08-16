@@ -12,12 +12,15 @@ export async function GET(req: Request) {
   const r = Number(url.searchParams.get('r') ?? '1000');
   const product = (url.searchParams.get('product') ?? 'B027') as ProductCode;
   const limit = Number(url.searchParams.get('limit') ?? '20');
+  // 세차 필터(FR-1). carwash=1이면 세차 가능 주유소만 서버측 조회.
+  const carwash = url.searchParams.get('carwash') === '1';
 
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
     return NextResponse.json({ error: 'invalid coords' }, { status: 400 });
   }
 
-  const cacheKey = keys.radius(product, geoQuantize(lat, lng, 3), r);
+  // 세차 필터는 응답 집합이 달라 캐시 차원에 포함한다(캐시 오염 방지).
+  const cacheKey = `${keys.radius(product, geoQuantize(lat, lng, 3), r)}${carwash ? ':cw' : ''}`;
   const cached = await redis.getJson<RadiusResponse>(cacheKey);
   if (cached) {
     return NextResponse.json(cached, {
@@ -25,7 +28,7 @@ export async function GET(req: Request) {
     });
   }
 
-  const stations = await queryStationsByRadius(lat, lng, r, product, limit);
+  const stations = await queryStationsByRadius(lat, lng, r, product, limit, carwash);
   const avg = stations.length
     ? Math.round(stations.reduce((s, x) => s + x.price, 0) / stations.length)
     : undefined;

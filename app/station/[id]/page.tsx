@@ -127,8 +127,8 @@ export default async function StationDetailPage({ params }: Props) {
           {detail.amenitiesUpdatedAt ? (
             <AmenityList detail={detail} />
           ) : (
-            <p className="rounded-lg bg-gray-50 px-3 py-2.5 text-xs leading-snug text-gray-500">
-              부가서비스 정보가 아직 수집되지 않았습니다.
+            <p className="rounded-lg bg-gray-50 px-3 py-2.5 text-xs leading-snug text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+              부가서비스 정보 확인 중입니다
             </p>
           )}
         </section>
@@ -170,7 +170,7 @@ function AmenityList({ detail }: { detail: StationDetail }) {
 
   if (owned.length === 0) {
     return (
-      <p className="rounded-lg bg-gray-50 px-3 py-2.5 text-xs leading-snug text-gray-500">
+      <p className="rounded-lg bg-gray-50 px-3 py-2.5 text-xs leading-snug text-gray-500 dark:bg-gray-800 dark:text-gray-400">
         제공되는 부가서비스가 없습니다.
       </p>
     );
