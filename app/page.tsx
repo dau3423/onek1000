@@ -886,6 +886,23 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myLocation, evStations]);
 
+  // 세차장 거리/정렬 기준 좌표: 내 위치 우선, 없으면 화면 중심 폴백(evOrigin과 동형).
+  // 세차장 영역 이동(carwashPlaces 변경) 시 화면중심 폴백을 재계산하도록 게이트로 둔다.
+  const carwashOrigin = useMemo(() => {
+    if (myLocation) return { lat: myLocation.lat, lng: myLocation.lng };
+    const b = lastBoundsRef.current;
+    if (b) return { lat: (b.swLat + b.neLat) / 2, lng: (b.swLng + b.neLng) / 2 };
+    return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myLocation, carwashPlaces]);
+
+  // 세차장 목록 시트는 표시할 세차장이 있을 때만 렌더된다(위 게이트). 시트가 열린 채
+  // 세차장 0개 영역으로 이동해 시트가 사라지면 sheetOpen이 true로 잔류해 GPS 버튼/배너가
+  // 숨은 상태로 남는다 → 시트가 사라지는 순간 열림 상태를 해제한다.
+  useEffect(() => {
+    if (layer === 'carwash' && visibleCarwash.length === 0 && sheetOpen) setSheetOpen(false);
+  }, [layer, visibleCarwash.length, sheetOpen]);
+
   // === 주유소 체류 감지(지오펜스 + dwell) ===
   // 포그라운드 + GPS 추적 중에만 동작(웹 한계: 백그라운드 감지 불가, 정상).
   // 조건: 로그인 + gas 레이어 + 경로 모드 아님(경로 알림과 UI/맥락 충돌 방지) + 이미 팝업 떠있지 않음.
@@ -1160,8 +1177,9 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* 하단 시트 — 세차장 레이어에서는 미노출(마커+팝업+빈 상태 배너가 카워시 UI 표면). */}
-        {layer !== 'carwash' && (
+        {/* 하단 시트 — gas/ev는 항상, 세차장은 표시할 세차장이 있을 때만 노출한다.
+            (세차장 0건/유형필터로 0개면 위 오버레이 빈 상태 배너가 표면을 담당 → 시트·배너 중복/겹침 방지) */}
+        {(layer !== 'carwash' || visibleCarwash.length > 0) && (
         <BottomSheet
           stations={visibleStations}
           nearbyStations={visibleNearbyStations}
@@ -1187,6 +1205,21 @@ export default function HomePage() {
                 product, price: 0, tradeDate: '',
               }),
             )
+          }
+          carwashPlaces={visibleCarwash}
+          carwashOrigin={carwashOrigin}
+          onSelectCarwash={(p) => router.push(`/carwash/${encodeURIComponent(p.mgmtNo)}`)}
+          onNavigateCarwash={(p) =>
+            requireAuth(() => {
+              // 세차장은 가격이 없다 — NaviConfirm이 브랜드·가격 줄을 숨기도록 kind='carwash'로 표시.
+              // price/product/tradeDate는 StationWithPrice 형태를 맞추기 위한 더미이며 화면 노출 안 됨.
+              setNaviKind('carwash');
+              setNaviTarget({
+                id: p.mgmtNo, name: p.name, brand: 'ETC', isSelf: false,
+                sido: '01', address: p.roadAddr ?? p.jibunAddr ?? '',
+                lat: p.lat, lng: p.lng, product, price: 0, tradeDate: '',
+              });
+            })
           }
         />
         )}
@@ -1261,11 +1294,16 @@ export default function HomePage() {
         />
       )}
 
-      {/* 세차장 마커 클릭 시 요약 팝업(모바일 하단 시트 / PC 중앙 카드) — 상세 페이지 없음, CTA는 길안내 단독 */}
+      {/* 세차장 마커 클릭 시 요약 팝업(모바일 하단 시트 / PC 중앙 카드) — CTA: 길안내 + 상세보기(/carwash/[id]) */}
       {carwashPopup && (
         <CarwashPopup
           place={carwashPopup}
           onClose={() => setCarwashPopup(null)}
+          onDetail={() => {
+            const id = carwashPopup.mgmtNo;
+            setCarwashPopup(null);
+            router.push(`/carwash/${encodeURIComponent(id)}`);
+          }}
           onNavigate={() =>
             requireAuth(() => {
               // 세차장은 가격이 없다 — NaviConfirm이 브랜드·가격 줄을 숨기도록 kind='carwash'로 표시.

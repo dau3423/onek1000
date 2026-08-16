@@ -53,3 +53,14 @@ export interface CarwashBboxResponse {
   cachedAt: string;
   ttlSec: number;
 }
+
+/**
+ * 세차장 상세(단건) — 마커 필드 + 휴일 운영시간(상세에서만 노출).
+ * 상세 페이지(/carwash/[id])에서 mgmt_no로 단건 조회한 결과에 대응.
+ * 대표자명 등 개인정보는 스키마에 없으므로 여기에도 존재하지 않는다(0038 주석 참조).
+ */
+export interface CarwashDetail extends CarwashMarker {
+  /** 휴일 운영 시작/종료 시각(있을 때만). */
+  holidayOpen?: string | null;
+  holidayClose?: string | null;
+}

@@ -2,7 +2,7 @@
 // NEXT_PUBLIC_USE_MOCK=true 또는 Supabase 미설정 시 폴백. EV mock(lib/mock/ev.ts)과 동일 역할.
 // 서울 도심 좌표 위주로 유형을 섞어(self/hand/auto/unknown) 유형 필터/뱃지 동작을 데모한다.
 
-import type { CarwashMarker } from '@/types/carwash';
+import type { CarwashDetail, CarwashMarker } from '@/types/carwash';
 import type { Bbox } from '@/lib/map/geo';
 import { inBbox } from '@/lib/map/geo';
 
@@ -60,4 +60,12 @@ export function getMockCarwashByBbox(bbox: Bbox, limit: number): CarwashMarker[]
     .filter((s) => inBbox(s.lat, s.lng, bbox))
     .slice(0, limit)
     .map((s) => ({ ...s, syncedAt: ts }));
+}
+
+/** mgmt_no로 mock 세차장 상세 (queryCarwashDetail와 동일 동작 재현). 없으면 null. */
+export function getMockCarwashDetail(mgmtNo: string): CarwashDetail | null {
+  const seed = SEED.find((s) => s.mgmtNo === mgmtNo);
+  if (!seed) return null;
+  // SEED엔 휴일 운영시간 컬럼이 없으므로 상세에서도 null(있을 때만 노출 원칙과 일치).
+  return { ...seed, holidayOpen: null, holidayClose: null, syncedAt: now() };
 }

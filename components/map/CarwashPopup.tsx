@@ -10,6 +10,8 @@ interface Props {
   onClose: () => void;
   /** "길안내" — 카카오내비 확인 모달 요청 */
   onNavigate: () => void;
+  /** "상세보기" — 세차장 상세(/carwash/{mgmtNo})로 이동 */
+  onDetail: () => void;
 }
 
 /**
@@ -61,10 +63,10 @@ function InfoRow({ icon, children }: { icon: React.ReactNode; children: React.Re
 
 /**
  * 세차장 마커 클릭 시 노출하는 요약 정보 카드(모바일=하단 시트 / 데스크톱=중앙 카드).
- * EvStationPopup 패턴을 따르되 필드는 세차장용(유형 뱃지·조건부 운영/요금·단일 CTA·출처 고지)으로 교체.
- * 상세 페이지가 없어(plan Out) 팝업이 종착점이며, CTA는 길안내 단독이다.
+ * EvStationPopup 패턴을 따르되 필드는 세차장용(유형 뱃지·조건부 운영/요금·출처 고지)으로 교체.
+ * CTA는 길안내 + 상세보기(EV 팝업과 동형) — 상세보기는 /carwash/[id]로 이동한다.
  */
-export function CarwashPopup({ place, onClose, onNavigate }: Props) {
+export function CarwashPopup({ place, onClose, onNavigate, onDetail }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -140,13 +142,21 @@ export function CarwashPopup({ place, onClose, onNavigate }: Props) {
           )}
         </div>
 
-        {/* CTA — 길안내 단독(상세 페이지 없음) */}
-        <button
-          onClick={onNavigate}
-          className="mt-4 w-full rounded-xl bg-primary py-3 text-sm font-bold text-white shadow-md hover:bg-primary-dark"
-        >
-          길안내
-        </button>
+        {/* CTA — 길안내 + 상세보기(EV 팝업과 동형 2버튼) */}
+        <div className="mt-4 flex gap-2">
+          <button
+            onClick={onNavigate}
+            className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          >
+            길안내
+          </button>
+          <button
+            onClick={onDetail}
+            className="flex-1 rounded-xl bg-primary py-3 text-sm font-bold text-white shadow-md hover:bg-primary-dark"
+          >
+            상세보기
+          </button>
+        </div>
 
         {/* 정보 노후 고지 + 출처(AC-2.6·2.8) */}
         <p className="mt-3 text-[10px] leading-relaxed text-gray-400 dark:text-gray-500">
