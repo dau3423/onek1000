@@ -18,6 +18,8 @@ interface Props {
   station: StationWithPrice;
   /** 출발지(현재 위치). 있으면 출발→도착 경로로 길안내가 시작된다. */
   origin?: NaviOrigin | null;
+  /** 대상 종류. 'carwash'면 세차장 문구로 바꾸고 브랜드·가격 줄을 숨긴다(기본 'gas'). */
+  kind?: 'gas' | 'carwash';
   onClose: () => void;
 }
 
@@ -25,8 +27,12 @@ interface Props {
  * "이 주유소로 길안내를 시작할까요?" 확인 모달.
  * 저장된 선호 앱이 있으면 원버튼으로 그 앱을 실행하고(+ "다른 앱으로" 전환),
  * 없으면 앱 목록에서 고르게 한다. 선택한 앱은 다음을 위해 기억한다.
+ * 세차장(kind='carwash')은 가격이 없으므로 브랜드·가격 표기를 숨기고 명칭을 바꾼다(정직 표기).
  */
-export function NaviConfirm({ station, origin, onClose }: Props) {
+export function NaviConfirm({ station, origin, kind = 'gas', onClose }: Props) {
+  // 대상 명칭·조사(주유소 '로' / 세차장 '으로'). 세차장은 가짜 가격 노출 금지.
+  const noun = kind === 'carwash' ? '세차장' : '주유소';
+  const to = kind === 'carwash' ? '으로' : '로';
   const [starting, setStarting] = useState(false);
   // 선호 앱: 이 모달은 클릭 시에만 마운트되고 SSR되지 않으므로, lazy initializer에서
   // 동기 조회해 초기값을 바로 계산한다(마운트 후 useEffect 플립으로 인한 깜빡임 방지).
@@ -69,15 +75,21 @@ export function NaviConfirm({ station, origin, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <p className="text-base font-bold text-gray-900 dark:text-gray-50">
-          {picking ? '어떤 앱으로 길안내할까요?' : '이 주유소로 길안내를 시작할까요?'}
+          {picking ? '어떤 앱으로 길안내할까요?' : `이 ${noun}${to} 길안내를 시작할까요?`}
         </p>
         <div className="mt-3 rounded-xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
           <div className="text-sm font-semibold text-gray-900 dark:text-gray-50">{station.name}</div>
-          <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-            {BRAND_LABEL[station.brand]}{station.isSelf ? ' · 셀프' : ''}
-            {distanceText ? ` · ${distanceText}` : ''}
-            {' · '}₩{station.price.toLocaleString()}
-          </div>
+          {kind === 'carwash' ? (
+            distanceText && (
+              <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{distanceText}</div>
+            )
+          ) : (
+            <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              {BRAND_LABEL[station.brand]}{station.isSelf ? ' · 셀프' : ''}
+              {distanceText ? ` · ${distanceText}` : ''}
+              {' · '}₩{station.price.toLocaleString()}
+            </div>
+          )}
         </div>
 
         {picking ? (
@@ -100,8 +112,8 @@ export function NaviConfirm({ station, origin, onClose }: Props) {
           <>
             <p className="mt-3 text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
               {origin
-                ? `현재 위치에서 이 주유소까지 ${preferredLabel} 길안내가 시작됩니다.`
-                : `${preferredLabel}에서 이 주유소로 길안내가 시작됩니다.`}
+                ? `현재 위치에서 이 ${noun}까지 ${preferredLabel} 길안내가 시작됩니다.`
+                : `${preferredLabel}에서 이 ${noun}${to} 길안내가 시작됩니다.`}
               {' '}앱이 없으면 웹/스토어 안내로 열립니다.
             </p>
             <div className="mt-4 flex gap-2">

@@ -8,6 +8,7 @@ import { TIER_FACE, faceSvgInner, skullInner, PLAIN_MARKER_COLOR } from '@/lib/m
 import { useMapStore } from '@/stores/map';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
 import { CrownIcon } from '@/components/icons';
+import { WASH_TYPE_COLOR, type WashType } from '@/types/carwash';
 
 // EV 마커 색(단일 출처는 lib/map/evMarker.ts — 범례는 시각 일관성을 위해 동일 값을 사용).
 const EV_AVAILABLE_COLOR = '#16A34A'; // 초록 — 사용가능
@@ -179,6 +180,50 @@ function EvPinChip({ color, hasFast }: { color: string; hasFast?: boolean }) {
 }
 
 /**
+ * 세차장 마커 칩 — 물방울 핀(유형별 색) + 흰색 유형 글리프. 실제 지도 마커(carwashMarker.ts)와
+ * 색·형태 일치(셀프=물방울 / 손세차=스펀지 / 자동=기어 / 미확인=?).
+ */
+function CarwashPinChip({ type }: { type: WashType }) {
+  const color = WASH_TYPE_COLOR[type];
+  const glyph = (() => {
+    switch (type) {
+      case 'self':
+        return <path d="M7 6.2c1 1.3 1.7 2.2 1.7 3.1a1.7 1.7 0 0 1-3.4 0c0-.9.7-1.8 1.7-3.1z" fill="#fff" />;
+      case 'hand':
+        return (
+          <g fill="#fff">
+            <rect x="5.2" y="9" width="3.6" height="2.4" rx="0.6" />
+            <circle cx="6" cy="7.6" r="0.5" />
+            <circle cx="7.2" cy="7.1" r="0.6" />
+            <circle cx="8.4" cy="7.7" r="0.45" />
+          </g>
+        );
+      case 'auto':
+        return (
+          <g>
+            <circle cx="7" cy="9" r="1.9" fill="none" stroke="#fff" strokeWidth="0.9" />
+            <circle cx="7" cy="9" r="0.6" fill="#fff" />
+          </g>
+        );
+      default:
+        return (
+          <text x="7" y="9.4" textAnchor="middle" fontSize="5.6" fontWeight="800" fill="#fff">
+            ?
+          </text>
+        );
+    }
+  })();
+  return (
+    <svg viewBox="0 -3 17 24" className="h-[21px] w-[14px] shrink-0" style={{ display: 'block' }}>
+      <path d="M7 20 C1 14 0.5 11 0.5 9 a6.5 6.5 0 1 1 13 0 C13.5 11 13 14 7 20 Z" fill={color} />
+      <circle cx="7" cy="9" r="5" fill="#fff" />
+      <circle cx="7" cy="9" r="4.1" fill={color} />
+      {glyph}
+    </svg>
+  );
+}
+
+/**
  * 지도 마커 색상/표식 의미 안내 팝오버.
  * FilterBar 우측 info 버튼에서 띄운다. ESC/바깥클릭으로 닫힌다.
  * 레이어(주유소/충전소)에 따라 안내 내용을 전환한다(useMapStore.layer).
@@ -214,7 +259,7 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
       >
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
-            {layer === 'ev' ? '충전소 마커 안내' : '지도 색상 안내'}
+            {layer === 'carwash' ? '세차장 마커 안내' : layer === 'ev' ? '충전소 마커 안내' : '지도 색상 안내'}
           </p>
           <button
             onClick={onClose}
@@ -228,7 +273,44 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
         </div>
 
         <div className="mt-3 space-y-3 text-xs text-gray-700 dark:text-gray-300">
-          {layer === 'ev' ? (
+          {layer === 'carwash' ? (
+          <>
+          <section>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">세차 유형 = 핀 색·아이콘</p>
+            <div className="mt-1.5 space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <CarwashPinChip type="self" />
+                <span><b className="font-semibold text-gray-900 dark:text-gray-100">파랑</b> = 셀프세차</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <CarwashPinChip type="hand" />
+                <span><b className="font-semibold text-gray-900 dark:text-gray-100">보라</b> = 손세차·디테일</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <CarwashPinChip type="auto" />
+                <span><b className="font-semibold text-gray-900 dark:text-gray-100">틸</b> = 자동·기계식</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <CarwashPinChip type="unknown" />
+                <span><b className="font-semibold text-gray-900 dark:text-gray-100">회색</b> = 유형 미확인(공공데이터 미기재)</span>
+              </div>
+            </div>
+            <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">유형 필터에서 특정 유형을 고르면 미확인 핀은 숨겨져요.</p>
+          </section>
+
+          <section>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">내 위치</p>
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <Dot color={MY_COLOR} ring="#ffffff" />
+              <span>파란 점 = 내 현재 위치</span>
+            </div>
+          </section>
+
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+            공공데이터 기준이라 폐업·정보가 다를 수 있어요. 출처: 행정안전부 전국세차장표준데이터
+          </p>
+          </>
+          ) : layer === 'ev' ? (
           <>
           <section>
             <p className="font-semibold text-gray-900 dark:text-gray-100">충전기 사용 상태 = 핀 색</p>

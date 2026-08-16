@@ -8,6 +8,9 @@ researcher 에이전트가 추가하고, pm 에이전트가 주제 자율 선정
 
 | 추가일 | 아이디어 | 기대 가치 | 예상 비용 | 상태 | 근거/메모 |
 |---|---|---|---|---|---|
+| 2026-08-16 | 독립 셀프·손세차장 지도 레이어(carwash_places + sync + bbox API + 레이어 UI + 유형 필터) | 중~상 | 중 | 완료 | [2026-08-16-carwash-layer](2026-08-16-carwash-layer/) EV 파이프라인 복제. FR-1~3 전량 구현(리뷰 ✅ Critical/Major 0, QA 조건부 통과 — 정적·API 레벨 AC 성공, 브라우저 UI는 카카오키·네트워크 제약으로 코드/API 갈음). 기존 부설 '세차'→'세차 가능' 개명, 신규 '세차장' 레이어 칩 분리. **후속(운영자): 마이그레이션 0038 수동 적용 · POST /api/internal/sync-carwash 1회 적재 · sync-carwash 크론 주 1회 등록** |
+| 2026-08-16 | 세차장 v2 — 부설 중복 병합 + 크라우드소싱 유형/폐업 제보 | 중 | 중~대 | 후보 | carwash-layer Out 이관. 적재 후 unknown 비율·좌표 품질 실측 근거로 상호·좌표 근접(≈50m) 병합 + 제보 UI(모더레이션·rate-limit). research §5 2안·§6-6 |
+| 2026-08-16 | EV 충전소 길안내 확인 모달 문구 정리(NaviConfirm kind='ev') | 소 | 소 | 후보 | carwash-layer 리뷰서 발견. EV도 naviTarget에 price:0 채워 '주유소·₩0' 잠재 오표기. 세차장에 추가한 kind 옵션에 'ev' 분기만 더하면 정리 가능 |
 | 2026-08-16 | 세차 묶음(세차 필터 칩 + "세차하기 좋은 날" 지수 + 홈 카드) | 중~상 | 하~중 | 완료 | [2026-08-16-new-feature-discovery](2026-08-16-new-feature-discovery/) 후보 C2 채택. FR-1~3 전량 구현(리뷰 ✅ Critical/High 0, QA 통과 — Mock 브라우저 시나리오 전 AC 성공, 지도 배지·다크모드는 카카오키·OS 제약으로 코드/API 갈음). **후속(운영자): 마이그레이션 0036/0037 수동 적용 · 기상청/에어코리아 활용신청+KMA_API_KEY/AIRKOREA_API_KEY 시크릿 등록 · sync-weather 크론 1일 1회 등록** |
 | 2026-08-16 | C1 개인화 주유 타이밍 알림(다음 주유일 예측 + 예측방향 결합 푸시) | 상 | 중 | 후보 | new-feature-discovery research §4 C1(researcher 1순위 추천, PM은 도달규모 리스크로 C2 우선). 예측모델(0026)+fuel_logs(0012) 결합, 경쟁 4사 전무. **선결: 주유기록 3회↑ 사용자 규모 실측**. 채택률 오르면 후속 사이클 유력 |
 | 2026-08-16 | C3 주유 할인카드 실질가(내 카드 반영 체감가) | 상 | 대 | 후보 | new-feature-discovery research §4 C3(기존 B7 구체화). 카드 혜택 DB 수동 큐레이션+관리자 CRUD(notices CMS 패턴). **항구 유지비·오표기 클레임 리스크**가 비용의 전부. 지도 실질가 정렬로 차별화 |

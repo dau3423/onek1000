@@ -18,6 +18,7 @@ import { NaviConfirm } from '@/components/alert/NaviConfirm';
 import { ProductSync } from '@/components/map/ProductSync';
 import { StationPopup } from '@/components/map/StationPopup';
 import { EvStationPopup } from '@/components/map/EvStationPopup';
+import { CarwashPopup } from '@/components/map/CarwashPopup';
 import { FuelDwellPrompt } from '@/components/station/FuelDwellPrompt';
 import { useFuelDwellDetect, type DwellStation } from '@/hooks/useFuelDwellDetect';
 import { MarkerLegend } from '@/components/ui/MarkerLegend';
@@ -34,9 +35,10 @@ import { useFullscreen } from '@/hooks/useFullscreen';
 import { quantize, distanceMeters, distancePointToPath } from '@/lib/map/geo';
 import { ensureNotifyPermission } from '@/lib/sound';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
-import { RouteIcon, ChevronRightIcon, CloseIcon, LocationOffIcon, LoaderIcon, FullscreenIcon, FullscreenExitIcon, FuelIcon } from '@/components/icons';
+import { RouteIcon, ChevronRightIcon, CloseIcon, LocationOffIcon, LoaderIcon, FullscreenIcon, FullscreenExitIcon, FuelIcon, CarwashIcon } from '@/components/icons';
 import type { BboxResponse, RadiusResponse, StationWithPrice, NationalTop10Item, NationalTop10Response, StationPoint, StationsInBboxResponse, RoutePlan, ProductCode } from '@/types/station';
 import type { EvBboxResponse, EvStationMarker } from '@/types/ev';
+import type { CarwashBboxResponse, CarwashMarker } from '@/types/carwash';
 
 // KakaoMap은 window 의존 + SDK 외부 스크립트라 SSR 비활성
 const KakaoMap = dynamic(
@@ -97,7 +99,7 @@ function routeIdentityKey(plan: RoutePlan): string {
 export default function HomePage() {
   const router = useRouter();
   const { data: session, status: authStatus } = useSession();
-  const { product, brands, carwashOnly, setCarwashOnly, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, setRoutePlan, clearRoutePlan, setProduct } = useMapStore();
+  const { product, brands, carwashOnly, setCarwashOnly, carwashType, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, setRoutePlan, clearRoutePlan, setProduct } = useMapStore();
 
   // 회원 전용 동작 가드 — 길찾기/길안내 시작·따라가기는 로그인 회원만 사용(FR-5 기반 UX 정책).
   // 비로그인(unauthenticated)이면 기존 인증 유도 패턴(next-auth signIn, 현재 화면으로 복귀)을
@@ -178,6 +180,14 @@ export default function HomePage() {
   // PC: 충전소 마커 클릭 시 요약 팝업 대상
   const [evPopup, setEvPopup] = useState<EvStationMarker | null>(null);
 
+  // 독립 세차장(layer='carwash') — 지도 영역 내 세차장 마커. 우리 DB(/api/carwash/bbox)만 조회.
+  const [carwashPlaces, setCarwashPlaces] = useState<CarwashMarker[]>([]);
+  const carwashAbort = useRef<AbortController | null>(null);
+  // 첫 응답 수신 여부(빈 상태 배너를 첫 로딩 중에 깜빡이지 않게 하기 위함).
+  const [carwashLoaded, setCarwashLoaded] = useState(false);
+  // 세차장 마커 클릭 시 요약 팝업 대상(모바일·PC 공통 — 상세 페이지 없음).
+  const [carwashPopup, setCarwashPopup] = useState<CarwashMarker | null>(null);
+
   // 위치 기반 반경 조회 (내 주변 TOP10 + 1km 알람)
   const [geoEnabled, setGeoEnabled] = useState(false);
   const geo = useGeolocation(geoEnabled);
@@ -211,6 +221,8 @@ export default function HomePage() {
 
   // 길안내 확인 모달 대상
   const [naviTarget, setNaviTarget] = useState<StationWithPrice | null>(null);
+  // 길안내 확인 모달의 대상 종류. 세차장은 가격이 없어 문구·표기를 분기한다(기본 gas).
+  const [naviKind, setNaviKind] = useState<'gas' | 'carwash'>('gas');
 
   // 주유소 체류 감지 팝업 대상(감지된 주유소). 저장/닫기 시 null.
   const [dwellStation, setDwellStation] = useState<DwellStation | null>(null);
@@ -270,6 +282,17 @@ export default function HomePage() {
   useEffect(() => {
     if ((!isDesktop || layer !== 'ev') && evPopup) setEvPopup(null);
   }, [isDesktop, layer, evPopup]);
+
+  // 세차장 팝업 — 세차장 레이어가 아니면 닫는다(모바일·PC 공통 팝업이라 폭 조건은 없음).
+  useEffect(() => {
+    if (layer !== 'carwash' && carwashPopup) setCarwashPopup(null);
+  }, [layer, carwashPopup]);
+
+  // 유형 필터(carwashType) 적용 — 'all'은 unknown 포함 전체(FR-3 기본, 클라이언트 필터).
+  const visibleCarwash = useMemo(
+    () => (carwashType === 'all' ? carwashPlaces : carwashPlaces.filter((p) => p.washType === carwashType)),
+    [carwashPlaces, carwashType],
+  );
 
   // bbox 변경 시 stations 조회
   useEffect(() => {
@@ -455,12 +478,35 @@ export default function HomePage() {
       });
   }
 
+  // 세차장 마커 조회 — layer='carwash'일 때만 호출. 우리 DB(/api/carwash/bbox)만 조회.
+  function fetchCarwashPlaces(b: { swLat: number; swLng: number; neLat: number; neLng: number }) {
+    if (carwashAbort.current) carwashAbort.current.abort();
+    carwashAbort.current = new AbortController();
+    const params = new URLSearchParams({
+      swLat: String(b.swLat), swLng: String(b.swLng),
+      neLat: String(b.neLat), neLng: String(b.neLng),
+    });
+    fetch(`/api/carwash/bbox?${params}`, { signal: carwashAbort.current.signal })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`carwash bbox ${r.status}`);
+        return (await r.json()) as CarwashBboxResponse;
+      })
+      .then((data) => {
+        setCarwashPlaces(Array.isArray(data?.places) ? data.places : []);
+        setCarwashLoaded(true);
+      })
+      .catch((e) => {
+        if (e.name !== 'AbortError') console.error('carwash bbox fetch fail', e);
+      });
+  }
+
   // 레이어 전환 시 현재 화면 영역으로 즉시 재조회.
-  // - ev: 충전소 조회. gas: 기존 주유소 조회(stations는 product effect/bounds로도 갱신되나 일관성 위해 트리거).
+  // - ev: 충전소 조회. carwash: 세차장 조회. gas: 기존 주유소 조회(일관성 위해 트리거).
   useEffect(() => {
     const b = lastBoundsRef.current;
     if (!b) return;
     if (layer === 'ev') { fetchEvStations(b); setAllStations([]); }
+    else if (layer === 'carwash') { setCarwashLoaded(false); fetchCarwashPlaces(b); setAllStations([]); }
     else { fetchStations(b); fetchAllStations(b); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layer]);
@@ -925,6 +971,8 @@ export default function HomePage() {
             if (isDesktop) setEvPopup(s);
             else router.push(`/ev/${encodeURIComponent(s.statId)}`);
           }}
+          carwashPlaces={visibleCarwash}
+          onCarwashMarkerClick={(p) => setCarwashPopup(p)}
           routePlan={layer === 'gas' ? routePlan : null}
           onRouteStationClick={handleMarkerClick}
           // RouteAlert 배너가 떠 있는 그 주유소만 지도에서 강하게 강조(주황 펄스 + bounce).
@@ -938,6 +986,7 @@ export default function HomePage() {
             lastBoundsRef.current = b;
             // 활성 레이어에 맞는 데이터만 조회(불필요 호출/캐시 오염 방지).
             if (layer === 'ev') fetchEvStations(b);
+            else if (layer === 'carwash') fetchCarwashPlaces(b);
             else { fetchStations(b); fetchAllStations(b); }
           }}
           onViewChange={(v) => {
@@ -1096,7 +1145,23 @@ export default function HomePage() {
             시트 펼침 시에는 GPS 버튼과 동일하게 fade-out + 클릭 차단으로 숨긴다. */}
         <BannerAd sheetOpen={sheetOpen} />
 
-        {/* 하단 시트 */}
+        {/* 세차장 레이어 빈 상태 — 지도 위 오버레이 배너(크래시·무한로딩 없이 안내만; design 흐름 D, AC-1.2/2.7).
+            진짜 0건과, 세차장은 있으나 유형 필터로 걸러져 0개가 된 경우를 구분해 오표기를 방지한다. */}
+        {layer === 'carwash' && carwashLoaded && visibleCarwash.length === 0 && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-[calc(96px+env(safe-area-inset-bottom))] z-20 flex justify-center px-4">
+            <div className="flex items-center gap-2 rounded-2xl bg-white/95 px-4 py-3 text-center text-sm text-gray-600 shadow-lg backdrop-blur dark:bg-gray-900/95 dark:text-gray-300">
+              <CarwashIcon className="h-5 w-5 shrink-0 text-gray-400" />
+              <span>
+                {carwashPlaces.length > 0
+                  ? '선택한 유형의 세차장이 없어요. 필터를 바꿔 보세요.'
+                  : '이 지역에 표시할 세차장이 없어요. 지도를 옮기거나 축소해 보세요.'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* 하단 시트 — 세차장 레이어에서는 미노출(마커+팝업+빈 상태 배너가 카워시 UI 표면). */}
+        {layer !== 'carwash' && (
         <BottomSheet
           stations={visibleStations}
           nearbyStations={visibleNearbyStations}
@@ -1124,6 +1189,7 @@ export default function HomePage() {
             )
           }
         />
+        )}
         </div>
       </div>
 
@@ -1195,12 +1261,38 @@ export default function HomePage() {
         />
       )}
 
+      {/* 세차장 마커 클릭 시 요약 팝업(모바일 하단 시트 / PC 중앙 카드) — 상세 페이지 없음, CTA는 길안내 단독 */}
+      {carwashPopup && (
+        <CarwashPopup
+          place={carwashPopup}
+          onClose={() => setCarwashPopup(null)}
+          onNavigate={() =>
+            requireAuth(() => {
+              // 세차장은 가격이 없다 — NaviConfirm이 브랜드·가격 줄을 숨기도록 kind='carwash'로 표시.
+              // 아래 price/product/tradeDate는 StationWithPrice 형태를 맞추기 위한 더미이며 화면에 노출되지 않는다.
+              setNaviKind('carwash');
+              setNaviTarget({
+                id: carwashPopup.mgmtNo, name: carwashPopup.name, brand: 'ETC', isSelf: false,
+                sido: '01', address: carwashPopup.roadAddr ?? carwashPopup.jibunAddr ?? '',
+                lat: carwashPopup.lat, lng: carwashPopup.lng,
+                product, price: 0, tradeDate: '',
+              });
+              setCarwashPopup(null);
+            })
+          }
+        />
+      )}
+
       {/* 길안내 확인 모달 → 카카오내비 실행 */}
       {naviTarget && (
         <NaviConfirm
           station={naviTarget}
+          kind={naviKind}
           origin={myLocation ? { name: '내 위치', lat: myLocation.lat, lng: myLocation.lng } : null}
-          onClose={() => setNaviTarget(null)}
+          onClose={() => {
+            setNaviTarget(null);
+            setNaviKind('gas'); // 다음 주유소/충전소 길안내를 위해 기본값으로 복귀
+          }}
         />
       )}
 

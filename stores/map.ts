@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { ProductCode, BrandCode, RoutePlan } from '@/types/station';
+import type { CarwashTypeFilter } from '@/types/carwash';
 
 /** 마지막으로 보던 지도 시점(중심 좌표 + 카카오 level). 상세보기 왕복 시 복원에 사용. */
 export interface MapView {
@@ -104,8 +105,8 @@ function writeRoutePlan(v: RoutePlan | null) {
   }
 }
 
-/** 지도 레이어 — 'gas'=주유소(기존 기본), 'ev'=전기차 충전소. */
-export type MapLayer = 'gas' | 'ev';
+/** 지도 레이어 — 'gas'=주유소(기존 기본), 'ev'=전기차 충전소, 'carwash'=독립 세차장. */
+export type MapLayer = 'gas' | 'ev' | 'carwash';
 
 interface MapState {
   /** 현재 지도 레이어(주유소/충전소 토글). */
@@ -135,6 +136,14 @@ interface MapState {
   carwashOnly: boolean;
   toggleCarwashOnly: () => void;
   setCarwashOnly: (v: boolean) => void;
+
+  /**
+   * 세차장 레이어(layer==='carwash') 유형 필터(FR-3). 'all'=미확인 포함 전체(기본).
+   * ⚠️ 위 carwashOnly(주유소 부설 세차 필터)와는 완전히 별개의 상태다 — 혼동 금지.
+   * (carwashOnly=gas 레이어 필터 토글 / carwashType=carwash 레이어 유형 세그먼트)
+   */
+  carwashType: CarwashTypeFilter;
+  setCarwashType: (t: CarwashTypeFilter) => void;
 
   selectedStationId: string | null;
   selectStation: (id: string | null) => void;
@@ -178,6 +187,9 @@ export const useMapStore = create<MapState>((set) => ({
   carwashOnly: false,
   toggleCarwashOnly: () => set((s) => ({ carwashOnly: !s.carwashOnly })),
   setCarwashOnly: (v) => set({ carwashOnly: v }),
+
+  carwashType: 'all',
+  setCarwashType: (t) => set({ carwashType: t }),
 
   selectedStationId: null,
   selectStation: (id) => set({ selectedStationId: id }),

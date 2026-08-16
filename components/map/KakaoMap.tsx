@@ -8,6 +8,8 @@ import { priceTier, priceTierThresholds } from '@/lib/map/geo';
 import { TIER_FACE, faceMarkerSvg, numberMarkerSvg, skullMarkerSvg } from '@/lib/map/markerFace';
 import type { EvStationMarker } from '@/types/ev';
 import { buildEvMarkerContent } from '@/lib/map/evMarker';
+import type { CarwashMarker } from '@/types/carwash';
+import { buildCarwashMarkerContent } from '@/lib/map/carwashMarker';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
 import { SPARKLE_SVG_STRING } from '@/components/icons';
 
@@ -231,12 +233,16 @@ interface Props {
   expOnly?: boolean;
   /** 전국 고속도로(EXP) 주유소 목록(화면 영역 무관, 가격 포함). expOnly일 때만 사용. */
   expStations?: StationWithPrice[];
-  /** 지도 레이어. 'ev'면 주유소 마커 대신 충전소 마커를 그린다. 기본 'gas'(주유소). */
-  layer?: 'gas' | 'ev';
+  /** 지도 레이어. 'gas'=주유소, 'ev'=충전소, 'carwash'=독립 세차장. 기본 'gas'(주유소). */
+  layer?: 'gas' | 'ev' | 'carwash';
   /** 충전소 마커 목록(layer='ev'일 때만 렌더). */
   evStations?: EvStationMarker[];
   /** 충전소 마커 클릭 콜백(layer='ev'). */
   onEvMarkerClick?: (s: EvStationMarker) => void;
+  /** 세차장 마커 목록(layer='carwash'일 때만 렌더). 유형 필터는 부모에서 적용해 전달. */
+  carwashPlaces?: CarwashMarker[];
+  /** 세차장 마커 클릭 콜백(layer='carwash'). */
+  onCarwashMarkerClick?: (p: CarwashMarker) => void;
   /**
    * 경로별 최저가 계획. 설정되면 출발→도착 직선 Polyline + 출발/도착 핀 +
    * 경로 최저가 주유소 마커를 지도에 그리고, 출발~도착이 모두 보이도록 fit한다.
@@ -281,6 +287,8 @@ export function KakaoMap({
   layer = 'gas',
   evStations,
   onEvMarkerClick,
+  carwashPlaces,
+  onCarwashMarkerClick,
   routePlan,
   onRouteStationClick,
   highlightStationId = null,
@@ -305,6 +313,10 @@ export function KakaoMap({
   const evOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
   const onEvMarkerClickRef = useRef(onEvMarkerClick);
   useEffect(() => { onEvMarkerClickRef.current = onEvMarkerClick; }, [onEvMarkerClick]);
+  // 세차장 마커 오버레이 — 주유소/EV 마커와 독립 관리(레이어 전환 시 서로 간섭 없게).
+  const carwashOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
+  const onCarwashMarkerClickRef = useRef(onCarwashMarkerClick);
+  useEffect(() => { onCarwashMarkerClickRef.current = onCarwashMarkerClick; }, [onCarwashMarkerClick]);
   // 경로(직선) Polyline — 경로 모드일 때만 그린다(독립 관리, 해제 시 제거).
   const routeLineRef = useRef<kakao.maps.Polyline | null>(null);
   // 경로 오버레이(출발/도착 핀 + 경로 최저가 주유소 마커) — Polyline과 함께 관리.
@@ -404,7 +416,7 @@ export function KakaoMap({
   const routeDupIds = useMemo(() => {
     const dup = new Set<string>();
     if (routeStationIds.size === 0) return dup;
-    if (layer === 'ev' || expOnly) return dup;
+    if (layer !== 'gas' || expOnly) return dup;
     for (const s of stations) if (routeStationIds.has(s.id)) dup.add(s.id);
     for (const id of top10Rank.keys()) if (routeStationIds.has(id)) dup.add(id);
     for (const id of nearbyRank.keys()) if (routeStationIds.has(id)) dup.add(id);
@@ -530,8 +542,8 @@ export function KakaoMap({
     overlaysRef.current.forEach((o) => o.setMap(null));
     overlaysRef.current = [];
 
-    // EV 레이어에서는 주유소 일반 마커를 그리지 않는다(위에서 제거만 하고 종료).
-    if (layer === 'ev') return;
+    // 주유소가 아닌 레이어(EV/세차장)에서는 주유소 일반 마커를 그리지 않는다(위에서 제거만 하고 종료).
+    if (layer !== 'gas') return;
     // "고속도로만" 필터에서는 EXP 전용 effect가 전국 EXP를 직접 그리므로 일반 bbox 마커는 생략한다.
     if (expOnly) return;
 
@@ -601,9 +613,9 @@ export function KakaoMap({
     topOverlaysRef.current.forEach((o) => o.setMap(null));
     topOverlaysRef.current = [];
 
-    // EV 레이어/"고속도로만" 필터에서는 전국 TOP10 메달을 그리지 않는다
+    // 주유소가 아닌 레이어(EV/세차장)/"고속도로만" 필터에서는 전국 TOP10 메달을 그리지 않는다
     // (expOnly는 전국 EXP top10을 EXP 전용 effect가 별도로 그린다).
-    if (layer === 'ev' || expOnly) return;
+    if (layer !== 'gas' || expOnly) return;
 
     const showLabel = map.getLevel() <= 5; // 줌 인 상태에서만 가격 라벨
 
@@ -679,8 +691,8 @@ export function KakaoMap({
     nearOverlaysRef.current.forEach((o) => o.setMap(null));
     nearOverlaysRef.current = [];
 
-    // EV 레이어/"고속도로만" 필터에서는 내 주변 TOP10 핀을 그리지 않는다(EXP 전용 화면 일관성).
-    if (layer === 'ev' || expOnly) return;
+    // 주유소가 아닌 레이어(EV/세차장)/"고속도로만" 필터에서는 내 주변 TOP10 핀을 그리지 않는다.
+    if (layer !== 'gas' || expOnly) return;
 
     const showLabel = map.getLevel() <= 5; // 줌 인 상태에서만 가격 라벨
 
@@ -769,6 +781,37 @@ export function KakaoMap({
     }
   }, [ready, layer, evStations, mapLevel]);
 
+  // 독립 세차장 마커 — layer='carwash'일 때만 렌더(주유소/EV 마커와 독립 오버레이).
+  // 세차장 1곳=1마커. 색=유형(셀프 파랑/손세차 보라/자동 틸/미확인 회색), 라벨=줌인(level≤6) 시 유형.
+  // 유형 필터(carwashType)는 부모(app/page)에서 carwashPlaces에 적용해 전달하므로 여기선 그대로 그린다.
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    const map = mapRef.current;
+
+    // 기존 세차장 오버레이 제거
+    carwashOverlaysRef.current.forEach((o) => o.setMap(null));
+    carwashOverlaysRef.current = [];
+
+    if (layer !== 'carwash') return;
+
+    const showLabel = map.getLevel() <= 6; // 세차장은 가격이 없어 조금 더 일찍 라벨 노출(EV와 동일)
+    for (const p of carwashPlaces ?? []) {
+      const content = buildCarwashMarkerContent(p, showLabel);
+      content.addEventListener('click', () => onCarwashMarkerClickRef.current?.(p));
+      // 유형 확정 핀을 미확인(회색) 위에 그려 겹칠 때 우선 보이게 한다.
+      const z = 2 + (p.washType !== 'unknown' ? 1 : 0);
+      const overlay = new window.kakao.maps.CustomOverlay({
+        position: new window.kakao.maps.LatLng(p.lat, p.lng),
+        content,
+        yAnchor: 1,
+        clickable: true,
+        zIndex: z,
+      });
+      overlay.setMap(map);
+      carwashOverlaysRef.current.push(overlay);
+    }
+  }, [ready, layer, carwashPlaces, mapLevel]);
+
   // 회색 점(비하이라이트 주유소) 오버레이 — 일정 줌 이상 확대(level ≤ GRAY_DOT_MAX_LEVEL)일 때만.
   // allStations(화면 내 전체 주유소) 중, 이미 강조/일반 마커로 그려진 id를 제외한 나머지를
   // 작은 회색 원으로 그린다(브랜드색/금액/라벨 없음). 탭하면 기존 마커와 동일하게 상세로 이동.
@@ -783,7 +826,7 @@ export function KakaoMap({
 
     // 회색 점 기능 비활성(플래그)이거나, EV 레이어/"고속도로만" 필터이거나, 줌아웃 상태(level이 임계보다 큼)면 그리지 않는다.
     // ("고속도로만"에서는 EXP 전용 effect가 비-top10 EXP를 일반 점으로 직접 그린다 — 이중 렌더 방지.)
-    if (!GRAY_DOTS_ENABLED || layer === 'ev' || expOnly || map.getLevel() > GRAY_DOT_MAX_LEVEL) return;
+    if (!GRAY_DOTS_ENABLED || layer !== 'gas' || expOnly || map.getLevel() > GRAY_DOT_MAX_LEVEL) return;
 
     // 하이라이트(이미 다른 마커로 그려진) 주유소 id 집합 — 전국 TOP10 + 내 주변 TOP10 + 일반 bbox 마커.
     const highlighted = new Set<string>();
@@ -834,8 +877,8 @@ export function KakaoMap({
     expOverlaysRef.current.forEach((o) => o.setMap(null));
     expOverlaysRef.current = [];
 
-    // EV 레이어이거나 "고속도로만" 필터가 아니면 그리지 않는다(제거만 하고 종료).
-    if (layer === 'ev' || !expOnly) return;
+    // 주유소가 아닌 레이어이거나 "고속도로만" 필터가 아니면 그리지 않는다(제거만 하고 종료).
+    if (layer !== 'gas' || !expOnly) return;
 
     const list = expStations ?? [];
     // 전국 가격 오름차순 정렬 → 상위 10 = top10(순위 숫자 강조), 나머지도 동일 가격 마커.

@@ -434,6 +434,24 @@ export function DropletIcon({ className }: IconProps) {
   );
 }
 
+// 세차장 레이어 진입 칩 아이콘 — 부설 필터의 DropletIcon(물방울)과 반드시 형태가 달라야 한다.
+// 차체 실루엣 + 위에서 내려오는 분사선 3줄(= 차를 씻는다)로 "독립 세차장"을 나타낸다.
+export function CarwashIcon({ className }: IconProps) {
+  return (
+    <Stroke className={className}>
+      {/* 위에서 내려오는 물 분사선 3줄 */}
+      <path d="M8 2.5v2.5" />
+      <path d="M12 2v3" />
+      <path d="M16 2.5v2.5" />
+      {/* 차체 + 바퀴 */}
+      <path d="M5.5 16l1-3.1A2 2 0 0 1 8.4 11.5h7.2a2 2 0 0 1 1.9 1.4L18.5 16" />
+      <path d="M4 16h16" />
+      <circle cx="8" cy="18.5" r="1.5" />
+      <circle cx="16" cy="18.5" r="1.5" />
+    </Stroke>
+  );
+}
+
 // === fill형 ===
 
 export function BoltFilledIcon({ className }: IconProps) {
