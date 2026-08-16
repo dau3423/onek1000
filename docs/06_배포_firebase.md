@@ -268,6 +268,24 @@ gcloud scheduler jobs create http weekly-digest \
   --attempt-deadline=300s
 ```
 
+```bash
+# 9) 세차 지수 — 매일 05:30 KST. 기상청 단기예보(POP)+에어코리아 미세먼지로 시도별 "세차하기 좋은 날" 적재.
+#    KMA_API_KEY(필수)/AIRKOREA_API_KEY(선택) 미설정 시 skip. 마이그레이션 0037 필요.
+gcloud scheduler jobs create http sync-weather \
+  --project=onek1000 --location=asia-northeast3 \
+  --schedule="30 5 * * *" --time-zone="Asia/Seoul" \
+  --http-method=POST --uri="https://onek1000.kr/api/internal/sync-weather" \
+  --headers="Authorization=Bearer ${CRON_SECRET}" --attempt-deadline=300s
+
+# 10) 세차장 데이터 — 매주 월 02:00 KST. 행안부 전국세차장표준데이터(공공 CSV) 임포트(무인증).
+#    마이그레이션 0038 필요. 전체삭제 없이 upsert(실패 안전). 독립 세차장만(부설 제외).
+gcloud scheduler jobs create http sync-carwash \
+  --project=onek1000 --location=asia-northeast3 \
+  --schedule="0 2 * * 1" --time-zone="Asia/Seoul" \
+  --http-method=POST --uri="https://onek1000.kr/api/internal/sync-carwash" \
+  --headers="Authorization=Bearer ${CRON_SECRET}" --attempt-deadline=300s
+```
+
 `CRON_SECRET`은 6번 단계에서 등록한 secret과 동일한 값 사용. `${CRON_SECRET}`은 쉘에서 실제 값으로 치환하거나, 또는 `--oidc-service-account-email`로 더 보안 강화 가능.
 
 수정/삭제:
