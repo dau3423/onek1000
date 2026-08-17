@@ -271,11 +271,63 @@ export async function POST(req: Request) {
   const stationRows = [...stationMap.values()];
   const priceRows = [...priceMap.values()];
 
+  // ─── 카카오 채택 좌표 보존(FR-3 AC-3-2) ───
+  // backfill-geocode 가 coord_source='kakao' 로 채택한 기존 행의 lat/lng/geom 을 매일 sync 가
+  // 오피넷 좌표로 되돌리지 않도록, 그 id 집합을 사전 조회한다. 컬럼 부재(0039 미적용)/조회 실패면
+  // 빈 집합으로 폴백해 기존 전량 upsert 동작을 유지한다(옵션 C graceful degrade).
+  //
+  // kakao 집합 id 는 정의상 이미 존재하는 행이므로, 그 행은 좌표(lat/lng/geom)를 payload 에서
+  // 빼고 메타(name/brand/address/sido/sigungu/updated_at)만 upsert 한다 → 좌표 보존. 나머지(신규 포함)는
+  // 좌표 포함 전량 upsert → 신규 주유소 좌표 초기 세팅 유지, geom NOT NULL 충족.
+  // 주의: PostgREST 대량 upsert 는 payload 키 합집합으로 컬럼을 잡으므로, 좌표 포함/제외 행을
+  //       한 배치에 섞으면 제외 행의 geom 이 NULL 로 채워진다 → 두 배치로 분리해 upsert 한다.
+  const kakaoCoordIds = new Set<string>();
+  {
+    let from = 0;
+    for (;;) {
+      const { data, error } = await sb
+        .from('stations')
+        .select('id')
+        .eq('coord_source', 'kakao')
+        .order('id', { ascending: true })
+        .range(from, from + UPSERT_CHUNK - 1);
+      if (error) {
+        // 컬럼 부재(0039 미적용) 또는 조회 실패 → 빈 집합 유지(기존 전량 upsert 폴백).
+        fetchErrors.push(`kakao coord lookup skipped: ${error.message}`);
+        break;
+      }
+      const rows = data ?? [];
+      for (const r of rows) kakaoCoordIds.add(r.id as string);
+      if (rows.length < UPSERT_CHUNK) break;
+      from += UPSERT_CHUNK;
+    }
+  }
+
+  let coordPreserved = 0;
+  const fullStationRows: Record<string, unknown>[] = []; // 좌표 포함(신규 + 오피넷/미분류 행)
+  const metaOnlyRows: Record<string, unknown>[] = [];    // 좌표 제외(카카오 채택 기존 행)
+  for (const row of stationRows) {
+    if (kakaoCoordIds.has(row.id as string)) {
+      const { lat: _lat, lng: _lng, geom: _geom, ...rest } = row;
+      void _lat; void _lng; void _geom;
+      metaOnlyRows.push(rest);
+      coordPreserved++;
+    } else {
+      fullStationRows.push(row);
+    }
+  }
+
   // 청크 분할 UPSERT/INSERT — 시군구 단위 적재로 행이 수천~수만이 되어도
   // payload 크기·DB 타임아웃을 피하도록 UPSERT_CHUNK(1000)씩 나눠 순차 처리한다.
-  await inChunks(stationRows, UPSERT_CHUNK,
+  await inChunks(fullStationRows, UPSERT_CHUNK,
     async (chunk) => await sb.from('stations').upsert(chunk, { onConflict: 'id' }),
     'stations upsert');
+  if (metaOnlyRows.length > 0) {
+    // 카카오 채택 행: 좌표 제외 메타만 upsert(기존 행이므로 항상 conflict-update → geom NOT NULL 미관여).
+    await inChunks(metaOnlyRows, UPSERT_CHUNK,
+      async (chunk) => await sb.from('stations').upsert(chunk, { onConflict: 'id' }),
+      'stations meta upsert');
+  }
   await inChunks(priceRows, UPSERT_CHUNK,
     async (chunk) => await sb.from('prices_latest').upsert(chunk, { onConflict: 'station_id,product' }),
     'prices_latest upsert');
@@ -700,6 +752,9 @@ export async function POST(req: Request) {
     opinetCalls,
     concurrency: CONCURRENCY,
     stationUpserts, priceUpserts, staleDeleted, staleSkipped,
+    // 카카오 채택 좌표(coord_source='kakao') 보존 행 수 — 좌표를 upsert 에서 제외해 원위치 회귀 방지.
+    // 0039 미적용/조회 실패 시 0(기존 전량 upsert 폴백).
+    coordPreserved,
     // stale cleanup 판정 지표 — 운영 가시성(부분/할당량소진 진단)용.
     staleGuard: {
       failRatio: Number(failRatio.toFixed(3)),
