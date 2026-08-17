@@ -120,7 +120,7 @@ export default async function DistrictPage({ params }: { params: { region: strin
           <Link href="/" className="rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-orange-600">
             지도에서 최저가 보기
           </Link>
-          <Link href="/auth/sign-in" className="rounded-xl border border-orange-300 bg-white px-4 py-2.5 text-sm font-semibold text-orange-700 hover:bg-orange-100">
+          <Link href="/auth/sign-in" rel="nofollow" className="rounded-xl border border-orange-300 bg-white px-4 py-2.5 text-sm font-semibold text-orange-700 hover:bg-orange-100">
             무료로 시작하기
           </Link>
         </div>
