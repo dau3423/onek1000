@@ -6,6 +6,7 @@
 // 비로그인 시 signIn 유도. 충전소/시각은 서버가 보강한다(클라는 statId + 선택값만 전송).
 import { useEffect, useRef, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import type { FuelLog } from '@/types/fuel-log';
 import { CheckIcon, BoltIcon } from '@/components/icons';
 
@@ -21,6 +22,7 @@ const KWH_PRESETS = [10, 30, 50] as const; // kWh
 const AMOUNT_PRESETS = [10000, 20000, 30000] as const; // 원
 
 export function EvChargeLogButton({ statId, className }: Props) {
+  const t = useTranslations('ev');
   const { status } = useSession();
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<State>('idle');
@@ -77,7 +79,7 @@ export function EvChargeLogButton({ statId, className }: Props) {
         body: JSON.stringify({ stationId: statId, kind: 'ev', ...payload }),
       });
       const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error ?? '저장에 실패했어요.');
+      if (!res.ok) throw new Error(d.error ?? t('saveFailed'));
       // 방금 저장한 값으로 최근값 갱신(다음에 열 때도 같은 칩이 강조되도록).
       if (payload.kwh != null) setRecentKwh(payload.kwh);
       if (payload.amountWon != null) setRecentAmount(payload.amountWon);
@@ -96,11 +98,11 @@ export function EvChargeLogButton({ statId, className }: Props) {
     const k = kwh.trim() === '' ? undefined : Number(kwh);
     const a = amount.trim() === '' ? undefined : Number(amount);
     if (k !== undefined && (!Number.isFinite(k) || k < 0)) {
-      setErr('충전량은 0 이상 숫자로 입력해 주세요.');
+      setErr(t('invalidKwh'));
       return;
     }
     if (a !== undefined && (!Number.isFinite(a) || a < 0)) {
-      setErr('금액은 0 이상 숫자로 입력해 주세요.');
+      setErr(t('invalidAmount'));
       return;
     }
     void save({ kwh: k, amountWon: a });
@@ -134,23 +136,23 @@ export function EvChargeLogButton({ statId, className }: Props) {
         }
       >
         {state === 'busy' ? (
-          '저장 중…'
+          t('saving')
         ) : state === 'done' ? (
           <span className="inline-flex items-center justify-center gap-1.5">
             <CheckIcon className="h-4 w-4" />
-            충전 기록 저장됨
+            {t('savedLog')}
           </span>
         ) : (
           <span className="inline-flex items-center justify-center gap-1.5">
             <BoltIcon className="h-4 w-4" />
-            여기서 충전
+            {t('chargeHere')}
           </span>
         )}
       </button>
 
       {open && state !== 'done' && (
         <div className="mt-2 rounded-xl border border-gray-200 bg-gray-50 p-3 text-gray-800">
-          <p className="text-xs font-semibold text-gray-700">충전량(kWh)</p>
+          <p className="text-xs font-semibold text-gray-700">{t('kwhLabel')}</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {KWH_PRESETS.map((k) => (
               <button
@@ -165,7 +167,7 @@ export function EvChargeLogButton({ statId, className }: Props) {
             ))}
           </div>
 
-          <p className="mt-3 text-xs font-semibold text-gray-700">금액(원)</p>
+          <p className="mt-3 text-xs font-semibold text-gray-700">{t('amountLabel')}</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {AMOUNT_PRESETS.map((a) => (
               <button
@@ -180,29 +182,29 @@ export function EvChargeLogButton({ statId, className }: Props) {
             ))}
           </div>
 
-          <p className="mt-3 text-xs font-semibold text-gray-700">직접 입력</p>
+          <p className="mt-3 text-xs font-semibold text-gray-700">{t('manualInput')}</p>
           <div className="mt-1.5 flex items-center gap-2">
             <label className="flex-1">
-              <span className="sr-only">충전량(kWh)</span>
+              <span className="sr-only">{t('kwhLabel')}</span>
               <input
                 type="number"
                 inputMode="decimal"
                 min={0}
                 value={kwh}
                 onChange={(e) => setKwh(e.target.value)}
-                placeholder="충전량(kWh)"
+                placeholder={t('kwhLabel')}
                 className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-emerald-600 focus:outline-none"
               />
             </label>
             <label className="flex-1">
-              <span className="sr-only">금액(원)</span>
+              <span className="sr-only">{t('amountLabel')}</span>
               <input
                 type="number"
                 inputMode="numeric"
                 min={0}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder="금액(원)"
+                placeholder={t('amountLabel')}
                 className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-emerald-600 focus:outline-none"
               />
             </label>
@@ -214,24 +216,24 @@ export function EvChargeLogButton({ statId, className }: Props) {
               disabled={state === 'busy'}
               className="flex-1 rounded-lg bg-emerald-600 py-2 text-sm font-bold text-white disabled:opacity-60"
             >
-              입력값으로 저장
+              {t('saveManual')}
             </button>
             <button
               onClick={() => void save({})}
               disabled={state === 'busy'}
               className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-600 disabled:opacity-60"
-              title="충전량·금액 없이 방문 기록만 저장"
+              title={t('saveVisitOnlyTitle')}
             >
-              그냥 저장
+              {t('saveVisitOnly')}
             </button>
           </div>
-          <p className="mt-1.5 text-[11px] text-gray-500">값은 나중에 마이페이지에서 편집할 수 있어요.</p>
+          <p className="mt-1.5 text-[11px] text-gray-500">{t('editHint')}</p>
         </div>
       )}
 
       {state === 'done' && (
         <p className="mt-1.5 text-center text-xs text-gray-500">
-          마이페이지 &gt; 내 기록에서 충전량·금액을 편집할 수 있어요.
+          {t('editHintDone')}
         </p>
       )}
       {err && <p className="mt-1.5 text-center text-xs text-red-500">{err}</p>}

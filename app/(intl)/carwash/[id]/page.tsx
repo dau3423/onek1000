@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { queryCarwashDetail } from '@/lib/db/carwash';
 import { BackButton } from '@/components/common/BackButton';
 import { NaviButton } from '@/components/station/NaviButton';
@@ -13,6 +14,7 @@ interface Props { params: { id: string } }
 export const dynamic = 'force-dynamic';
 
 export default async function CarwashDetailPage({ params }: Props) {
+  const t = await getTranslations('carwash');
   // id = carwash_places PK(mgmt_no). Next가 이미 디코딩해 넘겨준다. 안전 검증 후 조회.
   const id = (params.id ?? '').trim();
   // 빈 값/과도한 길이는 조회 없이 즉시 없음 처리(원천 mgmt_no는 수십자 이내).
@@ -32,13 +34,13 @@ export default async function CarwashDetailPage({ params }: Props) {
   const tel = detail.tel ?? null;
   const weekdayHours = detail.weekdayOpen
     ? detail.weekdayClose
-      ? `평일 ${detail.weekdayOpen}~${detail.weekdayClose}`
-      : `평일 ${detail.weekdayOpen}`
+      ? t('weekdayHoursRange', { open: detail.weekdayOpen, close: detail.weekdayClose })
+      : t('weekdayHoursOpenOnly', { open: detail.weekdayOpen })
     : null;
   const holidayHours = detail.holidayOpen
     ? detail.holidayClose
-      ? `휴일 ${detail.holidayOpen}~${detail.holidayClose}`
-      : `휴일 ${detail.holidayOpen}`
+      ? t('holidayHoursRange', { open: detail.holidayOpen, close: detail.holidayClose })
+      : t('holidayHoursOpenOnly', { open: detail.holidayOpen })
     : null;
   const fee = detail.feeInfo ?? null;
   const closedDay = detail.closedDay ?? null;
@@ -72,7 +74,7 @@ export default async function CarwashDetailPage({ params }: Props) {
 
       {/* 운영 정보 — 값이 있는 항목만 노출(채움률 낮음, undefined/빈값 노출 금지). 하나도 없으면 안내. */}
       <section className="border-t border-gray-100 px-5 py-4">
-        <h2 className="mb-3 text-sm font-bold text-gray-800">운영 정보</h2>
+        <h2 className="mb-3 text-sm font-bold text-gray-800">{t('operatingInfoTitle')}</h2>
         {weekdayHours || holidayHours || fee || closedDay ? (
           <div className="space-y-2">
             {weekdayHours && (
@@ -82,7 +84,7 @@ export default async function CarwashDetailPage({ params }: Props) {
               <InfoRow icon={<ClockIcon className="h-4 w-4" />}>{holidayHours}</InfoRow>
             )}
             {closedDay && (
-              <InfoRow icon={<ClockIcon className="h-4 w-4" />}>휴무 {closedDay}</InfoRow>
+              <InfoRow icon={<ClockIcon className="h-4 w-4" />}>{t('closedDay', { day: closedDay })}</InfoRow>
             )}
             {fee && (
               <InfoRow icon={<CoinIcon className="h-4 w-4" />}>{fee}</InfoRow>
@@ -90,7 +92,7 @@ export default async function CarwashDetailPage({ params }: Props) {
           </div>
         ) : (
           <p className="rounded-lg bg-gray-50 px-3 py-2.5 text-xs leading-snug text-gray-500">
-            운영시간·요금 정보가 아직 없어요. 방문 전 전화로 확인해 주세요.
+            {t('noOperatingInfo')}
           </p>
         )}
       </section>
@@ -105,17 +107,17 @@ export default async function CarwashDetailPage({ params }: Props) {
             className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white py-3.5 text-center font-semibold text-gray-700 hover:bg-gray-50"
           >
             <PhoneIcon className="h-4 w-4" />
-            전화걸기
+            {t('callButton')}
           </a>
         )}
       </section>
 
       {/* 데이터 출처 + 노후 가능 고지 */}
       <footer className="border-t border-gray-100 bg-white px-5 py-3 text-center text-[10px] leading-relaxed text-gray-400">
-        세차장 정보 제공: 행정안전부 전국세차장표준데이터
-        {detail.dataBaseDate ? ` · 기준일 ${detail.dataBaseDate}` : ''}
+        {t('dataSource')}
+        {detail.dataBaseDate ? t('baseDate', { date: detail.dataBaseDate }) : ''}
         <br />
-        공공데이터 기준이라 실제와 다를 수 있어요(폐업·정보 변경 가능)
+        {t('publicDataDisclaimer')}
       </footer>
     </main>
   );

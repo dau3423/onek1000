@@ -3,6 +3,7 @@
 // 비로그인이거나 기록이 없으면 아무것도 렌더하지 않는다(섹션 숨김).
 // 조회는 주유소 상세와 동일한 queryMyFuelLogsAtStation 재사용(station_id 기준, kind 무관).
 import { getServerSession } from 'next-auth';
+import { getTranslations } from 'next-intl/server';
 import { authOptions } from '@/lib/auth/options';
 import { queryMyFuelLogsAtStation } from '@/lib/db/queries';
 import type { FuelLog } from '@/types/fuel-log';
@@ -19,6 +20,7 @@ function formatQuantity(n: number): string {
 }
 
 export async function MyEvLogsSection({ statId }: { statId: string }) {
+  const t = await getTranslations('ev');
   const session = await getServerSession(authOptions);
   const email = session?.user?.email;
   if (!email) return null; // 비로그인은 미표시
@@ -34,9 +36,9 @@ export async function MyEvLogsSection({ statId }: { statId: string }) {
   return (
     <section className="border-t border-gray-100 px-5 py-4">
       <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-gray-800">
-        내 충전 기록
+        {t('myLogsTitle')}
         <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-          {logs.length}건
+          {t('myLogsCount', { count: logs.length })}
         </span>
       </h2>
       <ul className="divide-y divide-gray-100 rounded-xl border border-gray-100">
@@ -46,7 +48,7 @@ export async function MyEvLogsSection({ statId }: { statId: string }) {
               <span className="text-sm font-semibold text-gray-900">{formatDate(l.loggedAt)}</span>
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
                 <BoltIcon className="h-3.5 w-3.5" />
-                충전
+                {t('chargeLabel')}
               </span>
             </div>
             <div className="mt-0.5 text-xs text-gray-500">
@@ -56,13 +58,13 @@ export async function MyEvLogsSection({ statId }: { statId: string }) {
               )}
               {l.unitPrice != null && <span> · ₩{l.unitPrice.toLocaleString()}/kWh</span>}
               {l.odometer != null && <span> · {l.odometer.toLocaleString()}km</span>}
-              {l.unitPrice == null && l.amountWon == null && l.kwh == null && <span>방문 기록</span>}
+              {l.unitPrice == null && l.amountWon == null && l.kwh == null && <span>{t('visitOnly')}</span>}
             </div>
             {l.memo && <div className="mt-1 text-xs text-gray-600">{l.memo}</div>}
           </li>
         ))}
       </ul>
-      <p className="mt-1.5 text-[11px] text-gray-400">금액·충전량은 마이페이지 &gt; 내 기록에서 편집할 수 있어요.</p>
+      <p className="mt-1.5 text-[11px] text-gray-400">{t('myLogsEditHint')}</p>
     </section>
   );
 }

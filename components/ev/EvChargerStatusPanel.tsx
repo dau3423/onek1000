@@ -1,16 +1,20 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { relativeFromNow, liveRelativeFromNow } from '@/lib/ev/format';
+import { useLocale, useTranslations } from 'next-intl';
+import { relativeFromNow } from '@/lib/ev/format';
 import { EV_LIVE_REFRESH_COOLDOWN_MS } from '@/lib/ev/constants';
 import {
-  chargerTypeLabel,
-  chargerStatLabel,
   chargerStatTone,
   chargerSpeed,
   type EvChargerUnit,
   type EvStationDetail,
 } from '@/types/ev';
+
+// data.go.kr 코드(01~10). types/ev.ts의 ChargerTypeCode와 동일 범위 — 카탈로그 키로도 쓰인다.
+const KNOWN_CHARGER_TYPE_CODES = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10'];
+// data.go.kr 상태 코드(0~5). types/ev.ts의 ChargerStatCode와 동일 범위.
+const KNOWN_CHARGER_STAT_CODES = ['0', '1', '2', '3', '4', '5'];
 
 interface Props {
   statId: string;
@@ -62,6 +66,8 @@ function leftSecondsUntil(until: number): number {
 }
 
 export function EvChargerStatusPanel({ statId, initial }: Props) {
+  const t = useTranslations('ev');
+  const locale = useLocale();
   const [chargers, setChargers] = useState<EvChargerUnit[]>(initial.chargers);
   const [totalChargers, setTotalChargers] = useState(initial.totalChargers);
   const [availableChargers, setAvailableChargers] = useState(initial.availableChargers);
@@ -127,62 +133,93 @@ export function EvChargerStatusPanel({ statId, initial }: Props) {
   const busy = chargers.filter((c) => c.stat === '3').length;
   const other = chargers.length - available - busy;
 
+  // 라이브 갱신 배지: <5초="방금 갱신"(고정), 5초~="N초 전"부터는 relativeFromNow(Intl)에 위임.
+  // null이면 "갱신 정보 없음"(고정) — 고정 문구는 카탈로그에서, 그 외는 Intl.RelativeTimeFormat이 처리.
+  const liveRelative = (iso: string | null): string => {
+    if (!iso) return t('noUpdateInfo');
+    const ms = Date.parse(iso);
+    if (Number.isNaN(ms)) return t('noUpdateInfo');
+    if (Date.now() - ms < 5_000) return t('justUpdated');
+    return relativeFromNow(iso, locale);
+  };
+
+  // 충전기별 마지막 갱신: 기존 코드처럼 60초 미만은 초 단위 없이 "방금 전"(고정), 그 이상만 Intl에 위임.
+  const chargerRelative = (iso: string): string => {
+    const ms = Date.parse(iso);
+    if (Number.isNaN(ms)) return '';
+    if (Date.now() - ms < 60_000) return t('justNow');
+    return relativeFromNow(iso, locale);
+  };
+
+  // 충전기 타입 코드(01~10) → 번역 라벨. 미지정 코드는 "기타(코드)"/"기타".
+  const typeLabel = (code?: string | null): string => {
+    const c = String(code ?? '').trim();
+    if (KNOWN_CHARGER_TYPE_CODES.includes(c)) return t(`chargerType.${c}`);
+    return c ? t('chargerTypeOther', { code: c }) : t('chargerTypeUnknown');
+  };
+
+  // 충전기 상태 코드(0~5) → 번역 라벨. 미지정 코드는 "알수없음"과 동일 취급.
+  const statLabel = (code?: string | null): string => {
+    const c = String(code ?? '').trim();
+    return KNOWN_CHARGER_STAT_CODES.includes(c) ? t(`chargerStat.${c}`) : t('chargerStat.0');
+  };
+
   return (
     <>
       {/* 사용 가능 요약 (실시간) */}
       <section className="border-t border-gray-100 px-5 py-4">
         <div className="flex items-baseline justify-between gap-2">
-          <h2 className="text-sm font-bold text-gray-800">충전기 현황</h2>
+          <h2 className="text-sm font-bold text-gray-800">{t('statusTitle')}</h2>
           <div className="flex items-center gap-2">
             {/* 라이브 갱신 시각: synced_at(우리 DB에 막 반영된 시각) 기준 "방금 갱신 / N초 전". */}
             <span className="flex items-center gap-1 text-xs text-gray-400">
               <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" aria-hidden />
-              {liveRelativeFromNow(syncedAt)}
+              {liveRelative(syncedAt)}
             </span>
             <button
               type="button"
               onClick={refresh}
               disabled={disabled}
-              aria-label={onCooldown ? `${cooldownLeft}초 후 새로고침 가능` : '충전기 현황 새로고침'}
+              aria-label={onCooldown ? t('refreshAvailableInAria', { sec: cooldownLeft }) : t('refreshAria')}
               aria-busy={loading}
-              title={onCooldown ? '잠시 후 다시 새로고침할 수 있어요.' : undefined}
+              title={onCooldown ? t('refreshCooldownTitle') : undefined}
               className="flex h-7 items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
             >
               <span className={loading ? 'inline-block animate-spin' : 'inline-block'} aria-hidden>↻</span>
-              {loading ? '갱신 중' : onCooldown ? `${cooldownLeft}초 후 가능` : '새로고침'}
+              {loading ? t('refreshing') : onCooldown ? t('refreshAvailableIn', { sec: cooldownLeft }) : t('refresh')}
             </button>
           </div>
         </div>
         <p className="mt-1 text-2xl font-extrabold text-emerald-600">
           {availableChargers}
-          <span className="ml-1 text-sm font-medium text-gray-400">/ {totalChargers}대 사용 가능</span>
+          <span className="ml-1 text-sm font-medium text-gray-400">{t('availableOf', { count: totalChargers })}</span>
         </p>
         {/* 상태별 요약 배지 (사용가능/충전중/그 외). 충전기 여러 대일 때 한눈에 보기. */}
         <div className="mt-2 flex flex-wrap gap-1.5">
           <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-            사용가능 {available}
+            {t('availableBadge', { count: available })}
           </span>
           {busy > 0 && (
             <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
-              충전중 {busy}
+              {t('chargingBadge', { count: busy })}
             </span>
           )}
           {other > 0 && (
             <span className="rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-semibold text-gray-600">
-              기타 {other}
+              {t('otherBadge', { count: other })}
             </span>
           )}
         </div>
         {error && (
           <p className="mt-2 text-xs text-amber-600">
-            실시간 상태를 가져오지 못했어요. 잠시 후 다시 시도해 주세요. (현재 표시는 최근 저장값)
+            {t('refreshError')}
           </p>
         )}
       </section>
 
       {/* 충전기 목록 */}
       <section className="border-t border-gray-100 px-5 py-4">
-        <h2 className="mb-3 text-sm font-bold text-gray-800">충전기 ({chargers.length}대)</h2>
+        <h2 className="mb-3 text-sm font-bold text-gray-800">{t('chargerListTitle', { count: chargers.length })}</h2>
         <ul className="divide-y divide-gray-100">
           {chargers.map((c) => {
             const tone = chargerStatTone(c.stat);
@@ -191,17 +228,17 @@ export function EvChargerStatusPanel({ statId, initial }: Props) {
               <li key={c.chgerId} className="flex items-center justify-between gap-2 py-2.5">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-gray-800">
-                    {chargerTypeLabel(c.chgerType)}
+                    {typeLabel(c.chgerType)}
                     <span className="ml-1.5 text-xs font-normal text-gray-400">
-                      {speed === 'fast' ? '급속' : '완속'}{c.output != null ? ` · ${c.output}kW` : ''}
+                      {speed === 'fast' ? t('fast') : t('slow')}{c.output != null ? ` · ${c.output}kW` : ''}
                     </span>
                   </p>
                   {c.statUpdAt && (
-                    <p className="mt-0.5 text-[11px] text-gray-400">{relativeFromNow(c.statUpdAt)}</p>
+                    <p className="mt-0.5 text-[11px] text-gray-400">{chargerRelative(c.statUpdAt)}</p>
                   )}
                 </div>
                 <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${TONE_CLASS[tone]}`}>
-                  {chargerStatLabel(c.stat)}
+                  {statLabel(c.stat)}
                 </span>
               </li>
             );

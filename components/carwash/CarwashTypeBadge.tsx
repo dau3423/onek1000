@@ -1,6 +1,8 @@
+'use client';
+
 import clsx from 'clsx';
 import type { WashType } from '@/types/carwash';
-import { WASH_TYPE_LABEL } from '@/types/carwash';
+import { useWashTypeLabel } from '@/lib/i18n/labels';
 
 /**
  * 유형별 뱃지 글리프(currentColor, viewBox 0 0 24 24) — 마커(carwashMarker.ts)·팝업(CarwashPopup)과
@@ -63,6 +65,7 @@ export function CarwashTypeBadge({
   size?: 'sm' | 'md';
   forceLight?: boolean;
 }) {
+  const washTypeLabel = useWashTypeLabel();
   return (
     <span
       className={clsx(
@@ -80,7 +83,7 @@ export function CarwashTypeBadge({
       >
         {TYPE_GLYPH[type]}
       </svg>
-      {WASH_TYPE_LABEL[type]}
+      {washTypeLabel(type)}
     </span>
   );
 }

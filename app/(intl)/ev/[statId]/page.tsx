@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { queryEvStationDetail } from '@/lib/db/ev';
 import { BackButton } from '@/components/common/BackButton';
 import { NaviButton } from '@/components/station/NaviButton';
@@ -15,6 +16,7 @@ interface Props { params: { statId: string } }
 export const dynamic = 'force-dynamic';
 
 export default async function EvStationDetailPage({ params }: Props) {
+  const t = await getTranslations('ev');
   // 진입은 DB 스냅샷으로 즉시 표시. 외부(data.go.kr) 호출은 하지 않는다(빠른 진입).
   // 실시간 갱신은 EvChargerStatusPanel의 "새로고침" 버튼 → POST /api/ev/[statId]에서만.
   let detail: EvStationDetail | null = null;
@@ -39,7 +41,7 @@ export default async function EvStationDetailPage({ params }: Props) {
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1 text-sm font-semibold text-emerald-600" aria-hidden>
             <BoltIcon className="h-4 w-4" />
-            전기차 충전소
+            {t('label')}
           </span>
         </div>
         {detail.busiNm && (
@@ -68,13 +70,13 @@ export default async function EvStationDetailPage({ params }: Props) {
         )}
         <div className="mt-2 flex flex-wrap gap-1.5">
           {detail.hasFast && (
-            <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">급속</span>
+            <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">{t('fast')}</span>
           )}
           {detail.hasSlow && (
-            <span className="rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-semibold text-gray-700">완속</span>
+            <span className="rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-semibold text-gray-700">{t('slow')}</span>
           )}
           {detail.parkingFree === true && (
-            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">주차무료</span>
+            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">{t('parkingFree')}</span>
           )}
         </div>
       </section>
@@ -104,13 +106,13 @@ export default async function EvStationDetailPage({ params }: Props) {
             className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white py-3.5 text-center font-semibold text-gray-700 hover:bg-gray-50"
           >
             <PhoneIcon className="h-4 w-4" />
-            운영기관 전화
+            {t('callOperator')}
           </a>
         )}
       </section>
 
       <footer className="border-t border-gray-100 bg-white px-5 py-3 text-center text-[10px] text-gray-400">
-        충전소 정보 제공: 한국환경공단(공공데이터포털) · 충전기 상태는 새로고침 버튼으로 실시간 갱신됩니다.
+        {t('footer')}
       </footer>
     </main>
   );

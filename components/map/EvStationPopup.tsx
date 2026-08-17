@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { EvStationMarker } from '@/types/ev';
 import { relativeFromNow } from '@/lib/ev/format';
 import { BoltIcon, CloseIcon } from '@/components/icons';
@@ -15,6 +15,16 @@ interface Props {
   onNavigate: () => void;
 }
 
+// EvChargerStatusPanel의 charger 단위 상대시간과 동형: null="갱신 정보 없음"(고정),
+// 60초 미만="방금 전"(고정), 그 이상은 relativeFromNow(Intl)에 위임.
+function statusRelative(iso: string | null, locale: string, tEv: (key: string) => string): string {
+  if (!iso) return tEv('noUpdateInfo');
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) return tEv('noUpdateInfo');
+  if (Date.now() - ms < 60_000) return tEv('justNow');
+  return relativeFromNow(iso, locale);
+}
+
 /**
  * PC(데스크톱)에서 충전소 마커 클릭 시 노출하는 요약 정보 카드 모달.
  * StationPopup(주유소)과 톤을 맞추되, 가격 대신 사용가능/전체 충전기·급속/완속·운영기관·최근 갱신을 보여준다.
@@ -22,6 +32,8 @@ interface Props {
 export function EvStationPopup({ station, onClose, onDetail, onNavigate }: Props) {
   const t = useTranslations('map');
   const tCommon = useTranslations('common');
+  const tEv = useTranslations('ev');
+  const locale = useLocale();
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -93,7 +105,7 @@ export function EvStationPopup({ station, onClose, onDetail, onNavigate }: Props
             )}
           </div>
           <div className="mt-2 text-xs text-gray-400 dark:text-gray-500">
-            {t('evPopup.statusUpdated', { relative: relativeFromNow(station.latestStatUpdAt) })}
+            {t('evPopup.statusUpdated', { relative: statusRelative(station.latestStatUpdAt, locale, tEv) })}
           </div>
         </div>
 

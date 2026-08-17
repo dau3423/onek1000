@@ -9,6 +9,7 @@
 //   useEffect + fetch + AbortController 패턴을 따른다(불필요 의존성 추가 회피).
 
 import { useEffect, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { track } from '@/lib/analytics';
 import { DropletIcon, ChevronRightIcon } from '@/components/icons';
 import type { CarwashGrade } from '@/lib/weather/kma';
@@ -38,34 +39,35 @@ interface Props {
 }
 
 const HIDE_KEY = 'carwashCardHideUntil';
-const WD = ['일', '월', '화', '수', '목', '금', '토'];
 
 /** KST(UTC+9) 기준 오늘 'YYYY-MM-DD'. */
 function kstToday(): string {
   return new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 }
 
-/** 'YYYY-MM-DD' → 요일 한 글자(KST 달력일 기준). */
-function weekdayChar(date: string): string {
+/** 'YYYY-MM-DD' → 요일 짧은 표기(KST 달력일 기준). 로케일별 Intl이 ko는 기존 한 글자('일'~'토')와
+ *  바이트 단위로 동일한 값을 낸다(narrow/short 둘 다 '일','월',… — 확인됨). */
+function weekdayChar(date: string, locale: string): string {
   const d = new Date(`${date}T00:00:00Z`);
-  return WD[d.getUTCDay()] ?? '';
+  return new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }).format(d);
 }
-function fullWeekday(date: string): string {
-  return `${weekdayChar(date)}요일`;
+/** 'YYYY-MM-DD' → 요일 전체 표기(KST 달력일 기준). ko는 기존 "${글자}요일"과 동일한 값('월요일' 등)을 낸다. */
+function fullWeekday(date: string, locale: string): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  return new Intl.DateTimeFormat(locale, { weekday: 'long', timeZone: 'UTC' }).format(d);
 }
 /** 'YYYY-MM-DD' 다음 날 문자열. */
 function nextDate(date: string): string {
   const d = new Date(`${date}T00:00:00Z`).getTime() + 86400000;
   return new Date(d).toISOString().slice(0, 10);
 }
-/** 스트립 셀 요일 라벨 — 오늘/내일은 상대 표기, 그 외는 요일 한 글자. */
-function relLabel(date: string, today: string): string {
-  if (date === today) return '오늘';
-  if (date === nextDate(today)) return '내일';
-  return weekdayChar(date);
+/** 스트립 셀 요일 라벨 — 오늘/내일은 상대 표기, 그 외는 요일 짧은 표기. */
+function relLabel(date: string, today: string, locale: string, tToday: string, tTomorrow: string): string {
+  if (date === today) return tToday;
+  if (date === nextDate(today)) return tTomorrow;
+  return weekdayChar(date, locale);
 }
 
-const GRADE_LABEL: Record<CarwashGrade, string> = { good: '좋음', fair: '보통', bad: '나쁨' };
 // 등급 필/배지 색 — 카드 문맥 한정 + 라벨 병기(색 단독 전달 금지, 접근성).
 const GRADE_CLASS: Record<CarwashGrade, string> = {
   good: 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
@@ -76,6 +78,9 @@ const GRADE_CLASS: Record<CarwashGrade, string> = {
 const SEOUL = { lat: 37.5665, lng: 126.9780 };
 
 export function CarwashDayCard({ onCta, lat, lng }: Props) {
+  const t = useTranslations('carwash');
+  const locale = useLocale();
+  const gradeLabel = (grade: CarwashGrade): string => t(`grade.${grade}`);
   const [data, setData] = useState<CarwashIndexResponse | null>(null);
   const [hidden, setHidden] = useState(false);
 
@@ -113,28 +118,33 @@ export function CarwashDayCard({ onCta, lat, lng }: Props) {
   const today = kstToday();
 
   const title = allBad
-    ? '이번 주는 세차를 미루는 게 좋겠어요'
-    : `이번 주 세차하기 좋은 날: ${fullWeekday(best.date)}`;
+    ? t('titleAllBad')
+    : t('titleBestDay', { day: fullWeekday(best.date, locale) });
 
   // 근거 한 줄(카피 원칙: 단정 금지 — 확률/등급 표현만).
   const reason = (() => {
     if (allBad) {
       const pops = days.map((d) => d.popMax).filter((p): p is number => p != null);
       const minPop = pops.length ? Math.min(...pops) : null;
-      return minPop != null ? `나흘 내내 강수확률 ${minPop}% 이상` : '나흘 내내 강수 예보가 이어져요';
+      return minPop != null ? t('reasonAllBadWithPop', { pop: minPop }) : t('reasonAllBadNoPop');
     }
     const parts: string[] = [];
-    parts.push(best.popMax != null ? `${fullWeekday(best.date)} 강수확률 ${best.popMax}%` : `${fullWeekday(best.date)}이 가장 좋아요`);
+    parts.push(
+      best.popMax != null
+        ? t('reasonBestPop', { day: fullWeekday(best.date, locale), pop: best.popMax })
+        : t('reasonBestNoPop', { day: fullWeekday(best.date, locale) }),
+    );
     if (best.popNext != null && best.popNext >= 40) {
-      parts.push(`${fullWeekday(nextDate(best.date))} ${best.popNext}%`);
+      parts.push(t('reasonNextPop', { day: fullWeekday(nextDate(best.date), locale), pop: best.popNext }));
     } else if (best.dustGrade?.includes('나쁨')) {
-      parts.push(`미세먼지 ${best.dustGrade}`);
+      // dustGrade는 기상청/에어코리아 외부 데이터의 한국어 등급값 그대로 — DB/외부 원본이라 번역하지 않는다.
+      parts.push(t('reasonDust', { dust: best.dustGrade }));
     }
     return parts.join(' · ');
   })();
 
   const usedDust = days.some((d) => d.dustGrade != null);
-  const disclaimer = `예보 기반 참고용 지수입니다 · 출처: 기상청${usedDust ? ' · 에어코리아' : ''}`;
+  const disclaimer = `${t('disclaimer')}${usedDust ? t('disclaimerAirKorea') : ''}`;
 
   const handleCta = () => {
     track('carwash_card_click', { bestDay: best.date, grade: best.grade });
@@ -152,20 +162,20 @@ export function CarwashDayCard({ onCta, lat, lng }: Props) {
 
   return (
     <section
-      aria-label="세차하기 좋은 날"
+      aria-label={t('dayCardAria')}
       className="mx-3 mb-3 mt-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
     >
       {/* 헤더행: 좌 라벨(지역 기준) / 우 오늘 하루 숨김 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
-          <DropletIcon className="h-4 w-4" />세차하기 좋은 날 · {regionName} 기준
+          <DropletIcon className="h-4 w-4" />{t('regionBasis', { region: regionName })}
         </div>
         <button
           type="button"
           onClick={hideToday}
           className="-m-2 p-2 text-[11px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
-          오늘 하루 숨김
+          {t('hideToday')}
         </button>
       </div>
 
@@ -173,7 +183,7 @@ export function CarwashDayCard({ onCta, lat, lng }: Props) {
       <div className="mt-1.5 flex items-center gap-2">
         <h2 className="text-[15px] font-bold text-gray-900 dark:text-gray-100">{title}</h2>
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${GRADE_CLASS[best.grade]}`}>
-          {GRADE_LABEL[best.grade]}
+          {gradeLabel(best.grade)}
         </span>
       </div>
 
@@ -184,21 +194,21 @@ export function CarwashDayCard({ onCta, lat, lng }: Props) {
       <div className="mt-3 grid grid-cols-4 gap-1.5">
         {days.slice(0, 4).map((d) => {
           const isBest = d.date === best.date;
-          const wdLabel = relLabel(d.date, today);
+          const wdLabel = relLabel(d.date, today, locale, t('today'), t('tomorrow'));
           return (
             <div
               key={d.date}
-              aria-label={`${wdLabel} ${GRADE_LABEL[d.grade]}${d.popMax != null ? `, 강수확률 ${d.popMax}%` : ''}${d.dustGrade ? `, 미세먼지 ${d.dustGrade}` : ''}`}
+              aria-label={`${wdLabel} ${gradeLabel(d.grade)}${d.popMax != null ? t('cellAriaPop', { pop: d.popMax }) : ''}${d.dustGrade ? t('cellAriaDust', { dust: d.dustGrade }) : ''}`}
               className={`rounded-xl bg-gray-50 py-2 text-center dark:bg-gray-800 ${isBest ? 'ring-1 ring-primary/40' : ''}`}
             >
               <div className={`text-[11px] font-semibold ${isBest ? 'text-primary' : 'text-gray-600 dark:text-gray-300'}`}>
                 {wdLabel}
               </div>
               <div className={`mx-auto mt-1 w-fit rounded-full px-1.5 py-0.5 text-[10px] font-bold ${GRADE_CLASS[d.grade]}`}>
-                {GRADE_LABEL[d.grade]}
+                {gradeLabel(d.grade)}
               </div>
               <div className="mt-0.5 text-[10px] text-gray-400 dark:text-gray-500">
-                {d.popMax != null ? `강수 ${d.popMax}%` : '강수 —'}
+                {d.popMax != null ? t('rain', { pop: d.popMax }) : t('rainUnknown')}
               </div>
             </div>
           );
@@ -215,7 +225,7 @@ export function CarwashDayCard({ onCta, lat, lng }: Props) {
             : 'bg-primary text-white hover:bg-primary/90'
         }`}
       >
-        세차 되는 최저가 주유소 보기
+        {t('ctaLabel')}
         <ChevronRightIcon className="h-4 w-4" />
       </button>
 
