@@ -933,7 +933,33 @@ Expected: `ko` 는 한글이 나오고, `en/zh/ja` 는 한글이 **DB 원본(주
 
 ### Task 6: EV·세차장 (`ev`, `carwash`)
 
-**Files (modify):** `app/(intl)/ev/[statId]/page.tsx`, `app/(intl)/carwash/[id]/page.tsx`, `components/ev/*.tsx`, `components/carwash/*.tsx`
+**Files (modify):** `app/(intl)/ev/[statId]/page.tsx`, `app/(intl)/carwash/[id]/page.tsx`, `components/ev/*.tsx`, `components/carwash/*.tsx`, **`lib/ev/format.ts`**
+
+**`lib/ev/format.ts` (Task 4 에서 이관):** `relativeFromNow()` 등이 "방금 갱신 / N분 전 / N시간 전 / 갱신 정보 없음" 을 한국어 문자열로 직접 만든다. EV 팝업이 번역돼도 이 문구는 한국어로 남아 화면이 반쯤 깨져 보인다.
+
+이 파일은 React 컴포넌트가 아니라 `useTranslations` 를 쓸 수 없다. **`t` 함수를 인자로 넘기지 말고**, `Intl.RelativeTimeFormat` 으로 바꾼다 — 4개 로케일의 상대시간 표기를 표준이 알아서 처리하므로 카탈로그 키가 거의 필요 없고, 손으로 만든 문자열보다 정확하다(예: en 은 "5 minutes ago", ja 는 "5 分前").
+
+```ts
+// 로케일별 상대시간. Intl 이 복수형·어순·단위 표기를 전부 처리한다.
+export function relativeFromNow(iso: string | null, locale: string): string {
+  if (!iso) return '';            // 호출부가 '갱신 정보 없음' 문구를 카탈로그에서 가져와 대체한다
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) return '';
+  const diffSec = Math.round((ms - Date.now()) / 1000);
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  const units: [Intl.RelativeTimeFormatUnit, number][] = [
+    ['second', 60], ['minute', 60], ['hour', 24], ['day', 30], ['month', 12], ['year', Infinity],
+  ];
+  let v = diffSec;
+  for (const [unit, span] of units) {
+    if (Math.abs(v) < span) return rtf.format(v, unit);
+    v = Math.round(v / span);
+  }
+  return rtf.format(v, 'year');
+}
+```
+
+"갱신 정보 없음"·"방금 갱신" 같은 문구는 `ev` 네임스페이스 카탈로그 키로 두고 호출부에서 처리한다. 로케일은 컴포넌트에서 `useLocale()` 로 얻어 넘긴다.
 
 ### Task 7: 검색·경로 (`search`, `route`)
 
