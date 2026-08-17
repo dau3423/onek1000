@@ -9,19 +9,18 @@ import { BoltIcon, DropletIcon, CarwashIcon, FuelIcon } from '@/components/icons
 import { track } from '@/lib/analytics';
 import clsx from 'clsx';
 
-// 휘발유 드롭다운에 묶을 유종(일반/고급). 칩 라벨은 현재 선택을 반영한다.
-const GASOLINE_OPTIONS: ProductCode[] = ['B027', 'B034'];
-// 단독 칩으로 나열할 유종(휘발유 드롭다운/EV 제외).
-const SIMPLE_PRODUCTS: ProductCode[] = ['D047', 'C004'];
+// 주유소 드롭다운에 나열할 유종. 기존엔 '휘발유▾' 드롭다운(일반/고급)과 경유·LPG 칩이 따로
+// 있어 유종 선택이 두 군데로 갈렸다. 이제 주유소 버튼 하나가 드롭다운을 열고 여기서 전부 고른다.
+const FUEL_OPTIONS: ProductCode[] = ['B027', 'D047', 'B034', 'C004'];
 
-// 1행 레이어 전환 세그먼트 — 주유소/EV/세차장. EV·세차장 칩을 대체한다.
+// 레이어 전환 — 주유소/EV/세차장. '주유소'는 드롭다운 트리거를 겸한다(유종 선택).
 const LAYER_OPTIONS: { value: MapLayer; label: string; Icon: ComponentType<{ className?: string }> }[] = [
   { value: 'gas', label: '주유소', Icon: FuelIcon },
   { value: 'ev', label: 'EV', Icon: BoltIcon },
   { value: 'carwash', label: '세차장', Icon: CarwashIcon },
 ];
 
-// 세차장 레이어 유형 세그먼트(FR-3). 'all'=미확인 포함 전체(기본).
+// 세차장 레이어 유형(FR-3). 'all'=미확인 포함 전체(기본).
 const CARWASH_TYPE_OPTIONS: { value: CarwashTypeFilter; label: string }[] = [
   { value: 'all', label: '전체' },
   { value: 'self', label: '셀프' },
@@ -32,29 +31,34 @@ const CARWASH_TYPE_OPTIONS: { value: CarwashTypeFilter; label: string }[] = [
 export function FilterBar() {
   const { product, setProduct, layer, setLayer, carwashOnly, toggleCarwashOnly, carwashType, setCarwashType } =
     useMapStore();
-  // 휘발유 드롭다운 열림 여부
-  const [gasOpen, setGasOpen] = useState(false);
-  const gasRef = useRef<HTMLDivElement>(null);
+  // 열려 있는 드롭다운('gas'=유종 | 'carwash'=세차장 유형 | null)
+  const [openMenu, setOpenMenu] = useState<null | 'gas' | 'carwash'>(null);
+  const barRef = useRef<HTMLDivElement>(null);
 
   const isGas = layer === 'gas';
   const isCarwash = layer === 'carwash';
-  // 현재 선택이 휘발유 계열(일반/고급)인지 — 칩 활성/라벨 판정에 사용(gas 레이어에서만 활성).
-  const gasSelected = isGas && (GASOLINE_OPTIONS as ProductCode[]).includes(product);
 
-  // 유종 칩(휘발유/경유/LPG) 선택 — gas 레이어의 2행에서만 렌더되지만, 방어적으로 gas 복귀도 처리.
-  const selectFuel = (p: ProductCode) => {
-    if (!isGas) setLayer('gas');
-    setProduct(p);
+  // 레이어 버튼 클릭 — 다른 레이어면 전환, 이미 그 레이어면 드롭다운 토글.
+  // '주유소' 복귀 시 유종은 유지한다(setProduct 호출 안 함 — B027로 강제 되돌리지 않는다).
+  const onLayerClick = (value: MapLayer) => {
+    if (layer !== value) {
+      setLayer(value);
+      // 하위 선택지가 있는 레이어는 전환과 동시에 열어 준다(주유소=유종, 세차장=유형).
+      setOpenMenu(value === 'gas' ? 'gas' : value === 'carwash' ? 'carwash' : null);
+      return;
+    }
+    if (value === 'ev') return; // EV는 하위 선택지 없음
+    setOpenMenu((v) => (v === value ? null : (value as 'gas' | 'carwash')));
   };
 
-  // 바깥 클릭 / ESC로 휘발유 드롭다운 닫기
+  // 바깥 클릭 / ESC로 닫기
   useEffect(() => {
-    if (!gasOpen) return;
+    if (!openMenu) return;
     function onDown(e: MouseEvent) {
-      if (gasRef.current && !gasRef.current.contains(e.target as Node)) setGasOpen(false);
+      if (barRef.current && !barRef.current.contains(e.target as Node)) setOpenMenu(null);
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setGasOpen(false);
+      if (e.key === 'Escape') setOpenMenu(null);
     }
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
@@ -62,179 +66,172 @@ export function FilterBar() {
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [gasOpen]);
+  }, [openMenu]);
 
   return (
-    <div className="relative border-b border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900">
-      {/* 1행: 레이어 전환 세그먼트(주유소/EV/세차장) — 항상 노출, 3등분 채움이라 좁은 폰에서도 스크롤 불필요. */}
-      <div className="px-3 pt-2 pb-1.5">
-        <div
-          role="radiogroup"
-          aria-label="지도 레이어"
-          className="flex items-center gap-1 rounded-full bg-gray-100 p-1 dark:bg-gray-800"
-        >
-          {LAYER_OPTIONS.map(({ value, label, Icon }) => {
-            const active = layer === value;
-            return (
-              <button
-                key={value}
-                role="radio"
-                aria-checked={active}
-                aria-label={`${label} 지도`}
-                // '주유소' 복귀는 유종을 유지(setProduct 호출 안 함) — B027로 강제 되돌리지 않는다.
-                onClick={() => setLayer(value)}
-                className={clsx(
-                  'flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-full px-2 text-xs font-semibold transition',
-                  active
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-200/70 dark:text-gray-300 dark:hover:bg-gray-700',
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span>{label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 2행(gas): 유종/필터 컨텍스트 — 휘발유▾ 경유 LPG 세차가능 브랜드▾. */}
-      {isGas && (
-        <div className="flex items-center gap-1.5 border-t border-gray-100 px-3 py-2 dark:border-gray-800">
-          {/*
-            휘발유 드롭다운(일반/고급) — 스크롤 컨테이너 밖에 둔다.
-            overflow-x-auto 컨테이너 안에 두면 overflow-y도 자동으로 잘라(clip) 드롭다운 패널이 안 보임.
-            휘발유는 항상 첫 칩이라 스크롤 대상에서 빠져도 UX상 자연스럽다.
-          */}
-          <div ref={gasRef} className="relative z-20 shrink-0">
+    <div
+      ref={barRef}
+      className="relative flex items-center gap-1.5 border-b border-gray-100 bg-white px-3 py-1.5 dark:border-gray-800 dark:bg-gray-900"
+    >
+      {/* 레이어 전환 세그먼트 — 내용폭(flex-1 없음)이라 넓은 화면에서 늘어나지 않는다. */}
+      {/* radio 롤은 쓰지 않는다 — 주유소/세차장 버튼이 메뉴 트리거를 겸해(aria-haspopup)
+          radio 가 지원하지 않는 속성이 필요하다. 활성 표시는 aria-pressed 로 한다. */}
+      <div
+        role="group"
+        aria-label="지도 레이어"
+        className="relative z-20 flex shrink-0 items-center gap-0.5 rounded-full bg-gray-100 p-0.5 dark:bg-gray-800"
+      >
+        {LAYER_OPTIONS.map(({ value, label, Icon }) => {
+          const active = layer === value;
+          // 하위 선택지가 있는 레이어(주유소/세차장)만 ▾ 를 달고 메뉴를 연다.
+          const hasMenu = value === 'gas' || value === 'carwash';
+          // 활성 상태에선 현재 하위 선택을 라벨에 붙여 노출한다(드롭다운 안을 열어보지 않아도 보이게).
+          const sub =
+            active && value === 'gas'
+              ? PRODUCT_LABEL[product]
+              : active && value === 'carwash' && carwashType !== 'all'
+                ? CARWASH_TYPE_OPTIONS.find((o) => o.value === carwashType)?.label
+                : null;
+          return (
             <button
-              onClick={() => setGasOpen((v) => !v)}
-              aria-haspopup="menu"
-              aria-expanded={gasOpen}
-              aria-label="휘발유 유종 선택"
+              key={value}
+              aria-pressed={active}
+              aria-haspopup={hasMenu ? 'menu' : undefined}
+              aria-expanded={hasMenu ? openMenu === value : undefined}
+              aria-label={`${label} 지도`}
+              onClick={() => onLayerClick(value)}
               className={clsx(
-                'flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition',
-                gasSelected
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
+                'flex h-8 items-center gap-1 rounded-full px-2.5 text-xs font-semibold transition',
+                active
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-200/70 dark:text-gray-300 dark:hover:bg-gray-700',
               )}
             >
-              {/* 휘발유 계열이 선택돼 있으면 그 라벨(휘발유/고급휘발유), 아니면 기본 "휘발유" */}
-              <span>{gasSelected ? PRODUCT_LABEL[product] : PRODUCT_LABEL.B027}</span>
-              <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.4}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
-              </svg>
-            </button>
-
-            {gasOpen && (
-              <div
-                role="menu"
-                className="absolute left-0 top-9 z-50 w-32 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
-              >
-                {GASOLINE_OPTIONS.map((p) => {
-                  const active = isGas && product === p;
-                  return (
-                    <button
-                      key={p}
-                      role="menuitemradio"
-                      aria-checked={active}
-                      onClick={() => {
-                        selectFuel(p);
-                        setGasOpen(false);
-                      }}
-                      className={clsx(
-                        'flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs font-semibold transition',
-                        active
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
-                      )}
-                    >
-                      {PRODUCT_LABEL[p]}
-                      {active && (
-                        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.4}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />
-                        </svg>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* 경유 · LPG · 세차가능 — 넘칠 경우 대비해 가로 스크롤 유지(레이어 분리로 보통은 스크롤 불필요). */}
-          <div className="flex flex-1 items-center gap-1.5 overflow-x-auto">
-            {/* 경유 · LPG 단독 칩 */}
-            {SIMPLE_PRODUCTS.map((p) => (
-              <button
-                key={p}
-                onClick={() => selectFuel(p)}
-                className={clsx(
-                  'shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition',
-                  isGas && product === p
-                    ? 'bg-primary text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
-                )}
-              >
-                {PRODUCT_LABEL[p]}
-              </button>
-            ))}
-
-            {/* '세차 가능' 칩 — 유종/레이어를 바꾸지 않는 "필터 토글". 켜면 세차 가능(has_carwash) 주유소만 조회.
-                브랜드 필터와 AND 교집합. ⚠️ 표시 문자열만 "세차 가능" — 계측 이벤트 키(carwash_filter_on)는 불변. */}
-            <button
-              onClick={() => {
-                // OFF→ON 전이에만 계측 1건(현재 값 기준 판정 — 켜질 때만).
-                if (!carwashOnly) track('carwash_filter_on');
-                toggleCarwashOnly();
-              }}
-              aria-pressed={carwashOnly}
-              className={clsx(
-                'flex shrink-0 items-center gap-0.5 rounded-full px-3 py-1.5 text-xs font-semibold transition',
-                carwashOnly
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
+              <Icon className="h-3.5 w-3.5 shrink-0" />
+              {/* 레이어 라벨은 폭에 관계없이 항상 노출한다 — 390px 실측에서 3개 다 켜도
+                  우측 '브랜드'가 잘리지 않는다(넘치는 건 '세차 가능' 쪽 스크롤 컨테이너가 흡수). */}
+              <span>{label}</span>
+              {sub && <span className="font-medium opacity-80">· {sub}</span>}
+              {hasMenu && (
+                <svg viewBox="0 0 24 24" className="h-3 w-3 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.4}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+                </svg>
               )}
-            >
-              <DropletIcon className="h-3.5 w-3.5" />
-              <span>세차 가능</span>
             </button>
+          );
+        })}
+
+        {/* 유종 드롭다운 — 주유소 버튼 아래. 휘발유/경유/고급휘발유/LPG 한 단계로 노출. */}
+        {openMenu === 'gas' && (
+          <div
+            role="menu"
+            aria-label="유종"
+            className="absolute left-0 top-10 z-50 w-36 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+          >
+            {FUEL_OPTIONS.map((p) => {
+              const active = isGas && product === p;
+              return (
+                <button
+                  key={p}
+                  role="menuitemradio"
+                  aria-checked={active}
+                  onClick={() => {
+                    setProduct(p);
+                    setOpenMenu(null);
+                  }}
+                  className={clsx(
+                    'flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs font-semibold transition',
+                    active
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
+                  )}
+                >
+                  {PRODUCT_LABEL[p]}
+                  {active && (
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.4}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
           </div>
+        )}
 
-          {/* 브랜드별 보기 — 맨 뒤(우측)에 고정. */}
-          <BrandFilter />
-        </div>
-      )}
-
-      {/* 2행(carwash): 세차장 유형 세그먼트 — carwash 레이어에서만 노출(AC-3.1). */}
-      {isCarwash && (
-        <div className="flex items-center gap-1.5 border-t border-gray-100 px-3 py-2 dark:border-gray-800">
-          <span className="shrink-0 text-[11px] text-gray-500 dark:text-gray-400">세차장 유형</span>
-          <div className="flex flex-1 items-center gap-1.5 overflow-x-auto" role="radiogroup" aria-label="세차장 유형">
+        {/* 세차장 유형 드롭다운 — 세차장 버튼 아래(2행을 없앤 대신 여기로 들어옴). */}
+        {openMenu === 'carwash' && (
+          <div
+            role="menu"
+            aria-label="세차장 유형"
+            className="absolute right-0 top-10 z-50 w-32 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+          >
             {CARWASH_TYPE_OPTIONS.map((opt) => {
               const active = carwashType === opt.value;
               return (
                 <button
                   key={opt.value}
-                  role="radio"
+                  role="menuitemradio"
                   aria-checked={active}
-                  onClick={() => setCarwashType(opt.value)}
+                  onClick={() => {
+                    setCarwashType(opt.value);
+                    setOpenMenu(null);
+                  }}
                   className={clsx(
-                    'shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition',
+                    'flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs font-semibold transition',
                     active
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
                   )}
                 >
                   {opt.label}
+                  {active && (
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.4}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />
+                    </svg>
+                  )}
                 </button>
               );
             })}
           </div>
-        </div>
+        )}
+      </div>
+
+      {/* 주유소 레이어 부가 필터 — 같은 행 오른쪽. 유종과 달리 AND 교집합 토글이라 밖에 둔다. */}
+      {isGas && (
+        <>
+          {/* 넘칠 때만 가로 스크롤. 드롭다운을 가진 레이어 세그먼트/브랜드는 이 컨테이너 밖에 둔다
+              — overflow-x-auto 는 overflow-y 도 잘라(clip) 드롭다운 패널이 안 보이게 되기 때문. */}
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto">
+          {/* '세차 가능' — has_carwash 주유소만. ⚠️ 표시 문자열만 "세차 가능", 계측 키(carwash_filter_on)는 불변. */}
+          <button
+            onClick={() => {
+              // OFF→ON 전이에만 계측 1건.
+              if (!carwashOnly) track('carwash_filter_on');
+              toggleCarwashOnly();
+            }}
+            aria-pressed={carwashOnly}
+            aria-label="세차 가능 주유소만 보기"
+            className={clsx(
+              'flex h-8 shrink-0 items-center gap-0.5 rounded-full px-2.5 text-xs font-semibold transition',
+              carwashOnly
+                ? 'bg-primary text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
+            )}
+          >
+            <DropletIcon className="h-3.5 w-3.5" />
+            {/* 좁은 폰에선 아이콘만(우측 '브랜드'가 밀려 잘리지 않게). aria-label 로 의미는 유지. */}
+            <span className="hidden sm:inline">세차 가능</span>
+          </button>
+          </div>
+
+          {/* 브랜드별 보기 — 맨 뒤(우측)에 고정. 스크롤 컨테이너 밖이라 항상 보인다. */}
+          <div className="shrink-0">
+            <BrandFilter />
+          </div>
+        </>
       )}
 
-      {/* ev 레이어: EV 전용 필터가 없어 2행을 생략한다. */}
+      {/* isCarwash 부가 필터는 세차장 드롭다운으로 흡수. ev 레이어는 부가 필터 없음. */}
     </div>
   );
 }
