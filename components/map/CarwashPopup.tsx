@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import type { CarwashMarker, WashType } from '@/types/carwash';
-import { WASH_TYPE_LABEL } from '@/types/carwash';
+import { useWashTypeLabel } from '@/lib/i18n/labels';
 import { CloseIcon, PinIcon, PhoneIcon, ClockIcon, CoinIcon } from '@/components/icons';
 
 interface Props {
@@ -67,6 +68,9 @@ function InfoRow({ icon, children }: { icon: React.ReactNode; children: React.Re
  * CTA는 길안내 + 상세보기(EV 팝업과 동형) — 상세보기는 /carwash/[id]로 이동한다.
  */
 export function CarwashPopup({ place, onClose, onNavigate, onDetail }: Props) {
+  const t = useTranslations('map');
+  const tCommon = useTranslations('common');
+  const washTypeLabel = useWashTypeLabel();
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -81,8 +85,8 @@ export function CarwashPopup({ place, onClose, onNavigate, onDetail }: Props) {
   const address = place.roadAddr ?? place.jibunAddr ?? null;
   const hours = place.weekdayOpen
     ? place.weekdayClose
-      ? `평일 ${place.weekdayOpen}~${place.weekdayClose}`
-      : `평일 ${place.weekdayOpen}`
+      ? t('carwashPopup.hoursRange', { open: place.weekdayOpen, close: place.weekdayClose })
+      : t('carwashPopup.hoursOpenOnly', { open: place.weekdayOpen })
     : null;
   const fee = place.feeInfo ?? null;
   const tel = place.tel ?? null;
@@ -92,7 +96,7 @@ export function CarwashPopup({ place, onClose, onNavigate, onDetail }: Props) {
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={`${place.name} 세차장 정보`}
+      aria-label={t('carwashPopup.infoAria', { name: place.name })}
       onClick={onClose}
     >
       <div
@@ -109,7 +113,7 @@ export function CarwashPopup({ place, onClose, onNavigate, onDetail }: Props) {
               <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5" aria-hidden="true">
                 {TYPE_GLYPH[place.washType]}
               </svg>
-              {WASH_TYPE_LABEL[place.washType]}
+              {washTypeLabel(place.washType)}
             </span>
             <h2 className="mt-1.5 truncate text-base font-bold text-gray-900 dark:text-gray-50">
               {place.name}
@@ -117,7 +121,7 @@ export function CarwashPopup({ place, onClose, onNavigate, onDetail }: Props) {
           </div>
           <button
             onClick={onClose}
-            aria-label="닫기"
+            aria-label={tCommon('close')}
             className="-mr-1.5 -mt-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
           >
             <CloseIcon className="h-5 w-5" />
@@ -148,19 +152,19 @@ export function CarwashPopup({ place, onClose, onNavigate, onDetail }: Props) {
             onClick={onNavigate}
             className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
           >
-            길안내
+            {tCommon('navigate')}
           </button>
           <button
             onClick={onDetail}
             className="flex-1 rounded-xl bg-primary py-3 text-sm font-bold text-white shadow-md hover:bg-primary-dark"
           >
-            상세보기
+            {tCommon('viewDetail')}
           </button>
         </div>
 
         {/* 정보 노후 고지 + 출처(AC-2.6·2.8) */}
         <p className="mt-3 text-[10px] leading-relaxed text-gray-400 dark:text-gray-500">
-          공공데이터 기준이라 실제와 다를 수 있어요(폐업·정보 변경 가능) · 출처: 행정안전부 전국세차장표준데이터
+          {t('carwashPopup.disclaimer')}
         </p>
       </div>
     </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import type { EvStationMarker } from '@/types/ev';
 import { relativeFromNow } from '@/lib/ev/format';
 import { BoltIcon, CloseIcon } from '@/components/icons';
@@ -19,6 +20,8 @@ interface Props {
  * StationPopup(주유소)과 톤을 맞추되, 가격 대신 사용가능/전체 충전기·급속/완속·운영기관·최근 갱신을 보여준다.
  */
 export function EvStationPopup({ station, onClose, onDetail, onNavigate }: Props) {
+  const t = useTranslations('map');
+  const tCommon = useTranslations('common');
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,7 +40,7 @@ export function EvStationPopup({ station, onClose, onDetail, onNavigate }: Props
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={`${station.name} 정보`}
+      aria-label={t('popup.infoAria', { name: station.name })}
       onClick={onClose}
     >
       <div
@@ -51,7 +54,7 @@ export function EvStationPopup({ station, onClose, onDetail, onNavigate }: Props
             <div className="flex items-center gap-1.5">
               <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400" aria-hidden>
                 <BoltIcon className="h-3.5 w-3.5" />
-                전기차 충전소
+                {t('evPopup.label')}
               </span>
             </div>
             <h2 className="mt-1 truncate text-base font-bold text-gray-900 dark:text-gray-50">
@@ -63,7 +66,7 @@ export function EvStationPopup({ station, onClose, onDetail, onNavigate }: Props
           </div>
           <button
             onClick={onClose}
-            aria-label="닫기"
+            aria-label={tCommon('close')}
             className="-mr-1.5 -mt-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
           >
             <CloseIcon className="h-5 w-5" />
@@ -72,25 +75,25 @@ export function EvStationPopup({ station, onClose, onDetail, onNavigate }: Props
 
         <div className="mt-3 rounded-xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
           <div className="flex items-baseline justify-between">
-            <span className="text-xs text-gray-500 dark:text-gray-400">사용 가능</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{t('available')}</span>
             <span className={`text-2xl font-extrabold ${available ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-500'}`}>
               {station.availableChargers}
-              <span className="ml-1 text-sm font-medium text-gray-400 dark:text-gray-500">/ {station.totalChargers}대</span>
+              <span className="ml-1 text-sm font-medium text-gray-400 dark:text-gray-500">{t('chargerCount', { count: station.totalChargers })}</span>
             </span>
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {station.hasFast && (
-              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-950 dark:text-blue-300">급속</span>
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-950 dark:text-blue-300">{t('fastCharge')}</span>
             )}
             {station.hasSlow && (
-              <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200">완속</span>
+              <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200">{t('slowCharge')}</span>
             )}
             {station.maxOutput != null && (
-              <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200">최대 {station.maxOutput}kW</span>
+              <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[11px] font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200">{t('evPopup.maxOutput', { value: station.maxOutput })}</span>
             )}
           </div>
           <div className="mt-2 text-xs text-gray-400 dark:text-gray-500">
-            상태 갱신 {relativeFromNow(station.latestStatUpdAt)}
+            {t('evPopup.statusUpdated', { relative: relativeFromNow(station.latestStatUpdAt) })}
           </div>
         </div>
 
@@ -99,13 +102,13 @@ export function EvStationPopup({ station, onClose, onDetail, onNavigate }: Props
             onClick={onNavigate}
             className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
           >
-            길안내
+            {tCommon('navigate')}
           </button>
           <button
             onClick={onDetail}
             className="flex-1 rounded-xl bg-primary py-3 text-sm font-bold text-white shadow-md hover:bg-primary-dark"
           >
-            상세보기
+            {tCommon('viewDetail')}
           </button>
         </div>
       </div>

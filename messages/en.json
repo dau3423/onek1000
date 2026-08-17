@@ -1,5 +1,9 @@
 {
-  "common": {},
+  "common": {
+    "close": "Close",
+    "navigate": "Directions",
+    "viewDetail": "View Details"
+  },
   "labels": {
     "product": {
       "B027": "Gasoline",
@@ -32,6 +36,172 @@
       "hand": "Hand wash / detailing",
       "auto": "Automatic wash",
       "unknown": "Type unknown"
+    }
+  },
+  "map": {
+    "loadingMap": "Loading map...",
+    "depart": "From",
+    "arrive": "To",
+    "myLocationName": "My Location",
+    "selfService": "Self-serve",
+    "available": "Available",
+    "fastCharge": "Fast",
+    "slowCharge": "Slow",
+    "chargerCount": "/ {count}",
+    "fuelSavedToast": "Fuel log saved",
+    "route": {
+      "lowestCount": "· {count} lowest-price stations",
+      "clearAria": "Clear route"
+    },
+    "gps": {
+      "followOnAria": "Follow mode on — tracking your location",
+      "moveAria": "Move to my location",
+      "denied": "Location access is blocked. Please allow it in your browser settings.",
+      "followTitle": "Following your location (move the map to stop)",
+      "moveTitle": "Move to my location / Follow",
+      "followOnAlt": "Follow mode on"
+    },
+    "legendButton": {
+      "aria": "Map color guide"
+    },
+    "fullscreen": {
+      "exit": "Exit fullscreen",
+      "enter": "Fullscreen",
+      "enterTitle": "View fullscreen"
+    },
+    "reroute": {
+      "toast": "Found a new route"
+    },
+    "carwashEmpty": {
+      "filtered": "No car washes match this type. Try a different filter.",
+      "area": "No car washes to show here. Try moving or zooming out the map."
+    },
+    "filterBar": {
+      "layerGroupAria": "Map layer",
+      "layerGas": "Gas Stations",
+      "layerEv": "EV",
+      "layerCarwash": "Car Wash",
+      "layerAria": "{label} map",
+      "fuelMenuAria": "Fuel type",
+      "carwashMenuAria": "Car wash type"
+    },
+    "carwashFilter": {
+      "all": "All",
+      "self": "Self",
+      "hand": "Hand wash",
+      "auto": "Auto"
+    },
+    "brandFilter": {
+      "ariaLabel": "Brand / car wash filter",
+      "title": "Filter by brand · car wash available",
+      "label": "Brand",
+      "dropdownTitle": "Filter by brand (none selected = all)",
+      "clearAll": "All",
+      "expLabel": "Highway (rest area)",
+      "carwashOnlyOption": "Only stations with car wash"
+    },
+    "markerLegend": {
+      "dialogAria": "Color guide",
+      "closeAria": "Close guide",
+      "titleCarwash": "Car wash marker guide",
+      "titleEv": "Charging station marker guide",
+      "titleGas": "Map color guide",
+      "myLocationTitle": "My Location",
+      "myLocationDot": "Blue dot = your current location",
+      "carwash": {
+        "sectionTitle": "Wash type = pin color/icon",
+        "self": "<b>Blue</b> = self-service wash",
+        "hand": "<b>Purple</b> = hand wash / detailing",
+        "auto": "<b>Teal</b> = automatic / machine wash",
+        "unknown": "<b>Gray</b> = type unknown (not listed in public data)",
+        "filterHint": "Choosing a specific type in the type filter hides unknown pins.",
+        "disclaimer": "Based on public data, so closures or details may differ. Source: Ministry of the Interior and Safety, National Car Wash Standard Data"
+      },
+      "ev": {
+        "sectionTitle": "Charger status = pin color",
+        "available": "<b>Green</b> = has an available charger",
+        "busy": "<b>Gray</b> = unavailable (all charging, under maintenance, or offline)",
+        "sizeHint": "Available pins are shown slightly larger, unavailable pins smaller.",
+        "fastTitle": "Fast charging = lightning badge",
+        "fastBadgeDesc": "An <amber>amber lightning</amber> badge on the top right of the pin = has a fast charger",
+        "zoomLabelTitle": "Label when zoomed in",
+        "zoomLabelHint": "The label above the pin shows the <b>available/total</b> charger count and whether fast charging is available."
+      },
+      "gas": {
+        "rankTitle": "Marker number = price rank",
+        "rankHint": "Price rank within the current list tab (This Area / Nearby) — 1 is cheapest",
+        "rankMatch": "Marker with the same number as the list item",
+        "outOfListHint": "Stations outside the list are shown with an expression indicating price level only",
+        "worstHint": "Worst (outside price rank) - shown when zoomed in",
+        "colorMeaning": "Inner color = price level (relative comparison on screen, changes with zoom/pan)",
+        "brandRingTitle": "Dot border color = brand",
+        "specialTitle": "Special markers",
+        "specialHint": "Colors are the same (inner = price, border = brand); shape and rank distinguish the type",
+        "nationalTop10Main": "+ rank number (droplet pin) = Nationwide Top 10 lowest prices",
+        "priceLabelAmber": " (price label<amber> amber</amber>)",
+        "nearbyTop10Main": "Rank badge = Nearby (10km) Top 10 lowest prices",
+        "priceLabelBlue": " (price label<blue> blue</blue>)"
+      }
+    },
+    "bottomSheet": {
+      "collapse": "Collapse ▾",
+      "expand": "Expand ▴",
+      "tabArea": "This Area",
+      "tabNearby": "Nearby {radius}",
+      "titleEvArea": "{count} charging stations in this area",
+      "titleCarwashArea": "{count} car washes in this area",
+      "titleCarwashOnlyNearby": "Lowest car-wash-available prices within {radius}",
+      "titleCarwashOnlyArea": "Top {count} lowest car-wash-available prices in this area",
+      "titleNearby": "Top {count} lowest prices within {radius}",
+      "titleArea": "Top {count} lowest prices in this area",
+      "emptyEv": "No charging stations to show here. Try moving the map.",
+      "emptyCarwash": "No car washes to show here. Try moving the map.",
+      "emptyCarwashOnlyNearby": "No car-wash-available stations confirmed within {radius} yet — still gathering data",
+      "emptyCarwashOnlyArea": "No car-wash-available stations confirmed in this area yet — still gathering data",
+      "disableCarwashFilter": "Turn off car wash filter",
+      "emptyNearby": "No station info within {radius}.",
+      "emptyArea": "No stations to show in this area. Try moving the map.",
+      "nationalRank": "#{rank} Nationwide",
+      "carwashBadge": "Car wash",
+      "detail": "Details",
+      "detailAria": "{name} details",
+      "navigateAria": "{name} directions",
+      "kakaoNaviTitle": "KakaoNavi directions",
+      "evOperatorUnknown": "Operator unknown",
+      "waiting": "Waiting",
+      "addressUnknown": "Address unknown"
+    },
+    "kakaoMap": {
+      "errorTitle": "Couldn't load the map.",
+      "errorHint": "Set <code>NEXT_PUBLIC_KAKAO_MAP_KEY</code> in <code>.env.local</code> and check that the domain is registered in Kakao Developers."
+    },
+    "popup": {
+      "infoAria": "{name} info"
+    },
+    "stationPopup": {
+      "currentPrice": "{product} current price",
+      "distanceFromMe": "{distance} from my location"
+    },
+    "evPopup": {
+      "label": "EV Charging Station",
+      "maxOutput": "Max {value}kW",
+      "statusUpdated": "Status updated {relative}"
+    },
+    "carwashPopup": {
+      "infoAria": "{name} car wash info",
+      "hoursRange": "Weekdays {open}–{close}",
+      "hoursOpenOnly": "Weekdays from {open}",
+      "disclaimer": "Based on public data, so actual details may differ (closures or changes possible) · Source: Ministry of the Interior and Safety, National Car Wash Standard Data"
+    },
+    "header": {
+      "adminConsoleAria": "Admin console",
+      "adminLabel": "Admin",
+      "searchAria": "Search",
+      "routeAria": "Cheapest along route",
+      "myPageAdFreeAria": "My Page (ad-free)",
+      "myPageAria": "My Page",
+      "login": "Log in",
+      "adFreeUsing": "Ad-free active"
     }
   }
 }

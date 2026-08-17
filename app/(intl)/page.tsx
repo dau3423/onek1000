@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signIn } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { Header } from '@/components/ui/Header';
 import { FilterBar } from '@/components/ui/FilterBar';
 import { BottomSheet, SHEET_PEEK_PX } from '@/components/ui/BottomSheet';
@@ -40,10 +41,16 @@ import type { BboxResponse, RadiusResponse, StationWithPrice, NationalTop10Item,
 import type { EvBboxResponse, EvStationMarker } from '@/types/ev';
 import type { CarwashBboxResponse, CarwashMarker } from '@/types/carwash';
 
+// 지도 로딩 플레이스홀더 — next/dynamic의 loading은 React 트리 안에서 렌더되므로 훅 사용 가능.
+function MapLoading() {
+  const t = useTranslations('map');
+  return <div className="flex h-full items-center justify-center text-sm text-gray-500">{t('loadingMap')}</div>;
+}
+
 // KakaoMap은 window 의존 + SDK 외부 스크립트라 SSR 비활성
 const KakaoMap = dynamic(
   () => import('@/components/map/KakaoMap').then((m) => m.KakaoMap),
-  { ssr: false, loading: () => <div className="flex h-full items-center justify-center text-sm text-gray-500">지도 로딩 중...</div> },
+  { ssr: false, loading: MapLoading },
 );
 
 const ALERT_THRESHOLD = 50; // 평균 대비 -50원 이상 저렴할 때 알람
@@ -97,6 +104,7 @@ function routeIdentityKey(plan: RoutePlan): string {
 }
 
 export default function HomePage() {
+  const t = useTranslations('map');
   const router = useRouter();
   const { data: session, status: authStatus } = useSession();
   const { product, brands, carwashOnly, setCarwashOnly, carwashType, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, setRoutePlan, clearRoutePlan, setProduct } = useMapStore();
@@ -853,7 +861,7 @@ export default function HomePage() {
           ? j.path
           : [{ lat, lng }, { lat: dest.lat, lng: dest.lng }];
         setRoutePlan({
-          from: { lat, lng, name: '내 위치' },
+          from: { lat, lng, name: t('myLocationName') },
           to: dest,
           product: reqProduct,
           stations: newStations,
@@ -943,19 +951,19 @@ export default function HomePage() {
             <RouteIcon className="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" />
             <div className="min-w-0 flex-1 truncate text-xs">
               <span className="font-bold text-gray-900 dark:text-gray-100">
-                {routePlan.from.name ?? '출발'}
+                {routePlan.from.name ?? t('depart')}
                 <ChevronRightIcon className="mx-0.5 inline-block h-3 w-3 align-[-0.1em] text-gray-400" />
-                {routePlan.to.name ?? '도착'}
+                {routePlan.to.name ?? t('arrive')}
               </span>
               <span className="ml-1.5 text-gray-500 dark:text-gray-400">
-                · 최저가 {routePlan.stations.length}곳
+                {t('route.lowestCount', { count: routePlan.stations.length })}
               </span>
             </div>
             {/* 표준형 44px. 표시줄 py-1.5 안에서 버튼(h-11)이 세로로 겹치므로 -my-1로 시각 높이 불변 처리(§4-2). */}
             <button
               onClick={() => clearRoutePlan()}
-              aria-label="경로 표시 해제"
-              title="경로 표시 해제"
+              aria-label={t('route.clearAria')}
+              title={t('route.clearAria')}
               className="-my-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
             >
               <CloseIcon className="h-5 w-5" />
@@ -1042,13 +1050,13 @@ export default function HomePage() {
           } ${
             sheetOpen ? 'pointer-events-none opacity-0' : 'opacity-100'
           }`}
-          aria-label={follow ? '따라가기 모드 켜짐 — 내 위치 추적 중' : '내 위치로 이동'}
+          aria-label={follow ? t('gps.followOnAria') : t('gps.moveAria')}
           aria-pressed={follow}
           title={
             geo.status === 'denied'
-              ? '위치 권한이 차단되었습니다. 브라우저 설정에서 허용해주세요.'
+              ? t('gps.denied')
               : geo.error
-                ?? (follow ? '내 위치 따라가는 중 (지도를 움직이면 해제)' : '내 위치로 이동 / 따라가기')
+                ?? (follow ? t('gps.followTitle') : t('gps.moveTitle'))
           }
         >
           {geo.status === 'denied'
@@ -1062,7 +1070,7 @@ export default function HomePage() {
                 // overflow-hidden + 버튼 크기를 꽉 채우는(cover) 방식으로 정사각 이미지를 원형 클립한다.
                 <Image
                   src="/icons/icon_gps.png"
-                  alt={follow ? '따라가기 모드 켜짐' : '내 위치'}
+                  alt={follow ? t('gps.followOnAlt') : t('myLocationName')}
                   width={44}
                   height={44}
                   className={`h-full w-full object-cover transition ${
@@ -1076,9 +1084,9 @@ export default function HomePage() {
             전체화면 버튼(right-3)이 있으면 그 왼쪽으로 비켜 배치(겹침 방지). */}
         <button
           onClick={() => setLegendOpen((v) => !v)}
-          aria-label="지도 색상 안내"
+          aria-label={t('legendButton.aria')}
           aria-expanded={legendOpen}
-          title="지도 색상 안내"
+          title={t('legendButton.aria')}
           style={{ top: '12px', right: fullscreen.supported ? '60px' : '12px' }}
           className="absolute z-30 flex h-11 w-11 items-center justify-center text-gray-600 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
         >
@@ -1101,9 +1109,9 @@ export default function HomePage() {
             onClick={fullscreen.toggle}
             style={{ top: '12px' }}
             className="absolute right-3 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-lg text-gray-700 shadow-md backdrop-blur transition hover:bg-white dark:bg-gray-800/90 dark:text-gray-200 dark:hover:bg-gray-800"
-            aria-label={fullscreen.isFullscreen ? '전체화면 종료' : '전체화면'}
+            aria-label={fullscreen.isFullscreen ? t('fullscreen.exit') : t('fullscreen.enter')}
             aria-pressed={fullscreen.isFullscreen}
-            title={fullscreen.isFullscreen ? '전체화면 종료' : '전체화면으로 보기'}
+            title={fullscreen.isFullscreen ? t('fullscreen.exit') : t('fullscreen.enterTitle')}
           >
             {fullscreen.isFullscreen ? <FullscreenExitIcon className="h-5 w-5" /> : <FullscreenIcon className="h-5 w-5" />}
           </button>
@@ -1154,7 +1162,7 @@ export default function HomePage() {
             role="status"
             className="pointer-events-none absolute left-1/2 top-3 z-40 -translate-x-1/2 rounded-full bg-gray-900/90 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur dark:bg-gray-100/90 dark:text-gray-900"
           >
-            경로를 다시 찾았어요
+            {t('reroute.toast')}
           </div>
         )}
 
@@ -1170,8 +1178,8 @@ export default function HomePage() {
               <CarwashIcon className="h-5 w-5 shrink-0 text-gray-400" />
               <span>
                 {carwashPlaces.length > 0
-                  ? '선택한 유형의 세차장이 없어요. 필터를 바꿔 보세요.'
-                  : '이 지역에 표시할 세차장이 없어요. 지도를 옮기거나 축소해 보세요.'}
+                  ? t('carwashEmpty.filtered')
+                  : t('carwashEmpty.area')}
               </span>
             </div>
           </div>
@@ -1326,7 +1334,7 @@ export default function HomePage() {
         <NaviConfirm
           station={naviTarget}
           kind={naviKind}
-          origin={myLocation ? { name: '내 위치', lat: myLocation.lat, lng: myLocation.lng } : null}
+          origin={myLocation ? { name: t('myLocationName'), lat: myLocation.lat, lng: myLocation.lng } : null}
           onClose={() => {
             setNaviTarget(null);
             setNaviKind('gas'); // 다음 주유소/충전소 길안내를 위해 기본값으로 복귀
@@ -1354,7 +1362,7 @@ export default function HomePage() {
           role="status"
           className="pointer-events-none fixed bottom-[calc(2rem+env(safe-area-inset-bottom))] left-1/2 z-[70] flex -translate-x-1/2 items-center gap-1 rounded-full bg-gray-900/90 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur"
         >
-          <FuelIcon className="h-4 w-4" /> 주유 기록을 저장했어요
+          <FuelIcon className="h-4 w-4" /> {t('fuelSavedToast')}
         </div>
       )}
     </div>

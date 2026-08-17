@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import type { StationWithPrice } from '@/types/station';
-import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL } from '@/types/station';
+import { BRAND_COLOR } from '@/types/station';
+import { useBrandLabel, useProductLabel } from '@/lib/i18n/labels';
 import { CloseIcon } from '@/components/icons';
 
 interface Props {
@@ -23,6 +25,10 @@ interface Props {
  * NaviConfirm과 디자인 톤(둥근 모서리/다크모드/오버레이/포커스)을 맞춘다.
  */
 export function StationPopup({ station, onClose, onDetail, onNavigate }: Props) {
+  const t = useTranslations('map');
+  const tCommon = useTranslations('common');
+  const brandLabel = useBrandLabel();
+  const productLabel = useProductLabel();
   const cardRef = useRef<HTMLDivElement>(null);
 
   // ESC 닫기 + 마운트 시 카드로 포커스 이동(접근성)
@@ -48,7 +54,7 @@ export function StationPopup({ station, onClose, onDetail, onNavigate }: Props) 
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={`${station.name} 정보`}
+      aria-label={t('popup.infoAria', { name: station.name })}
       onClick={onClose}
     >
       <div
@@ -66,7 +72,7 @@ export function StationPopup({ station, onClose, onDetail, onNavigate }: Props) 
                 aria-hidden
               />
               <span className="truncate text-xs font-medium text-gray-500 dark:text-gray-400">
-                {BRAND_LABEL[station.brand]}{station.isSelf ? ' · 셀프' : ''}
+                {brandLabel(station.brand)}{station.isSelf ? ` · ${t('selfService')}` : ''}
               </span>
             </div>
             <h2 className="mt-1 truncate text-base font-bold text-gray-900 dark:text-gray-50">
@@ -75,7 +81,7 @@ export function StationPopup({ station, onClose, onDetail, onNavigate }: Props) 
           </div>
           <button
             onClick={onClose}
-            aria-label="닫기"
+            aria-label={tCommon('close')}
             className="-mr-1.5 -mt-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
           >
             <CloseIcon className="h-5 w-5" />
@@ -84,7 +90,7 @@ export function StationPopup({ station, onClose, onDetail, onNavigate }: Props) 
 
         <div className="mt-3 rounded-xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
           <div className="text-xs text-gray-500 dark:text-gray-400">
-            {PRODUCT_LABEL[station.product]} 현재가
+            {t('stationPopup.currentPrice', { product: productLabel(station.product) })}
           </div>
           <div className="mt-0.5 text-2xl font-extrabold text-gray-900 dark:text-gray-50">
             ₩{station.price.toLocaleString()}
@@ -92,7 +98,7 @@ export function StationPopup({ station, onClose, onDetail, onNavigate }: Props) 
           </div>
           {distanceText && (
             <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              내 위치로부터 {distanceText}
+              {t('stationPopup.distanceFromMe', { distance: distanceText })}
             </div>
           )}
         </div>
@@ -102,13 +108,13 @@ export function StationPopup({ station, onClose, onDetail, onNavigate }: Props) 
             onClick={onNavigate}
             className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
           >
-            길안내
+            {tCommon('navigate')}
           </button>
           <button
             onClick={onDetail}
             className="flex-1 rounded-xl bg-primary py-3 text-sm font-bold text-white shadow-md hover:bg-primary-dark"
           >
-            상세보기
+            {tCommon('viewDetail')}
           </button>
         </div>
       </div>

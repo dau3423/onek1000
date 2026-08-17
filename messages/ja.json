@@ -1,5 +1,9 @@
 {
-  "common": {},
+  "common": {
+    "close": "閉じる",
+    "navigate": "経路案内",
+    "viewDetail": "詳細を見る"
+  },
   "labels": {
     "product": {
       "B027": "レギュラー",
@@ -21,6 +25,172 @@
     },
     "washType": {
       "self": "セルフ洗車", "hand": "手洗い・ディテール", "auto": "自動洗車", "unknown": "種別不明"
+    }
+  },
+  "map": {
+    "loadingMap": "地図読み込み中...",
+    "depart": "出発",
+    "arrive": "到着",
+    "myLocationName": "現在地",
+    "selfService": "セルフ",
+    "available": "利用可能",
+    "fastCharge": "急速",
+    "slowCharge": "普通",
+    "chargerCount": "/ {count}台",
+    "fuelSavedToast": "給油記録を保存しました",
+    "route": {
+      "lowestCount": "・最安値 {count}件",
+      "clearAria": "ルート表示を解除"
+    },
+    "gps": {
+      "followOnAria": "追従モードON — 現在地を追跡中",
+      "moveAria": "現在地へ移動",
+      "denied": "位置情報の利用がブロックされています。ブラウザの設定で許可してください。",
+      "followTitle": "現在地に追従中（地図を動かすと解除）",
+      "moveTitle": "現在地へ移動 / 追従",
+      "followOnAlt": "追従モードON"
+    },
+    "legendButton": {
+      "aria": "地図の色分けガイド"
+    },
+    "fullscreen": {
+      "exit": "全画面を終了",
+      "enter": "全画面表示",
+      "enterTitle": "全画面で表示"
+    },
+    "reroute": {
+      "toast": "ルートを再検索しました"
+    },
+    "carwashEmpty": {
+      "filtered": "選択した種類の洗車場がありません。フィルターを変更してください。",
+      "area": "この地域に表示できる洗車場がありません。地図を動かすか縮小してください。"
+    },
+    "filterBar": {
+      "layerGroupAria": "地図レイヤー",
+      "layerGas": "ガソリンスタンド",
+      "layerEv": "EV",
+      "layerCarwash": "洗車場",
+      "layerAria": "{label}マップ",
+      "fuelMenuAria": "油種",
+      "carwashMenuAria": "洗車場の種類"
+    },
+    "carwashFilter": {
+      "all": "すべて",
+      "self": "セルフ",
+      "hand": "手洗い",
+      "auto": "自動"
+    },
+    "brandFilter": {
+      "ariaLabel": "ブランド・洗車可否フィルター",
+      "title": "ブランド別に見る・洗車可能",
+      "label": "ブランド",
+      "dropdownTitle": "ブランド別に見る（未選択=すべて）",
+      "clearAll": "すべて",
+      "expLabel": "高速道路（サービスエリア）",
+      "carwashOnlyOption": "洗車可能なスタンドのみ"
+    },
+    "markerLegend": {
+      "dialogAria": "色分けガイド",
+      "closeAria": "ガイドを閉じる",
+      "titleCarwash": "洗車場マーカーガイド",
+      "titleEv": "充電スタンドマーカーガイド",
+      "titleGas": "地図の色分けガイド",
+      "myLocationTitle": "現在地",
+      "myLocationDot": "青い点 = 現在地",
+      "carwash": {
+        "sectionTitle": "洗車タイプ = ピンの色・アイコン",
+        "self": "<b>青</b> = セルフ洗車",
+        "hand": "<b>紫</b> = 手洗い・ディテーリング",
+        "auto": "<b>ティール</b> = 自動・機械洗車",
+        "unknown": "<b>グレー</b> = 種別不明（公共データ未記載）",
+        "filterHint": "種類フィルターで特定の種類を選ぶと、不明ピンは非表示になります。",
+        "disclaimer": "公共データに基づくため、閉店・情報が実際と異なる場合があります。出典：行政安全部 全国洗車場標準データ"
+      },
+      "ev": {
+        "sectionTitle": "充電器の利用状況 = ピンの色",
+        "available": "<b>緑</b> = 利用可能な充電器あり",
+        "busy": "<b>グレー</b> = 利用不可（全て充電中・点検中・通信異常）",
+        "sizeHint": "利用可能なピンはやや大きく、利用不可のピンは小さく表示されます。",
+        "fastTitle": "急速充電 = 稲妻バッジ",
+        "fastBadgeDesc": "ピン右上の<amber>アンバーの稲妻</amber>バッジ = 急速充電器あり",
+        "zoomLabelTitle": "ズームイン時のラベル",
+        "zoomLabelHint": "ピン上のラベルには<b>利用可能/全体</b>台数と急速充電の有無が表示されます。"
+      },
+      "gas": {
+        "rankTitle": "マーカーの数字 = 価格順位",
+        "rankHint": "現在のリストタブ（この地域 / 周辺）内の価格順位 — 1が最安値",
+        "rankMatch": "リスト項目と同じ番号のマーカー",
+        "outOfListHint": "リスト外のスタンドは表情アイコンで価格水準のみ表示",
+        "worstHint": "最も高い（価格順位外） - 拡大時に表示",
+        "colorMeaning": "内側の色 = 価格水準（画面内での相対比較、ズーム・移動で変化）",
+        "brandRingTitle": "点の縁取りの色 = ブランド",
+        "specialTitle": "特別マーク",
+        "specialHint": "色は同じ（内側=価格、縁取り=ブランド）、形と順位で種類を区別",
+        "nationalTop10Main": "+ 順位数字（水滴ピン） = 全国最安値 TOP 10",
+        "priceLabelAmber": "（価格ラベル<amber> アンバー</amber>）",
+        "nearbyTop10Main": "順位バッジ = 周辺10km最安値 TOP 10",
+        "priceLabelBlue": "（価格ラベル<blue> ブルー</blue>）"
+      }
+    },
+    "bottomSheet": {
+      "collapse": "閉じる ▾",
+      "expand": "開く ▴",
+      "tabArea": "この地域",
+      "tabNearby": "周辺 {radius}",
+      "titleEvArea": "この地域の充電スタンド {count}件",
+      "titleCarwashArea": "この地域の洗車場 {count}件",
+      "titleCarwashOnlyNearby": "周辺 {radius} 洗車可能な最安値",
+      "titleCarwashOnlyArea": "この地域の洗車可能な最安値 TOP {count}",
+      "titleNearby": "周辺 {radius} 最安値 TOP {count}",
+      "titleArea": "この地域の最安値 TOP {count}",
+      "emptyEv": "この地域に表示できる充電スタンドがありません。地図を動かしてみてください。",
+      "emptyCarwash": "この地域に表示できる洗車場がありません。地図を動かしてみてください。",
+      "emptyCarwashOnlyNearby": "半径{radius}以内に洗車可能と確認されたスタンドはまだありません — 情報収集中",
+      "emptyCarwashOnlyArea": "この地域には洗車可能と確認されたスタンドはまだありません — 情報収集中",
+      "disableCarwashFilter": "洗車フィルターをオフにする",
+      "emptyNearby": "半径{radius}以内にスタンド情報がありません。",
+      "emptyArea": "この地域に表示できるスタンドがありません。地図を動かしてみてください。",
+      "nationalRank": "全国{rank}位",
+      "carwashBadge": "洗車",
+      "detail": "詳細",
+      "detailAria": "{name} 詳細を見る",
+      "navigateAria": "{name} 経路案内",
+      "kakaoNaviTitle": "カカオナビ経路案内",
+      "evOperatorUnknown": "運営機関不明",
+      "waiting": "待機",
+      "addressUnknown": "住所不明"
+    },
+    "kakaoMap": {
+      "errorTitle": "地図を読み込めませんでした。",
+      "errorHint": "<code>.env.local</code>に<code>NEXT_PUBLIC_KAKAO_MAP_KEY</code>を設定し、Kakao Developersでドメインが登録されているか確認してください。"
+    },
+    "popup": {
+      "infoAria": "{name} 情報"
+    },
+    "stationPopup": {
+      "currentPrice": "{product} 現在価格",
+      "distanceFromMe": "現在地から {distance}"
+    },
+    "evPopup": {
+      "label": "EV充電スタンド",
+      "maxOutput": "最大 {value}kW",
+      "statusUpdated": "ステータス更新 {relative}"
+    },
+    "carwashPopup": {
+      "infoAria": "{name} 洗車場情報",
+      "hoursRange": "平日 {open}~{close}",
+      "hoursOpenOnly": "平日 {open}",
+      "disclaimer": "公共データに基づくため、実際と異なる場合があります（閉店・情報変更の可能性）・出典：行政安全部 全国洗車場標準データ"
+    },
+    "header": {
+      "adminConsoleAria": "管理者コンソール",
+      "adminLabel": "管理者",
+      "searchAria": "検索",
+      "routeAria": "ルート別最安値",
+      "myPageAdFreeAria": "マイページ（広告非表示利用中）",
+      "myPageAria": "マイページ",
+      "login": "ログイン",
+      "adFreeUsing": "広告非表示利用中"
     }
   }
 }

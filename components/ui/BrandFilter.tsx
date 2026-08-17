@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useMapStore } from '@/stores/map';
-import { BRAND_LABEL, BRAND_COLOR, type BrandCode } from '@/types/station';
+import { BRAND_COLOR, type BrandCode } from '@/types/station';
+import { useBrandLabel } from '@/lib/i18n/labels';
 import { DropletIcon } from '@/components/icons';
 import { track } from '@/lib/analytics';
 import clsx from 'clsx';
@@ -12,10 +14,10 @@ const BRAND_OPTIONS: BrandCode[] = [
   'SKE', 'GSC', 'HDO', 'SOL', 'RTE', 'RTO', 'NHO', 'EXP', 'ETC', 'E1G', 'SOG',
 ];
 
-// 필터 칩 전용 라벨 오버라이드 — 마커/상세 등 좁은 곳은 BRAND_LABEL('고속도로')를 그대로 쓰고,
+// 필터 칩 전용 라벨 오버라이드 — 마커/상세 등 좁은 곳은 카탈로그의 '고속도로'를 그대로 쓰고,
 // 필터 칩에서만 사용자가 식별하기 쉽게 '고속도로(휴게소)'로 노출한다.
-const FILTER_LABEL_OVERRIDE: Partial<Record<BrandCode, string>> = {
-  EXP: '고속도로(휴게소)',
+const FILTER_LABEL_OVERRIDE: Partial<Record<BrandCode, boolean>> = {
+  EXP: true,
 };
 
 /**
@@ -25,6 +27,8 @@ const FILTER_LABEL_OVERRIDE: Partial<Record<BrandCode, string>> = {
  * - 다중 선택 칩으로 실제 필터 동작.
  */
 export function BrandFilter() {
+  const t = useTranslations('map.brandFilter');
+  const brandLabel = useBrandLabel();
   // '세차 가능'(has_carwash)도 이 드롭다운 안에 함께 둔다 — 필터바를 1행으로 줄이면서
   // 브랜드와 AND 교집합으로 걸리는 같은 성격의 조회 필터라 한 곳에 모았다.
   const { brands, toggleBrand, clearBrands, carwashOnly, toggleCarwashOnly } = useMapStore();
@@ -51,9 +55,9 @@ export function BrandFilter() {
     <div ref={ref} className="relative shrink-0">
       <button
         onClick={handleClick}
-        aria-label="브랜드·세차 가능 필터"
+        aria-label={t('ariaLabel')}
         aria-expanded={open}
-        title="브랜드별 보기 · 세차 가능"
+        title={t('title')}
         className={clsx(
           'flex h-7 shrink-0 items-center gap-1 rounded-full border px-2.5 text-xs font-semibold transition',
           // 브랜드 선택 또는 세차 가능 중 하나라도 켜져 있으면 활성 표시(접힌 상태에서도 필터가 걸린 걸 알 수 있게).
@@ -62,7 +66,7 @@ export function BrandFilter() {
             : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300',
         )}
       >
-        <span>브랜드{count > 0 ? ` ${count}` : ''}</span>
+        <span>{t('label')}{count > 0 ? ` ${count}` : ''}</span>
         {/* 세차 가능이 켜져 있으면 접힌 상태에서도 물방울로 표시 */}
         {carwashOnly && <DropletIcon className="h-3 w-3 shrink-0" />}
       </button>
@@ -72,14 +76,14 @@ export function BrandFilter() {
         <div className="absolute right-0 top-9 z-40 w-56 rounded-xl border border-gray-100 bg-white p-2 shadow-lg dark:border-gray-700 dark:bg-gray-800">
           <div className="mb-1.5 flex items-center justify-between px-1">
             <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">
-              브랜드별 보기 (미선택=전체)
+              {t('dropdownTitle')}
             </span>
             {count > 0 && (
               <button
                 onClick={clearBrands}
                 className="text-[11px] font-semibold text-primary hover:underline"
               >
-                전체
+                {t('clearAll')}
               </button>
             )}
           </div>
@@ -101,7 +105,7 @@ export function BrandFilter() {
                     className="h-2 w-2 shrink-0 rounded-full"
                     style={{ background: BRAND_COLOR[b] }}
                   />
-                  {FILTER_LABEL_OVERRIDE[b] ?? BRAND_LABEL[b]}
+                  {FILTER_LABEL_OVERRIDE[b] ? t('expLabel') : brandLabel(b)}
                 </button>
               );
             })}
@@ -125,7 +129,7 @@ export function BrandFilter() {
               )}
             >
               <DropletIcon className="h-3.5 w-3.5 shrink-0" />
-              <span>세차 가능한 주유소만</span>
+              <span>{t('carwashOnlyOption')}</span>
               {carwashOnly && (
                 <svg viewBox="0 0 24 24" className="ml-auto h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.4}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />

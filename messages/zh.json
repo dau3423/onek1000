@@ -1,5 +1,9 @@
 {
-  "common": {},
+  "common": {
+    "close": "关闭",
+    "navigate": "导航",
+    "viewDetail": "查看详情"
+  },
   "labels": {
     "product": {
       "B027": "汽油",
@@ -21,6 +25,172 @@
     },
     "washType": {
       "self": "自助洗车", "hand": "手工洗车・精洗", "auto": "自动洗车", "unknown": "类型未知"
+    }
+  },
+  "map": {
+    "loadingMap": "地图加载中...",
+    "depart": "出发",
+    "arrive": "到达",
+    "myLocationName": "我的位置",
+    "selfService": "自助",
+    "available": "可用",
+    "fastCharge": "快充",
+    "slowCharge": "慢充",
+    "chargerCount": "/ {count}台",
+    "fuelSavedToast": "已保存加油记录",
+    "route": {
+      "lowestCount": "· 最低价 {count}处",
+      "clearAria": "取消显示路线"
+    },
+    "gps": {
+      "followOnAria": "跟随模式已开启 — 正在追踪我的位置",
+      "moveAria": "移动到我的位置",
+      "denied": "定位权限已被阻止。请在浏览器设置中允许。",
+      "followTitle": "正在跟随我的位置（移动地图可解除）",
+      "moveTitle": "移动到我的位置 / 跟随",
+      "followOnAlt": "跟随模式已开启"
+    },
+    "legendButton": {
+      "aria": "地图颜色说明"
+    },
+    "fullscreen": {
+      "exit": "退出全屏",
+      "enter": "全屏",
+      "enterTitle": "以全屏查看"
+    },
+    "reroute": {
+      "toast": "已重新找到路线"
+    },
+    "carwashEmpty": {
+      "filtered": "没有符合所选类型的洗车场。请更换筛选条件。",
+      "area": "此区域没有可显示的洗车场。请移动或缩小地图。"
+    },
+    "filterBar": {
+      "layerGroupAria": "地图图层",
+      "layerGas": "加油站",
+      "layerEv": "EV",
+      "layerCarwash": "洗车场",
+      "layerAria": "{label}地图",
+      "fuelMenuAria": "油品",
+      "carwashMenuAria": "洗车场类型"
+    },
+    "carwashFilter": {
+      "all": "全部",
+      "self": "自助",
+      "hand": "手工洗车",
+      "auto": "自动"
+    },
+    "brandFilter": {
+      "ariaLabel": "品牌・可洗车筛选",
+      "title": "按品牌查看 · 可洗车",
+      "label": "品牌",
+      "dropdownTitle": "按品牌查看（未选择=全部）",
+      "clearAll": "全部",
+      "expLabel": "高速公路（服务区）",
+      "carwashOnlyOption": "仅显示可洗车的加油站"
+    },
+    "markerLegend": {
+      "dialogAria": "颜色说明",
+      "closeAria": "关闭说明",
+      "titleCarwash": "洗车场图标说明",
+      "titleEv": "充电站图标说明",
+      "titleGas": "地图颜色说明",
+      "myLocationTitle": "我的位置",
+      "myLocationDot": "蓝点 = 我的当前位置",
+      "carwash": {
+        "sectionTitle": "洗车类型 = 图钉颜色・图标",
+        "self": "<b>蓝色</b> = 自助洗车",
+        "hand": "<b>紫色</b> = 手工洗车・精洗",
+        "auto": "<b>青色</b> = 自动・机械洗车",
+        "unknown": "<b>灰色</b> = 类型未知（公共数据未记载）",
+        "filterHint": "在类型筛选中选择特定类型后，未知类型图钉会被隐藏。",
+        "disclaimer": "数据来自公共数据，可能与实际情况（歇业・信息变更）不同。来源：行政安全部 全国洗车场标准数据"
+      },
+      "ev": {
+        "sectionTitle": "充电桩使用状态 = 图钉颜色",
+        "available": "<b>绿色</b> = 有可用充电桩",
+        "busy": "<b>灰色</b> = 不可用（全部充电中・维护中・通信异常）",
+        "sizeHint": "可用图钉显示略大，不可用图钉显示较小。",
+        "fastTitle": "快充 = 闪电徽章",
+        "fastBadgeDesc": "图钉右上角的<amber>琥珀色闪电</amber>徽章 = 配有快充",
+        "zoomLabelTitle": "放大时的标签",
+        "zoomLabelHint": "图钉上方标签同时显示<b>可用/总数</b>充电桩数量与是否配有快充。"
+      },
+      "gas": {
+        "rankTitle": "图钉数字 = 价格排名",
+        "rankHint": "当前列表标签（此区域 / 附近）内的价格排名 — 1为最便宜",
+        "rankMatch": "与列表项相同编号的图钉",
+        "outOfListHint": "列表之外的加油站仅以表情显示价格水平",
+        "worstHint": "最差（排名之外） - 放大后显示",
+        "colorMeaning": "内部颜色 = 价格水平（画面内相对比较，随缩放・移动变化）",
+        "brandRingTitle": "圆点边框颜色 = 品牌",
+        "specialTitle": "特殊标记",
+        "specialHint": "颜色相同（内部=价格，边框=品牌），以形状・排名区分种类",
+        "nationalTop10Main": "+ 排名数字（水滴图钉） = 全国最低价 TOP 10",
+        "priceLabelAmber": "（价格标签<amber>琥珀色</amber>）",
+        "nearbyTop10Main": "排名徽章 = 附近10公里最低价 TOP 10",
+        "priceLabelBlue": "（价格标签<blue>蓝色</blue>）"
+      }
+    },
+    "bottomSheet": {
+      "collapse": "收起 ▾",
+      "expand": "展开 ▴",
+      "tabArea": "此区域",
+      "tabNearby": "附近 {radius}",
+      "titleEvArea": "此区域充电站 {count}处",
+      "titleCarwashArea": "此区域洗车场 {count}处",
+      "titleCarwashOnlyNearby": "附近 {radius} 内可洗车最低价",
+      "titleCarwashOnlyArea": "此区域可洗车最低价 TOP {count}",
+      "titleNearby": "附近 {radius} 最低价 TOP {count}",
+      "titleArea": "此区域最低价 TOP {count}",
+      "emptyEv": "此区域没有可显示的充电站。请尝试移动地图。",
+      "emptyCarwash": "此区域没有可显示的洗车场。请尝试移动地图。",
+      "emptyCarwashOnlyNearby": "附近 {radius} 内暂无确认可洗车的加油站 — 信息收集中",
+      "emptyCarwashOnlyArea": "此区域暂无确认可洗车的加油站 — 信息收集中",
+      "disableCarwashFilter": "关闭洗车筛选",
+      "emptyNearby": "附近 {radius} 内没有加油站信息。",
+      "emptyArea": "此区域没有可显示的加油站。请尝试移动地图。",
+      "nationalRank": "全国第{rank}名",
+      "carwashBadge": "洗车",
+      "detail": "详情",
+      "detailAria": "{name} 详情",
+      "navigateAria": "{name} 导航",
+      "kakaoNaviTitle": "Kakao Navi 导航",
+      "evOperatorUnknown": "运营机构未知",
+      "waiting": "等待",
+      "addressUnknown": "地址未知"
+    },
+    "kakaoMap": {
+      "errorTitle": "地图加载失败。",
+      "errorHint": "请在<code>.env.local</code>中设置<code>NEXT_PUBLIC_KAKAO_MAP_KEY</code>，并确认已在Kakao开发者平台注册该域名。"
+    },
+    "popup": {
+      "infoAria": "{name} 信息"
+    },
+    "stationPopup": {
+      "currentPrice": "{product} 现价",
+      "distanceFromMe": "距我的位置 {distance}"
+    },
+    "evPopup": {
+      "label": "电动汽车充电站",
+      "maxOutput": "最大 {value}kW",
+      "statusUpdated": "状态更新于 {relative}"
+    },
+    "carwashPopup": {
+      "infoAria": "{name} 洗车场信息",
+      "hoursRange": "工作日 {open}~{close}",
+      "hoursOpenOnly": "工作日 {open}",
+      "disclaimer": "数据来自公共数据，实际情况可能不同（可能歇业・信息变更） · 来源：行政安全部 全国洗车场标准数据"
+    },
+    "header": {
+      "adminConsoleAria": "管理员控制台",
+      "adminLabel": "管理员",
+      "searchAria": "搜索",
+      "routeAria": "路线最低价",
+      "myPageAdFreeAria": "我的页面（已使用无广告）",
+      "myPageAria": "我的页面",
+      "login": "登录",
+      "adFreeUsing": "使用无广告中"
     }
   }
 }

@@ -1,5 +1,9 @@
 {
-  "common": {},
+  "common": {
+    "close": "닫기",
+    "navigate": "길안내",
+    "viewDetail": "상세보기"
+  },
   "labels": {
     "product": {
       "B027": "휘발유",
@@ -32,6 +36,172 @@
       "hand": "손세차·디테일",
       "auto": "자동세차",
       "unknown": "유형 미확인"
+    }
+  },
+  "map": {
+    "loadingMap": "지도 로딩 중...",
+    "depart": "출발",
+    "arrive": "도착",
+    "myLocationName": "내 위치",
+    "selfService": "셀프",
+    "available": "사용 가능",
+    "fastCharge": "급속",
+    "slowCharge": "완속",
+    "chargerCount": "/ {count}대",
+    "fuelSavedToast": "주유 기록을 저장했어요",
+    "route": {
+      "lowestCount": "· 최저가 {count}곳",
+      "clearAria": "경로 표시 해제"
+    },
+    "gps": {
+      "followOnAria": "따라가기 모드 켜짐 — 내 위치 추적 중",
+      "moveAria": "내 위치로 이동",
+      "denied": "위치 권한이 차단되었습니다. 브라우저 설정에서 허용해주세요.",
+      "followTitle": "내 위치 따라가는 중 (지도를 움직이면 해제)",
+      "moveTitle": "내 위치로 이동 / 따라가기",
+      "followOnAlt": "따라가기 모드 켜짐"
+    },
+    "legendButton": {
+      "aria": "지도 색상 안내"
+    },
+    "fullscreen": {
+      "exit": "전체화면 종료",
+      "enter": "전체화면",
+      "enterTitle": "전체화면으로 보기"
+    },
+    "reroute": {
+      "toast": "경로를 다시 찾았어요"
+    },
+    "carwashEmpty": {
+      "filtered": "선택한 유형의 세차장이 없어요. 필터를 바꿔 보세요.",
+      "area": "이 지역에 표시할 세차장이 없어요. 지도를 옮기거나 축소해 보세요."
+    },
+    "filterBar": {
+      "layerGroupAria": "지도 레이어",
+      "layerGas": "주유소",
+      "layerEv": "EV",
+      "layerCarwash": "세차장",
+      "layerAria": "{label} 지도",
+      "fuelMenuAria": "유종",
+      "carwashMenuAria": "세차장 유형"
+    },
+    "carwashFilter": {
+      "all": "전체",
+      "self": "셀프",
+      "hand": "손세차",
+      "auto": "자동"
+    },
+    "brandFilter": {
+      "ariaLabel": "브랜드·세차 가능 필터",
+      "title": "브랜드별 보기 · 세차 가능",
+      "label": "브랜드",
+      "dropdownTitle": "브랜드별 보기 (미선택=전체)",
+      "clearAll": "전체",
+      "expLabel": "고속도로(휴게소)",
+      "carwashOnlyOption": "세차 가능한 주유소만"
+    },
+    "markerLegend": {
+      "dialogAria": "색상 안내",
+      "closeAria": "안내 닫기",
+      "titleCarwash": "세차장 마커 안내",
+      "titleEv": "충전소 마커 안내",
+      "titleGas": "지도 색상 안내",
+      "myLocationTitle": "내 위치",
+      "myLocationDot": "파란 점 = 내 현재 위치",
+      "carwash": {
+        "sectionTitle": "세차 유형 = 핀 색·아이콘",
+        "self": "<b>파랑</b> = 셀프세차",
+        "hand": "<b>보라</b> = 손세차·디테일",
+        "auto": "<b>틸</b> = 자동·기계식",
+        "unknown": "<b>회색</b> = 유형 미확인(공공데이터 미기재)",
+        "filterHint": "유형 필터에서 특정 유형을 고르면 미확인 핀은 숨겨져요.",
+        "disclaimer": "공공데이터 기준이라 폐업·정보가 다를 수 있어요. 출처: 행정안전부 전국세차장표준데이터"
+      },
+      "ev": {
+        "sectionTitle": "충전기 사용 상태 = 핀 색",
+        "available": "<b>초록</b> = 사용가능 충전기 있음",
+        "busy": "<b>회색</b> = 사용불가(전부 충전중·점검·통신이상)",
+        "sizeHint": "사용가능 핀은 조금 크게, 불가 핀은 작게 표시돼요.",
+        "fastTitle": "급속 충전 = 번개 뱃지",
+        "fastBadgeDesc": "핀 우상단 <amber>앰버 번개</amber> 뱃지 = 급속 충전기 보유",
+        "zoomLabelTitle": "줌인 시 라벨",
+        "zoomLabelHint": "핀 위 라벨은 <b>사용가능/전체</b> 대수 · 급속 보유 여부를 함께 보여줘요."
+      },
+      "gas": {
+        "rankTitle": "마커 숫자 = 가격 순위",
+        "rankHint": "현재 목록 탭(이 지역 / 내 주변)의 가격 순위 — 1이 가장 쌈",
+        "rankMatch": "목록 항목과 같은 번호의 마커",
+        "outOfListHint": "목록 밖 주유소는 표정으로 가격 수준만 표시",
+        "worstHint": "최악 (가격순위밖) - 확대시 표시",
+        "colorMeaning": "안쪽 색 = 가격 수준(화면 내 비교, 줌·이동 시 바뀜)",
+        "brandRingTitle": "점 테두리 색 = 브랜드",
+        "specialTitle": "특별 표식",
+        "specialHint": "색은 동일(안쪽=가격, 테두리=브랜드), 형태·순위로 종류 구분",
+        "nationalTop10Main": "+ 순위 숫자(물방울 핀) = 전국 최저가 TOP 10",
+        "priceLabelAmber": " (가격 라벨<amber> 앰버</amber>)",
+        "nearbyTop10Main": "순위 배지 = 내 주변 10km 최저가 TOP 10",
+        "priceLabelBlue": " (가격 라벨<blue> 블루</blue>)"
+      }
+    },
+    "bottomSheet": {
+      "collapse": "접기 ▾",
+      "expand": "펼치기 ▴",
+      "tabArea": "이 지역",
+      "tabNearby": "내 주변 {radius}",
+      "titleEvArea": "이 지역 충전소 {count}곳",
+      "titleCarwashArea": "이 지역 세차장 {count}곳",
+      "titleCarwashOnlyNearby": "내 주변 {radius} 세차 가능 최저가",
+      "titleCarwashOnlyArea": "이 지역 세차 가능 최저가 TOP {count}",
+      "titleNearby": "내 주변 {radius} 최저가 TOP {count}",
+      "titleArea": "이 지역 최저가 TOP {count}",
+      "emptyEv": "이 영역에 표시할 충전소가 없어요. 지도를 이동해보세요.",
+      "emptyCarwash": "이 영역에 표시할 세차장이 없어요. 지도를 이동해보세요.",
+      "emptyCarwashOnlyNearby": "반경 {radius} 안에 세차 가능으로 확인된 주유소가 아직 없어요 — 정보 수집 중",
+      "emptyCarwashOnlyArea": "이 지역엔 세차 가능으로 확인된 주유소가 아직 없어요 — 정보 수집 중",
+      "disableCarwashFilter": "세차 필터 끄기",
+      "emptyNearby": "반경 {radius} 안에 주유소 정보가 없어요.",
+      "emptyArea": "이 영역에 표시할 주유소가 없어요. 지도를 이동해보세요.",
+      "nationalRank": "전국 {rank}위",
+      "carwashBadge": "세차",
+      "detail": "상세",
+      "detailAria": "{name} 상세 보기",
+      "navigateAria": "{name} 길안내",
+      "kakaoNaviTitle": "카카오내비 길안내",
+      "evOperatorUnknown": "운영기관 미상",
+      "waiting": "대기",
+      "addressUnknown": "주소 미상"
+    },
+    "kakaoMap": {
+      "errorTitle": "지도를 불러오지 못했습니다.",
+      "errorHint": "<code>.env.local</code>에 <code>NEXT_PUBLIC_KAKAO_MAP_KEY</code>를 설정하고 카카오 디벨로퍼스에서 도메인을 등록했는지 확인해주세요."
+    },
+    "popup": {
+      "infoAria": "{name} 정보"
+    },
+    "stationPopup": {
+      "currentPrice": "{product} 현재가",
+      "distanceFromMe": "내 위치로부터 {distance}"
+    },
+    "evPopup": {
+      "label": "전기차 충전소",
+      "maxOutput": "최대 {value}kW",
+      "statusUpdated": "상태 갱신 {relative}"
+    },
+    "carwashPopup": {
+      "infoAria": "{name} 세차장 정보",
+      "hoursRange": "평일 {open}~{close}",
+      "hoursOpenOnly": "평일 {open}",
+      "disclaimer": "공공데이터 기준이라 실제와 다를 수 있어요(폐업·정보 변경 가능) · 출처: 행정안전부 전국세차장표준데이터"
+    },
+    "header": {
+      "adminConsoleAria": "관리자 콘솔",
+      "adminLabel": "관리자",
+      "searchAria": "검색",
+      "routeAria": "경로별 최저가",
+      "myPageAdFreeAria": "마이페이지 (광고 차단 이용 중)",
+      "myPageAria": "마이페이지",
+      "login": "로그인",
+      "adFreeUsing": "광고 차단 이용 중"
     }
   }
 }

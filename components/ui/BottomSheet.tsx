@@ -4,8 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import clsx from 'clsx';
+import { useTranslations } from 'next-intl';
 import type { StationWithPrice } from '@/types/station';
-import { BRAND_LABEL, BRAND_COLOR } from '@/types/station';
+import { BRAND_COLOR } from '@/types/station';
+import { useBrandLabel } from '@/lib/i18n/labels';
 import { priceTier, priceTierThresholds, distanceMeters } from '@/lib/map/geo';
 import type { EvStationMarker } from '@/types/ev';
 import { rankEvStations, type EvStationRanked, type EvSortOrigin } from '@/lib/ev/sort';
@@ -126,6 +128,8 @@ export function BottomSheet({
   onSelectCarwash,
   onNavigateCarwash,
 }: Props) {
+  const t = useTranslations('map');
+  const brandLabel = useBrandLabel();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('area');
 
@@ -189,16 +193,16 @@ export function BottomSheet({
     : [];
 
   const title = isEv
-    ? `이 지역 충전소 ${evRanked.length}곳`
+    ? t('bottomSheet.titleEvArea', { count: evRanked.length })
     : isCarwash
-    ? `이 지역 세차장 ${carwashRanked.length}곳`
+    ? t('bottomSheet.titleCarwashArea', { count: carwashRanked.length })
     : carwashOnly
       ? activeTab === 'nearby'
-        ? `내 주변 ${radiusKm} 세차 가능 최저가`
-        : `이 지역 세차 가능 최저가 TOP ${Math.min(areaSorted.length, AREA_LIMIT)}`
+        ? t('bottomSheet.titleCarwashOnlyNearby', { radius: radiusKm })
+        : t('bottomSheet.titleCarwashOnlyArea', { count: Math.min(areaSorted.length, AREA_LIMIT) })
       : activeTab === 'nearby'
-        ? `내 주변 ${radiusKm} 최저가 TOP ${NEARBY_LIMIT}`
-        : `이 지역 최저가 TOP ${Math.min(areaSorted.length, AREA_LIMIT)}`;
+        ? t('bottomSheet.titleNearby', { radius: radiusKm, count: NEARBY_LIMIT })
+        : t('bottomSheet.titleArea', { count: Math.min(areaSorted.length, AREA_LIMIT) });
 
   return (
     <div
@@ -217,17 +221,17 @@ export function BottomSheet({
           <div className="h-1 w-9 rounded bg-gray-300 dark:bg-gray-600" />
           <span className="ml-2 text-sm font-bold text-gray-800 dark:text-gray-100">{title}</span>
         </div>
-        <span className="text-xs text-gray-500 dark:text-gray-400">{open ? '접기 ▾' : '펼치기 ▴'}</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">{open ? t('bottomSheet.collapse') : t('bottomSheet.expand')}</span>
       </button>
 
       {/* 탭: 주유소 레이어 + 내 위치 권한 동의 후에만 '내 주변' 노출. EV/세차장 레이어는 탭 없음(단일 목록). */}
       {!isEv && !isCarwash && nearbyEnabled && (
         <div className="flex gap-1 px-5 pb-3.5">
           <TabButton active={activeTab === 'area'} onClick={() => setTab('area')}>
-            이 지역
+            {t('bottomSheet.tabArea')}
           </TabButton>
           <TabButton active={activeTab === 'nearby'} onClick={() => setTab('nearby')}>
-            내 주변 {radiusKm}
+            {t('bottomSheet.tabNearby', { radius: radiusKm })}
           </TabButton>
         </div>
       )}
@@ -237,7 +241,7 @@ export function BottomSheet({
         <div className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
           {evRanked.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
-              이 영역에 표시할 충전소가 없어요. 지도를 이동해보세요.
+              {t('bottomSheet.emptyEv')}
             </p>
           ) : (
             <ul className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -258,7 +262,7 @@ export function BottomSheet({
         <div className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
           {carwashRanked.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
-              이 영역에 표시할 세차장이 없어요. 지도를 이동해보세요.
+              {t('bottomSheet.emptyCarwash')}
             </p>
           ) : (
             <ul className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -285,23 +289,23 @@ export function BottomSheet({
               <DropletIcon className="h-8 w-8 text-gray-300 dark:text-gray-600" />
               <p className="mt-2 text-sm text-gray-400 dark:text-gray-500">
                 {activeTab === 'nearby'
-                  ? `반경 ${radiusKm} 안에 세차 가능으로 확인된 주유소가 아직 없어요 — 정보 수집 중`
-                  : '이 지역엔 세차 가능으로 확인된 주유소가 아직 없어요 — 정보 수집 중'}
+                  ? t('bottomSheet.emptyCarwashOnlyNearby', { radius: radiusKm })
+                  : t('bottomSheet.emptyCarwashOnlyArea')}
               </p>
               {onDisableCarwash && (
                 <button
                   onClick={onDisableCarwash}
                   className="mt-3 rounded-full px-4 py-2.5 text-xs font-semibold text-primary hover:bg-primary/10"
                 >
-                  세차 필터 끄기
+                  {t('bottomSheet.disableCarwashFilter')}
                 </button>
               )}
             </div>
           ) : (
             <p className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
               {activeTab === 'nearby'
-                ? `반경 ${radiusKm} 안에 주유소 정보가 없어요.`
-                : '이 영역에 표시할 주유소가 없어요. 지도를 이동해보세요.'}
+                ? t('bottomSheet.emptyNearby', { radius: radiusKm })
+                : t('bottomSheet.emptyArea')}
             </p>
           )
         ) : (
@@ -331,18 +335,18 @@ export function BottomSheet({
                             <span className="top10-shimmer inline-flex shrink-0 items-center gap-0.5 rounded-full border border-amber-300 bg-gradient-to-r from-amber-300 to-amber-500 px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-amber-950 shadow-sm">
                               {/* 색 미지정 — 배지 텍스트색(amber-950)을 currentColor로 상속 */}
                               <CrownIcon className="h-3 w-3" />
-                              전국 {nationalRank}위
+                              {t('bottomSheet.nationalRank', { rank: nationalRank })}
                             </span>
                           )}
                           {/* 세차 배지 — hasCarwash 확정 시 상시 노출(상세 AmenityList emerald 톤과 정합). */}
                           {s.hasCarwash && (
                             <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold leading-none text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                              <DropletIcon className="h-3 w-3" />세차
+                              <DropletIcon className="h-3 w-3" />{t('bottomSheet.carwashBadge')}
                             </span>
                           )}
                         </div>
                         <div className="truncate text-xs text-gray-500 dark:text-gray-400">
-                          {BRAND_LABEL[s.brand]}{s.isSelf ? ' · 셀프' : ''}
+                          {brandLabel(s.brand)}{s.isSelf ? ` · ${t('selfService')}` : ''}
                           {distanceText ? ` · ${distanceText}` : ''}
                         </div>
                       </div>
@@ -355,15 +359,15 @@ export function BottomSheet({
                           className="inline-flex items-center gap-0.5 text-[11px] text-primary hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          상세 <ChevronRightIcon className="h-3 w-3" />
+                          {t('bottomSheet.detail')} <ChevronRightIcon className="h-3 w-3" />
                         </Link>
                       </div>
                     </button>
                     {onNavigate && (
                       <button
                         onClick={() => onNavigate(s)}
-                        aria-label={`${s.name} 길안내`}
-                        title="카카오내비 길안내"
+                        aria-label={t('bottomSheet.navigateAria', { name: s.name })}
+                        title={t('bottomSheet.kakaoNaviTitle')}
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
                       >
                         {/* icon_transparent.png는 투명 배경이라 사각/흰배경 문제가 없어 클립 래퍼 없이 직접 표시한다. */}
@@ -395,6 +399,7 @@ function EvRow({
   onSelect?: (s: EvStationMarker) => void;
   onNavigate?: (s: EvStationMarker) => void;
 }) {
+  const t = useTranslations('map');
   const available = station.availableChargers > 0;
   const distanceText = station.distance != null
     ? station.distance < 1000 ? `${Math.round(station.distance)}m` : `${(station.distance / 1000).toFixed(1)}km`
@@ -414,29 +419,29 @@ function EvRow({
               <span className="truncate text-sm font-semibold text-gray-900 dark:text-gray-50">{station.name}</span>
               {station.hasFast && (
                 <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold leading-none text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                  <BoltFilledIcon className="h-3.5 w-3.5" />급속
+                  <BoltFilledIcon className="h-3.5 w-3.5" />{t('fastCharge')}
                 </span>
               )}
             </div>
             <div className="truncate text-xs text-gray-500 dark:text-gray-400">
-              {station.busiNm ?? '운영기관 미상'}
-              {station.hasSlow && !station.hasFast ? ' · 완속' : ''}
+              {station.busiNm ?? t('bottomSheet.evOperatorUnknown')}
+              {station.hasSlow && !station.hasFast ? ` · ${t('slowCharge')}` : ''}
               {distanceText ? ` · ${distanceText}` : ''}
             </div>
           </div>
           <div className="text-right">
             <div className={clsx('text-sm font-extrabold', available ? 'text-cheap' : 'text-gray-400 dark:text-gray-500')}>
               {station.availableChargers}
-              <span className="ml-0.5 text-xs font-medium text-gray-400 dark:text-gray-500">/ {station.totalChargers}대</span>
+              <span className="ml-0.5 text-xs font-medium text-gray-400 dark:text-gray-500">{t('chargerCount', { count: station.totalChargers })}</span>
             </div>
-            <span className="text-[11px] text-gray-400 dark:text-gray-500">{available ? '사용 가능' : '대기'}</span>
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">{available ? t('available') : t('bottomSheet.waiting')}</span>
           </div>
         </button>
         {onNavigate && (
           <button
             onClick={() => onNavigate(station)}
-            aria-label={`${station.name} 길안내`}
-            title="카카오내비 길안내"
+            aria-label={t('bottomSheet.navigateAria', { name: station.name })}
+            title={t('bottomSheet.kakaoNaviTitle')}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
           >
             <Image src="/icons/icon_transparent.png" alt="" width={36} height={36} className="block" />
@@ -462,6 +467,8 @@ function CarwashRow({
   onSelect?: (p: CarwashMarker) => void;
   onNavigate?: (p: CarwashMarker) => void;
 }) {
+  const t = useTranslations('map');
+  const tCommon = useTranslations('common');
   const address = place.roadAddr ?? place.jibunAddr ?? null;
   const distanceText = distance != null
     ? distance < 1000 ? `${Math.round(distance)}m` : `${(distance / 1000).toFixed(1)}km`
@@ -471,7 +478,7 @@ function CarwashRow({
       <div className="flex w-full items-center gap-3 px-5 py-3">
         <button
           onClick={() => onSelect?.(place)}
-          aria-label={`${place.name} 상세 보기`}
+          aria-label={t('bottomSheet.detailAria', { name: place.name })}
           className="flex min-w-0 flex-1 items-center gap-3 text-left"
         >
           <span className="w-5 text-center text-xs font-bold text-gray-500 dark:text-gray-400">{index + 1}</span>
@@ -483,7 +490,7 @@ function CarwashRow({
             </div>
             <div className="truncate text-xs text-gray-500 dark:text-gray-400">
               {distanceText ? `${distanceText}${address ? ' · ' : ''}` : ''}
-              {address ?? (distanceText ? '' : '주소 미상')}
+              {address ?? (distanceText ? '' : t('bottomSheet.addressUnknown'))}
             </div>
           </div>
           <ChevronRightIcon className="h-4 w-4 shrink-0 text-gray-300 dark:text-gray-600" />
@@ -491,8 +498,8 @@ function CarwashRow({
         {onNavigate && (
           <button
             onClick={() => onNavigate(place)}
-            aria-label={`${place.name} 길안내`}
-            title="길안내"
+            aria-label={t('bottomSheet.navigateAria', { name: place.name })}
+            title={tCommon('navigate') /* CarwashRow는 원래 "길안내" 단독 타이틀 — common과 동일 텍스트 */}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
           >
             <Image src="/icons/icon_transparent.png" alt="" width={36} height={36} className="block" />

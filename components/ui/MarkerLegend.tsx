@@ -2,10 +2,12 @@
 
 import { useEffect, useRef } from 'react';
 import clsx from 'clsx';
-import { BRAND_COLOR } from '@/types/station';
+import { useTranslations } from 'next-intl';
+import { BRAND_COLOR, type BrandCode } from '@/types/station';
 import type { PriceTier } from '@/lib/map/geo';
 import { TIER_FACE, faceSvgInner, skullInner, PLAIN_MARKER_COLOR } from '@/lib/map/markerFace';
 import { useMapStore } from '@/stores/map';
+import { useBrandLabel } from '@/lib/i18n/labels';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
 import { CrownIcon } from '@/components/icons';
 import { WASH_TYPE_COLOR, type WashType } from '@/types/carwash';
@@ -64,14 +66,14 @@ function NumberChip({ tier, n }: { tier: PriceTier; n: number }) {
   );
 }
 
-const BRANDS: { label: string; color: string }[] = [
-  { label: 'SK에너지', color: BRAND_COLOR.SKE },
-  { label: 'GS칼텍스', color: BRAND_COLOR.GSC },
-  { label: '현대오일뱅크', color: BRAND_COLOR.HDO },
-  { label: 'S-OIL', color: BRAND_COLOR.SOL },
-  { label: '알뜰주유소', color: BRAND_COLOR.RTE },
-  { label: '고속도로', color: BRAND_COLOR.EXP },
-  { label: '자영/기타', color: BRAND_COLOR.ETC },
+const BRAND_CODES: { code: BrandCode; color: string }[] = [
+  { code: 'SKE', color: BRAND_COLOR.SKE },
+  { code: 'GSC', color: BRAND_COLOR.GSC },
+  { code: 'HDO', color: BRAND_COLOR.HDO },
+  { code: 'SOL', color: BRAND_COLOR.SOL },
+  { code: 'RTE', color: BRAND_COLOR.RTE },
+  { code: 'EXP', color: BRAND_COLOR.EXP },
+  { code: 'ETC', color: BRAND_COLOR.ETC },
 ];
 
 /** 채워진 색 동그라미 칩 */
@@ -229,8 +231,13 @@ function CarwashPinChip({ type }: { type: WashType }) {
  * 레이어(주유소/충전소)에 따라 안내 내용을 전환한다(useMapStore.layer).
  */
 export function MarkerLegend({ onClose, cardClassName }: Props) {
+  const t = useTranslations('map.markerLegend');
+  const brandLabel = useBrandLabel();
   const layer = useMapStore((s) => s.layer);
   const cardRef = useRef<HTMLDivElement>(null);
+  const boldTag = { b: (chunks: React.ReactNode) => <b className="font-semibold text-gray-900 dark:text-gray-100">{chunks}</b> };
+  const amberTag = { amber: (chunks: React.ReactNode) => <span style={{ color: HL_COLOR }} className="font-semibold">{chunks}</span> };
+  const blueTag = { blue: (chunks: React.ReactNode) => <span style={{ color: NEAR_COLOR }} className="font-semibold">{chunks}</span> };
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -249,7 +256,7 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
         ref={cardRef}
         role="dialog"
         aria-modal="true"
-        aria-label="색상 안내"
+        aria-label={t('dialogAria')}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         className={clsx(
@@ -259,11 +266,11 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
       >
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
-            {layer === 'carwash' ? '세차장 마커 안내' : layer === 'ev' ? '충전소 마커 안내' : '지도 색상 안내'}
+            {layer === 'carwash' ? t('titleCarwash') : layer === 'ev' ? t('titleEv') : t('titleGas')}
           </p>
           <button
             onClick={onClose}
-            aria-label="안내 닫기"
+            aria-label={t('closeAria')}
             className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.2}>
@@ -276,90 +283,90 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
           {layer === 'carwash' ? (
           <>
           <section>
-            <p className="font-semibold text-gray-900 dark:text-gray-100">세차 유형 = 핀 색·아이콘</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{t('carwash.sectionTitle')}</p>
             <div className="mt-1.5 space-y-1.5">
               <div className="flex items-center gap-1.5">
                 <CarwashPinChip type="self" />
-                <span><b className="font-semibold text-gray-900 dark:text-gray-100">파랑</b> = 셀프세차</span>
+                <span>{t.rich('carwash.self', boldTag)}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <CarwashPinChip type="hand" />
-                <span><b className="font-semibold text-gray-900 dark:text-gray-100">보라</b> = 손세차·디테일</span>
+                <span>{t.rich('carwash.hand', boldTag)}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <CarwashPinChip type="auto" />
-                <span><b className="font-semibold text-gray-900 dark:text-gray-100">틸</b> = 자동·기계식</span>
+                <span>{t.rich('carwash.auto', boldTag)}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <CarwashPinChip type="unknown" />
-                <span><b className="font-semibold text-gray-900 dark:text-gray-100">회색</b> = 유형 미확인(공공데이터 미기재)</span>
+                <span>{t.rich('carwash.unknown', boldTag)}</span>
               </div>
             </div>
-            <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">유형 필터에서 특정 유형을 고르면 미확인 핀은 숨겨져요.</p>
+            <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">{t('carwash.filterHint')}</p>
           </section>
 
           <section>
-            <p className="font-semibold text-gray-900 dark:text-gray-100">내 위치</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{t('myLocationTitle')}</p>
             <div className="mt-1.5 flex items-center gap-1.5">
               <Dot color={MY_COLOR} ring="#ffffff" />
-              <span>파란 점 = 내 현재 위치</span>
+              <span>{t('myLocationDot')}</span>
             </div>
           </section>
 
           <p className="text-[11px] text-gray-500 dark:text-gray-400">
-            공공데이터 기준이라 폐업·정보가 다를 수 있어요. 출처: 행정안전부 전국세차장표준데이터
+            {t('carwash.disclaimer')}
           </p>
           </>
           ) : layer === 'ev' ? (
           <>
           <section>
-            <p className="font-semibold text-gray-900 dark:text-gray-100">충전기 사용 상태 = 핀 색</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{t('ev.sectionTitle')}</p>
             <div className="mt-1.5 space-y-1.5">
               <div className="flex items-center gap-1.5">
                 <EvPinChip color={EV_AVAILABLE_COLOR} />
-                <span><b className="font-semibold text-gray-900 dark:text-gray-100">초록</b> = 사용가능 충전기 있음</span>
+                <span>{t.rich('ev.available', boldTag)}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <EvPinChip color={EV_BUSY_COLOR} />
-                <span><b className="font-semibold text-gray-900 dark:text-gray-100">회색</b> = 사용불가(전부 충전중·점검·통신이상)</span>
+                <span>{t.rich('ev.busy', boldTag)}</span>
               </div>
             </div>
-            <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">사용가능 핀은 조금 크게, 불가 핀은 작게 표시돼요.</p>
+            <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">{t('ev.sizeHint')}</p>
           </section>
 
           <section>
-            <p className="font-semibold text-gray-900 dark:text-gray-100">급속 충전 = 번개 뱃지</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{t('ev.fastTitle')}</p>
             <div className="mt-1.5 flex items-center gap-1.5">
               <EvPinChip color={EV_AVAILABLE_COLOR} hasFast />
-              <span>핀 우상단 <span style={{ color: EV_FAST_COLOR }} className="font-semibold">앰버 번개</span> 뱃지 = 급속 충전기 보유</span>
+              <span>{t.rich('ev.fastBadgeDesc', amberTag)}</span>
             </div>
           </section>
 
           <section>
-            <p className="font-semibold text-gray-900 dark:text-gray-100">줌인 시 라벨</p>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400">핀 위 라벨은 <b>사용가능/전체</b> 대수 · 급속 보유 여부를 함께 보여줘요.</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{t('ev.zoomLabelTitle')}</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">{t.rich('ev.zoomLabelHint', boldTag)}</p>
           </section>
 
           <section>
-            <p className="font-semibold text-gray-900 dark:text-gray-100">내 위치</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{t('myLocationTitle')}</p>
             <div className="mt-1.5 flex items-center gap-1.5">
               <Dot color={MY_COLOR} ring="#ffffff" />
-              <span>파란 점 = 내 현재 위치</span>
+              <span>{t('myLocationDot')}</span>
             </div>
           </section>
           </>
           ) : (
           <>
           <section>
-            <p className="font-semibold text-gray-900 dark:text-gray-100">마커 숫자 = 가격 순위</p>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400">현재 목록 탭(이 지역 / 내 주변)의 가격 순위 — 1이 가장 쌈</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{t('gas.rankTitle')}</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('gas.rankHint')}</p>
             <div className="mt-1.5 flex items-center gap-1.5">
               <NumberChip tier="cheap" n={1} />
               <NumberChip tier="normal" n={2} />
               <NumberChip tier="expensive" n={3} />
-              <span>목록 항목과 같은 번호의 마커</span>
+              <span>{t('gas.rankMatch')}</span>
             </div>
-            <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">목록 밖 주유소는 표정으로 가격 수준만 표시</p>
+            <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">{t('gas.outOfListHint')}</p>
             <div className="mt-1 space-y-1">
               <div className="flex items-center gap-1.5">
                 <FaceChip tier="cheap" />
@@ -376,28 +383,28 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
               {GRAY_DOTS_ENABLED && (
                 <div className="flex items-center gap-1.5">
                   <SkullChip />
-                  <span>최악 (가격순위밖) - 확대시 표시</span>
+                  <span>{t('gas.worstHint')}</span>
                 </div>
               )}
             </div>
-            <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">안쪽 색 = 가격 수준(화면 내 비교, 줌·이동 시 바뀜)</p>
+            <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">{t('gas.colorMeaning')}</p>
           </section>
 
           <section>
-            <p className="font-semibold text-gray-900 dark:text-gray-100">점 테두리 색 = 브랜드</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{t('gas.brandRingTitle')}</p>
             <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1.5">
-              {BRANDS.map((b) => (
-                <div key={b.label} className="flex items-center gap-1.5">
+              {BRAND_CODES.map((b) => (
+                <div key={b.code} className="flex items-center gap-1.5">
                   <RingDot color={b.color} />
-                  <span>{b.label}</span>
+                  <span>{brandLabel(b.code)}</span>
                 </div>
               ))}
             </div>
           </section>
 
           <section>
-            <p className="font-semibold text-gray-900 dark:text-gray-100">특별 표식</p>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400">색은 동일(안쪽=가격, 테두리=브랜드), 형태·순위로 종류 구분</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{t('gas.specialTitle')}</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('gas.specialHint')}</p>
             <div className="mt-1.5 space-y-1.5">
               <div className="flex items-start gap-1.5">
                 <span className="mt-0.5 flex shrink-0 gap-0.5">
@@ -406,10 +413,8 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
                 </span>
                 <span>
                   <CrownIcon className="mr-0.5 inline-block h-3.5 w-3.5 align-[-0.15em] text-amber-600 dark:text-amber-400" />
-                  + 순위 숫자(물방울 핀) = 전국 최저가 TOP 10
-                  <span className="text-gray-500 dark:text-gray-400"> (가격 라벨</span>
-                  <span style={{ color: HL_COLOR }} className="font-semibold"> 앰버</span>
-                  <span className="text-gray-500 dark:text-gray-400">)</span>
+                  {t('gas.nationalTop10Main')}
+                  {t.rich('gas.priceLabelAmber', amberTag)}
                 </span>
               </div>
               <div className="flex items-start gap-1.5">
@@ -418,15 +423,13 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
                   <NearBadgeChip body={TIER_EXPENSIVE} ring={BRAND_COLOR.RTE} />
                 </span>
                 <span>
-                  순위 배지 = 내 주변 10km 최저가 TOP 10
-                  <span className="text-gray-500 dark:text-gray-400"> (가격 라벨</span>
-                  <span style={{ color: NEAR_COLOR }} className="font-semibold"> 블루</span>
-                  <span className="text-gray-500 dark:text-gray-400">)</span>
+                  {t('gas.nearbyTop10Main')}
+                  {t.rich('gas.priceLabelBlue', blueTag)}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Dot color={MY_COLOR} ring="#ffffff" />
-                <span>파란 점 = 내 현재 위치</span>
+                <span>{t('myLocationDot')}</span>
               </div>
             </div>
           </section>

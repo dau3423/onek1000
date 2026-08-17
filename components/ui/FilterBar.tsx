@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState, type ComponentType } from 'react';
+import { useTranslations } from 'next-intl';
 import { useMapStore, type MapLayer } from '@/stores/map';
-import { PRODUCT_LABEL, type ProductCode } from '@/types/station';
+import { type ProductCode } from '@/types/station';
 import type { CarwashTypeFilter } from '@/types/carwash';
+import { useProductLabel } from '@/lib/i18n/labels';
 import { BrandFilter } from './BrandFilter';
 import { BoltIcon, CarwashIcon, FuelIcon } from '@/components/icons';
 import clsx from 'clsx';
@@ -13,21 +15,24 @@ import clsx from 'clsx';
 const FUEL_OPTIONS: ProductCode[] = ['B027', 'D047', 'B034', 'C004'];
 
 // 레이어 전환 — 주유소/EV/세차장. '주유소'는 드롭다운 트리거를 겸한다(유종 선택).
-const LAYER_OPTIONS: { value: MapLayer; label: string; Icon: ComponentType<{ className?: string }> }[] = [
-  { value: 'gas', label: '주유소', Icon: FuelIcon },
-  { value: 'ev', label: 'EV', Icon: BoltIcon },
-  { value: 'carwash', label: '세차장', Icon: CarwashIcon },
+const LAYER_OPTIONS: { value: MapLayer; labelKey: 'layerGas' | 'layerEv' | 'layerCarwash'; Icon: ComponentType<{ className?: string }> }[] = [
+  { value: 'gas', labelKey: 'layerGas', Icon: FuelIcon },
+  { value: 'ev', labelKey: 'layerEv', Icon: BoltIcon },
+  { value: 'carwash', labelKey: 'layerCarwash', Icon: CarwashIcon },
 ];
 
 // 세차장 레이어 유형(FR-3). 'all'=미확인 포함 전체(기본).
-const CARWASH_TYPE_OPTIONS: { value: CarwashTypeFilter; label: string }[] = [
-  { value: 'all', label: '전체' },
-  { value: 'self', label: '셀프' },
-  { value: 'hand', label: '손세차' },
-  { value: 'auto', label: '자동' },
+const CARWASH_TYPE_OPTIONS: { value: CarwashTypeFilter; labelKey: 'all' | 'self' | 'hand' | 'auto' }[] = [
+  { value: 'all', labelKey: 'all' },
+  { value: 'self', labelKey: 'self' },
+  { value: 'hand', labelKey: 'hand' },
+  { value: 'auto', labelKey: 'auto' },
 ];
 
 export function FilterBar() {
+  const t = useTranslations('map.filterBar');
+  const tCarwashFilter = useTranslations('map.carwashFilter');
+  const productLabel = useProductLabel();
   // 세차 가능(carwashOnly)은 BrandFilter 드롭다운으로 옮겨 여기선 다루지 않는다.
   const { product, setProduct, layer, setLayer, carwashType, setCarwashType } = useMapStore();
   // 열려 있는 드롭다운('gas'=유종 | 'carwash'=세차장 유형 | null)
@@ -77,11 +82,12 @@ export function FilterBar() {
           radio 가 지원하지 않는 속성이 필요하다. 활성 표시는 aria-pressed 로 한다. */}
       <div
         role="group"
-        aria-label="지도 레이어"
+        aria-label={t('layerGroupAria')}
         className="relative z-20 flex shrink-0 items-center gap-0.5 rounded-full bg-gray-100 p-0.5 dark:bg-gray-800"
       >
-        {LAYER_OPTIONS.map(({ value, label, Icon }) => {
+        {LAYER_OPTIONS.map(({ value, labelKey, Icon }) => {
           const active = layer === value;
+          const label = t(labelKey);
           // 하위 선택지가 있는 레이어(주유소/세차장)만 ▾ 를 달고 메뉴를 연다.
           const hasMenu = value === 'gas' || value === 'carwash';
           // 활성 상태에선 현재 하위 선택을 노출한다(드롭다운을 열어보지 않아도 보이게).
@@ -89,9 +95,9 @@ export function FilterBar() {
           // 주유소 레이어임을 말해 주므로 레이어명은 중복이고, 폭도 그만큼 줄어든다.
           const sub =
             active && value === 'carwash' && carwashType !== 'all'
-              ? CARWASH_TYPE_OPTIONS.find((o) => o.value === carwashType)?.label
+              ? tCarwashFilter(CARWASH_TYPE_OPTIONS.find((o) => o.value === carwashType)!.labelKey)
               : null;
-          const text = active && value === 'gas' ? PRODUCT_LABEL[product] : label;
+          const text = active && value === 'gas' ? productLabel(product) : label;
           return (
             <button
               key={value}
@@ -99,7 +105,7 @@ export function FilterBar() {
               aria-haspopup={hasMenu ? 'menu' : undefined}
               aria-expanded={hasMenu ? openMenu === value : undefined}
               // 화면에서 '주유소'를 뺀 만큼 스크린리더에는 레이어명을 유지한다(예: "주유소 지도, 휘발유").
-              aria-label={`${label} 지도${active && value === 'gas' ? `, ${PRODUCT_LABEL[product]}` : ''}`}
+              aria-label={`${t('layerAria', { label })}${active && value === 'gas' ? `, ${productLabel(product)}` : ''}`}
               onClick={() => onLayerClick(value)}
               className={clsx(
                 'flex h-8 items-center gap-1 rounded-full px-2.5 text-xs font-semibold transition',
@@ -126,7 +132,7 @@ export function FilterBar() {
         {openMenu === 'gas' && (
           <div
             role="menu"
-            aria-label="유종"
+            aria-label={t('fuelMenuAria')}
             className="absolute left-0 top-10 z-50 w-36 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
           >
             {FUEL_OPTIONS.map((p) => {
@@ -147,7 +153,7 @@ export function FilterBar() {
                       : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
                   )}
                 >
-                  {PRODUCT_LABEL[p]}
+                  {productLabel(p)}
                   {active && (
                     <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.4}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />
@@ -163,7 +169,7 @@ export function FilterBar() {
         {openMenu === 'carwash' && (
           <div
             role="menu"
-            aria-label="세차장 유형"
+            aria-label={t('carwashMenuAria')}
             className="absolute right-0 top-10 z-50 w-32 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
           >
             {CARWASH_TYPE_OPTIONS.map((opt) => {
@@ -184,7 +190,7 @@ export function FilterBar() {
                       : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
                   )}
                 >
-                  {opt.label}
+                  {tCarwashFilter(opt.labelKey)}
                   {active && (
                     <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.4}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />

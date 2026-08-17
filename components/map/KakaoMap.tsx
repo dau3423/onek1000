@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { loadKakao } from './loadKakao';
 import type { StationWithPrice, NationalTop10Item, ProductCode, StationPoint, RoutePlan } from '@/types/station';
 import { BRAND_COLOR } from '@/types/station';
@@ -297,6 +298,7 @@ export function KakaoMap({
   onUserPan,
   onMarkerClick,
 }: Props) {
+  const t = useTranslations('map');
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<kakao.maps.Map | null>(null);
   const overlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
@@ -990,8 +992,8 @@ export function KakaoMap({
       ov.setMap(map);
       routeOverlaysRef.current.push(ov);
     };
-    endpoint(fromPos, '출발', from.name, '#16A34A');
-    endpoint(toPos, '도착', to.name, '#DC2626');
+    endpoint(fromPos, t('depart'), from.name, '#16A34A');
+    endpoint(toPos, t('arrive'), to.name, '#DC2626');
 
     // (c) 경로 최저가 주유소 마커 — 기존 마커 톤(가격 라벨 + 동심원)을 활용.
     //     가격이 쌀수록 위(낮은 순위 숫자). 클릭 시 onRouteStationClick(없으면 onMarkerClick).
@@ -1042,7 +1044,7 @@ export function KakaoMap({
     map.setBounds(bounds);
     // setBounds는 idle을 유발 → onBoundsChange로 bbox 재조회가 이어진다(정상).
     // routePlan은 마운트/변경 시 1회만 fit하면 되므로 의존성에서 stations 등 다른 데이터는 제외.
-  }, [ready, routePlan]);
+  }, [ready, routePlan, t]);
 
   // 배너 강조 대상(highlightStationId) 변경 시, 해당 경로 마커에만 focus 강조 클래스를 토글한다.
   // 마커를 재생성하지 않으므로(=bounds 재fit 없음) 배너가 가리키는 주유소만 부드럽게 강조/해제된다.
@@ -1251,11 +1253,10 @@ export function KakaoMap({
     return (
       <div className="flex h-full items-center justify-center bg-gray-50 p-6 text-center">
         <div>
-          <p className="font-semibold text-red-600">지도를 불러오지 못했습니다.</p>
+          <p className="font-semibold text-red-600">{t('kakaoMap.errorTitle')}</p>
           <p className="mt-2 text-sm text-gray-600">{error}</p>
           <p className="mt-4 text-xs text-gray-500">
-            <code>.env.local</code>에 <code>NEXT_PUBLIC_KAKAO_MAP_KEY</code>를 설정하고
-            카카오 디벨로퍼스에서 도메인을 등록했는지 확인해주세요.
+            {t.rich('kakaoMap.errorHint', { code: (chunks) => <code>{chunks}</code> })}
           </p>
         </div>
       </div>

@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import { BETA_FREE } from '@/lib/flags';
 import { SettingsIcon } from '@/components/icons';
 
 export function Header() {
+  const t = useTranslations('map.header');
   const { data, status } = useSession();
   const signedIn = status === 'authenticated';
   // [베타 전면무료] 베타엔 업그레이드 암시(프리미엄 배지)를 감추고 일반 프로필로 통일한다.
@@ -36,39 +38,39 @@ export function Header() {
         {isAdmin && (
           <Link
             href="/admin"
-            aria-label="관리자 콘솔"
-            title="관리자 콘솔"
+            aria-label={t('adminConsoleAria')}
+            title={t('adminConsoleAria')}
             className="tap-press mr-0.5 flex h-7 shrink-0 items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 text-xs font-bold text-primary hover:bg-primary/20"
           >
             <SettingsIcon className="h-4 w-4" />
-            <span className="hidden sm:inline">관리자</span>
+            <span className="hidden sm:inline">{t('adminLabel')}</span>
           </Link>
         )}
         <Link
           href="/search"
-          aria-label="검색"
+          aria-label={t('searchAria')}
           className="tap-press flex h-12 w-12 items-center justify-center rounded-full hover:bg-gray-100"
         >
           <Image src="/icons/icon_search.png" alt="" width={30} height={30} />
         </Link>
         <Link
           href="/route"
-          aria-label="경로별 최저가"
+          aria-label={t('routeAria')}
           className="tap-press flex h-12 w-12 items-center justify-center rounded-full hover:bg-gray-100"
-          title="경로별 최저가"
+          title={t('routeAria')}
         >
           <Image src="/icons/icon_run.png" alt="" width={30} height={30} />
         </Link>
         <Link
           href={signedIn ? '/my' : '/auth/sign-in'}
           className="tap-press flex h-12 w-12 items-center justify-center rounded-full hover:bg-gray-100"
-          aria-label={signedIn ? (isPremium ? '마이페이지 (광고 차단 이용 중)' : '마이페이지') : '로그인'}
-          title={signedIn && isPremium ? '광고 차단 이용 중' : (data?.user?.email ?? '로그인')}
+          aria-label={signedIn ? (isPremium ? t('myPageAdFreeAria') : t('myPageAria')) : t('login')}
+          title={signedIn && isPremium ? t('adFreeUsing') : (data?.user?.email ?? t('login'))}
         >
           {signedIn ? (
             isPremium ? (
               // 광고 차단 이용 중 아이콘 (결제 사용자)
-              <Image src="/icons/icon_premium.png" alt="광고 차단 이용 중" width={32} height={32} />
+              <Image src="/icons/icon_premium.png" alt={t('adFreeUsing')} width={32} height={32} />
             ) : (
               // 프로필 아이콘 (일반 로그인 상태)
               <Image src="/icons/icon_profile.png" alt="" width={32} height={32} />
