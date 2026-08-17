@@ -15,6 +15,22 @@ function walk(dir, out = []) {
   return out;
 }
 
+/** 따옴표 밖의 `//` 이후를 잘라낸다. 문자열 리터럴 안의 // (예: 'https://…') 는 보존한다.
+ *  코드 뒤에 붙은 한국어 주석이 하드코딩 문자열로 잡히던 거짓양성을 없앤다(집 스타일 주석은 유지 대상). */
+function stripTrailingComment(line) {
+  let q = null;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (q) {
+      if (c === q && line[i - 1] !== '\\') q = null;
+      continue;
+    }
+    if (c === "'" || c === '"' || c === '`') { q = c; continue; }
+    if (c === '/' && line[i + 1] === '/') return line.slice(0, i);
+  }
+  return line;
+}
+
 let total = 0;
 for (const root of ROOTS) {
   for (const file of walk(root)) {
@@ -26,9 +42,9 @@ for (const root of ROOTS) {
         if (t.includes('*/')) inBlockComment = false;
         return;
       }
-      if (t.startsWith('/*')) { if (!t.includes('*/')) inBlockComment = true; return; }
-      if (t.startsWith('//') || t.startsWith('*') || t.startsWith('{/*')) return;
-      if (!HANGUL.test(line)) return;
+      if (t.startsWith('/*') || t.startsWith('{/*')) { if (!t.includes('*/')) inBlockComment = true; return; }
+      if (t.startsWith('//') || t.startsWith('*')) return;
+      if (!HANGUL.test(stripTrailingComment(line))) return;
       total++;
       if (total <= 40) console.log(`${file}:${i + 1}  ${t.slice(0, 100)}`);
     });
