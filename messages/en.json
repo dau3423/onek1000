@@ -1,3 +1,37 @@
 {
-  "common": {}
+  "common": {},
+  "labels": {
+    "product": {
+      "B027": "Gasoline",
+      "B034": "Premium Gasoline",
+      "D047": "Diesel",
+      "K015": "Kerosene",
+      "C004": "LPG"
+    },
+    "brand": {
+      "SKE": "SK Energy",
+      "GSC": "GS Caltex",
+      "HDO": "HD Hyundai Oilbank",
+      "SOL": "S-OIL",
+      "RTE": "Alddle (Discount)",
+      "RTO": "Alddle (Independent)",
+      "NHO": "NH-OIL",
+      "E1G": "E1",
+      "SOG": "SK Gas",
+      "ETC": "Independent / Other",
+      "EXP": "Highway Rest Area"
+    },
+    "sido": {
+      "01": "Seoul", "02": "Gyeonggi", "03": "Gangwon", "04": "Chungbuk", "05": "Chungnam",
+      "06": "Jeonbuk", "07": "Jeonnam", "08": "Gyeongbuk", "09": "Gyeongnam", "10": "Busan",
+      "11": "Jeju", "14": "Daegu", "15": "Incheon", "16": "Gwangju", "17": "Daejeon",
+      "18": "Ulsan", "19": "Sejong"
+    },
+    "washType": {
+      "self": "Self-service wash",
+      "hand": "Hand wash / detailing",
+      "auto": "Automatic wash",
+      "unknown": "Type unknown"
+    }
+  }
 }

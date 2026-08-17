@@ -50,4 +50,35 @@ for (const locale of LOCALES.filter((l) => l !== BASE)) {
   if (bad > 60) console.log(`   … 외 ${bad - 60}건`);
 }
 
+// ── 라벨 정합성: types/station.ts 상수와 ko.json labels 가 어긋나면 SSG 페이지와 (intl) 화면의
+//    한국어 문구가 갈린다. 상수를 지우지 않기로 했으므로(계획 "명세에서 바뀐 점") 여기서 묶어 둔다.
+{
+  const src = readFileSync(new URL('../types/station.ts', import.meta.url), 'utf8');
+  const block = (name) => {
+    const m = src.match(new RegExp(`${name}[^=]*=\\s*\\{([\\s\\S]*?)\\n\\};`));
+    if (!m) return null;
+    const out = {};
+    // {2,4}: 시도 코드는 '01'~'19' 로 2자리다. {3,4} 로 두면 SIDO_NAME 을 한 건도 못 잡는다(실측 확인).
+    for (const mm of m[1].matchAll(/'?([A-Z0-9]{2,4})'?\s*:\s*'([^']*)'/g)) out[mm[1]] = mm[2];
+    return out;
+  };
+  const pairs = [
+    ['PRODUCT_LABEL', 'labels.product'],
+    ['BRAND_LABEL', 'labels.brand'],
+    ['SIDO_NAME', 'labels.sido'],
+  ];
+  for (const [constName, ns] of pairs) {
+    const consts = block(constName);
+    if (!consts) { console.log(`⚠️  ${constName} 파싱 실패 — 검사 건너뜀`); continue; }
+    for (const [code, val] of Object.entries(consts)) {
+      const key = `${ns}.${code}`;
+      if (base[key] !== val) {
+        failed = true;
+        console.log(`❌ 라벨 불일치 ${key}: 상수="${val}" ko.json="${base[key] ?? '(없음)'}"`);
+      }
+    }
+  }
+  if (!failed) console.log('✅ 상수 ↔ ko.json 라벨 일치');
+}
+
 process.exit(failed ? 1 : 0);
