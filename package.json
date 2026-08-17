@@ -11,6 +11,8 @@
     "icons": "node scripts/generate-icons.mjs",
     "geoip:download": "node scripts/download-geolite2.mjs",
     "prebuild": "node scripts/download-geolite2.mjs --optional",
+    "i18n:check": "node scripts/i18n-check.mjs",
+    "i18n:scan": "node scripts/i18n-scan.mjs",
     "vapid:gen": "node -e \"const w=require('web-push');const k=w.generateVAPIDKeys();console.log('NEXT_PUBLIC_VAPID_PUBLIC_KEY='+k.publicKey);console.log('VAPID_PRIVATE_KEY='+k.privateKey);\""
   },
   "dependencies": {
