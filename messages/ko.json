@@ -49,6 +49,11 @@
     "slowCharge": "완속",
     "chargerCount": "/ {count}대",
     "fuelSavedToast": "주유 기록을 저장했어요",
+    "priceTier": {
+      "cheap": { "label": "좋음", "mood": "좋음", "hint": "싼 편" },
+      "normal": { "label": "보통", "mood": "보통", "hint": "보통" },
+      "expensive": { "label": "매우 나쁨", "mood": "매우 나쁨", "hint": "비싼 편" }
+    },
     "route": {
       "lowestCount": "· 최저가 {count}곳",
       "clearAria": "경로 표시 해제"

@@ -11,18 +11,16 @@ import type { PriceTier } from './geo';
 export interface TierFaceMeta {
   /** 마커 안쪽 채움 색(가격 tier 색). 기존 KakaoMap 상수와 동일. */
   color: string;
-  /** 범례/안내용 라벨. */
-  label: string;
-  /** 요청 사양의 표현 라벨(좋음/보통/매우 나쁨). */
-  mood: string;
-  /** 화면 내 상대 위치 보조 설명. */
-  hint: string;
 }
 
+// 범례용 라벨/표정(좋음·보통·매우 나쁨)·힌트(싼 편·보통·비싼 편) 텍스트는 여기 두지 않는다.
+// 이 모듈은 React 컴포넌트가 아니라 useTranslations를 쓸 수 없으므로, 그 세 필드는
+// messages/{locale}.json의 map.priceTier.<tier>.{label,mood,hint}로 옮기고 소비처(MarkerLegend)가
+// tier 코드로 직접 번역한다. tier 코드(cheap/normal/expensive) 자체는 내부 식별자라 변경하지 않는다.
 export const TIER_FACE: Record<PriceTier, TierFaceMeta> = {
-  cheap: { color: '#16A34A', label: '좋음', mood: '좋음', hint: '싼 편' },
-  normal: { color: '#EAB308', label: '보통', mood: '보통', hint: '보통' },
-  expensive: { color: '#DC2626', label: '매우 나쁨', mood: '매우 나쁨', hint: '비싼 편' },
+  cheap: { color: '#16A34A' },
+  normal: { color: '#EAB308' },
+  expensive: { color: '#DC2626' },
 };
 
 /**

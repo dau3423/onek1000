@@ -38,6 +38,11 @@
     "slowCharge": "慢充",
     "chargerCount": "/ {count}台",
     "fuelSavedToast": "已保存加油记录",
+    "priceTier": {
+      "cheap": { "label": "好", "mood": "好", "hint": "偏低" },
+      "normal": { "label": "一般", "mood": "一般", "hint": "一般" },
+      "expensive": { "label": "很差", "mood": "很差", "hint": "偏高" }
+    },
     "route": {
       "lowestCount": "· 最低价 {count}处",
       "clearAria": "取消显示路线"

@@ -38,6 +38,11 @@
     "slowCharge": "普通",
     "chargerCount": "/ {count}台",
     "fuelSavedToast": "給油記録を保存しました",
+    "priceTier": {
+      "cheap": { "label": "良い", "mood": "良い", "hint": "安め" },
+      "normal": { "label": "普通", "mood": "普通", "hint": "普通" },
+      "expensive": { "label": "非常に悪い", "mood": "非常に悪い", "hint": "高め" }
+    },
     "route": {
       "lowestCount": "・最安値 {count}件",
       "clearAria": "ルート表示を解除"

@@ -232,6 +232,7 @@ function CarwashPinChip({ type }: { type: WashType }) {
  */
 export function MarkerLegend({ onClose, cardClassName }: Props) {
   const t = useTranslations('map.markerLegend');
+  const tTier = useTranslations('map.priceTier');
   const brandLabel = useBrandLabel();
   const layer = useMapStore((s) => s.layer);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -370,15 +371,15 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
             <div className="mt-1 space-y-1">
               <div className="flex items-center gap-1.5">
                 <FaceChip tier="cheap" />
-                <span>{TIER_FACE.cheap.mood} ({TIER_FACE.cheap.hint})</span>
+                <span>{tTier('cheap.mood')} ({tTier('cheap.hint')})</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <FaceChip tier="normal" />
-                <span>{TIER_FACE.normal.mood} ({TIER_FACE.normal.hint})</span>
+                <span>{tTier('normal.mood')} ({tTier('normal.hint')})</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <FaceChip tier="expensive" />
-                <span>{TIER_FACE.expensive.mood} ({TIER_FACE.expensive.hint})</span>
+                <span>{tTier('expensive.mood')} ({tTier('expensive.hint')})</span>
               </div>
               {GRAY_DOTS_ENABLED && (
                 <div className="flex items-center gap-1.5">

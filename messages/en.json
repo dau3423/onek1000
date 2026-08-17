@@ -49,6 +49,11 @@
     "slowCharge": "Slow",
     "chargerCount": "/ {count}",
     "fuelSavedToast": "Fuel log saved",
+    "priceTier": {
+      "cheap": { "label": "Good", "mood": "Good", "hint": "Cheaper" },
+      "normal": { "label": "Normal", "mood": "Normal", "hint": "Normal" },
+      "expensive": { "label": "Very Bad", "mood": "Very Bad", "hint": "Pricier" }
+    },
     "route": {
       "lowestCount": "· {count} lowest-price stations",
       "clearAria": "Clear route"
