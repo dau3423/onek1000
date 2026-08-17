@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
@@ -10,6 +11,7 @@ interface Point { date: string; price: number }
 interface Props { stationId: string; product: ProductCode }
 
 export function PriceHistoryChart({ stationId, product }: Props) {
+  const t = useTranslations('station.chart');
   const [data, setData] = useState<Point[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,9 +26,9 @@ export function PriceHistoryChart({ stationId, product }: Props) {
       .catch((e: Error) => setError(e.message));
   }, [stationId, product]);
 
-  if (error) return <p className="text-xs text-red-500">이력 로드 실패: {error}</p>;
+  if (error) return <p className="text-xs text-red-500">{t('loadFailed', { error })}</p>;
   if (!data) return <div className="h-40 animate-pulse rounded-lg bg-gray-100" />;
-  if (!data.length) return <p className="text-xs text-gray-400">아직 가격 이력이 충분하지 않아요.</p>;
+  if (!data.length) return <p className="text-xs text-gray-400">{t('notEnough')}</p>;
 
   const min = Math.min(...data.map((d) => d.price));
   const max = Math.max(...data.map((d) => d.price));
@@ -52,7 +54,7 @@ export function PriceHistoryChart({ stationId, product }: Props) {
           />
           <Tooltip
             contentStyle={{ fontSize: 12, borderRadius: 8 }}
-            formatter={(v: number) => [`₩${v.toLocaleString()}`, '가격']}
+            formatter={(v: number) => [`₩${v.toLocaleString()}`, t('priceTooltip')]}
             labelFormatter={(d: string) => d}
           />
           <Line

@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { queryStationDetailWithPriceFallback } from '@/lib/db/queries';
 import { BackButton } from '@/components/common/BackButton';
-import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL, type ProductCode, type StationDetail } from '@/types/station';
+import { BRAND_COLOR, type ProductCode, type StationDetail } from '@/types/station';
 import { InterstitialAd } from '@/components/ads/InterstitialAd';
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { ReviewSection } from '@/components/reviews/ReviewSection';
@@ -37,6 +38,9 @@ export default async function StationDetailPage({ params }: Props) {
   // DB에 없으면 찾을 수 없음
   if (!detail) notFound();
 
+  const t = await getTranslations('station');
+  const tLabels = await getTranslations('labels');
+
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
       {/* 상세 열람 계측(렌더 결과 없음) — 열릴 때마다 station_detail_view 1건 */}
@@ -57,11 +61,11 @@ export default async function StationDetailPage({ params }: Props) {
             style={{ background: BRAND_COLOR[detail.brand] }}
           />
           <span className="text-sm font-semibold text-gray-700">
-            {BRAND_LABEL[detail.brand]}
+            {tLabels(`brand.${detail.brand}`)}
           </span>
           {detail.isHighway && (
             <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-700">
-              고속도로
+              {t('page.highway')}
               {detail.routeName ? ` · ${detail.routeName}` : ''}
               {detail.direction ? `(${detail.direction})` : ''}
             </span>
@@ -81,13 +85,13 @@ export default async function StationDetailPage({ params }: Props) {
 
       {/* 유종별 가격 */}
       <section className="border-t border-gray-100 px-5 py-4">
-        <h2 className="mb-3 text-sm font-bold text-gray-800">유종별 가격</h2>
+        <h2 className="mb-3 text-sm font-bold text-gray-800">{t('page.productPrices')}</h2>
         <ul className="divide-y divide-gray-100">
           {PRODUCT_ORDER.map((p) => {
             const v = detail.prices[p];
             return (
               <li key={p} className="flex items-center justify-between py-2.5">
-                <span className="text-sm text-gray-700">{PRODUCT_LABEL[p]}</span>
+                <span className="text-sm text-gray-700">{tLabels(`product.${p}`)}</span>
                 {v ? (
                   <span className="text-base font-extrabold text-gray-900">
                     ₩{v.price.toLocaleString()}
@@ -96,7 +100,7 @@ export default async function StationDetailPage({ params }: Props) {
                     </span>
                   </span>
                 ) : (
-                  <span className="text-xs text-gray-400">정보 없음</span>
+                  <span className="text-xs text-gray-400">{t('page.noPriceInfo')}</span>
                 )}
               </li>
             );
@@ -123,12 +127,12 @@ export default async function StationDetailPage({ params }: Props) {
             amenitiesUpdatedAt이 null이면 아직 한 번도 보강되지 않은 주유소이므로
             "없음" 오표시 대신 안내 문구로 대체한다. */}
         <section className="border-t border-gray-100 px-5 py-4">
-          <h2 className="mb-3 text-sm font-bold text-gray-800">부가서비스</h2>
+          <h2 className="mb-3 text-sm font-bold text-gray-800">{t('page.amenities')}</h2>
           {detail.amenitiesUpdatedAt ? (
-            <AmenityList detail={detail} />
+            <AmenityList detail={detail} t={t} />
           ) : (
             <p className="rounded-lg bg-gray-50 px-3 py-2.5 text-xs leading-snug text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-              부가서비스 정보 확인 중입니다
+              {t('page.amenitiesPending')}
             </p>
           )}
         </section>
@@ -143,35 +147,41 @@ export default async function StationDetailPage({ params }: Props) {
               className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white py-3.5 text-center font-semibold text-gray-700 hover:bg-gray-50"
             >
               <PhoneIcon className="h-4 w-4" />
-              전화걸기
+              {t('page.call')}
             </a>
           )}
         </section>
       </FuelSelectionProvider>
 
       <footer className="border-t border-gray-100 bg-white px-5 py-3 text-center text-[10px] text-gray-400">
-        데이터 제공: 한국석유공사 오피넷
+        {t('page.dataSource')}
       </footer>
     </main>
   );
 }
 
 /** 부가서비스 배지 목록 — 보유 항목만 노출, 하나도 없으면 안내 문구. */
-function AmenityList({ detail }: { detail: StationDetail }) {
+function AmenityList({
+  detail,
+  t,
+}: {
+  detail: StationDetail;
+  t: Awaited<ReturnType<typeof getTranslations<'station'>>>;
+}) {
   const items: Array<{ key: string; label: string; on: boolean }> = [
-    { key: 'self', label: '셀프', on: detail.isSelf },
-    { key: 'carwash', label: '세차장', on: !!detail.hasCarwash },
-    { key: 'cvs', label: '편의점', on: !!detail.hasCvs },
-    { key: 'maint', label: '경정비', on: !!detail.hasMaintenance },
-    { key: 'lpg', label: 'LPG 충전', on: !!detail.hasLpg },
-    { key: 'kpetro', label: '품질인증', on: !!detail.isKpetro },
+    { key: 'self', label: t('self'), on: detail.isSelf },
+    { key: 'carwash', label: t('page.amenity.carwash'), on: !!detail.hasCarwash },
+    { key: 'cvs', label: t('page.amenity.cvs'), on: !!detail.hasCvs },
+    { key: 'maint', label: t('page.amenity.maint'), on: !!detail.hasMaintenance },
+    { key: 'lpg', label: t('page.amenity.lpg'), on: !!detail.hasLpg },
+    { key: 'kpetro', label: t('page.amenity.kpetro'), on: !!detail.isKpetro },
   ];
   const owned = items.filter((i) => i.on);
 
   if (owned.length === 0) {
     return (
       <p className="rounded-lg bg-gray-50 px-3 py-2.5 text-xs leading-snug text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-        제공되는 부가서비스가 없습니다.
+        {t('page.noAmenities')}
       </p>
     );
   }

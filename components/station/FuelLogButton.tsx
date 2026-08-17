@@ -7,9 +7,11 @@
 // 비로그인 시 signIn 유도. 단가/유종/시각은 서버가 보강한다(클라는 stationId + 선택값만 전송).
 import { useEffect, useRef, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import type { FuelLog } from '@/types/fuel-log';
 import { amountToQuantity, hasUsableUnitPrice, quantityToAmount, segmentKmPerL } from '@/lib/fuel/calc';
 import { track } from '@/lib/analytics';
+import { useProductLabel } from '@/lib/i18n/labels';
 import { CheckIcon, FuelIcon } from '@/components/icons';
 
 interface Props {
@@ -27,7 +29,10 @@ type State = 'idle' | 'busy' | 'done';
 const LITER_PRESETS = [30, 50] as const; // L
 const AMOUNT_PRESETS = [30000, 50000, 70000] as const; // 원
 
-export function FuelLogButton({ stationId, className, unitPrice, productLabel = '휘발유' }: Props) {
+export function FuelLogButton({ stationId, className, unitPrice, productLabel }: Props) {
+  const t = useTranslations('station.fuelLog');
+  const productLabelOf = useProductLabel();
+  const resolvedProductLabel = productLabel ?? productLabelOf('B027');
   const { status } = useSession();
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<State>('idle');
@@ -85,7 +90,7 @@ export function FuelLogButton({ stationId, className, unitPrice, productLabel = 
     if (odometer.trim() !== '') {
       const o = Number(odometer);
       if (!Number.isFinite(o) || o < 0) {
-        setErr('현재 키로수는 0 이상 숫자로 입력해 주세요.');
+        setErr(t('invalidOdometer'));
         return;
       }
       odo = Math.round(o);
@@ -99,7 +104,7 @@ export function FuelLogButton({ stationId, className, unitPrice, productLabel = 
         body: JSON.stringify({ stationId, ...payload, ...(odo != null ? { odometer: odo } : {}) }),
       });
       const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error ?? '저장에 실패했어요.');
+      if (!res.ok) throw new Error(d.error ?? t('saveFailed'));
       // 주유 기록 저장 성공 계측 — 좌표/금액 등은 담지 않는다(props 없음). fire-and-forget.
       track('fuel_log_saved');
       // 이번 구간 연비: 직전 키로수(프리필 소스) → 이번 키로수 / 이번 주유량. 무효면 null.
@@ -126,11 +131,11 @@ export function FuelLogButton({ stationId, className, unitPrice, productLabel = 
     const l = liters.trim() === '' ? undefined : Number(liters);
     const a = amount.trim() === '' ? undefined : Number(amount);
     if (l !== undefined && (!Number.isFinite(l) || l < 0)) {
-      setErr('주유량은 0 이상 숫자로 입력해 주세요.');
+      setErr(t('invalidLiters'));
       return;
     }
     if (a !== undefined && (!Number.isFinite(a) || a < 0)) {
-      setErr('금액은 0 이상 숫자로 입력해 주세요.');
+      setErr(t('invalidAmount'));
       return;
     }
     void save({ liters: l, amountWon: a });
@@ -179,25 +184,25 @@ export function FuelLogButton({ stationId, className, unitPrice, productLabel = 
         }
       >
         {state === 'busy' ? (
-          '저장 중…'
+          t('saving')
         ) : state === 'done' ? (
           <span className="inline-flex items-center justify-center gap-1.5">
             <CheckIcon className="h-4 w-4" />
             {lastKmPerL != null
-              ? `주유 기록 저장됨 · 이번 연비 ${lastKmPerL} km/L`
-              : '주유 기록 저장됨'}
+              ? t('savedLogWithEconomy', { economy: lastKmPerL })
+              : t('savedLog')}
           </span>
         ) : (
           <span className="inline-flex items-center justify-center gap-1.5">
             <FuelIcon className="h-4 w-4" />
-            여기서 주유
+            {t('fuelHere')}
           </span>
         )}
       </button>
 
       {open && state !== 'done' && (
         <div className="mt-2 rounded-xl border border-gray-200 bg-gray-50 p-3 text-gray-800">
-          <p className="text-xs font-semibold text-gray-700">주유량(L)</p>
+          <p className="text-xs font-semibold text-gray-700">{t('litersLabel')}</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {LITER_PRESETS.map((l) => (
               <button
@@ -215,13 +220,13 @@ export function FuelLogButton({ stationId, className, unitPrice, productLabel = 
               aria-pressed={liters.trim() === ''}
               disabled={state === 'busy'}
               onClick={() => setLiters('')}
-              title="가득(주유량 미지정 — 나중에 입력)"
+              title={t('fillUpHintButton')}
             >
-              가득
+              {t('fillUp')}
             </button>
           </div>
 
-          <p className="mt-3 text-xs font-semibold text-gray-700">금액(원)</p>
+          <p className="mt-3 text-xs font-semibold text-gray-700">{t('amountLabel')}</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {AMOUNT_PRESETS.map((a) => (
               <button
@@ -236,35 +241,35 @@ export function FuelLogButton({ stationId, className, unitPrice, productLabel = 
             ))}
           </div>
 
-          <p className="mt-3 text-xs font-semibold text-gray-700">직접 입력</p>
+          <p className="mt-3 text-xs font-semibold text-gray-700">{t('manualInput')}</p>
           <div className="mt-1.5 flex items-center gap-2">
             <label className="flex-1">
-              <span className="sr-only">주유량(L)</span>
+              <span className="sr-only">{t('litersLabel')}</span>
               <input
                 type="number"
                 inputMode="decimal"
                 min={0}
                 value={liters}
                 onChange={(e) => setLiters(e.target.value)}
-                placeholder="리터(L)"
+                placeholder={t('litersPlaceholder')}
                 className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none"
               />
             </label>
             <label className="flex-1">
-              <span className="sr-only">금액(원)</span>
+              <span className="sr-only">{t('amountLabel')}</span>
               <input
                 type="number"
                 inputMode="numeric"
                 min={0}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder="금액(원)"
+                placeholder={t('amountLabel')}
                 className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none"
               />
             </label>
           </div>
 
-          <p className="mt-3 text-xs font-semibold text-gray-700">현재 키로수(km)</p>
+          <p className="mt-3 text-xs font-semibold text-gray-700">{t('odometerLabel')}</p>
           <div className="mt-1.5">
             <input
               type="number"
@@ -272,12 +277,12 @@ export function FuelLogButton({ stationId, className, unitPrice, productLabel = 
               min={0}
               value={odometer}
               onChange={(e) => setOdometer(e.target.value)}
-              placeholder="예: 50120"
+              placeholder={t('odometerPlaceholder')}
               className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none"
             />
             {recentOdometer != null && (
               <p className="mt-1 text-[11px] text-gray-500">
-                지난번 {recentOdometer.toLocaleString()}km · 입력하면 연비가 계산돼요.
+                {t('lastOdometerHint', { odometer: recentOdometer.toLocaleString() })}
               </p>
             )}
           </div>
@@ -287,28 +292,28 @@ export function FuelLogButton({ stationId, className, unitPrice, productLabel = 
               onClick={saveManual}
               disabled={state === 'busy'}
               className="w-full rounded-lg bg-primary py-2.5 text-sm font-bold text-white disabled:opacity-60"
-              title="입력값(빈값은 방문 기록)으로 저장"
+              title={t('saveTitle')}
             >
-              저장
+              {t('save')}
             </button>
           </div>
           {canEstimate && estAmount != null && (
             <p className="mt-1.5 text-[11px] text-gray-500">
-              약 ₩{estAmount.toLocaleString()} ({productLabel} 단가 ₩{unitPrice!.toLocaleString()}/L 기준)
+              {t('estAmountWithProduct', { amount: estAmount.toLocaleString(), product: resolvedProductLabel, unitPrice: unitPrice!.toLocaleString() })}
             </p>
           )}
           {canEstimate && estLiters != null && (
             <p className="mt-1.5 text-[11px] text-gray-500">
-              약 {estLiters}L ({productLabel} 단가 ₩{unitPrice!.toLocaleString()}/L 기준)
+              {t('estLitersWithProduct', { liters: estLiters, product: resolvedProductLabel, unitPrice: unitPrice!.toLocaleString() })}
             </p>
           )}
-          <p className="mt-1.5 text-[11px] text-gray-500">단가는 현재가로 자동 입력돼요. 값은 나중에 편집할 수 있어요.</p>
+          <p className="mt-1.5 text-[11px] text-gray-500">{t('priceAutoFillHint')}</p>
         </div>
       )}
 
       {state === 'done' && (
         <p className="mt-1.5 text-center text-xs text-gray-500 dark:text-gray-400">
-          마이페이지 &gt; 주유 기록에서 금액·주유량을 편집할 수 있어요.
+          {t('editHintFuelLog')}
         </p>
       )}
       {err && <p className="mt-1.5 text-center text-xs text-red-500">{err}</p>}

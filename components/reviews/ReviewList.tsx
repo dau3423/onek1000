@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 import { StarRating } from './StarRating';
 import type { Review } from '@/types/review';
 
@@ -11,6 +12,8 @@ interface Props {
 }
 
 export function ReviewList({ reviews, onDeleted }: Props) {
+  const t = useTranslations('station.review');
+  const locale = useLocale();
   const router = useRouter();
   const [openImage, setOpenImage] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -18,13 +21,13 @@ export function ReviewList({ reviews, onDeleted }: Props) {
   if (reviews.length === 0) {
     return (
       <p className="px-1 py-6 text-center text-sm text-gray-400">
-        아직 리뷰가 없어요. 첫 리뷰를 남겨보세요.
+        {t('none')}
       </p>
     );
   }
 
   const onDelete = async (id: string) => {
-    if (!confirm('이 리뷰를 삭제할까요?')) return;
+    if (!confirm(t('confirmDelete'))) return;
     setBusyId(id);
     try {
       const res = await fetch(`/api/reviews/${id}`, { method: 'DELETE' });
@@ -32,7 +35,7 @@ export function ReviewList({ reviews, onDeleted }: Props) {
       onDeleted?.(id);
       router.refresh();
     } catch (e) {
-      alert('삭제 실패: ' + (e instanceof Error ? e.message : String(e)));
+      alert(t('deleteFailed', { message: e instanceof Error ? e.message : String(e) }));
     } finally {
       setBusyId(null);
     }
@@ -42,7 +45,7 @@ export function ReviewList({ reviews, onDeleted }: Props) {
     <>
       <ul className="divide-y divide-gray-100">
         {reviews.map((r) => {
-          const displayName = r.user.nickname ?? r.user.name ?? '익명';
+          const displayName = r.user.nickname ?? r.user.name ?? t('anonymous');
           return (
           <li key={r.id} className="py-4">
             <div className="flex items-start gap-3">
@@ -65,7 +68,7 @@ export function ReviewList({ reviews, onDeleted }: Props) {
                     {displayName}
                   </span>
                   <span className="text-[11px] text-gray-400">
-                    {formatRelative(r.createdAt)}
+                    {formatRelative(r.createdAt, locale, t('justNow'))}
                   </span>
                 </div>
                 <div className="mt-0.5">
@@ -96,7 +99,7 @@ export function ReviewList({ reviews, onDeleted }: Props) {
                     disabled={busyId === r.id}
                     className="mt-2 text-[11px] text-red-500 hover:underline disabled:opacity-50"
                   >
-                    {busyId === r.id ? '삭제 중…' : '내 리뷰 삭제'}
+                    {busyId === r.id ? t('deleting') : t('deleteMine')}
                   </button>
                 )}
               </div>
@@ -113,23 +116,27 @@ export function ReviewList({ reviews, onDeleted }: Props) {
           role="dialog"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={openImage} alt="리뷰 사진" className="max-h-[90vh] max-w-full rounded-lg" />
+          <img src={openImage} alt={t('photoAlt')} className="max-h-[90vh] max-w-full rounded-lg" />
         </div>
       )}
     </>
   );
 }
 
-function formatRelative(iso: string): string {
+// 상대 시각 표기: 1분 미만은 "방금"(고정 문구), 이후는 Intl.RelativeTimeFormat으로 로케일에 맞게
+// "N분/시간/일 전"을 생성한다(ko 결과는 기존 수기 포맷과 바이트 동일 — numeric:'always' 확인됨).
+// 7일 이상이면 로케일별 월.일 숫자 포맷으로 대체(과거 'ko-KR' 고정값 대신 현재 로케일 사용).
+function formatRelative(iso: string, locale: string, justNow: string): string {
   const now = Date.now();
   const t = new Date(iso).getTime();
   const sec = Math.floor((now - t) / 1000);
-  if (sec < 60) return '방금';
+  if (sec < 60) return justNow;
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'always' });
   const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}분 전`;
+  if (min < 60) return rtf.format(-min, 'minute');
   const h = Math.floor(min / 60);
-  if (h < 24) return `${h}시간 전`;
+  if (h < 24) return rtf.format(-h, 'hour');
   const d = Math.floor(h / 24);
-  if (d < 7) return `${d}일 전`;
-  return new Date(iso).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' });
+  if (d < 7) return rtf.format(-d, 'day');
+  return new Intl.DateTimeFormat(locale, { month: 'numeric', day: 'numeric' }).format(new Date(iso));
 }

@@ -3,6 +3,7 @@
 // 주유소 상세 페이지에 들어가는 리뷰 섹션 — 통계/목록/작성을 한 번에 관리
 
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { StarRating } from './StarRating';
 import { ReviewList } from './ReviewList';
 import { ReviewForm } from './ReviewForm';
@@ -12,6 +13,8 @@ import { PencilIcon } from '@/components/icons';
 interface Props { stationId: string; stationLat?: number; stationLng?: number }
 
 export function ReviewSection({ stationId, stationLat, stationLng }: Props) {
+  const t = useTranslations('station.review');
+  const tCommon = useTranslations('common');
   const [data, setData] = useState<{ reviews: Review[]; stats: ReviewStats } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [writing, setWriting] = useState(false);
@@ -22,23 +25,23 @@ export function ReviewSection({ stationId, stationLat, stationLng }: Props) {
       if (!r.ok) throw new Error(await r.text());
       setData(await r.json());
     } catch (e) {
-      setError('리뷰 로드 실패: ' + (e instanceof Error ? e.message : String(e)));
+      setError(t('loadFailed', { message: e instanceof Error ? e.message : String(e) }));
     }
-  }, [stationId]);
+  }, [stationId, t]);
 
   useEffect(() => { load(); }, [load]);
 
   return (
     <section className="border-t border-gray-100 px-5 py-4">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-bold text-gray-800">리뷰</h2>
+        <h2 className="text-sm font-bold text-gray-800">{t('heading')}</h2>
         {!writing && data && (
           <button
             onClick={() => setWriting(true)}
             className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-[11px] font-bold text-white"
           >
             <PencilIcon className="h-4 w-4" />
-            리뷰 쓰기
+            {t('writeReview')}
           </button>
         )}
       </div>
@@ -68,7 +71,7 @@ export function ReviewSection({ stationId, stationLat, stationLng }: Props) {
               );
             })}
           </div>
-          <div className="text-xs text-gray-500">{data.stats.count}건</div>
+          <div className="text-xs text-gray-500">{t('count', { count: data.stats.count })}</div>
         </div>
       )}
 
@@ -87,7 +90,7 @@ export function ReviewSection({ stationId, stationLat, stationLng }: Props) {
 
       {/* 목록 */}
       {error && <p className="text-xs text-red-500">{error}</p>}
-      {!data && !error && <p className="py-6 text-center text-sm text-gray-400">로딩 중…</p>}
+      {!data && !error && <p className="py-6 text-center text-sm text-gray-400">{tCommon('loading')}</p>}
       {data && (
         <ReviewList
           reviews={data.reviews}

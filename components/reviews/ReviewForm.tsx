@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { StarRating } from './StarRating';
 import {
   REVIEW_CONTENT_MAX,
@@ -35,6 +36,8 @@ function fmtDist(m: number): string {
 }
 
 export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCancel }: Props) {
+  const t = useTranslations('station.review');
+  const tCommon = useTranslations('common');
   const { status } = useSession();
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -64,12 +67,12 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
   if (status !== 'authenticated') {
     return (
       <div className="rounded-xl border border-dashed border-gray-300 p-4 text-center">
-        <p className="text-sm text-gray-600">리뷰를 작성하려면 로그인이 필요해요.</p>
+        <p className="text-sm text-gray-600">{t('loginRequired')}</p>
         <button
           onClick={() => signIn(undefined, { callbackUrl: `/station/${encodeURIComponent(stationId)}` })}
           className="mt-3 rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-white"
         >
-          로그인
+          {t('login')}
         </button>
       </div>
     );
@@ -79,12 +82,12 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
     if (photos.length + files.length > REVIEW_PHOTO_MAX) {
-      setError(`사진은 최대 ${REVIEW_PHOTO_MAX}장까지 올릴 수 있어요.`);
+      setError(t('photoMaxError', { max: REVIEW_PHOTO_MAX }));
       return;
     }
     for (const f of files) {
       if (f.size > REVIEW_PHOTO_BYTE_MAX) {
-        setError(`${f.name} — 5MB 초과`);
+        setError(t('photoTooLarge', { name: f.name }));
         return;
       }
     }
@@ -99,7 +102,7 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
       setPhotos((prev) => [...prev, ...json.uploaded]);
       if (json.errors?.length) setError(json.errors.join(', '));
     } catch (e) {
-      setError('업로드 실패: ' + (e instanceof Error ? e.message : String(e)));
+      setError(t('uploadFailed', { message: e instanceof Error ? e.message : String(e) }));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -113,16 +116,16 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
   const submit = async () => {
     if (busy) return;
     if (content.trim().length === 0 && photos.length === 0) {
-      setError('내용 또는 사진 중 하나 이상은 입력해주세요.');
+      setError(t('contentOrPhotoRequired'));
       return;
     }
     // 지오펜스: 위치가 없거나 주유소에서 멀면 작성 차단(서버도 동일 검증).
     if (!geo.coords) {
-      setError('리뷰는 주유소 근처에서만 작성할 수 있어요. 위치를 허용해 주세요.');
+      setError(t('locationRequired'));
       return;
     }
     if (tooFar && distanceM != null) {
-      setError(`주유소에서 약 ${fmtDist(distanceM)} 떨어져 있어요. 주유소 근처에서 작성해 주세요.`);
+      setError(t('tooFar', { distance: fmtDist(distanceM) }));
       return;
     }
     setBusy(true);
@@ -142,13 +145,13 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
       });
       if (!res.ok) {
         // 서버 검증 실패 메시지를 사용자 친화적으로 변환.
-        let msg = '작성에 실패했어요. 잠시 후 다시 시도해 주세요.';
+        let msg = t('submitFailed');
         try {
           const j = await res.json();
           if (j?.code === 'too_far') {
-            msg = `주유소에서 약 ${fmtDist(j.distanceM ?? 0)} 떨어져 있어요. 주유소 근처에서 작성해 주세요.`;
+            msg = t('tooFar', { distance: fmtDist(j.distanceM ?? 0) });
           } else if (j?.code === 'location_required') {
-            msg = '위치 확인이 필요해요. 위치를 허용한 뒤 다시 시도해 주세요.';
+            msg = t('locationCheckRequired');
           } else if (typeof j?.error === 'string') {
             msg = j.error;
           }
@@ -173,20 +176,20 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-sm font-bold text-gray-800">별점</span>
+        <span className="text-sm font-bold text-gray-800">{t('ratingLabel')}</span>
         <StarRating value={rating} onChange={setRating} size="md" />
       </div>
 
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value.slice(0, REVIEW_CONTENT_MAX))}
-        placeholder="다녀온 경험을 짧게 남겨주세요 (선택)"
+        placeholder={t('placeholder')}
         rows={4}
         className="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-primary focus:bg-white"
       />
       <div className="mt-1 flex items-center justify-between text-[11px] text-gray-400">
         <span>{content.length} / {REVIEW_CONTENT_MAX}</span>
-        <span>사진 {photos.length} / {REVIEW_PHOTO_MAX}</span>
+        <span>{t('photoCount', { count: photos.length, max: REVIEW_PHOTO_MAX })}</span>
       </div>
 
       {photos.length > 0 && (
@@ -199,7 +202,7 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
               <button
                 onClick={() => removePhoto(p.path)}
                 className="absolute right-0.5 top-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-                aria-label="삭제"
+                aria-label={t('deletePhotoAria')}
               >
                 <CloseIcon className="h-3.5 w-3.5" />
               </button>
@@ -214,39 +217,39 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
           <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
             <span className="flex items-start gap-1">
               <PinIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-              위치 권한이 필요해요. 주유소 근처에서 위치를 허용해 주세요.
+              {t('locationPermissionNeeded')}
             </span>
             <button
               onClick={geo.request}
               className="shrink-0 rounded-md border border-amber-300 px-2 py-1 font-semibold hover:bg-amber-100"
             >
-              다시 시도
+              {tCommon('retry')}
             </button>
           </div>
         ) : geo.status === 'unavailable' ? (
           <div className="flex items-start gap-1 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
             <PinIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-            이 기기에서 위치를 사용할 수 없어 리뷰를 작성할 수 없어요.
+            {t('locationUnavailable')}
           </div>
         ) : !geo.coords ? (
           <div className="flex items-start gap-1 rounded-lg bg-gray-50 px-3 py-2 text-[11px] text-gray-500">
             <PinIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-            현재 위치 확인 중…
+            {t('locating')}
           </div>
         ) : tooFar && distanceM != null ? (
           <div className="flex items-start gap-1 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
             <PinIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-            주유소에서 약 {fmtDist(distanceM)} 떨어져 있어요. 주유소 근처(약 {REVIEW_GEOFENCE_M}m 이내)에서 작성할 수 있어요.
+            {t('tooFarDetail', { distance: fmtDist(distanceM), radius: REVIEW_GEOFENCE_M })}
           </div>
         ) : distanceM != null ? (
           <div className="flex items-start gap-1 rounded-lg bg-green-50 px-3 py-2 text-[11px] text-green-700">
             <CheckIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-            주유소 근처예요 (약 {fmtDist(distanceM)}). 리뷰를 작성할 수 있어요.
+            {t('near', { distance: fmtDist(distanceM) })}
           </div>
         ) : (
           <div className="flex items-start gap-1 rounded-lg bg-green-50 px-3 py-2 text-[11px] text-green-700">
             <CheckIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-            위치 확인 완료. 리뷰를 작성할 수 있어요.
+            {t('locationConfirmed')}
           </div>
         )}
       </div>
@@ -258,7 +261,7 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
           className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
           <CameraIcon className="h-4 w-4" />
-          {uploading ? '업로드 중…' : '사진 추가'}
+          {uploading ? t('uploading') : t('addPhoto')}
         </button>
         <input
           ref={fileRef}
@@ -276,7 +279,7 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
             disabled={busy}
             className="rounded-lg px-3 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-50"
           >
-            취소
+            {tCommon('cancel')}
           </button>
         )}
         <button
@@ -284,7 +287,7 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
           disabled={busy || uploading || !locationReady}
           className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white shadow-sm disabled:opacity-60"
         >
-          {busy ? '등록 중…' : '리뷰 등록'}
+          {busy ? t('submitting') : t('submit')}
         </button>
       </div>
 

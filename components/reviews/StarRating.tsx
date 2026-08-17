@@ -5,6 +5,7 @@
 // 입력용:   <StarRating value={rating} onChange={setRating} />
 
 import clsx from 'clsx';
+import { useTranslations } from 'next-intl';
 import { StarFilledIcon, StarOutlineIcon } from '@/components/icons';
 
 interface Props {
@@ -38,6 +39,7 @@ function Star({ state, sizeCls }: { state: 'filled' | 'half' | 'empty'; sizeCls:
 }
 
 export function StarRating({ value, onChange, size = 'md', readOnly = false }: Props) {
+  const t = useTranslations('station.review');
   const sizeCls = STAR_SIZES[size];
   return (
     <div className="inline-flex items-center gap-0.5 leading-none">
@@ -51,7 +53,7 @@ export function StarRating({ value, onChange, size = 'md', readOnly = false }: P
             type="button"
             onClick={() => !readOnly && onChange?.(n as 1 | 2 | 3 | 4 | 5)}
             disabled={readOnly}
-            aria-label={`${n}점`}
+            aria-label={t('starLabel', { n })}
             className={clsx(
               'transition motion-reduce:transition-none',
               // 입력용 별은 p-1로 별 간 실탭 영역 확보(별 5개 가로 나열이라 44px 강제 시 폼 폭 초과 — 예외).

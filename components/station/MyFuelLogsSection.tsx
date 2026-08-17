@@ -2,9 +2,9 @@
 // 로그인 사용자의 "이 주유소" 기록만 최신순으로 표시한다. 진입 경로 무관(상세 페이지에 내장).
 // 비로그인이거나 기록이 없으면 아무것도 렌더하지 않는다(섹션 숨김).
 import { getServerSession } from 'next-auth';
+import { getTranslations } from 'next-intl/server';
 import { authOptions } from '@/lib/auth/options';
 import { queryMyFuelLogsAtStation } from '@/lib/db/queries';
-import { PRODUCT_LABEL } from '@/types/station';
 import type { FuelLog } from '@/types/fuel-log';
 import { BoltIcon, FuelIcon } from '@/components/icons';
 
@@ -31,12 +31,15 @@ export async function MyFuelLogsSection({ stationId }: { stationId: string }) {
   }
   if (logs.length === 0) return null; // 이 주유소 기록 없으면 섹션 숨김
 
+  const t = await getTranslations('station.fuelLog');
+  const tLabels = await getTranslations('labels');
+
   return (
     <section className="border-t border-gray-100 px-5 py-4">
       <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-gray-800">
-        내 주유 기록
+        {t('myFuelLogs')}
         <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
-          {logs.length}건
+          {t('myFuelLogsCount', { count: logs.length })}
         </span>
       </h2>
       <ul className="divide-y divide-gray-100 rounded-xl border border-gray-100">
@@ -47,12 +50,12 @@ export async function MyFuelLogsSection({ stationId }: { stationId: string }) {
               {l.kind === 'ev' ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
                   <BoltIcon className="h-3.5 w-3.5" />
-                  충전
+                  {t('chargeLabel')}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600">
                   <FuelIcon className="h-3.5 w-3.5" />
-                  {PRODUCT_LABEL[l.product]}
+                  {tLabels(`product.${l.product}`)}
                 </span>
               )}
             </div>
@@ -77,14 +80,14 @@ export async function MyFuelLogsSection({ stationId }: { stationId: string }) {
                 </>
               )}
               {l.unitPrice == null && l.amountWon == null && l.liters == null && l.kwh == null && (
-                <span>방문 기록</span>
+                <span>{t('visitOnly')}</span>
               )}
             </div>
             {l.memo && <div className="mt-1 text-xs text-gray-600">{l.memo}</div>}
           </li>
         ))}
       </ul>
-      <p className="mt-1.5 text-[11px] text-gray-400">금액·주유량은 마이페이지 &gt; 내 기록에서 편집할 수 있어요.</p>
+      <p className="mt-1.5 text-[11px] text-gray-400">{t('editHintMyLogs')}</p>
     </section>
   );
 }

@@ -2,7 +2,10 @@
   "common": {
     "close": "关闭",
     "navigate": "导航",
-    "viewDetail": "查看详情"
+    "viewDetail": "查看详情",
+    "loading": "加载中…",
+    "cancel": "取消",
+    "retry": "重试"
   },
   "labels": {
     "product": {
@@ -13,18 +16,42 @@
       "C004": "LPG"
     },
     "brand": {
-      "SKE": "SK能源", "GSC": "GS加德士", "HDO": "现代Oilbank", "SOL": "S-OIL",
-      "RTE": "Alddle平价加油站", "RTO": "自营平价", "NHO": "NH-OIL",
-      "E1G": "E1", "SOG": "SK Gas", "ETC": "自营/其他", "EXP": "高速公路服务区"
+      "SKE": "SK能源",
+      "GSC": "GS加德士",
+      "HDO": "现代Oilbank",
+      "SOL": "S-OIL",
+      "RTE": "Alddle平价加油站",
+      "RTO": "自营平价",
+      "NHO": "NH-OIL",
+      "E1G": "E1",
+      "SOG": "SK Gas",
+      "ETC": "自营/其他",
+      "EXP": "高速公路服务区"
     },
     "sido": {
-      "01": "首尔", "02": "京畿", "03": "江原", "04": "忠北", "05": "忠南",
-      "06": "全北", "07": "全南", "08": "庆北", "09": "庆南", "10": "釜山",
-      "11": "济州", "14": "大邱", "15": "仁川", "16": "光州", "17": "大田",
-      "18": "蔚山", "19": "世宗"
+      "10": "釜山",
+      "11": "济州",
+      "14": "大邱",
+      "15": "仁川",
+      "16": "光州",
+      "17": "大田",
+      "18": "蔚山",
+      "19": "世宗",
+      "01": "首尔",
+      "02": "京畿",
+      "03": "江原",
+      "04": "忠北",
+      "05": "忠南",
+      "06": "全北",
+      "07": "全南",
+      "08": "庆北",
+      "09": "庆南"
     },
     "washType": {
-      "self": "自助洗车", "hand": "手工洗车・精洗", "auto": "自动洗车", "unknown": "类型未知"
+      "self": "自助洗车",
+      "hand": "手工洗车・精洗",
+      "auto": "自动洗车",
+      "unknown": "类型未知"
     }
   },
   "map": {
@@ -39,9 +66,21 @@
     "chargerCount": "/ {count}台",
     "fuelSavedToast": "已保存加油记录",
     "priceTier": {
-      "cheap": { "label": "好", "mood": "好", "hint": "偏低" },
-      "normal": { "label": "一般", "mood": "一般", "hint": "一般" },
-      "expensive": { "label": "很差", "mood": "很差", "hint": "偏高" }
+      "cheap": {
+        "label": "好",
+        "mood": "好",
+        "hint": "偏低"
+      },
+      "normal": {
+        "label": "一般",
+        "mood": "一般",
+        "hint": "一般"
+      },
+      "expensive": {
+        "label": "很差",
+        "mood": "很差",
+        "hint": "偏高"
+      }
     },
     "route": {
       "lowestCount": "· 最低价 {count}处",
@@ -196,6 +235,134 @@
       "myPageAria": "我的页面",
       "login": "登录",
       "adFreeUsing": "使用无广告中"
+    }
+  },
+  "station": {
+    "self": "自助",
+    "page": {
+      "highway": "高速公路",
+      "productPrices": "各油品价格",
+      "noPriceInfo": "暂无信息",
+      "amenities": "附加服务",
+      "amenitiesPending": "正在确认附加服务信息",
+      "call": "拨打电话",
+      "dataSource": "数据提供：韩国石油公社Opinet",
+      "noAmenities": "暂无提供的附加服务。",
+      "amenity": {
+        "carwash": "洗车场",
+        "cvs": "便利店",
+        "maint": "简易维修",
+        "lpg": "LPG加气",
+        "kpetro": "品质认证"
+      }
+    },
+    "notFound": {
+      "title": "未找到加油站信息",
+      "description": "数据更新时可能已被删除。",
+      "backToMap": "返回地图"
+    },
+    "trend": {
+      "title": "{product} 30天走势",
+      "tabAria": "选择油品"
+    },
+    "fuelLog": {
+      "litersLabel": "加油量(L)",
+      "amountLabel": "金额(₩)",
+      "manualInput": "手动输入",
+      "litersPlaceholder": "升(L)",
+      "odometerLabel": "当前里程(km)",
+      "odometerPlaceholder": "例：50120",
+      "fillUp": "加满",
+      "fillUpHintDwell": "加满油（稍后输入加油量）",
+      "fillUpHintButton": "加满（未指定加油量 — 稍后输入）",
+      "dwellDialogAria": "确认加油记录",
+      "dwellQuestion": "您刚才在<name>{stationName}</name>加油了吗？",
+      "dwellHint": "只需选择升数或金额即可记录。单价、油品、时间会自动填入。",
+      "no": "否",
+      "confirm": "确认",
+      "saving": "保存中…",
+      "saveFailed": "保存失败。",
+      "invalidLiters": "请输入0以上的加油量。",
+      "invalidAmount": "请输入0以上的金额。",
+      "invalidOdometer": "请输入0以上的当前里程。",
+      "estAmount": "约₩{amount}（按₩{unitPrice}/L计算）",
+      "estLiters": "约{liters}L（按₩{unitPrice}/L计算）",
+      "estAmountWithProduct": "约₩{amount}（按{product}单价₩{unitPrice}/L计算）",
+      "estLitersWithProduct": "约{liters}L（按{product}单价₩{unitPrice}/L计算）",
+      "fuelHere": "在此加油",
+      "savedLog": "加油记录已保存",
+      "savedLogWithEconomy": "加油记录已保存・本次油耗 {economy} km/L",
+      "lastOdometerHint": "上次{odometer}km・输入后可计算油耗。",
+      "save": "保存",
+      "saveTitle": "按输入值保存（留空则仅记录到访）",
+      "priceAutoFillHint": "单价会按当前价格自动填入，之后可以编辑。",
+      "editHintFuelLog": "可在\"我的页面 > 加油记录\"中编辑金额与加油量。",
+      "myFuelLogs": "我的加油记录",
+      "myFuelLogsCount": "{count}条",
+      "chargeLabel": "充电",
+      "visitOnly": "仅到访记录",
+      "editHintMyLogs": "金额与加油量可在\"我的页面 > 我的记录\"中编辑。"
+    },
+    "review": {
+      "loadFailed": "加载评论失败：{message}",
+      "heading": "评论",
+      "writeReview": "写评论",
+      "count": "{count}条",
+      "none": "还没有评论，来写第一条评论吧。",
+      "confirmDelete": "要删除这条评论吗？",
+      "deleteFailed": "删除失败：{message}",
+      "anonymous": "匿名",
+      "deleting": "删除中…",
+      "deleteMine": "删除我的评论",
+      "photoAlt": "评论照片",
+      "justNow": "刚刚",
+      "loginRequired": "需要登录才能写评论。",
+      "login": "登录",
+      "photoMaxError": "照片最多可上传{max}张。",
+      "photoTooLarge": "{name} — 超过5MB",
+      "uploadFailed": "上传失败：{message}",
+      "contentOrPhotoRequired": "请至少输入内容或添加一张照片。",
+      "locationRequired": "只能在加油站附近写评论，请允许获取位置信息。",
+      "tooFar": "您距离加油站约{distance}，请在加油站附近撰写评论。",
+      "submitFailed": "提交失败，请稍后重试。",
+      "locationCheckRequired": "需要确认位置，请允许获取位置后重试。",
+      "ratingLabel": "评分",
+      "placeholder": "简单分享一下您的体验（可选）",
+      "photoCount": "照片 {count} / {max}",
+      "deletePhotoAria": "删除",
+      "locationPermissionNeeded": "需要位置权限，请在加油站附近允许获取位置信息。",
+      "locationUnavailable": "此设备无法使用位置信息，因此无法撰写评论。",
+      "locating": "正在确认当前位置…",
+      "tooFarDetail": "您距离加油站约{distance}，需在加油站附近（约{radius}m以内）撰写评论。",
+      "near": "您在加油站附近（约{distance}），可以撰写评论。",
+      "locationConfirmed": "位置确认完成，可以撰写评论。",
+      "uploading": "上传中…",
+      "addPhoto": "添加照片",
+      "submitting": "提交中…",
+      "submit": "提交评论",
+      "starLabel": "{n}星"
+    },
+    "chart": {
+      "loadFailed": "加载历史记录失败：{error}",
+      "notEnough": "价格历史数据还不够。",
+      "priceTooltip": "价格"
+    },
+    "navi": {
+      "confirmDialogAria": "确认开始导航",
+      "whichApp": "要用哪个应用导航？",
+      "confirmTitle": "要开始导航到这{kind, select, carwash {家洗车场} other {家加油站}}吗？",
+      "appHint": "您选择的应用下次会自动使用。如果没有该应用，将跳转至商店或网页引导。",
+      "startFromOrigin": "将从您当前位置使用{provider}开始导航到这{kind, select, carwash {家洗车场} other {家加油站}}。",
+      "startFromProvider": "将在{provider}中开始导航到这{kind, select, carwash {家洗车场} other {家加油站}}。",
+      "webFallbackHint": "如果没有该应用，将打开网页/商店引导。",
+      "starting": "启动中…",
+      "startNavigation": "开始导航",
+      "switchApp": "使用其他应用",
+      "withProvider": "{provider}导航",
+      "pickerAria": "选择导航应用",
+      "buttonLabel": "导航",
+      "buttonLabelWithProvider": "{provider}导航",
+      "opening": "正在打开导航…"
     }
   }
 }

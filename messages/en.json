@@ -2,7 +2,10 @@
   "common": {
     "close": "Close",
     "navigate": "Directions",
-    "viewDetail": "View Details"
+    "viewDetail": "View Details",
+    "loading": "Loading…",
+    "cancel": "Cancel",
+    "retry": "Retry"
   },
   "labels": {
     "product": {
@@ -26,10 +29,23 @@
       "EXP": "Highway Rest Area"
     },
     "sido": {
-      "01": "Seoul", "02": "Gyeonggi", "03": "Gangwon", "04": "Chungbuk", "05": "Chungnam",
-      "06": "Jeonbuk", "07": "Jeonnam", "08": "Gyeongbuk", "09": "Gyeongnam", "10": "Busan",
-      "11": "Jeju", "14": "Daegu", "15": "Incheon", "16": "Gwangju", "17": "Daejeon",
-      "18": "Ulsan", "19": "Sejong"
+      "10": "Busan",
+      "11": "Jeju",
+      "14": "Daegu",
+      "15": "Incheon",
+      "16": "Gwangju",
+      "17": "Daejeon",
+      "18": "Ulsan",
+      "19": "Sejong",
+      "01": "Seoul",
+      "02": "Gyeonggi",
+      "03": "Gangwon",
+      "04": "Chungbuk",
+      "05": "Chungnam",
+      "06": "Jeonbuk",
+      "07": "Jeonnam",
+      "08": "Gyeongbuk",
+      "09": "Gyeongnam"
     },
     "washType": {
       "self": "Self-service wash",
@@ -50,9 +66,21 @@
     "chargerCount": "/ {count}",
     "fuelSavedToast": "Fuel log saved",
     "priceTier": {
-      "cheap": { "label": "Good", "mood": "Good", "hint": "Cheaper" },
-      "normal": { "label": "Normal", "mood": "Normal", "hint": "Normal" },
-      "expensive": { "label": "Very Bad", "mood": "Very Bad", "hint": "Pricier" }
+      "cheap": {
+        "label": "Good",
+        "mood": "Good",
+        "hint": "Cheaper"
+      },
+      "normal": {
+        "label": "Normal",
+        "mood": "Normal",
+        "hint": "Normal"
+      },
+      "expensive": {
+        "label": "Very Bad",
+        "mood": "Very Bad",
+        "hint": "Pricier"
+      }
     },
     "route": {
       "lowestCount": "· {count} lowest-price stations",
@@ -207,6 +235,134 @@
       "myPageAria": "My Page",
       "login": "Log in",
       "adFreeUsing": "Ad-free active"
+    }
+  },
+  "station": {
+    "self": "Self-service",
+    "page": {
+      "highway": "Highway",
+      "productPrices": "Prices by Fuel Type",
+      "noPriceInfo": "No info",
+      "amenities": "Amenities",
+      "amenitiesPending": "Checking amenity info…",
+      "call": "Call",
+      "dataSource": "Data provided by: Korea National Oil Corporation Opinet",
+      "noAmenities": "No amenities available.",
+      "amenity": {
+        "carwash": "Car wash",
+        "cvs": "Convenience store",
+        "maint": "Minor repairs",
+        "lpg": "LPG refill",
+        "kpetro": "Quality certified"
+      }
+    },
+    "notFound": {
+      "title": "Station information not found",
+      "description": "It may have been removed during a data update.",
+      "backToMap": "Back to map"
+    },
+    "trend": {
+      "title": "{product} 30-Day Trend",
+      "tabAria": "Select fuel type"
+    },
+    "fuelLog": {
+      "litersLabel": "Fuel amount (L)",
+      "amountLabel": "Amount (₩)",
+      "manualInput": "Manual entry",
+      "litersPlaceholder": "Liters (L)",
+      "odometerLabel": "Current odometer (km)",
+      "odometerPlaceholder": "e.g. 50120",
+      "fillUp": "Fill up",
+      "fillUpHintDwell": "Full tank (enter amount later)",
+      "fillUpHintButton": "Full (amount unspecified — enter later)",
+      "dwellDialogAria": "Confirm fuel log",
+      "dwellQuestion": "Did you just refuel at <name>{stationName}</name>?",
+      "dwellHint": "Just pick liters or amount to log it. Unit price, fuel type, and time are filled in automatically.",
+      "no": "No",
+      "confirm": "Confirm",
+      "saving": "Saving…",
+      "saveFailed": "Save failed.",
+      "invalidLiters": "Please enter a fuel amount of 0 or more.",
+      "invalidAmount": "Please enter an amount of 0 or more.",
+      "invalidOdometer": "Please enter a current odometer of 0 or more.",
+      "estAmount": "Approx. ₩{amount} (based on ₩{unitPrice}/L)",
+      "estLiters": "Approx. {liters}L (based on ₩{unitPrice}/L)",
+      "estAmountWithProduct": "Approx. ₩{amount} (based on {product} price ₩{unitPrice}/L)",
+      "estLitersWithProduct": "Approx. {liters}L (based on {product} price ₩{unitPrice}/L)",
+      "fuelHere": "Fuel up here",
+      "savedLog": "Fuel log saved",
+      "savedLogWithEconomy": "Fuel log saved · This trip: {economy} km/L",
+      "lastOdometerHint": "Last time {odometer}km · Enter to calculate fuel economy.",
+      "save": "Save",
+      "saveTitle": "Save entered values (blank = visit only)",
+      "priceAutoFillHint": "The unit price is auto-filled with the current price. You can edit it later.",
+      "editHintFuelLog": "You can edit the amount and fuel volume in My Page > Fuel Log.",
+      "myFuelLogs": "My Fuel Log",
+      "myFuelLogsCount": "{count} logs",
+      "chargeLabel": "Charge",
+      "visitOnly": "Visit only",
+      "editHintMyLogs": "You can edit the amount and fuel volume in My Page > My Logs."
+    },
+    "review": {
+      "loadFailed": "Failed to load reviews: {message}",
+      "heading": "Reviews",
+      "writeReview": "Write a Review",
+      "count": "{count} reviews",
+      "none": "No reviews yet. Be the first to leave one.",
+      "confirmDelete": "Delete this review?",
+      "deleteFailed": "Delete failed: {message}",
+      "anonymous": "Anonymous",
+      "deleting": "Deleting…",
+      "deleteMine": "Delete my review",
+      "photoAlt": "Review photo",
+      "justNow": "Just now",
+      "loginRequired": "You need to sign in to write a review.",
+      "login": "Sign In",
+      "photoMaxError": "You can upload up to {max} photos.",
+      "photoTooLarge": "{name} — exceeds 5MB",
+      "uploadFailed": "Upload failed: {message}",
+      "contentOrPhotoRequired": "Please enter text or add at least one photo.",
+      "locationRequired": "Reviews can only be written near the station. Please allow location access.",
+      "tooFar": "You're about {distance} away from the station. Please write your review near the station.",
+      "submitFailed": "Failed to submit. Please try again later.",
+      "locationCheckRequired": "Location check required. Please allow location access and try again.",
+      "ratingLabel": "Rating",
+      "placeholder": "Share your experience briefly (optional)",
+      "photoCount": "Photos {count} / {max}",
+      "deletePhotoAria": "Delete",
+      "locationPermissionNeeded": "Location permission required. Please allow location access near the station.",
+      "locationUnavailable": "Location isn't available on this device, so you can't write a review.",
+      "locating": "Checking current location…",
+      "tooFarDetail": "You're about {distance} away from the station. You can write a review within about {radius}m of the station.",
+      "near": "You're near the station (about {distance}). You can write a review.",
+      "locationConfirmed": "Location confirmed. You can write a review.",
+      "uploading": "Uploading…",
+      "addPhoto": "Add Photo",
+      "submitting": "Submitting…",
+      "submit": "Submit Review",
+      "starLabel": "{n} stars"
+    },
+    "chart": {
+      "loadFailed": "Failed to load history: {error}",
+      "notEnough": "Not enough price history yet.",
+      "priceTooltip": "Price"
+    },
+    "navi": {
+      "confirmDialogAria": "Confirm start navigation",
+      "whichApp": "Which app would you like to navigate with?",
+      "confirmTitle": "Start navigating to this {kind, select, carwash {car wash} other {station}}?",
+      "appHint": "The app you choose will be used automatically next time. If you don't have the app, you'll be redirected to the store or web.",
+      "startFromOrigin": "Navigation from your current location to this {kind, select, carwash {car wash} other {station}} will start with {provider}.",
+      "startFromProvider": "Navigation to this {kind, select, carwash {car wash} other {station}} will start in {provider}.",
+      "webFallbackHint": "If you don't have the app, it will open web/store guidance instead.",
+      "starting": "Starting…",
+      "startNavigation": "Start Navigation",
+      "switchApp": "Use a different app",
+      "withProvider": "{provider} navigation",
+      "pickerAria": "Select navigation app",
+      "buttonLabel": "Navigate",
+      "buttonLabelWithProvider": "{provider} navigate",
+      "opening": "Opening navigation…"
     }
   }
 }

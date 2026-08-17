@@ -4,6 +4,7 @@
 // "방금 {주유소명}에서 주유하셨나요?" + 리터/금액 단축칩 + 직접입력 + [확인=저장] / [아니오=닫기].
 // FuelLogButton의 단축칩/프리필/저장 로직을 모달 형태로 재사용한다(단가/유종/시각은 서버 보강).
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { FuelLog } from '@/types/fuel-log';
 import { amountToQuantity, hasUsableUnitPrice, quantityToAmount } from '@/lib/fuel/calc';
 import { CloseIcon, FuelIcon } from '@/components/icons';
@@ -26,6 +27,8 @@ interface Props {
 }
 
 export function FuelDwellPrompt({ stationId, stationName, unitPrice, onClose, onSaved }: Props) {
+  const t = useTranslations('station.fuelLog');
+  const tCommon = useTranslations('common');
   const [state, setState] = useState<State>('idle');
   const [err, setErr] = useState<string | null>(null);
   const [liters, setLiters] = useState('');
@@ -75,7 +78,7 @@ export function FuelDwellPrompt({ stationId, stationName, unitPrice, onClose, on
         body: JSON.stringify({ stationId, ...payload }),
       });
       const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error ?? '저장에 실패했어요.');
+      if (!res.ok) throw new Error(d.error ?? t('saveFailed'));
       onSaved?.();
       onClose();
     } catch (e) {
@@ -88,11 +91,11 @@ export function FuelDwellPrompt({ stationId, stationName, unitPrice, onClose, on
     const l = liters.trim() === '' ? undefined : Number(liters);
     const a = amount.trim() === '' ? undefined : Number(amount);
     if (l !== undefined && (!Number.isFinite(l) || l < 0)) {
-      setErr('주유량은 0 이상 숫자로 입력해 주세요.');
+      setErr(t('invalidLiters'));
       return;
     }
     if (a !== undefined && (!Number.isFinite(a) || a < 0)) {
-      setErr('금액은 0 이상 숫자로 입력해 주세요.');
+      setErr(t('invalidAmount'));
       return;
     }
     void save({ liters: l, amountWon: a });
@@ -123,27 +126,30 @@ export function FuelDwellPrompt({ stationId, stationName, unitPrice, onClose, on
       className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="주유 기록 확인"
+      aria-label={t('dwellDialogAria')}
     >
       <div
         className="w-full max-w-md rounded-t-2xl bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-gray-800 shadow-2xl sm:rounded-2xl sm:pb-4"
       >
         <div className="flex items-start justify-between gap-2">
           <p className="text-base font-bold text-gray-900">
-            방금 <span className="text-primary">{stationName}</span>에서 주유하셨나요?{' '}
+            {t.rich('dwellQuestion', {
+              stationName,
+              name: (chunks) => <span className="text-primary">{chunks}</span>,
+            })}{' '}
             <FuelIcon className="ml-0.5 inline-block h-5 w-5 align-text-bottom text-primary" />
           </p>
           <button
             onClick={onClose}
-            aria-label="닫기"
+            aria-label={tCommon('close')}
             className="-mr-1.5 -mt-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700"
           >
             <CloseIcon className="h-5 w-5" />
           </button>
         </div>
-        <p className="mt-1 text-xs text-gray-500">리터나 금액만 골라 기록하세요. 단가·유종·시각은 자동 입력돼요.</p>
+        <p className="mt-1 text-xs text-gray-500">{t('dwellHint')}</p>
 
-        <p className="mt-3 text-xs font-semibold text-gray-700">주유량(L)</p>
+        <p className="mt-3 text-xs font-semibold text-gray-700">{t('litersLabel')}</p>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           {LITER_PRESETS.map((l) => (
             <button
@@ -160,13 +166,13 @@ export function FuelDwellPrompt({ stationId, stationName, unitPrice, onClose, on
             className={chip}
             disabled={state === 'busy'}
             onClick={() => void save({})}
-            title="가득 주유(주유량은 나중에 입력)"
+            title={t('fillUpHintDwell')}
           >
-            가득
+            {t('fillUp')}
           </button>
         </div>
 
-        <p className="mt-3 text-xs font-semibold text-gray-700">금액(원)</p>
+        <p className="mt-3 text-xs font-semibold text-gray-700">{t('amountLabel')}</p>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           {AMOUNT_PRESETS.map((a) => (
             <button
@@ -181,29 +187,29 @@ export function FuelDwellPrompt({ stationId, stationName, unitPrice, onClose, on
           ))}
         </div>
 
-        <p className="mt-3 text-xs font-semibold text-gray-700">직접 입력</p>
+        <p className="mt-3 text-xs font-semibold text-gray-700">{t('manualInput')}</p>
         <div className="mt-1.5 flex items-center gap-2">
           <label className="flex-1">
-            <span className="sr-only">주유량(L)</span>
+            <span className="sr-only">{t('litersLabel')}</span>
             <input
               type="number"
               inputMode="decimal"
               min={0}
               value={liters}
               onChange={(e) => setLiters(e.target.value)}
-              placeholder="리터(L)"
+              placeholder={t('litersPlaceholder')}
               className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none"
             />
           </label>
           <label className="flex-1">
-            <span className="sr-only">금액(원)</span>
+            <span className="sr-only">{t('amountLabel')}</span>
             <input
               type="number"
               inputMode="numeric"
               min={0}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder="금액(원)"
+              placeholder={t('amountLabel')}
               className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none"
             />
           </label>
@@ -211,12 +217,12 @@ export function FuelDwellPrompt({ stationId, stationName, unitPrice, onClose, on
 
         {canEstimate && estAmount != null && (
           <p className="mt-1.5 text-[11px] text-gray-500">
-            약 ₩{estAmount.toLocaleString()} (단가 ₩{unitPrice!.toLocaleString()}/L 기준)
+            {t('estAmount', { amount: estAmount.toLocaleString(), unitPrice: unitPrice!.toLocaleString() })}
           </p>
         )}
         {canEstimate && estLiters != null && (
           <p className="mt-1.5 text-[11px] text-gray-500">
-            약 {estLiters}L (단가 ₩{unitPrice!.toLocaleString()}/L 기준)
+            {t('estLiters', { liters: estLiters, unitPrice: unitPrice!.toLocaleString() })}
           </p>
         )}
 
@@ -226,14 +232,14 @@ export function FuelDwellPrompt({ stationId, stationName, unitPrice, onClose, on
             disabled={state === 'busy'}
             className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 disabled:opacity-60"
           >
-            아니오
+            {t('no')}
           </button>
           <button
             onClick={saveManual}
             disabled={state === 'busy'}
             className="flex-1 rounded-lg bg-primary py-2.5 text-sm font-bold text-white disabled:opacity-60"
           >
-            {state === 'busy' ? '저장 중…' : '확인'}
+            {state === 'busy' ? t('saving') : t('confirm')}
           </button>
         </div>
         {err && <p className="mt-1.5 text-center text-xs text-red-500">{err}</p>}

@@ -2,7 +2,10 @@
   "common": {
     "close": "閉じる",
     "navigate": "経路案内",
-    "viewDetail": "詳細を見る"
+    "viewDetail": "詳細を見る",
+    "loading": "読み込み中…",
+    "cancel": "キャンセル",
+    "retry": "再試行"
   },
   "labels": {
     "product": {
@@ -13,18 +16,42 @@
       "C004": "LPG"
     },
     "brand": {
-      "SKE": "SKエナジー", "GSC": "GSカルテックス", "HDO": "現代オイルバンク", "SOL": "S-OIL",
-      "RTE": "アルトゥル(格安)", "RTO": "自営アルトゥル", "NHO": "NH-OIL",
-      "E1G": "E1", "SOG": "SKガス", "ETC": "自営・その他", "EXP": "高速道路SA"
+      "SKE": "SKエナジー",
+      "GSC": "GSカルテックス",
+      "HDO": "現代オイルバンク",
+      "SOL": "S-OIL",
+      "RTE": "アルトゥル(格安)",
+      "RTO": "自営アルトゥル",
+      "NHO": "NH-OIL",
+      "E1G": "E1",
+      "SOG": "SKガス",
+      "ETC": "自営・その他",
+      "EXP": "高速道路SA"
     },
     "sido": {
-      "01": "ソウル", "02": "京畿", "03": "江原", "04": "忠北", "05": "忠南",
-      "06": "全北", "07": "全南", "08": "慶北", "09": "慶南", "10": "釜山",
-      "11": "済州", "14": "大邱", "15": "仁川", "16": "光州", "17": "大田",
-      "18": "蔚山", "19": "世宗"
+      "10": "釜山",
+      "11": "済州",
+      "14": "大邱",
+      "15": "仁川",
+      "16": "光州",
+      "17": "大田",
+      "18": "蔚山",
+      "19": "世宗",
+      "01": "ソウル",
+      "02": "京畿",
+      "03": "江原",
+      "04": "忠北",
+      "05": "忠南",
+      "06": "全北",
+      "07": "全南",
+      "08": "慶北",
+      "09": "慶南"
     },
     "washType": {
-      "self": "セルフ洗車", "hand": "手洗い・ディテール", "auto": "自動洗車", "unknown": "種別不明"
+      "self": "セルフ洗車",
+      "hand": "手洗い・ディテール",
+      "auto": "自動洗車",
+      "unknown": "種別不明"
     }
   },
   "map": {
@@ -39,9 +66,21 @@
     "chargerCount": "/ {count}台",
     "fuelSavedToast": "給油記録を保存しました",
     "priceTier": {
-      "cheap": { "label": "良い", "mood": "良い", "hint": "安め" },
-      "normal": { "label": "普通", "mood": "普通", "hint": "普通" },
-      "expensive": { "label": "非常に悪い", "mood": "非常に悪い", "hint": "高め" }
+      "cheap": {
+        "label": "良い",
+        "mood": "良い",
+        "hint": "安め"
+      },
+      "normal": {
+        "label": "普通",
+        "mood": "普通",
+        "hint": "普通"
+      },
+      "expensive": {
+        "label": "非常に悪い",
+        "mood": "非常に悪い",
+        "hint": "高め"
+      }
     },
     "route": {
       "lowestCount": "・最安値 {count}件",
@@ -196,6 +235,134 @@
       "myPageAria": "マイページ",
       "login": "ログイン",
       "adFreeUsing": "広告非表示利用中"
+    }
+  },
+  "station": {
+    "self": "セルフ",
+    "page": {
+      "highway": "高速道路",
+      "productPrices": "油種別価格",
+      "noPriceInfo": "情報なし",
+      "amenities": "付帯サービス",
+      "amenitiesPending": "付帯サービス情報を確認中です",
+      "call": "電話をかける",
+      "dataSource": "データ提供：韓国石油公社オピネット",
+      "noAmenities": "提供中の付帯サービスはありません。",
+      "amenity": {
+        "carwash": "洗車場",
+        "cvs": "コンビニ",
+        "maint": "軽整備",
+        "lpg": "LPG充填",
+        "kpetro": "品質認証"
+      }
+    },
+    "notFound": {
+      "title": "給油所情報が見つかりません",
+      "description": "データ更新により削除された可能性があります。",
+      "backToMap": "地図に戻る"
+    },
+    "trend": {
+      "title": "{product} 30日間の推移",
+      "tabAria": "油種選択"
+    },
+    "fuelLog": {
+      "litersLabel": "給油量(L)",
+      "amountLabel": "金額(₩)",
+      "manualInput": "直接入力",
+      "litersPlaceholder": "リットル(L)",
+      "odometerLabel": "現在の走行距離(km)",
+      "odometerPlaceholder": "例：50120",
+      "fillUp": "満タン",
+      "fillUpHintDwell": "満タン（給油量は後で入力）",
+      "fillUpHintButton": "満タン（給油量未指定 — 後で入力）",
+      "dwellDialogAria": "給油記録の確認",
+      "dwellQuestion": "たった今<name>{stationName}</name>で給油しましたか？",
+      "dwellHint": "リットルか金額を選ぶだけで記録できます。単価・油種・時刻は自動入力されます。",
+      "no": "いいえ",
+      "confirm": "確認",
+      "saving": "保存中…",
+      "saveFailed": "保存に失敗しました。",
+      "invalidLiters": "給油量は0以上の数値を入力してください。",
+      "invalidAmount": "金額は0以上の数値を入力してください。",
+      "invalidOdometer": "現在の走行距離は0以上の数値を入力してください。",
+      "estAmount": "約₩{amount}（単価₩{unitPrice}/L基準）",
+      "estLiters": "約{liters}L（単価₩{unitPrice}/L基準）",
+      "estAmountWithProduct": "約₩{amount}（{product}単価₩{unitPrice}/L基準）",
+      "estLitersWithProduct": "約{liters}L（{product}単価₩{unitPrice}/L基準）",
+      "fuelHere": "ここで給油",
+      "savedLog": "給油記録を保存しました",
+      "savedLogWithEconomy": "給油記録を保存しました・今回の燃費 {economy} km/L",
+      "lastOdometerHint": "前回{odometer}km・入力すると燃費が計算されます。",
+      "save": "保存",
+      "saveTitle": "入力値で保存（空欄は来店記録のみ）",
+      "priceAutoFillHint": "単価は現在価格が自動入力されます。値は後で編集できます。",
+      "editHintFuelLog": "マイページ > 給油記録で金額・給油量を編集できます。",
+      "myFuelLogs": "マイ給油記録",
+      "myFuelLogsCount": "{count}件",
+      "chargeLabel": "充電",
+      "visitOnly": "来店記録のみ",
+      "editHintMyLogs": "金額・給油量はマイページ > マイ記録で編集できます。"
+    },
+    "review": {
+      "loadFailed": "レビューの読み込みに失敗しました：{message}",
+      "heading": "レビュー",
+      "writeReview": "レビューを書く",
+      "count": "{count}件",
+      "none": "まだレビューがありません。最初のレビューを書いてみましょう。",
+      "confirmDelete": "このレビューを削除しますか？",
+      "deleteFailed": "削除に失敗しました：{message}",
+      "anonymous": "匿名",
+      "deleting": "削除中…",
+      "deleteMine": "マイレビューを削除",
+      "photoAlt": "レビュー写真",
+      "justNow": "たった今",
+      "loginRequired": "レビューを書くにはログインが必要です。",
+      "login": "ログイン",
+      "photoMaxError": "写真は最大{max}枚までアップロードできます。",
+      "photoTooLarge": "{name} — 5MB超過",
+      "uploadFailed": "アップロードに失敗しました：{message}",
+      "contentOrPhotoRequired": "内容または写真のいずれかを入力してください。",
+      "locationRequired": "レビューは給油所の近くでのみ作成できます。位置情報を許可してください。",
+      "tooFar": "給油所から約{distance}離れています。給油所の近くで作成してください。",
+      "submitFailed": "作成に失敗しました。しばらくしてからもう一度お試しください。",
+      "locationCheckRequired": "位置情報の確認が必要です。位置情報を許可してからもう一度お試しください。",
+      "ratingLabel": "評価",
+      "placeholder": "ご利用の感想を簡単にお聞かせください（任意）",
+      "photoCount": "写真 {count} / {max}",
+      "deletePhotoAria": "削除",
+      "locationPermissionNeeded": "位置情報の許可が必要です。給油所の近くで位置情報を許可してください。",
+      "locationUnavailable": "この端末では位置情報が使用できないため、レビューを作成できません。",
+      "locating": "現在地を確認中…",
+      "tooFarDetail": "給油所から約{distance}離れています。給油所の近く（約{radius}m以内）で作成できます。",
+      "near": "給油所の近くです（約{distance}）。レビューを作成できます。",
+      "locationConfirmed": "位置情報の確認が完了しました。レビューを作成できます。",
+      "uploading": "アップロード中…",
+      "addPhoto": "写真を追加",
+      "submitting": "登録中…",
+      "submit": "レビューを登録",
+      "starLabel": "{n}点"
+    },
+    "chart": {
+      "loadFailed": "履歴の読み込みに失敗しました：{error}",
+      "notEnough": "まだ価格履歴が十分ではありません。",
+      "priceTooltip": "価格"
+    },
+    "navi": {
+      "confirmDialogAria": "ナビ開始の確認",
+      "whichApp": "どのアプリで経路案内しますか？",
+      "confirmTitle": "この{kind, select, carwash {洗車場} other {給油所}}への経路案内を開始しますか？",
+      "appHint": "選択したアプリは次回から自動的に使用されます。アプリがない場合はストア／ウェブ案内に接続されます。",
+      "startFromOrigin": "現在地からこの{kind, select, carwash {洗車場} other {給油所}}まで、{provider}で経路案内を開始します。",
+      "startFromProvider": "{provider}でこの{kind, select, carwash {洗車場} other {給油所}}への経路案内を開始します。",
+      "webFallbackHint": "アプリがない場合はウェブ／ストア案内が開きます。",
+      "starting": "起動中…",
+      "startNavigation": "経路案内開始",
+      "switchApp": "別のアプリで",
+      "withProvider": "{provider}で経路案内",
+      "pickerAria": "ナビアプリを選択",
+      "buttonLabel": "ナビ",
+      "buttonLabelWithProvider": "{provider}でナビ",
+      "opening": "ナビを起動中…"
     }
   }
 }

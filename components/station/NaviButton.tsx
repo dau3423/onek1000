@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   startNavi,
   getPreferredNavi,
@@ -33,6 +34,7 @@ interface Props {
  * graceful 하게 길안내를 시작한다.
  */
 export function NaviButton({ name, lat, lng, stationId }: Props) {
+  const t = useTranslations('station.navi');
   const [starting, setStarting] = useState(false);
   const [picking, setPicking] = useState(false);
   // 선호 앱 라벨: SSR 하이드레이션 불일치 방지를 위해 마운트 후 읽는다.
@@ -97,8 +99,8 @@ export function NaviButton({ name, lat, lng, stationId }: Props) {
   }
 
   const label = preferred
-    ? `${NAVI_PROVIDER_LABEL[preferred]} 길찾기`
-    : '길찾기';
+    ? t('buttonLabelWithProvider', { provider: NAVI_PROVIDER_LABEL[preferred] })
+    : t('buttonLabel');
 
   return (
     <>
@@ -107,7 +109,7 @@ export function NaviButton({ name, lat, lng, stationId }: Props) {
         disabled={starting}
         className="w-full rounded-xl bg-primary py-3.5 text-center font-bold text-white shadow-md hover:bg-primary-dark disabled:opacity-60"
       >
-        {starting ? '길찾기 여는 중…' : label}
+        {starting ? t('opening') : label}
       </button>
       {picking ? (
         <NaviAppPicker

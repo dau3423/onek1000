@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { StationWithPrice } from '@/types/station';
-import { BRAND_LABEL } from '@/types/station';
+import { useBrandLabel } from '@/lib/i18n/labels';
 import {
   startNavi,
   getPreferredNavi,
@@ -30,9 +31,10 @@ interface Props {
  * 세차장(kind='carwash')은 가격이 없으므로 브랜드·가격 표기를 숨기고 명칭을 바꾼다(정직 표기).
  */
 export function NaviConfirm({ station, origin, kind = 'gas', onClose }: Props) {
-  // 대상 명칭·조사(주유소 '로' / 세차장 '으로'). 세차장은 가짜 가격 노출 금지.
-  const noun = kind === 'carwash' ? '세차장' : '주유소';
-  const to = kind === 'carwash' ? '으로' : '로';
+  const t = useTranslations('station.navi');
+  const tCommon = useTranslations('common');
+  const tSelf = useTranslations('station');
+  const brandLabelOf = useBrandLabel();
   const [starting, setStarting] = useState(false);
   // 선호 앱: 이 모달은 클릭 시에만 마운트되고 SSR되지 않으므로, lazy initializer에서
   // 동기 조회해 초기값을 바로 계산한다(마운트 후 useEffect 플립으로 인한 깜빡임 방지).
@@ -67,7 +69,7 @@ export function NaviConfirm({ station, origin, kind = 'gas', onClose }: Props) {
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
       role="dialog"
       aria-modal="true"
-      aria-label="길안내 시작 확인"
+      aria-label={t('confirmDialogAria')}
       onClick={onClose}
     >
       <div
@@ -75,7 +77,7 @@ export function NaviConfirm({ station, origin, kind = 'gas', onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <p className="text-base font-bold text-gray-900 dark:text-gray-50">
-          {picking ? '어떤 앱으로 길안내할까요?' : `이 ${noun}${to} 길안내를 시작할까요?`}
+          {picking ? t('whichApp') : t('confirmTitle', { kind })}
         </p>
         <div className="mt-3 rounded-xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
           <div className="text-sm font-semibold text-gray-900 dark:text-gray-50">{station.name}</div>
@@ -85,7 +87,7 @@ export function NaviConfirm({ station, origin, kind = 'gas', onClose }: Props) {
             )
           ) : (
             <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-              {BRAND_LABEL[station.brand]}{station.isSelf ? ' · 셀프' : ''}
+              {brandLabelOf(station.brand)}{station.isSelf ? ` · ${tSelf('self')}` : ''}
               {distanceText ? ` · ${distanceText}` : ''}
               {' · '}₩{station.price.toLocaleString()}
             </div>
@@ -98,23 +100,23 @@ export function NaviConfirm({ station, origin, kind = 'gas', onClose }: Props) {
               <NaviAppButtons onPick={run} disabled={starting} />
             </div>
             <p className="mt-3 text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
-              선택한 앱은 다음에 자동으로 사용돼요. 앱이 없으면 스토어/웹 안내로 연결됩니다.
+              {t('appHint')}
             </p>
             <button
               onClick={onClose}
               disabled={starting}
               className="mt-3 w-full rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
             >
-              취소
+              {tCommon('cancel')}
             </button>
           </>
         ) : (
           <>
             <p className="mt-3 text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
               {origin
-                ? `현재 위치에서 이 ${noun}까지 ${preferredLabel} 길안내가 시작됩니다.`
-                : `${preferredLabel}에서 이 ${noun}${to} 길안내가 시작됩니다.`}
-              {' '}앱이 없으면 웹/스토어 안내로 열립니다.
+                ? t('startFromOrigin', { kind, provider: preferredLabel ?? '' })
+                : t('startFromProvider', { kind, provider: preferredLabel ?? '' })}
+              {' '}{t('webFallbackHint')}
             </p>
             <div className="mt-4 flex gap-2">
               <button
@@ -122,14 +124,14 @@ export function NaviConfirm({ station, origin, kind = 'gas', onClose }: Props) {
                 disabled={starting}
                 className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
               >
-                취소
+                {tCommon('cancel')}
               </button>
               <button
                 onClick={() => preferred && run(preferred)}
                 disabled={starting || !preferred}
                 className="flex-1 rounded-xl bg-primary py-3 text-sm font-bold text-white shadow-md hover:bg-primary-dark disabled:opacity-60"
               >
-                {starting ? '실행 중…' : `길안내 시작${preferredLabel ? ` (${preferredLabel})` : ''}`}
+                {starting ? t('starting') : `${t('startNavigation')}${preferredLabel ? ` (${preferredLabel})` : ''}`}
               </button>
             </div>
             <button
@@ -137,7 +139,7 @@ export function NaviConfirm({ station, origin, kind = 'gas', onClose }: Props) {
               disabled={starting}
               className="mt-1 w-full py-2 text-center text-xs font-medium text-gray-400 underline underline-offset-2 hover:text-gray-600 disabled:opacity-60 dark:text-gray-500 dark:hover:text-gray-300"
             >
-              다른 앱으로
+              {t('switchApp')}
             </button>
           </>
         )}

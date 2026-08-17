@@ -4,6 +4,7 @@
 // NaviConfirm(모달 내부 인라인 목록)과 NaviButton(단독 선택 시트)이 함께 쓴다.
 // 앱 로고는 상표권 문제로 넣지 않고 텍스트 + 공용 인라인 아이콘만 사용한다.
 
+import { useTranslations } from 'next-intl';
 import {
   availableNaviProviders,
   type NaviProvider,
@@ -31,6 +32,7 @@ interface NaviAppButtonsProps {
 
 /** 실행 가능한 내비 앱들을 목록 버튼으로 렌더. 선택 시 onPick 호출. */
 export function NaviAppButtons({ onPick, disabled }: NaviAppButtonsProps) {
+  const t = useTranslations('station.navi');
   const providers = availableNaviProviders();
   return (
     <div className="flex flex-col gap-2">
@@ -44,7 +46,7 @@ export function NaviAppButtons({ onPick, disabled }: NaviAppButtonsProps) {
         >
           <span className="text-gray-500 dark:text-gray-400">{providerIcon(provider)}</span>
           <span className="flex-1 text-sm font-semibold text-gray-900 dark:text-gray-50">
-            {NAVI_PROVIDER_LABEL[provider]} 길안내
+            {t('withProvider', { provider: NAVI_PROVIDER_LABEL[provider] })}
           </span>
           <ChevronRightIcon className="h-4 w-4 text-gray-400" />
         </button>
@@ -67,12 +69,14 @@ interface NaviAppPickerProps {
  * 단독 앱 선택 시트(바텀 시트 모달). NaviButton처럼 확인 단계 없이 바로 앱을 고를 때 쓴다.
  */
 export function NaviAppPicker({ title, subtitle, onPick, onClose, disabled }: NaviAppPickerProps) {
+  const t = useTranslations('station.navi');
+  const tCommon = useTranslations('common');
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
       role="dialog"
       aria-modal="true"
-      aria-label="내비 앱 선택"
+      aria-label={t('pickerAria')}
       onClick={onClose}
     >
       <div
@@ -80,7 +84,7 @@ export function NaviAppPicker({ title, subtitle, onPick, onClose, disabled }: Na
         onClick={(e) => e.stopPropagation()}
       >
         <p className="text-base font-bold text-gray-900 dark:text-gray-50">
-          {title ?? '어떤 앱으로 길안내할까요?'}
+          {title ?? t('whichApp')}
         </p>
         {subtitle ? (
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{subtitle}</p>
@@ -89,7 +93,7 @@ export function NaviAppPicker({ title, subtitle, onPick, onClose, disabled }: Na
           <NaviAppButtons onPick={onPick} disabled={disabled} />
         </div>
         <p className="mt-3 text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
-          선택한 앱은 다음에 자동으로 사용돼요. 앱이 없으면 스토어/웹 안내로 연결됩니다.
+          {t('appHint')}
         </p>
         <button
           type="button"
@@ -97,7 +101,7 @@ export function NaviAppPicker({ title, subtitle, onPick, onClose, disabled }: Na
           disabled={disabled}
           className="mt-3 w-full rounded-xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
         >
-          취소
+          {tCommon('cancel')}
         </button>
       </div>
     </div>

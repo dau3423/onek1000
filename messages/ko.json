@@ -2,7 +2,10 @@
   "common": {
     "close": "닫기",
     "navigate": "길안내",
-    "viewDetail": "상세보기"
+    "viewDetail": "상세보기",
+    "loading": "로딩 중…",
+    "cancel": "취소",
+    "retry": "다시 시도"
   },
   "labels": {
     "product": {
@@ -26,10 +29,23 @@
       "EXP": "고속도로"
     },
     "sido": {
-      "01": "서울", "02": "경기", "03": "강원", "04": "충북", "05": "충남",
-      "06": "전북", "07": "전남", "08": "경북", "09": "경남", "10": "부산",
-      "11": "제주", "14": "대구", "15": "인천", "16": "광주", "17": "대전",
-      "18": "울산", "19": "세종"
+      "10": "부산",
+      "11": "제주",
+      "14": "대구",
+      "15": "인천",
+      "16": "광주",
+      "17": "대전",
+      "18": "울산",
+      "19": "세종",
+      "01": "서울",
+      "02": "경기",
+      "03": "강원",
+      "04": "충북",
+      "05": "충남",
+      "06": "전북",
+      "07": "전남",
+      "08": "경북",
+      "09": "경남"
     },
     "washType": {
       "self": "셀프세차",
@@ -50,9 +66,21 @@
     "chargerCount": "/ {count}대",
     "fuelSavedToast": "주유 기록을 저장했어요",
     "priceTier": {
-      "cheap": { "label": "좋음", "mood": "좋음", "hint": "싼 편" },
-      "normal": { "label": "보통", "mood": "보통", "hint": "보통" },
-      "expensive": { "label": "매우 나쁨", "mood": "매우 나쁨", "hint": "비싼 편" }
+      "cheap": {
+        "label": "좋음",
+        "mood": "좋음",
+        "hint": "싼 편"
+      },
+      "normal": {
+        "label": "보통",
+        "mood": "보통",
+        "hint": "보통"
+      },
+      "expensive": {
+        "label": "매우 나쁨",
+        "mood": "매우 나쁨",
+        "hint": "비싼 편"
+      }
     },
     "route": {
       "lowestCount": "· 최저가 {count}곳",
@@ -207,6 +235,134 @@
       "myPageAria": "마이페이지",
       "login": "로그인",
       "adFreeUsing": "광고 차단 이용 중"
+    }
+  },
+  "station": {
+    "self": "셀프",
+    "page": {
+      "highway": "고속도로",
+      "productPrices": "유종별 가격",
+      "noPriceInfo": "정보 없음",
+      "amenities": "부가서비스",
+      "amenitiesPending": "부가서비스 정보 확인 중입니다",
+      "call": "전화걸기",
+      "dataSource": "데이터 제공: 한국석유공사 오피넷",
+      "noAmenities": "제공되는 부가서비스가 없습니다.",
+      "amenity": {
+        "carwash": "세차장",
+        "cvs": "편의점",
+        "maint": "경정비",
+        "lpg": "LPG 충전",
+        "kpetro": "품질인증"
+      }
+    },
+    "notFound": {
+      "title": "주유소 정보를 찾을 수 없습니다",
+      "description": "데이터가 갱신되며 사라졌을 수 있어요.",
+      "backToMap": "지도로 돌아가기"
+    },
+    "trend": {
+      "title": "{product} 30일 추이",
+      "tabAria": "유종 선택"
+    },
+    "fuelLog": {
+      "litersLabel": "주유량(L)",
+      "amountLabel": "금액(원)",
+      "manualInput": "직접 입력",
+      "litersPlaceholder": "리터(L)",
+      "odometerLabel": "현재 키로수(km)",
+      "odometerPlaceholder": "예: 50120",
+      "fillUp": "가득",
+      "fillUpHintDwell": "가득 주유(주유량은 나중에 입력)",
+      "fillUpHintButton": "가득(주유량 미지정 — 나중에 입력)",
+      "dwellDialogAria": "주유 기록 확인",
+      "dwellQuestion": "방금 <name>{stationName}</name>에서 주유하셨나요?",
+      "dwellHint": "리터나 금액만 골라 기록하세요. 단가·유종·시각은 자동 입력돼요.",
+      "no": "아니오",
+      "confirm": "확인",
+      "saving": "저장 중…",
+      "saveFailed": "저장에 실패했어요.",
+      "invalidLiters": "주유량은 0 이상 숫자로 입력해 주세요.",
+      "invalidAmount": "금액은 0 이상 숫자로 입력해 주세요.",
+      "invalidOdometer": "현재 키로수는 0 이상 숫자로 입력해 주세요.",
+      "estAmount": "약 ₩{amount} (단가 ₩{unitPrice}/L 기준)",
+      "estLiters": "약 {liters}L (단가 ₩{unitPrice}/L 기준)",
+      "estAmountWithProduct": "약 ₩{amount} ({product} 단가 ₩{unitPrice}/L 기준)",
+      "estLitersWithProduct": "약 {liters}L ({product} 단가 ₩{unitPrice}/L 기준)",
+      "fuelHere": "여기서 주유",
+      "savedLog": "주유 기록 저장됨",
+      "savedLogWithEconomy": "주유 기록 저장됨 · 이번 연비 {economy} km/L",
+      "lastOdometerHint": "지난번 {odometer}km · 입력하면 연비가 계산돼요.",
+      "save": "저장",
+      "saveTitle": "입력값(빈값은 방문 기록)으로 저장",
+      "priceAutoFillHint": "단가는 현재가로 자동 입력돼요. 값은 나중에 편집할 수 있어요.",
+      "editHintFuelLog": "마이페이지 > 주유 기록에서 금액·주유량을 편집할 수 있어요.",
+      "myFuelLogs": "내 주유 기록",
+      "myFuelLogsCount": "{count}건",
+      "chargeLabel": "충전",
+      "visitOnly": "방문 기록",
+      "editHintMyLogs": "금액·주유량은 마이페이지 > 내 기록에서 편집할 수 있어요."
+    },
+    "review": {
+      "loadFailed": "리뷰 로드 실패: {message}",
+      "heading": "리뷰",
+      "writeReview": "리뷰 쓰기",
+      "count": "{count}건",
+      "none": "아직 리뷰가 없어요. 첫 리뷰를 남겨보세요.",
+      "confirmDelete": "이 리뷰를 삭제할까요?",
+      "deleteFailed": "삭제 실패: {message}",
+      "anonymous": "익명",
+      "deleting": "삭제 중…",
+      "deleteMine": "내 리뷰 삭제",
+      "photoAlt": "리뷰 사진",
+      "justNow": "방금",
+      "loginRequired": "리뷰를 작성하려면 로그인이 필요해요.",
+      "login": "로그인",
+      "photoMaxError": "사진은 최대 {max}장까지 올릴 수 있어요.",
+      "photoTooLarge": "{name} — 5MB 초과",
+      "uploadFailed": "업로드 실패: {message}",
+      "contentOrPhotoRequired": "내용 또는 사진 중 하나 이상은 입력해주세요.",
+      "locationRequired": "리뷰는 주유소 근처에서만 작성할 수 있어요. 위치를 허용해 주세요.",
+      "tooFar": "주유소에서 약 {distance} 떨어져 있어요. 주유소 근처에서 작성해 주세요.",
+      "submitFailed": "작성에 실패했어요. 잠시 후 다시 시도해 주세요.",
+      "locationCheckRequired": "위치 확인이 필요해요. 위치를 허용한 뒤 다시 시도해 주세요.",
+      "ratingLabel": "별점",
+      "placeholder": "다녀온 경험을 짧게 남겨주세요 (선택)",
+      "photoCount": "사진 {count} / {max}",
+      "deletePhotoAria": "삭제",
+      "locationPermissionNeeded": "위치 권한이 필요해요. 주유소 근처에서 위치를 허용해 주세요.",
+      "locationUnavailable": "이 기기에서 위치를 사용할 수 없어 리뷰를 작성할 수 없어요.",
+      "locating": "현재 위치 확인 중…",
+      "tooFarDetail": "주유소에서 약 {distance} 떨어져 있어요. 주유소 근처(약 {radius}m 이내)에서 작성할 수 있어요.",
+      "near": "주유소 근처예요 (약 {distance}). 리뷰를 작성할 수 있어요.",
+      "locationConfirmed": "위치 확인 완료. 리뷰를 작성할 수 있어요.",
+      "uploading": "업로드 중…",
+      "addPhoto": "사진 추가",
+      "submitting": "등록 중…",
+      "submit": "리뷰 등록",
+      "starLabel": "{n}점"
+    },
+    "chart": {
+      "loadFailed": "이력 로드 실패: {error}",
+      "notEnough": "아직 가격 이력이 충분하지 않아요.",
+      "priceTooltip": "가격"
+    },
+    "navi": {
+      "confirmDialogAria": "길안내 시작 확인",
+      "whichApp": "어떤 앱으로 길안내할까요?",
+      "confirmTitle": "이 {kind, select, carwash {세차장으로} other {주유소로}} 길안내를 시작할까요?",
+      "appHint": "선택한 앱은 다음에 자동으로 사용돼요. 앱이 없으면 스토어/웹 안내로 연결됩니다.",
+      "startFromOrigin": "현재 위치에서 이 {kind, select, carwash {세차장} other {주유소}}까지 {provider} 길안내가 시작됩니다.",
+      "startFromProvider": "{provider}에서 이 {kind, select, carwash {세차장으로} other {주유소로}} 길안내가 시작됩니다.",
+      "webFallbackHint": "앱이 없으면 웹/스토어 안내로 열립니다.",
+      "starting": "실행 중…",
+      "startNavigation": "길안내 시작",
+      "switchApp": "다른 앱으로",
+      "withProvider": "{provider} 길안내",
+      "pickerAria": "내비 앱 선택",
+      "buttonLabel": "길찾기",
+      "buttonLabelWithProvider": "{provider} 길찾기",
+      "opening": "길찾기 여는 중…"
     }
   }
 }
