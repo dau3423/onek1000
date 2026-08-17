@@ -960,47 +960,11 @@ const EXCLUDE = [
 
 > `components/forecast/`·`components/notice/` 를 제외하는 이유: 유가 예보 카드와 공지 팝업은 DB/모델이 생성한 한국어 본문을 그대로 노출하는 화면이라, UI 문구만 번역해도 본문이 한국어로 남는다. 별도 판단이 필요하므로 이번 범위에서 뺀다.
 
-- [ ] **추가 Step: 코드 줄 뒤 한글 주석 거짓양성 제거 (0건 게이트의 전제)**
-
-Task 2 의 스캐너는 **줄 전체가 주석일 때만** 건너뛴다. 그래서 `const ALERT_THRESHOLD = 50; // 평균 대비 -50원 이상 저렴할 때 알람` 처럼 코드 뒤에 붙은 한국어 주석이 하드코딩 문자열로 잡힌다. 한국어 주석은 이 저장소의 집 스타일이라 **제거 대상이 아니다** — 따라서 스캐너를 고쳐야 0건에 도달할 수 있다.
-
-**실측(Task 2 직후)**: 총 261건 중 **18건이 이 거짓양성**, 실제 번역 대상은 243건.
-
-Modify `scripts/i18n-scan.mjs` — 헬퍼를 추가하고 한글 판정 전에 통과시킨다:
-
-```js
-/** 따옴표 밖의 `//` 이후를 잘라낸다. 문자열 리터럴 안의 // (예: 'https://…') 는 보존한다.
- *  코드 뒤에 붙은 한국어 주석이 하드코딩 문자열로 잡히던 거짓양성을 없앤다(집 스타일 주석은 유지 대상). */
-function stripTrailingComment(line) {
-  let q = null;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (q) {
-      if (c === q && line[i - 1] !== '\\') q = null;
-      continue;
-    }
-    if (c === "'" || c === '"' || c === '`') { q = c; continue; }
-    if (c === '/' && line[i + 1] === '/') return line.slice(0, i);
-  }
-  return line;
-}
-```
-
-한글 판정 줄을 `if (!HANGUL.test(line)) return;` 에서 `if (!HANGUL.test(stripTrailingComment(line))) return;` 로 바꾼다. 출력에는 원본 `line` 을 그대로 쓴다(위치를 찾기 쉽게).
-
-> 방향에 주의: 이 헬퍼는 **거짓음성(놓침)을 만들 수 있는** 변경이다. 따옴표 추적이 어긋나면 실제 문자열을 주석으로 오인해 놓친다. 그래서 따옴표 밖의 `//` 만 자르고, 그 외에는 아무것도 하지 않는다. 적용 후 아래 역검증을 반드시 수행한다.
-
-- [ ] **추가 Step: 스캐너가 여전히 실제 문자열을 잡는지 역검증**
-
-```bash
-# (intl) 안 임의 파일에 한글 문자열을 일부러 넣고 스캔이 잡는지 본다
-printf '\nconst __probe = "테스트 문자열";\n' >> "app/(intl)/search/page.tsx"
-npm run i18n:scan | grep -c "__probe\|테스트 문자열"; echo "exit=$?"
-git checkout "app/(intl)/search/page.tsx"
-git status --porcelain "app/(intl)/" | wc -l   # 0 이어야 한다
-```
-
-Expected: 삽입 후 스캔이 그 줄을 **잡아야** 한다(exit 1). 못 잡으면 `stripTrailingComment` 가 과하게 자르고 있다는 뜻이므로 고친다. 원복 후 작업 트리가 깨끗해야 한다.
+> **스캐너 거짓양성 수정은 Task 2 에서 이미 처리됐다**(Ruling R12, 원장 참조). Task 2 리뷰에서
+> 여러 줄 `{/* */}` JSX 주석 2번째 줄 이후(32건)와 코드 뒤 `//` 한국어 주석(18건)이 하드코딩
+> 문자열로 잡혀 **0건 게이트에 도달할 수 없다는 것**이 드러나, Task 2 의 fix round 에서 고쳤다.
+> 한국어 주석은 이 저장소 집 스타일이라 제거 대상이 아니기 때문이다.
+> 이 태스크는 스캐너의 **범위**(`ROOTS`·`EXCLUDE`)만 넓힌다 — 주석 처리 로직은 손대지 않는다.
 
 - [ ] **최종 Step: 스캔 0건 달성 확인**
 
