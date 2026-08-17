@@ -71,6 +71,28 @@ function median(xs: number[]): number {
   return s.length % 2 === 0 ? (s[mid - 1] + s[mid]) / 2 : s[mid];
 }
 
+/** 백분위수(0~1, nearest-rank). 오프셋 꼬리값 관측용. */
+function percentile(xs: number[], p: number): number {
+  if (xs.length === 0) return 0;
+  const s = [...xs].sort((a, b) => a - b);
+  const idx = Math.min(s.length - 1, Math.max(0, Math.ceil(p * s.length) - 1));
+  return s[idx];
+}
+
+// 거리 히스토그램 경계(m) — 채택분이 어느 구간에 몰리는지 본다. 계통 오차(수십~수백m)와
+// 오매칭 의심 구간(500m+)을 분리해, ADOPT_MAX_DISTANCE_M 을 좁힐지 판단하는 근거가 된다.
+const DIST_BUCKETS = [50, 100, 200, 300, 500, 1000, 1500];
+
+function histogram(xs: number[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  let prev = 0;
+  for (const b of DIST_BUCKETS) {
+    out[`<${b}`] = xs.filter((x) => x >= prev && x < b).length;
+    prev = b;
+  }
+  return out;
+}
+
 interface StationRow {
   id: string;
   address: string | null;
@@ -297,6 +319,11 @@ export async function POST(req: Request) {
       meanEastM: Number(mean(eastArr).toFixed(1)),    // +동 / -서
       meanM: Number(mean(distArr).toFixed(1)),
       medianM: Number(median(distArr).toFixed(1)),
+      // 꼬리값 — 오매칭(동명 주유소/도로명 실패)이 1.5km 가드 안으로 들어오는지 판단한다.
+      p90M: Number(percentile(distArr, 0.9).toFixed(1)),
+      p95M: Number(percentile(distArr, 0.95).toFixed(1)),
+      maxM: Number((distArr.length ? Math.max(...distArr) : 0).toFixed(1)),
+      histM: histogram(distArr),
     },
     errors: errors.length ? errors : undefined,
   });
