@@ -1253,6 +1253,46 @@ Expected: `● /regions/[region]`, `● /regions/[region]/[district]` 둘 다 �
 
 `/`, `/station/<임의 id>`, `/search`, `/my` 를 4개 언어로 캡처해 문구 잘림·줄바꿈 깨짐을 본다. 독일어처럼 긴 언어는 없지만, **영어는 한국어보다 대체로 길어 버튼·칩이 넘칠 수 있다.**
 
+- [ ] **추가 Step: 번역 일관성 정리 (사람 검수 전에)**
+
+같은 한국어가 여러 키에 흩어지면서 **영어 표기가 갈리는** 현상이 실측으로 확인됐다(Task 5 종료 시점 5건).
+사람 검수에 넘기기 전에 정리한다 — 검수자가 같은 개념의 서로 다른 번역을 여러 번 마주치면 시간 낭비다.
+
+**주의: 갈린 것을 전부 합치면 안 된다.** 분기가 옳은 경우가 있다:
+
+| ko | en | 판정 |
+|---|---|---|
+| `{count}건` | "{count} logs" / "{count} reviews" | **정상** — 한국어 '건'은 범용 단위지만 영어는 명사가 필요하다 |
+| 고속도로 | "Highway Rest Area" / "Highway" | **정상** — 브랜드 라벨 vs 경로 뱃지로 의미가 다르다 |
+| 셀프 | "Self-serve" / "Self" / "Self-service" | **정리 대상** — 같은 개념의 3가지 표기 |
+| 세차장 | "Car Wash" / "Car wash" | **정리 대상** — 대소문자 불일치 |
+| 로그인 | "Log in" / "Sign In" | **정리 대상** — 진짜 불일치 |
+
+아래 스크립트로 현재 목록을 다시 뽑아 **한 건씩 판정**한다(자동 병합 금지):
+
+```bash
+node -e "
+const fs=require('fs');
+const load=l=>JSON.parse(fs.readFileSync('messages/'+l+'.json','utf8'));
+const flat=o=>{const r={};(function f(x,p){for(const[k,v]of Object.entries(x)){const key=p?p+'.'+k:k;
+v&&typeof v==='object'?f(v,key):r[key]=v;}})(o,'');return r;};
+const ko=flat(load('ko')), en=flat(load('en'));
+const by={};for(const[k,v]of Object.entries(ko)){(by[v]??=[]).push(k);}
+for(const[v,ks]of Object.entries(by)){
+  if(ks.length<2) continue;
+  const ens=[...new Set(ks.map(k=>en[k]))];
+  if(ens.length>1){console.log('ko \"'+v+'\"');ks.forEach(k=>console.log('   '+k+' = \"'+en[k]+'\"'));}
+}"
+```
+
+정리 방식은 **영어 표기를 하나로 맞추는 것**이지 키를 합치는 게 아니다. 키를 합치면 나중에 한쪽 문맥만
+바꿔야 할 때 다시 쪼개야 한다. zh/ja 도 같은 방식으로 훑는다(`en` 을 `zh`/`ja` 로 바꿔 실행).
+
+- [ ] **추가 Step: 죽은 키 제거**
+
+`map.priceTier.<tier>.label` 은 소비자가 없다(`.mood`/`.hint` 만 쓰인다 — Task 4 리뷰 확인). 12개 값 ×
+4로케일이 아무도 안 읽는 번역이다. 사람 검수 전에 지운다.
+
 - [ ] **Step 4: 검수 요청 문서 작성**
 
 Create `docs/improvements/2026-08-17-i18n/translation-review.md` — zh/ja 중 확신이 낮은 항목을 표로 정리한다. 최소 포함:
