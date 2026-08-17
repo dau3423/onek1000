@@ -808,6 +808,11 @@ Expected: `✅ en/zh/ja: 완료`, `✅ 상수 ↔ ko.json 라벨 일치`, typech
 
 - [ ] **Step 7: 일부러 깨뜨려 검사기가 실제로 잡는지 확인**
 
+> ⚠️ **먼저 `git add` 로 이 태스크의 변경을 스테이지할 것.** 아래 테스트는 `git checkout` 으로 원복하는데,
+> 커밋도 스테이지도 안 된 상태면 `git checkout` 이 **이 태스크 이전 HEAD 내용으로 되돌려** 방금 작성한
+> 카탈로그가 통째로 날아간다(실제로 겪은 함정이다). 스테이지해 두면 `git checkout` 이 인덱스 기준으로
+> 원복하므로 안전하다.
+
 ```bash
 node -e "
 const f='messages/en.json';const fs=require('fs');
