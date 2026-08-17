@@ -137,6 +137,17 @@ Create `i18n/request.ts`:
 import { cookies } from 'next/headers';
 import { getRequestConfig } from 'next-intl/server';
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isLocale } from './config';
+import koMessages from '../messages/ko.json';
+
+/** "a.b.c" 경로로 중첩 객체에서 문자열 하나를 꺼낸다. 없으면 undefined. */
+function lookup(obj: unknown, path: string): string | undefined {
+  let cur: unknown = obj;
+  for (const seg of path.split('.')) {
+    if (typeof cur !== 'object' || cur === null) return undefined;
+    cur = (cur as Record<string, unknown>)[seg];
+  }
+  return typeof cur === 'string' ? cur : undefined;
+}
 
 export default getRequestConfig(async () => {
   const raw = cookies().get(LOCALE_COOKIE)?.value;
@@ -145,13 +156,16 @@ export default getRequestConfig(async () => {
   return {
     locale,
     messages: (await import(`../messages/${locale}.json`)).default,
-    // 키가 없으면 조용히 한국어로 떨어뜨린다 — 키 문자열이 화면에 노출되면 안 된다.
+    // 키가 없으면 **한국어 문구로 대체**한다. 키 문자열이나 빈 문자열이 화면에 노출되면 안 된다
+    // (빈 문자열은 버튼 라벨이 사라져 키 노출보다 나쁘다).
     // 번역이 덜 된 상태로 배포돼도 화면이 깨지지 않게 하는 장치다.
     getMessageFallback: ({ key, namespace }) => {
+      const path = namespace ? `${namespace}.${key}` : key;
       if (process.env.NODE_ENV === 'development') {
-        console.warn(`[i18n] 누락된 키: ${namespace ? `${namespace}.` : ''}${key} (locale=${locale})`);
+        console.warn(`[i18n] 누락된 키: ${path} (locale=${locale}) → 한국어로 대체`);
       }
-      return '';
+      // ko 에도 없으면 최후로 키의 마지막 조각(사람이 알아볼 수 있는 형태)을 쓴다.
+      return lookup(koMessages, path) ?? path.split('.').pop() ?? path;
     },
     onError: (err) => {
       if (process.env.NODE_ENV === 'development') console.warn('[i18n]', err.message);
@@ -196,7 +210,7 @@ Create `middleware.ts`:
 // ⚠️ 여기서 쿠키를 심어도 /regions 같은 정적 페이지는 여전히 정적 HTML(한국어)로 서빙된다 — 의도된 동작이다.
 //    로케일이 실제로 적용되는 곳은 app/(intl)/ 아래뿐이다.
 import { NextResponse, type NextRequest } from 'next/server';
-import { DEFAULT_LOCALE, LOCALE_COOKIE, LOCALES, isLocale } from '@/i18n/config';
+import { DEFAULT_LOCALE, LOCALE_COOKIE, isLocale } from '@/i18n/config';
 
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
@@ -243,7 +257,7 @@ export const config = {
 };
 ```
 
-`LOCALES`는 위 파일에서 직접 쓰지 않으므로 import에서 빼도 된다 — lint가 미사용 import를 잡으면 제거한다.
+`LOCALES`는 이 파일에서 쓰지 않으므로 import 하지 않는다(미사용 import는 lint 오류다).
 
 - [ ] **Step 7: `<html lang>` 동기화 컴포넌트 작성**
 
@@ -386,7 +400,15 @@ Create `scripts/i18n-check.mjs`:
 // 값이 빈 문자열인 키도 "미번역"으로 잡는다 — 키만 만들어두고 번역을 안 채운 상태를 놓치지 않기 위해.
 import { readFileSync } from 'node:fs';
 
-const LOCALES = ['ko', 'en', 'zh', 'ja'];
+// 로케일 목록은 i18n/config.ts 에서 파생한다 — 하드코딩하면 단일 출처가 둘로 갈린다.
+// (.mjs 에서 .ts 를 import 할 수 없으므로 정규식으로 읽는다.)
+const CONFIG_SRC = readFileSync(new URL('../i18n/config.ts', import.meta.url), 'utf8');
+const LOCALES = [...(CONFIG_SRC.match(/export const LOCALES = \[([^\]]*)\]/)?.[1] ?? '')
+  .matchAll(/'([a-z-]+)'/g)].map((m) => m[1]);
+if (LOCALES.length === 0) {
+  console.error('❌ i18n/config.ts 에서 LOCALES 를 읽지 못했다 — 검사기를 고칠 것');
+  process.exit(1);
+}
 const BASE = 'ko';
 
 const load = (l) => JSON.parse(readFileSync(new URL(`../messages/${l}.json`, import.meta.url), 'utf8'));
@@ -574,10 +596,10 @@ Modify `messages/ko.json` — 값은 `types/station.ts` 의 현재 상수와 **�
       "11": "제주", "14": "대구", "15": "인천", "16": "광주", "17": "대전",
       "18": "울산", "19": "세종"
     },
-    "carwashType": {
-      "self": "셀프",
-      "hand": "손세차",
-      "auto": "자동",
+    "washType": {
+      "self": "셀프세차",
+      "hand": "손세차·디테일",
+      "auto": "자동세차",
       "unknown": "유형 미확인"
     }
   }
@@ -618,10 +640,10 @@ Modify `messages/en.json` — `labels` 블록을 아래로 채운다. 브랜드�
       "11": "Jeju", "14": "Daegu", "15": "Incheon", "16": "Gwangju", "17": "Daejeon",
       "18": "Ulsan", "19": "Sejong"
     },
-    "carwashType": {
-      "self": "Self-service",
-      "hand": "Hand wash",
-      "auto": "Automatic",
+    "washType": {
+      "self": "Self-service wash",
+      "hand": "Hand wash / detailing",
+      "auto": "Automatic wash",
       "unknown": "Type unknown"
     }
   }
@@ -654,8 +676,8 @@ Modify `messages/zh.json`:
       "11": "济州", "14": "大邱", "15": "仁川", "16": "光州", "17": "大田",
       "18": "蔚山", "19": "世宗"
     },
-    "carwashType": {
-      "self": "自助洗车", "hand": "手工洗车", "auto": "自动洗车", "unknown": "类型未知"
+    "washType": {
+      "self": "自助洗车", "hand": "手工洗车・精洗", "auto": "自动洗车", "unknown": "类型未知"
     }
   }
 }
@@ -685,8 +707,8 @@ Modify `messages/ja.json`:
       "11": "済州", "14": "大邱", "15": "仁川", "16": "光州", "17": "大田",
       "18": "蔚山", "19": "世宗"
     },
-    "carwashType": {
-      "self": "セルフ洗車", "hand": "手洗い洗車", "auto": "自動洗車", "unknown": "種別不明"
+    "washType": {
+      "self": "セルフ洗車", "hand": "手洗い・ディテール", "auto": "自動洗車", "unknown": "種別不明"
     }
   }
 }
@@ -710,7 +732,7 @@ Create `lib/i18n/labels.ts`:
 //    두 값의 일치는 scripts/i18n-check.mjs 가 검사한다.
 import { useTranslations } from 'next-intl';
 import type { ProductCode, BrandCode, SidoCode } from '@/types/station';
-import type { CarwashType } from '@/types/carwash';
+import type { WashType } from '@/types/carwash';
 
 export function useProductLabel(): (code: ProductCode) => string {
   const t = useTranslations('labels.product');
@@ -727,13 +749,15 @@ export function useSidoLabel(): (code: SidoCode) => string {
   return (code) => t(code);
 }
 
-export function useCarwashTypeLabel(): (type: CarwashType | 'unknown') => string {
-  const t = useTranslations('labels.carwashType');
+export function useWashTypeLabel(): (type: WashType) => string {
+  const t = useTranslations('labels.washType');
   return (type) => t(type);
 }
 ```
 
-> `CarwashType` 의 실제 유니온 값은 `types/carwash.ts` 에서 확인해 위 `carwashType` 키와 맞춘다. 값이 다르면 **카탈로그 키를 실제 값에 맞춘다**(코드가 아니라 카탈로그를 고친다 — 코드 값은 DB 식별자다).
+> **실측 확인됨**: `types/carwash.ts` 의 타입 이름은 `WashType`(`'self'|'hand'|'auto'|'unknown'`)이고, 기존 한국어 라벨은 같은 파일의 `WASH_TYPE_LABEL`(셀프세차 / 손세차·디테일 / 자동세차 / 유형 미확인)이다. 위 `labels.washType` 의 한국어는 **이 상수와 글자까지 같아야 한다** — 다르면 기존 화면 문구가 바뀌는 회귀다.
+>
+> 별개로 `FilterBar` 의 유형 세그먼트는 좁은 칩용 짧은 라벨(전체/셀프/손세차/자동)을 쓴다. 이건 `labels.washType` 과 **다른 문구 집합**이므로 Task 4 에서 `map.carwashFilter.{all,self,hand,auto}` 로 따로 만든다. 두 개를 합치지 말 것.
 
 - [ ] **Step 5: 상수와 카탈로그 한국어가 일치하는지 검사 추가**
 
@@ -748,7 +772,8 @@ Modify `scripts/i18n-check.mjs` — 파일 맨 아래 `process.exit(...)` **앞�
     const m = src.match(new RegExp(`${name}[^=]*=\\s*\\{([\\s\\S]*?)\\n\\};`));
     if (!m) return null;
     const out = {};
-    for (const mm of m[1].matchAll(/'?([A-Z0-9]{3,4})'?\s*:\s*'([^']*)'/g)) out[mm[1]] = mm[2];
+    // {2,4}: 시도 코드는 '01'~'19' 로 2자리다. {3,4} 로 두면 SIDO_NAME 을 한 건도 못 잡는다(실측 확인).
+    for (const mm of m[1].matchAll(/'?([A-Z0-9]{2,4})'?\s*:\s*'([^']*)'/g)) out[mm[1]] = mm[2];
     return out;
   };
   const pairs = [
@@ -891,7 +916,7 @@ Expected: `ko` 는 한글이 나오고, `en/zh/ja` 는 한글이 **DB 원본(주
 
 **Files (modify):** `app/(intl)/page.tsx`, `components/ui/FilterBar.tsx`, `components/ui/BrandFilter.tsx`, `components/ui/MarkerLegend.tsx`, `components/ui/BottomSheet.tsx`, `components/ui/Header.tsx`, `components/map/KakaoMap.tsx`, `components/map/StationPopup.tsx`, `components/map/EvStationPopup.tsx`, `components/map/CarwashPopup.tsx`
 
-가장 큰 묶음이다(`app/(intl)/page.tsx` 65건, `MarkerLegend` 53건, `KakaoMap` 46건). Task 3의 `useProductLabel`·`useBrandLabel`·`useCarwashTypeLabel` 을 여기서 처음 소비한다.
+가장 큰 묶음이다(`app/(intl)/page.tsx` 65건, `MarkerLegend` 53건, `KakaoMap` 46건). Task 3의 `useProductLabel`·`useBrandLabel`·`useWashTypeLabel` 을 여기서 처음 소비한다.
 
 **주의**: `components/ui/Header.tsx` 는 `app/(intl)/page.tsx` 에서만 렌더되므로 `(intl)` 안에 있는 것과 같다. 하지만 파일 위치가 `components/` 라 `i18n:scan` 이 잡지 못한다 — 이 태스크에서 수동으로 포함한다. (Task 9에서 스캔 경로에 `components/` 를 추가한다.)
 
@@ -1055,20 +1080,21 @@ export function LocaleSwitcher() {
 
 - [ ] **Step 2: `GlobeIcon` 추가**
 
-Modify `components/icons/index.tsx` — 기존 아이콘들과 같은 형식으로 추가:
+Modify `components/icons/index.tsx` — **이 파일의 관례를 따른다**(실측 확인: `IconProps` 타입 + `Stroke` 래퍼):
 
 ```tsx
-export function GlobeIcon({ className }: { className?: string }) {
+export function GlobeIcon({ className }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.8}>
+    <Stroke className={className}>
       <circle cx="12" cy="12" r="9" />
-      <path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3z" />
-    </svg>
+      <path d="M3 12h18" />
+      <path d="M12 3c2.5 2.6 3.8 5.7 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3z" />
+    </Stroke>
   );
 }
 ```
 
-기존 아이콘의 props 시그니처(`{ className }: { className?: string }`)와 다르면 파일의 관례를 따른다.
+`Stroke` 는 이 파일 안의 비공개 헬퍼로 `viewBox`·`fill="none"`·`stroke="currentColor"` 를 이미 붙여 준다. `MapIcon`(약 375줄)을 참고 구현으로 삼되, 그 아이콘 자체는 건드리지 않는다.
 
 - [ ] **Step 3: 헤더에 배치**
 
@@ -1227,9 +1253,8 @@ Create `docs/improvements/2026-08-17-i18n/translation-review.md` — zh/ja 중 �
 
 **미할당 항목**: 명세의 "숫자·날짜는 `Intl` 포매터" 는 별도 태스크로 두지 않았다. 가격·날짜 표시는 화면마다 흩어져 있어 각 추출 태스크(4~9)에서 해당 화면을 만질 때 함께 바꾸는 편이 자연스럽다. **각 태스크 Step C 수행 시 날짜·가격 포맷도 함께 확인할 것.**
 
-**타입 일관성** — `Locale`·`LOCALES`·`LOCALE_COOKIE`·`LOCALE_LABEL`·`isLocale` 은 Task 1에서 정의되어 Task 10·11에서 같은 이름으로 소비된다. 훅 이름 `useProductLabel`/`useBrandLabel`/`useSidoLabel`/`useCarwashTypeLabel` 은 Task 3에서 정의되어 Task 4에서 소비된다.
+**타입 일관성** — `Locale`·`LOCALES`·`LOCALE_COOKIE`·`LOCALE_LABEL`·`isLocale` 은 Task 1에서 정의되어 Task 10·11에서 같은 이름으로 소비된다. 훅 이름 `useProductLabel`/`useBrandLabel`/`useSidoLabel`/`useWashTypeLabel` 은 Task 3에서 정의되어 Task 4에서 소비된다.
 
 **확인이 필요한 미해결 사항** (실행자가 착수 시 코드에서 확인할 것):
-- `types/carwash.ts` 의 `CarwashType` 실제 유니온 값 — Task 3 Step 4의 카탈로그 키와 맞춰야 한다.
-- `lib/analytics.ts` 의 `track()` 시그니처 — Task 11에서 두 번째 인자 지원 여부.
-- `components/icons/index.tsx` 의 아이콘 props 관례 — Task 10 Step 2.
+- ~~`lib/analytics.ts` 의 `track()` 시그니처~~ — **확인됨**: `track(event: string, props?: Record<string, unknown>)`. 계획대로 두 번째 인자를 쓴다.
+- ~~`components/icons/index.tsx` 의 아이콘 props 관례~~ — **확인됨**: `({ className }: IconProps)` 시그니처에 `<Stroke className={className}>` 래퍼를 쓴다. Task 10 Step 2 의 GlobeIcon 도 이 형식을 따를 것.
