@@ -16,12 +16,18 @@ export interface Region {
   name: string; // 한국어 시도명(서울, 경기 …)
 }
 
-/** 전체 지역 목록(인덱스/사이트맵/정적 생성용). */
-export const REGIONS: Region[] = (Object.keys(SIDO_SLUG) as SidoCode[]).map((code) => ({
-  code,
-  slug: SIDO_SLUG[code],
-  name: SIDO_NAME[code],
-}));
+/** 전체 지역 목록(인덱스/사이트맵/정적 생성용). 시도 코드 오름차순.
+ *
+ * ⚠️ 코드순 정렬은 표시 순서를 위해 필수다. Object.keys 순서를 그대로 쓰면 V8이 '10'~'19'(정수형 키)를
+ *    먼저 내놓고 '01'~'09'(선행 0라 정수형이 아님)를 뒤로 밀어, 화면에 "부산 제주 대구 … 서울 경기"로
+ *    나온다. 정렬해야 "서울 경기 강원 …" 순이 된다. */
+export const REGIONS: Region[] = (Object.keys(SIDO_SLUG) as SidoCode[])
+  .sort((a, b) => a.localeCompare(b))
+  .map((code) => ({
+    code,
+    slug: SIDO_SLUG[code],
+    name: SIDO_NAME[code],
+  }));
 
 const SLUG_TO_CODE = Object.fromEntries(REGIONS.map((r) => [r.slug, r.code])) as Record<string, SidoCode>;
 
