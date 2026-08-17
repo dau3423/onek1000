@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 import { BETA_FREE } from '@/lib/flags';
-import { SettingsIcon, MapIcon } from '@/components/icons';
+import { SettingsIcon } from '@/components/icons';
 
 export function Header() {
   const { data, status } = useSession();
@@ -44,35 +44,24 @@ export function Header() {
             <span className="hidden sm:inline">관리자</span>
           </Link>
         )}
-        {/* 지역별 최저가 — 앱 안에서 /regions 로 가는 유일한 상시 진입점.
-            그전까지 지역 페이지는 검색엔진 유입 외에 도달할 방법이 없었고(푸터 링크와 함께 해소),
-            크롤러에게도 이 서브트리가 사이트 구조의 일부임을 알린다. */}
-        <Link
-          href="/regions"
-          aria-label="지역별 최저가"
-          title="지역별 최저가"
-          className="tap-press flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-100"
-        >
-          <MapIcon className="h-[26px] w-[26px] text-gray-700" />
-        </Link>
         <Link
           href="/search"
           aria-label="검색"
-          className="tap-press flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-100"
+          className="tap-press flex h-12 w-12 items-center justify-center rounded-full hover:bg-gray-100"
         >
           <Image src="/icons/icon_search.png" alt="" width={30} height={30} />
         </Link>
         <Link
           href="/route"
           aria-label="경로별 최저가"
-          className="tap-press flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-100"
+          className="tap-press flex h-12 w-12 items-center justify-center rounded-full hover:bg-gray-100"
           title="경로별 최저가"
         >
           <Image src="/icons/icon_run.png" alt="" width={30} height={30} />
         </Link>
         <Link
           href={signedIn ? '/my' : '/auth/sign-in'}
-          className="tap-press flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-100"
+          className="tap-press flex h-12 w-12 items-center justify-center rounded-full hover:bg-gray-100"
           aria-label={signedIn ? (isPremium ? '마이페이지 (광고 차단 이용 중)' : '마이페이지') : '로그인'}
           title={signedIn && isPremium ? '광고 차단 이용 중' : (data?.user?.email ?? '로그인')}
         >

@@ -1072,7 +1072,7 @@ export function GlobeIcon({ className }: { className?: string }) {
 
 - [ ] **Step 3: 헤더에 배치**
 
-Modify `components/ui/Header.tsx` — 지역별 링크 **앞**에 넣는다(언어 → 지역 → 검색 → 경로 → 프로필):
+Modify `components/ui/Header.tsx` — 검색 링크 **앞**에 넣는다(언어 → 검색 → 경로 → 프로필):
 
 ```tsx
 import { LocaleSwitcher } from '@/components/i18n/LocaleSwitcher';
@@ -1084,9 +1084,11 @@ import { LocaleSwitcher } from '@/components/i18n/LocaleSwitcher';
 
 `messages/*.json` 의 `common` 에 추가 — ko: `"changeLanguage": "언어 변경"`, en: `"Change language"`, zh: `"更改语言"`, ja: `"言語を変更"`.
 
-- [ ] **Step 5: 헤더 폭 회귀 확인 (아이콘이 5개가 된다)**
+- [ ] **Step 5: 헤더 폭 회귀 확인 (아이콘이 4개가 된다)**
 
-아이콘이 하나 더 늘어난다. 360px 에서 앱 이름이 잘리는지 확인한다 — 직전 커밋(`3c1d88f`)에서 4개가 되며 이미 한 번 잘려 버튼 폭을 48→44px 로 줄인 전례가 있다.
+현재 헤더 아이콘은 3개(검색·경로·프로필, 각 48px)다. 언어 아이콘이 붙어 4개가 된다.
+
+**전례**: `3c1d88f` 에서 지역 아이콘을 넣어 4개로 만들었더니 360px 에서 앱 이름이 "1000냥 주..."로 잘렸다. 버튼 폭을 48→44px 로 줄여 해결했으나, 이후 그 아이콘을 제거하며 48px 로 되돌렸다. **같은 문제가 재현될 것이므로 이 단계를 건너뛰지 말 것.**
 
 ```bash
 npx next dev -p 3482 &
