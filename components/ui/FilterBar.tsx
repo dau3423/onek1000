@@ -5,8 +5,7 @@ import { useMapStore, type MapLayer } from '@/stores/map';
 import { PRODUCT_LABEL, type ProductCode } from '@/types/station';
 import type { CarwashTypeFilter } from '@/types/carwash';
 import { BrandFilter } from './BrandFilter';
-import { BoltIcon, DropletIcon, CarwashIcon, FuelIcon } from '@/components/icons';
-import { track } from '@/lib/analytics';
+import { BoltIcon, CarwashIcon, FuelIcon } from '@/components/icons';
 import clsx from 'clsx';
 
 // 주유소 드롭다운에 나열할 유종. 기존엔 '휘발유▾' 드롭다운(일반/고급)과 경유·LPG 칩이 따로
@@ -29,8 +28,8 @@ const CARWASH_TYPE_OPTIONS: { value: CarwashTypeFilter; label: string }[] = [
 ];
 
 export function FilterBar() {
-  const { product, setProduct, layer, setLayer, carwashOnly, toggleCarwashOnly, carwashType, setCarwashType } =
-    useMapStore();
+  // 세차 가능(carwashOnly)은 BrandFilter 드롭다운으로 옮겨 여기선 다루지 않는다.
+  const { product, setProduct, layer, setLayer, carwashType, setCarwashType } = useMapStore();
   // 열려 있는 드롭다운('gas'=유종 | 'carwash'=세차장 유형 | null)
   const [openMenu, setOpenMenu] = useState<null | 'gas' | 'carwash'>(null);
   const barRef = useRef<HTMLDivElement>(null);
@@ -196,39 +195,11 @@ export function FilterBar() {
         )}
       </div>
 
-      {/* 주유소 레이어 부가 필터 — 같은 행 오른쪽. 유종과 달리 AND 교집합 토글이라 밖에 둔다. */}
+      {/* 주유소 레이어 부가 필터 — 브랜드 + 세차 가능(둘 다 BrandFilter 드롭다운 안). 우측 끝에 고정. */}
       {isGas && (
-        <>
-          {/* 넘칠 때만 가로 스크롤. 드롭다운을 가진 레이어 세그먼트/브랜드는 이 컨테이너 밖에 둔다
-              — overflow-x-auto 는 overflow-y 도 잘라(clip) 드롭다운 패널이 안 보이게 되기 때문. */}
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto">
-          {/* '세차 가능' — has_carwash 주유소만. ⚠️ 표시 문자열만 "세차 가능", 계측 키(carwash_filter_on)는 불변. */}
-          <button
-            onClick={() => {
-              // OFF→ON 전이에만 계측 1건.
-              if (!carwashOnly) track('carwash_filter_on');
-              toggleCarwashOnly();
-            }}
-            aria-pressed={carwashOnly}
-            aria-label="세차 가능 주유소만 보기"
-            className={clsx(
-              'flex h-8 shrink-0 items-center gap-0.5 rounded-full px-2.5 text-xs font-semibold transition',
-              carwashOnly
-                ? 'bg-primary text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
-            )}
-          >
-            <DropletIcon className="h-3.5 w-3.5" />
-            {/* 좁은 폰에선 아이콘만(우측 '브랜드'가 밀려 잘리지 않게). aria-label 로 의미는 유지. */}
-            <span className="hidden sm:inline">세차 가능</span>
-          </button>
-          </div>
-
-          {/* 브랜드별 보기 — 맨 뒤(우측)에 고정. 스크롤 컨테이너 밖이라 항상 보인다. */}
-          <div className="shrink-0">
-            <BrandFilter />
-          </div>
-        </>
+        <div className="ml-auto shrink-0">
+          <BrandFilter />
+        </div>
       )}
 
       {/* isCarwash 부가 필터는 세차장 드롭다운으로 흡수. ev 레이어는 부가 필터 없음. */}

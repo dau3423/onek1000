@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMapStore } from '@/stores/map';
 import { BRAND_LABEL, BRAND_COLOR, type BrandCode } from '@/types/station';
+import { DropletIcon } from '@/components/icons';
+import { track } from '@/lib/analytics';
 import clsx from 'clsx';
 
 // 필터에 노출할 브랜드 순서 (주요 정유사 → 알뜰 → 고속도로 → 기타 → LPG)
@@ -23,7 +25,9 @@ const FILTER_LABEL_OVERRIDE: Partial<Record<BrandCode, string>> = {
  * - 다중 선택 칩으로 실제 필터 동작.
  */
 export function BrandFilter() {
-  const { brands, toggleBrand, clearBrands } = useMapStore();
+  // '세차 가능'(has_carwash)도 이 드롭다운 안에 함께 둔다 — 필터바를 1행으로 줄이면서
+  // 브랜드와 AND 교집합으로 걸리는 같은 성격의 조회 필터라 한 곳에 모았다.
+  const { brands, toggleBrand, clearBrands, carwashOnly, toggleCarwashOnly } = useMapStore();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -47,17 +51,20 @@ export function BrandFilter() {
     <div ref={ref} className="relative shrink-0">
       <button
         onClick={handleClick}
-        aria-label="브랜드 필터"
+        aria-label="브랜드·세차 가능 필터"
         aria-expanded={open}
-        title="브랜드별 보기"
+        title="브랜드별 보기 · 세차 가능"
         className={clsx(
           'flex h-7 shrink-0 items-center gap-1 rounded-full border px-2.5 text-xs font-semibold transition',
-          count > 0
+          // 브랜드 선택 또는 세차 가능 중 하나라도 켜져 있으면 활성 표시(접힌 상태에서도 필터가 걸린 걸 알 수 있게).
+          count > 0 || carwashOnly
             ? 'border-primary bg-primary text-white'
             : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300',
         )}
       >
         <span>브랜드{count > 0 ? ` ${count}` : ''}</span>
+        {/* 세차 가능이 켜져 있으면 접힌 상태에서도 물방울로 표시 */}
+        {carwashOnly && <DropletIcon className="h-3 w-3 shrink-0" />}
       </button>
 
       {/* 드롭다운 */}
@@ -98,6 +105,33 @@ export function BrandFilter() {
                 </button>
               );
             })}
+          </div>
+
+          {/* ─── 세차 가능 ─── 브랜드와 AND 교집합으로 걸리는 조회 필터.
+              ⚠️ 표시 문자열만 "세차 가능" — 계측 이벤트 키(carwash_filter_on)는 불변. */}
+          <div className="mt-2 border-t border-gray-100 pt-2 dark:border-gray-700">
+            <button
+              onClick={() => {
+                // OFF→ON 전이에만 계측 1건(현재 값 기준 판정 — 켜질 때만).
+                if (!carwashOnly) track('carwash_filter_on');
+                toggleCarwashOnly();
+              }}
+              aria-pressed={carwashOnly}
+              className={clsx(
+                'flex w-full items-center gap-1.5 rounded-lg px-1.5 py-1.5 text-[11px] font-semibold transition',
+                carwashOnly
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
+              )}
+            >
+              <DropletIcon className="h-3.5 w-3.5 shrink-0" />
+              <span>세차 가능한 주유소만</span>
+              {carwashOnly && (
+                <svg viewBox="0 0 24 24" className="ml-auto h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.4}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
       )}
