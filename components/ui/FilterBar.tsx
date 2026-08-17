@@ -84,20 +84,22 @@ export function FilterBar() {
           const active = layer === value;
           // 하위 선택지가 있는 레이어(주유소/세차장)만 ▾ 를 달고 메뉴를 연다.
           const hasMenu = value === 'gas' || value === 'carwash';
-          // 활성 상태에선 현재 하위 선택을 라벨에 붙여 노출한다(드롭다운 안을 열어보지 않아도 보이게).
+          // 활성 상태에선 현재 하위 선택을 노출한다(드롭다운을 열어보지 않아도 보이게).
+          // 주유소는 '주유소 · 휘발유' 대신 유종만 노출한다 — 연료 아이콘 + 활성색이 이미
+          // 주유소 레이어임을 말해 주므로 레이어명은 중복이고, 폭도 그만큼 줄어든다.
           const sub =
-            active && value === 'gas'
-              ? PRODUCT_LABEL[product]
-              : active && value === 'carwash' && carwashType !== 'all'
-                ? CARWASH_TYPE_OPTIONS.find((o) => o.value === carwashType)?.label
-                : null;
+            active && value === 'carwash' && carwashType !== 'all'
+              ? CARWASH_TYPE_OPTIONS.find((o) => o.value === carwashType)?.label
+              : null;
+          const text = active && value === 'gas' ? PRODUCT_LABEL[product] : label;
           return (
             <button
               key={value}
               aria-pressed={active}
               aria-haspopup={hasMenu ? 'menu' : undefined}
               aria-expanded={hasMenu ? openMenu === value : undefined}
-              aria-label={`${label} 지도`}
+              // 화면에서 '주유소'를 뺀 만큼 스크린리더에는 레이어명을 유지한다(예: "주유소 지도, 휘발유").
+              aria-label={`${label} 지도${active && value === 'gas' ? `, ${PRODUCT_LABEL[product]}` : ''}`}
               onClick={() => onLayerClick(value)}
               className={clsx(
                 'flex h-8 items-center gap-1 rounded-full px-2.5 text-xs font-semibold transition',
@@ -109,7 +111,7 @@ export function FilterBar() {
               <Icon className="h-3.5 w-3.5 shrink-0" />
               {/* 레이어 라벨은 폭에 관계없이 항상 노출한다 — 390px 실측에서 3개 다 켜도
                   우측 '브랜드'가 잘리지 않는다(넘치는 건 '세차 가능' 쪽 스크롤 컨테이너가 흡수). */}
-              <span>{label}</span>
+              <span>{text}</span>
               {sub && <span className="font-medium opacity-80">· {sub}</span>}
               {hasMenu && (
                 <svg viewBox="0 0 24 24" className="h-3 w-3 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.4}>
