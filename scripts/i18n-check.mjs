@@ -50,26 +50,39 @@ for (const locale of LOCALES.filter((l) => l !== BASE)) {
   if (bad > 60) console.log(`   … 외 ${bad - 60}건`);
 }
 
-// ── 라벨 정합성: types/station.ts 상수와 ko.json labels 가 어긋나면 SSG 페이지와 (intl) 화면의
+// ── 라벨 정합성: types/*.ts 상수와 ko.json labels 가 어긋나면 SSG 페이지와 (intl) 화면의
 //    한국어 문구가 갈린다. 상수를 지우지 않기로 했으므로(계획 "명세에서 바뀐 점") 여기서 묶어 둔다.
+//    PRODUCT_LABEL·BRAND_LABEL·SIDO_NAME(types/station.ts)뿐 아니라 WASH_TYPE_LABEL(types/carwash.ts)도
+//    같은 이유로 이중 관리되므로 네 가족 모두 검사해야 한다 — 셋만 지키면 넷째가 조용히 갈릴 수 있다.
 {
-  const src = readFileSync(new URL('../types/station.ts', import.meta.url), 'utf8');
-  const block = (name) => {
+  const srcCache = {};
+  const readSrc = (relPath) => {
+    if (!(relPath in srcCache)) {
+      srcCache[relPath] = readFileSync(new URL(relPath, import.meta.url), 'utf8');
+    }
+    return srcCache[relPath];
+  };
+  const block = (src, name) => {
     const m = src.match(new RegExp(`${name}[^=]*=\\s*\\{([\\s\\S]*?)\\n\\};`));
     if (!m) return null;
     const out = {};
-    // {2,4}: 시도 코드는 '01'~'19' 로 2자리다. {3,4} 로 두면 SIDO_NAME 을 한 건도 못 잡는다(실측 확인).
-    for (const mm of m[1].matchAll(/'?([A-Z0-9]{2,4})'?\s*:\s*'([^']*)'/g)) out[mm[1]] = mm[2];
+    // 2~10자, 대소문자 모두 허용: 코드 키('01', B027, SKE)와 washType 의 소문자 단어 키
+    // (self/hand/auto/unknown, 최대 7자)를 함께 잡아야 한다. {2,4}·대문자 전용으로 좁히면
+    // WASH_TYPE_LABEL 을 한 건도 못 잡는 조용한 미검사가 된다(실측 확인 — 이번에 잡은 버그).
+    for (const mm of m[1].matchAll(/'?([A-Za-z0-9]{2,10})'?\s*:\s*'([^']*)'/g)) out[mm[1]] = mm[2];
     return out;
   };
   const pairs = [
-    ['PRODUCT_LABEL', 'labels.product'],
-    ['BRAND_LABEL', 'labels.brand'],
-    ['SIDO_NAME', 'labels.sido'],
+    ['PRODUCT_LABEL', 'labels.product', '../types/station.ts'],
+    ['BRAND_LABEL', 'labels.brand', '../types/station.ts'],
+    ['SIDO_NAME', 'labels.sido', '../types/station.ts'],
+    ['WASH_TYPE_LABEL', 'labels.washType', '../types/carwash.ts'],
   ];
-  for (const [constName, ns] of pairs) {
-    const consts = block(constName);
+  const checked = [];
+  for (const [constName, ns, file] of pairs) {
+    const consts = block(readSrc(file), constName);
     if (!consts) { console.log(`⚠️  ${constName} 파싱 실패 — 검사 건너뜀`); continue; }
+    checked.push(`${ns}(${Object.keys(consts).length})`);
     for (const [code, val] of Object.entries(consts)) {
       const key = `${ns}.${code}`;
       if (base[key] !== val) {
@@ -78,7 +91,7 @@ for (const locale of LOCALES.filter((l) => l !== BASE)) {
       }
     }
   }
-  if (!failed) console.log('✅ 상수 ↔ ko.json 라벨 일치');
+  if (!failed) console.log(`✅ 상수 ↔ ko.json 라벨 일치: ${checked.join(', ')}`);
 }
 
 process.exit(failed ? 1 : 0);
