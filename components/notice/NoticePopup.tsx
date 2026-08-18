@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import type { ActiveNoticeResponse } from '@/types/notice';
 
 type ActiveNotice = NonNullable<ActiveNoticeResponse['notice']>;
@@ -26,6 +27,8 @@ function hideKey(id: string): string {
  */
 export function NoticePopup() {
   const router = useRouter();
+  const t = useTranslations('notice');
+  const tCommon = useTranslations('common');
   const [notice, setNotice] = useState<ActiveNotice | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -89,7 +92,7 @@ export function NoticePopup() {
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-5"
       role="dialog"
       aria-modal="true"
-      aria-label="공지"
+      aria-label={t('label')}
       onClick={() => setOpen(false)}
     >
       <div
@@ -98,7 +101,7 @@ export function NoticePopup() {
       >
         <button
           onClick={() => setOpen(false)}
-          aria-label="닫기"
+          aria-label={tCommon('close')}
           className="absolute right-2.5 top-2.5 z-10 rounded-full bg-black/40 p-1.5 text-white hover:bg-black/60"
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.2}>
@@ -106,15 +109,16 @@ export function NoticePopup() {
           </svg>
         </button>
 
-        {/* 공지 이미지 — 링크가 있으면 터치 시 이동 */}
+        {/* 공지 이미지 — 링크가 있으면 터치 시 이동. imageUrl은 운영자가 올린 이미지(공지 본문)라
+            번역 대상이 아니다. alt·aria-label은 이미지 자체를 가리키는 우리 쪽 UI 텍스트라 번역한다. */}
         {notice.linkUrl ? (
-          <button type="button" onClick={goLink} className="block w-full" aria-label="공지 링크로 이동">
+          <button type="button" onClick={goLink} className="block w-full" aria-label={t('goToLinkAria')}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={notice.imageUrl} alt="공지" className="block max-h-[70vh] w-full object-contain" />
+            <img src={notice.imageUrl} alt={t('label')} className="block max-h-[70vh] w-full object-contain" />
           </button>
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={notice.imageUrl} alt="공지" className="block max-h-[70vh] w-full object-contain" />
+          <img src={notice.imageUrl} alt={t('label')} className="block max-h-[70vh] w-full object-contain" />
         )}
 
         {/* 하단 액션 바: 오늘 하루 보지 않기 / 닫기 */}
@@ -123,14 +127,14 @@ export function NoticePopup() {
             onClick={hideToday}
             className="flex-1 py-3 font-medium text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800"
           >
-            오늘 하루 보지 않기
+            {t('hideTodayLabel')}
           </button>
           <span className="w-px bg-gray-100 dark:bg-gray-800" aria-hidden />
           <button
             onClick={() => setOpen(false)}
             className="flex-1 py-3 font-bold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
           >
-            닫기
+            {tCommon('close')}
           </button>
         </div>
       </div>

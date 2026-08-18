@@ -798,5 +798,104 @@
       "step3": "右上の<strong>「追加」</strong>をタップすると完了です。",
       "confirmButton": "確認"
     }
+  },
+  "ads": {
+    "upsellKicker": "広告が気になりますか？",
+    "upsellTitle": "₩1,000で広告をオフにする",
+    "detailLabel": "詳しく見る",
+    "interstitialTitle": "₩1,000で広告をオフにする",
+    "interstitialSubtitle": "₩1,000で広告をオフにする",
+    "interstitialCta": "₩1,000プランを詳しく見る",
+    "interstitialCloseNow": "閉じる",
+    "interstitialCloseCountdown": "{counter}秒後に閉じる"
+  },
+  "forecast": {
+    "cardTitle": "{product}給油タイミング予測",
+    "weakSignal": "弱いシグナル",
+    "confidenceLabel": "信頼度",
+    "regionSelectAria": "予測地域を選択",
+    "nationLabel": "全国",
+    "regionAccumulating": "{region}地域はデータ蓄積中です。",
+    "viewNationButton": "全国基準で見る",
+    "overallWindowLabel": "全期間",
+    "recentWindowLabel": "直近{days}日",
+    "accuracyLine": "{window}（上昇・下落予測）正解率{pct}%",
+    "horizonLine": "今後{horizonDays}日間の見通し（モデル{modelVersion}）・{targetDate}まで",
+    "graphToggle": "{expanded, select, true {グラフを閉じる} other {推移を見る}}",
+    "chartCaption": "直近{days}日間の{region}平均小売価格（実測）・点線/網掛けは単純な投影（参考値）",
+    "direction": {
+      "up": {
+        "label": "上昇予想",
+        "copy": "上昇見込み — 今給油するのが有利です",
+        "weakCopy": "弱い上昇の可能性 — 参考程度に"
+      },
+      "down": {
+        "label": "下落予想",
+        "copy": "下落見込み — 急がなければ数日待つのもおすすめです",
+        "weakCopy": "弱い下落の可能性 — 参考程度に"
+      },
+      "flat": {
+        "label": "横ばい予想",
+        "copy": "当面大きな変動は少ない見込みです",
+        "weakCopy": "当面大きな変動は少ない見込みです"
+      }
+    },
+    "directionShort": {
+      "up": "上昇",
+      "flat": "横ばい",
+      "down": "下落"
+    },
+    "chart": {
+      "noData": "まだ推移データが十分ではありません。",
+      "tooltipForecast": "予想",
+      "tooltipBandRange": "予測範囲",
+      "tooltipActual": "実測価格"
+    },
+    "drivers": {
+      "toggleQuestion": "なぜこの予測なのですか？",
+      "summaryUp": "原油・国際製品価格・為替が上昇し、上昇圧力がかかっています",
+      "summaryDown": "原油・国際製品価格・為替が下落し、下落圧力がかかっています",
+      "summaryMixedFlat": "先行指標が拮抗 — 大きな変動は少ない見込みです",
+      "summaryMixed": "先行指標が拮抗しています",
+      "summaryWithWindow": "{summary}（直近{windowDays}日間に基づく）",
+      "mopsLine": "国際製品価格（MOPS）直近{windowDays}日{pct}",
+      "usdKrwLine": "ドル/ウォン為替レート{pct}",
+      "wonWeakNote": "（ウォン安で輸入価格上昇）",
+      "wonStrongNote": "（ウォン高で輸入価格下落）",
+      "dubaiLine": "ドバイ原油{pct}"
+    },
+    "history": {
+      "heading": "過去の予測の振り返り",
+      "actualPct": "実績{pct}",
+      "hit": "的中",
+      "miss": "外れ"
+    },
+    "miniCard": {
+      "heading": "給油タイミング",
+      "detailLabel": "詳しく見る",
+      "direction": {
+        "up": "上昇見通し",
+        "flat": "横ばい見通し",
+        "down": "下落見通し"
+      }
+    },
+    "notify": {
+      "heading": "給油タイミング予測通知",
+      "description": "ガソリン価格の上昇が見込まれるときに事前にお知らせします",
+      "toggleAria": "給油タイミング予測通知",
+      "footnote": "今後約2週間の方向性の見通しです。通知を受け取るには上のプッシュ通知もオンにしてください。",
+      "saveFailed": "保存に失敗しました。"
+    },
+    "savingsSim": {
+      "avoidLine": "今日給油すると約₩{amount}回避できます",
+      "saveLine": "数日待つと約₩{amount}節約できます",
+      "flatLine": "変動が小さく大きな差はない見込みです",
+      "footnote": "1回の給油{liters}L基準・帯は単純な投影（参考値）"
+    }
+  },
+  "notice": {
+    "label": "お知らせ",
+    "goToLinkAria": "お知らせのリンクへ移動",
+    "hideTodayLabel": "今日は表示しない"
   }
 }

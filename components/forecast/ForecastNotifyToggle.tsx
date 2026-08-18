@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { TrendUpIcon } from '@/components/icons';
 
 /**
@@ -15,6 +16,7 @@ import { TrendUpIcon } from '@/components/icons';
  * 마이페이지 톤(라이트 고정)에 맞춰 다른 알림 카드와 동일한 회색 카드 스타일을 쓴다.
  */
 export function ForecastNotifyToggle({ initialOptIn }: { initialOptIn: boolean }) {
+  const t = useTranslations('forecast.notify');
   const [optIn, setOptIn] = useState(initialOptIn);
   const [busy, setBusy] = useState(false);
 
@@ -30,11 +32,11 @@ export function ForecastNotifyToggle({ initialOptIn }: { initialOptIn: boolean }
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error ?? '저장에 실패했어요.');
+        throw new Error(data.error ?? t('saveFailed'));
       }
     } catch (e) {
       setOptIn(!next); // 실패 시 원복
-      alert(e instanceof Error ? e.message : '저장에 실패했어요.');
+      alert(e instanceof Error ? e.message : t('saveFailed'));
     } finally {
       setBusy(false);
     }
@@ -45,15 +47,15 @@ export function ForecastNotifyToggle({ initialOptIn }: { initialOptIn: boolean }
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
-            <TrendUpIcon className="h-4 w-4" />주유 타이밍 예측 알림
+            <TrendUpIcon className="h-4 w-4" />{t('heading')}
           </div>
-          <p className="mt-0.5 text-xs text-gray-500">기름값 상승이 전망될 때 미리 알려드려요</p>
+          <p className="mt-0.5 text-xs text-gray-500">{t('description')}</p>
         </div>
         <button
           type="button"
           role="switch"
           aria-checked={optIn}
-          aria-label="주유 타이밍 예측 알림"
+          aria-label={t('toggleAria')}
           onClick={toggle}
           disabled={busy}
           className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-60 ${
@@ -68,7 +70,7 @@ export function ForecastNotifyToggle({ initialOptIn }: { initialOptIn: boolean }
         </button>
       </div>
       <p className="mt-2 text-[11px] leading-snug text-gray-400">
-        향후 약 2주 방향성 전망이에요. 알림을 받으려면 위에서 푸시 알림도 켜주세요.
+        {t('footnote')}
       </p>
     </div>
   );

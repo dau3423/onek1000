@@ -798,5 +798,104 @@
       "step3": "Tap <strong>'Add'</strong> in the top right to finish.",
       "confirmButton": "Got it"
     }
+  },
+  "ads": {
+    "upsellKicker": "Ads getting in your way?",
+    "upsellTitle": "Turn off ads for ₩1,000",
+    "detailLabel": "Details",
+    "interstitialTitle": "Turn off ads for ₩1,000",
+    "interstitialSubtitle": "Turn off ads for ₩1,000",
+    "interstitialCta": "See the ₩1,000 plan",
+    "interstitialCloseNow": "Close",
+    "interstitialCloseCountdown": "{counter, plural, one {Close in # second} other {Close in # seconds}}"
+  },
+  "forecast": {
+    "cardTitle": "{product} fill-up timing outlook",
+    "weakSignal": "Weak signal",
+    "confidenceLabel": "Confidence",
+    "regionSelectAria": "Select forecast region",
+    "nationLabel": "Nationwide",
+    "regionAccumulating": "{region} is still building up data.",
+    "viewNationButton": "View nationwide instead",
+    "overallWindowLabel": "Overall",
+    "recentWindowLabel": "{days, plural, one {Last # day} other {Last # days}}",
+    "accuracyLine": "{window} directional accuracy: {pct}%",
+    "horizonLine": "{horizonDays, plural, one {Outlook for the next # day} other {Outlook for the next # days}} (model {modelVersion}) · through {targetDate}",
+    "graphToggle": "{expanded, select, true {Hide graph} other {Show trend}}",
+    "chartCaption": "{days, plural, one {Last # day} other {Last # days}} average retail price in {region} (actual) · dashed line/shading is a simple projection (for reference)",
+    "direction": {
+      "up": {
+        "label": "Rising",
+        "copy": "Prices likely to rise — good time to fill up now",
+        "weakCopy": "Slight chance of a rise — for reference only"
+      },
+      "down": {
+        "label": "Falling",
+        "copy": "Prices likely to fall — if you're not in a hurry, waiting a few days could pay off",
+        "weakCopy": "Slight chance of a drop — for reference only"
+      },
+      "flat": {
+        "label": "Steady",
+        "copy": "Expect little change for now",
+        "weakCopy": "Expect little change for now"
+      }
+    },
+    "directionShort": {
+      "up": "Up",
+      "flat": "Flat",
+      "down": "Down"
+    },
+    "chart": {
+      "noData": "Not enough trend data yet.",
+      "tooltipForecast": "Forecast",
+      "tooltipBandRange": "Forecast range",
+      "tooltipActual": "Actual price"
+    },
+    "drivers": {
+      "toggleQuestion": "Why this forecast?",
+      "summaryUp": "Crude oil, international product prices, and FX are up, adding upward pressure",
+      "summaryDown": "Crude oil, international product prices, and FX are down, adding downward pressure",
+      "summaryMixedFlat": "Leading indicators are mixed — expect little change",
+      "summaryMixed": "Leading indicators are mixed",
+      "summaryWithWindow": "{summary} ({windowDays, plural, one {based on the last # day} other {based on the last # days}})",
+      "mopsLine": "{windowDays, plural, one {International product price (MOPS), last # day} other {International product price (MOPS), last # days}} {pct}",
+      "usdKrwLine": "USD/KRW exchange rate {pct}",
+      "wonWeakNote": "(weaker won raises import cost)",
+      "wonStrongNote": "(stronger won lowers import cost)",
+      "dubaiLine": "Dubai crude {pct}"
+    },
+    "history": {
+      "heading": "Past forecast track record",
+      "actualPct": "Actual {pct}",
+      "hit": "Hit",
+      "miss": "Miss"
+    },
+    "miniCard": {
+      "heading": "Fill-up timing",
+      "detailLabel": "Details",
+      "direction": {
+        "up": "Likely to rise",
+        "flat": "Likely flat",
+        "down": "Likely to fall"
+      }
+    },
+    "notify": {
+      "heading": "Fill-up timing forecast alerts",
+      "description": "Get a heads-up before fuel prices are expected to rise",
+      "toggleAria": "Fill-up timing forecast alerts",
+      "footnote": "This covers roughly the next 2 weeks of direction. Turn on push notifications above too, or you won't get alerts.",
+      "saveFailed": "Failed to save."
+    },
+    "savingsSim": {
+      "avoidLine": "Fill up today to avoid about ₩{amount}",
+      "saveLine": "Wait a few days to save about ₩{amount}",
+      "flatLine": "Little change expected, so no big difference",
+      "footnote": "Based on a {liters}L fill-up · the band is a simple projection (for reference)"
+    }
+  },
+  "notice": {
+    "label": "Notice",
+    "goToLinkAria": "Go to notice link",
+    "hideTodayLabel": "Don't show again today"
   }
 }

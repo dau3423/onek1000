@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { FuelIcon } from '@/components/icons';
 
 const STORAGE_KEY = '1000n_interstitial_last';
@@ -14,6 +15,7 @@ const STORAGE_KEY = '1000n_interstitial_last';
 export function InterstitialAd() {
   const { data, status } = useSession();
   const router = useRouter();
+  const t = useTranslations('ads');
   const [open, setOpen] = useState(false);
   const [counter, setCounter] = useState(4);
 
@@ -53,20 +55,20 @@ export function InterstitialAd() {
         <div className="flex h-10 items-center justify-center">
           <FuelIcon className="h-9 w-9 text-gray-300" />
         </div>
-        <h2 className="mt-3 text-lg font-bold text-gray-900">1000냥으로 광고 OFF</h2>
-        <p className="mt-2 text-sm text-gray-600">₩1,000으로 광고 끄기</p>
+        <h2 className="mt-3 text-lg font-bold text-gray-900">{t('interstitialTitle')}</h2>
+        <p className="mt-2 text-sm text-gray-600">{t('interstitialSubtitle')}</p>
         <button
           onClick={() => router.push('/pricing')}
           className="mt-5 w-full rounded-xl bg-primary py-3 font-bold text-white"
         >
-          1000냥 자세히 보기
+          {t('interstitialCta')}
         </button>
         <button
           onClick={() => setOpen(false)}
           disabled={counter > 0}
           className="mt-2 w-full rounded-xl py-3 text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50"
         >
-          {counter > 0 ? `${counter}초 후 닫기` : '닫기'}
+          {counter > 0 ? t('interstitialCloseCountdown', { counter }) : t('interstitialCloseNow')}
         </button>
       </div>
     </div>

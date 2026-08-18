@@ -5,14 +5,9 @@
 //  - 실측 변화율은 % 표기로 근사한다(원 환산하지 않음 — 유종/지역 평균가 기준 변동이라 단순 %가 정직).
 //  - 보합(flat)도 그대로 표시. API가 최근 20건으로 cap 하므로 전체 리스트를 렌더한다.
 
+import { useTranslations } from 'next-intl';
 import { CheckCircleIcon, ChevronRightIcon, XCircleIcon } from '@/components/icons';
 import type { ForecastHistoryItem, Direction } from './ForecastCard';
-
-const DIR_LABEL: Record<Direction, string> = {
-  up: '상승',
-  flat: '보합',
-  down: '하락',
-};
 
 // 부호 표기 % (소수 1자리). 예: 2.4 → "+2.4%", -1 → "-1.0%".
 function fmtPct(v: number): string {
@@ -21,11 +16,18 @@ function fmtPct(v: number): string {
 }
 
 export default function ForecastHistory({ history }: { history: ForecastHistoryItem[] }) {
+  const t = useTranslations('forecast');
   if (!history.length) return null;
+
+  const dirLabel: Record<Direction, string> = {
+    up: t('directionShort.up'),
+    flat: t('directionShort.flat'),
+    down: t('directionShort.down'),
+  };
 
   return (
     <div className="mt-3 border-t border-gray-100 pt-3 dark:border-gray-800">
-      <div className="mb-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400">지난 예측 복기</div>
+      <div className="mb-1.5 text-[11px] font-medium text-gray-500 dark:text-gray-400">{t('history.heading')}</div>
       <ul className="space-y-1">
         {history.map((h) => (
           <li
@@ -34,18 +36,18 @@ export default function ForecastHistory({ history }: { history: ForecastHistoryI
           >
             <span className="min-w-0">
               <span className="text-gray-400">{h.forecastDate.slice(5)}</span>{' '}
-              {DIR_LABEL[h.direction]}
+              {dirLabel[h.direction]}
               <ChevronRightIcon className="mx-0.5 inline-block h-3 w-3 align-[-0.125em]" />
-              실제 {fmtPct(h.actualChangePct)}
+              {t('history.actualPct', { pct: fmtPct(h.actualChangePct) })}
             </span>
             <span className={`flex shrink-0 items-center gap-1 ${h.hit ? 'text-gray-500 dark:text-gray-400' : 'text-gray-400'}`}>
               {h.hit ? (
                 <>
-                  <CheckCircleIcon className="h-4 w-4 text-green-600 dark:text-green-400" />적중
+                  <CheckCircleIcon className="h-4 w-4 text-green-600 dark:text-green-400" />{t('history.hit')}
                 </>
               ) : (
                 <>
-                  <XCircleIcon className="h-4 w-4 text-red-500 dark:text-red-400" />빗나감
+                  <XCircleIcon className="h-4 w-4 text-red-500 dark:text-red-400" />{t('history.miss')}
                 </>
               )}
             </span>

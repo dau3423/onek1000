@@ -7,11 +7,11 @@ import { join } from 'node:path';
 // lib/ 전체를 넣지는 않는다: 실측 462건 중 대부분이 결제·인증 에러 메시지, SEO 콘텐츠,
 // 법정 사업자 정보처럼 **번역 대상이 아닌** 것이라 0건 게이트가 다시 도달 불가능해진다.
 const ROOTS = ['app/(intl)', 'components', 'lib/map', 'lib/route'];
-// 번역 대상이 아닌 것 — 관리자·법정고지·결제·광고·계측.
+// 번역 대상이 아닌 것 — 운영자 전용 관리 화면, 법정고지, 한국 결제 플로우.
+// ads·forecast·notice는 한때 여기 있었지만 실제로는 홈 화면 UI라 번역 대상이다(Task 13).
 const EXCLUDE = [
   'components/admin/', 'components/legal/', 'components/billing/',
-  'components/promo/', 'components/referral/', 'components/ads/',
-  'components/forecast/', 'components/notice/',
+  'components/promo/', 'components/referral/',
 ];
 const HANGUL = /[가-힣]/;
 

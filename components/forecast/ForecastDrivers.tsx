@@ -6,6 +6,7 @@
 //  - 상단 한 줄 요약은 유효 지표의 양수/음수 개수로 상승·하락·혼조 판단.
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { ForecastDriversData } from './ForecastCard';
 
 // 부호 표기 % (소수 1자리). 예: 2.4 → "+2.4%".
@@ -21,6 +22,7 @@ export default function ForecastDrivers({
   drivers: ForecastDriversData | null;
   direction: 'up' | 'flat' | 'down';
 }) {
+  const t = useTranslations('forecast.drivers');
   const [open, setOpen] = useState(false);
   if (!drivers) return null;
 
@@ -33,10 +35,10 @@ export default function ForecastDrivers({
   const pos = vals.filter((v) => v > 0).length;
   const neg = vals.filter((v) => v < 0).length;
   let summary: string;
-  if (pos > neg) summary = '원유·국제제품가·환율이 올라 상승 압력';
-  else if (neg > pos) summary = '원유·국제제품가·환율이 내려 하락 압력';
+  if (pos > neg) summary = t('summaryUp');
+  else if (neg > pos) summary = t('summaryDown');
   // 동수/혼조: 예측 방향이 보합이면 그 맥락을, 아니면 단순 혼조로 표기.
-  else summary = direction === 'flat' ? '선행지표가 혼조 — 큰 변동은 적을 전망' : '선행지표가 혼조';
+  else summary = direction === 'flat' ? t('summaryMixedFlat') : t('summaryMixed');
 
   return (
     <div className="mt-3 border-t border-gray-100 pt-3 dark:border-gray-800">
@@ -46,29 +48,29 @@ export default function ForecastDrivers({
         className="text-[11px] font-medium text-primary hover:underline"
         aria-expanded={open}
       >
-        왜 이렇게 예측하나요?
+        {t('toggleQuestion')}
       </button>
       {open ? (
         <div className="mt-2 space-y-1 text-xs text-gray-500 dark:text-gray-400">
           <p className="text-[11px] text-gray-500 dark:text-gray-400">
-            {summary} (최근 {windowDays}일 기준)
+            {t('summaryWithWindow', { summary, windowDays })}
           </p>
           {mopsChangePct != null ? (
-            <p>국제 제품가(MOPS) 최근 {windowDays}일 {fmtPct(mopsChangePct)}</p>
+            <p>{t('mopsLine', { windowDays, pct: fmtPct(mopsChangePct) })}</p>
           ) : null}
           {usdkrwChangePct != null ? (
             <p>
-              원/달러 환율 {fmtPct(usdkrwChangePct)}{' '}
+              {t('usdKrwLine', { pct: fmtPct(usdkrwChangePct) })}{' '}
               <span className="text-gray-400">
                 {usdkrwChangePct > 0
-                  ? '(원화 약세로 수입가 상승)'
+                  ? t('wonWeakNote')
                   : usdkrwChangePct < 0
-                    ? '(원화 강세로 수입가 하락)'
+                    ? t('wonStrongNote')
                     : ''}
               </span>
             </p>
           ) : null}
-          {dubaiChangePct != null ? <p>두바이 원유 {fmtPct(dubaiChangePct)}</p> : null}
+          {dubaiChangePct != null ? <p>{t('dubaiLine', { pct: fmtPct(dubaiChangePct) })}</p> : null}
         </div>
       ) : null}
     </div>

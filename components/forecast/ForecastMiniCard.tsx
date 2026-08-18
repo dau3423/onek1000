@@ -7,8 +7,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import type { ProductCode } from '@/types/station';
-import { PRODUCT_LABEL } from '@/types/station';
+import { useProductLabel } from '@/lib/i18n/labels';
 import { ChevronRightIcon } from '@/components/icons';
 
 type Direction = 'up' | 'flat' | 'down';
@@ -20,14 +21,16 @@ interface MiniResponse {
   } | null;
 }
 
-// 방향 신호등(상승=빨강▲ / 보합=회색─ / 하락=파랑▼) + 한 줄 카피.
-const DIR_META: Record<Direction, { arrow: string; label: string; color: string }> = {
-  up: { arrow: '▲', label: '상승 전망', color: 'text-expensive' },
-  flat: { arrow: '─', label: '보합 전망', color: 'text-gray-500 dark:text-gray-400' },
-  down: { arrow: '▼', label: '하락 전망', color: 'text-blue-600 dark:text-blue-400' },
+// 방향 신호등(상승=빨강▲ / 보합=회색─ / 하락=파랑▼) 화살표·색.
+const DIR_STYLE: Record<Direction, { arrow: string; color: string }> = {
+  up: { arrow: '▲', color: 'text-expensive' },
+  flat: { arrow: '─', color: 'text-gray-500 dark:text-gray-400' },
+  down: { arrow: '▼', color: 'text-blue-600 dark:text-blue-400' },
 };
 
 export default function ForecastMiniCard({ product = 'B027' }: { product?: ProductCode }) {
+  const t = useTranslations('forecast');
+  const productLabel = useProductLabel();
   const [latest, setLatest] = useState<MiniResponse['latest']>(null);
 
   useEffect(() => {
@@ -45,20 +48,21 @@ export default function ForecastMiniCard({ product = 'B027' }: { product?: Produ
   // graceful: 신호 없으면 섹션 자체를 렌더하지 않는다.
   if (!latest) return null;
 
-  const meta = DIR_META[latest.direction];
+  const style = DIR_STYLE[latest.direction];
+  const label = t(`miniCard.direction.${latest.direction}`);
 
   return (
     <section className="border-t border-gray-100 px-5 py-5">
-      <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">주유 타이밍</h2>
+      <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">{t('miniCard.heading')}</h2>
       <Link href="/?forecast=1" className="flex items-center justify-between rounded-xl bg-gray-50 p-4 dark:bg-gray-800">
         <span className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-          <span className={`text-base font-bold ${meta.color}`} aria-hidden>
-            {meta.arrow}
+          <span className={`text-base font-bold ${style.color}`} aria-hidden>
+            {style.arrow}
           </span>
-          {PRODUCT_LABEL[product]} {meta.label}
+          {productLabel(product)} {label}
         </span>
         <span className="inline-flex items-center gap-0.5 text-sm text-primary">
-          자세히
+          {t('miniCard.detailLabel')}
           <ChevronRightIcon className="h-3.5 w-3.5" />
         </span>
       </Link>

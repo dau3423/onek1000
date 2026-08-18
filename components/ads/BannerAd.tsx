@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { SHEET_PEEK_PX } from '@/components/ui/BottomSheet';
 import { BETA_FREE } from '@/lib/flags';
 import { ChevronRightIcon } from '@/components/icons';
@@ -77,6 +78,7 @@ export function useBannerVisible(hide?: boolean): boolean {
 export function BannerAd({ hide, sheetOpen }: Props) {
   const { data } = useSession();
   const isPremium = Boolean(data?.user?.isPremium);
+  const t = useTranslations('ads');
 
   // 시트 펼침 시 fade-out + 클릭 차단(GPS 버튼과 동일 톤). 접히면 다시 보인다.
   //
@@ -123,11 +125,11 @@ export function BannerAd({ hide, sheetOpen }: Props) {
           className="flex w-full max-w-md items-center justify-between rounded-lg bg-gradient-to-r from-primary to-primary-dark px-4 py-2.5 text-white shadow-lg"
         >
           <div>
-            <div className="text-[11px] opacity-90">광고가 거슬리신가요?</div>
-            <div className="text-sm font-bold">광고 끄기 ₩1,000</div>
+            <div className="text-[11px] opacity-90">{t('upsellKicker')}</div>
+            <div className="text-sm font-bold">{t('upsellTitle')}</div>
           </div>
           <span className="inline-flex items-center gap-0.5 text-xs font-bold">
-            자세히
+            {t('detailLabel')}
             <ChevronRightIcon className="h-3 w-3" />
           </span>
         </Link>

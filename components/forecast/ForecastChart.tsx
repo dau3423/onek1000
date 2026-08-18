@@ -7,6 +7,7 @@
 import {
   ComposedChart, Line, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceDot,
 } from 'recharts';
+import { useTranslations } from 'next-intl';
 
 export interface ForecastSeriesPoint {
   date: string;
@@ -36,8 +37,9 @@ const DIR_COLOR: Record<'up' | 'flat' | 'down', string> = {
 };
 
 export function ForecastChart({ series, band, direction, weak = false }: Props) {
+  const t = useTranslations('forecast.chart');
   if (!series.length) {
-    return <p className="text-xs text-gray-400">아직 추이 데이터가 충분하지 않아요.</p>;
+    return <p className="text-xs text-gray-400">{t('noData')}</p>;
   }
 
   const dirColor = DIR_COLOR[direction];
@@ -98,9 +100,9 @@ export function ForecastChart({ series, band, direction, weak = false }: Props) 
           <Tooltip
             contentStyle={{ fontSize: 12, borderRadius: 8 }}
             formatter={(v: number, name: string) => {
-              if (name === 'forecast') return [`₩${v.toLocaleString()}`, '예상'];
-              if (name === 'bandHigh' || name === 'bandLow') return [`₩${v.toLocaleString()}`, '예측 범위'];
-              return [`₩${v.toLocaleString()}`, '실측가'];
+              if (name === 'forecast') return [`₩${v.toLocaleString()}`, t('tooltipForecast')];
+              if (name === 'bandHigh' || name === 'bandLow') return [`₩${v.toLocaleString()}`, t('tooltipBandRange')];
+              return [`₩${v.toLocaleString()}`, t('tooltipActual')];
             }}
             labelFormatter={(d: string) => d}
           />

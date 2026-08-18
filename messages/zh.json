@@ -798,5 +798,104 @@
       "step3": "点击右上角的<strong>\"添加\"</strong>即可完成。",
       "confirmButton": "知道了"
     }
+  },
+  "ads": {
+    "upsellKicker": "广告太烦了？",
+    "upsellTitle": "支付₩1,000关闭广告",
+    "detailLabel": "详情",
+    "interstitialTitle": "支付₩1,000关闭广告",
+    "interstitialSubtitle": "支付₩1,000关闭广告",
+    "interstitialCta": "查看₩1,000套餐详情",
+    "interstitialCloseNow": "关闭",
+    "interstitialCloseCountdown": "{counter}秒后关闭"
+  },
+  "forecast": {
+    "cardTitle": "{product}加油时机预测",
+    "weakSignal": "信号较弱",
+    "confidenceLabel": "置信度",
+    "regionSelectAria": "选择预测地区",
+    "nationLabel": "全国",
+    "regionAccumulating": "{region}地区数据积累中。",
+    "viewNationButton": "查看全国数据",
+    "overallWindowLabel": "全部",
+    "recentWindowLabel": "最近{days}天",
+    "accuracyLine": "{window}（涨跌预测）准确率{pct}%",
+    "horizonLine": "未来{horizonDays}天展望（模型{modelVersion}）· 至{targetDate}",
+    "graphToggle": "{expanded, select, true {收起图表} other {查看走势}}",
+    "chartCaption": "近{days}天{region}平均零售价（实测）· 虚线/阴影为简单推算（仅供参考）",
+    "direction": {
+      "up": {
+        "label": "预计上涨",
+        "copy": "预计上涨 — 现在加油更划算",
+        "weakCopy": "小幅上涨可能 — 仅供参考"
+      },
+      "down": {
+        "label": "预计下跌",
+        "copy": "预计下跌 — 不急的话可以再等几天",
+        "weakCopy": "小幅下跌可能 — 仅供参考"
+      },
+      "flat": {
+        "label": "预计持平",
+        "copy": "短期内变化不大",
+        "weakCopy": "短期内变化不大"
+      }
+    },
+    "directionShort": {
+      "up": "上涨",
+      "flat": "持平",
+      "down": "下跌"
+    },
+    "chart": {
+      "noData": "走势数据还不够。",
+      "tooltipForecast": "预计",
+      "tooltipBandRange": "预测区间",
+      "tooltipActual": "实测价"
+    },
+    "drivers": {
+      "toggleQuestion": "为什么这样预测？",
+      "summaryUp": "原油、国际产品价格及汇率上升，带来上涨压力",
+      "summaryDown": "原油、国际产品价格及汇率下降，带来下跌压力",
+      "summaryMixedFlat": "领先指标走势不一 — 预计变化不大",
+      "summaryMixed": "领先指标走势不一",
+      "summaryWithWindow": "{summary}（基于最近{windowDays}天）",
+      "mopsLine": "国际产品价格（MOPS）近{windowDays}天{pct}",
+      "usdKrwLine": "美元/韩元汇率{pct}",
+      "wonWeakNote": "（韩元走弱推高进口成本）",
+      "wonStrongNote": "（韩元走强降低进口成本）",
+      "dubaiLine": "迪拜原油{pct}"
+    },
+    "history": {
+      "heading": "过往预测复盘",
+      "actualPct": "实际{pct}",
+      "hit": "命中",
+      "miss": "未命中"
+    },
+    "miniCard": {
+      "heading": "加油时机",
+      "detailLabel": "详情",
+      "direction": {
+        "up": "预计上涨",
+        "flat": "预计持平",
+        "down": "预计下跌"
+      }
+    },
+    "notify": {
+      "heading": "加油时机预测提醒",
+      "description": "预计油价上涨前提前通知您",
+      "toggleAria": "加油时机预测提醒",
+      "footnote": "预测约为未来2周的走势方向。要收到提醒，请同时开启上方的推送通知。",
+      "saveFailed": "保存失败。"
+    },
+    "savingsSim": {
+      "avoidLine": "今天加油可避免约₩{amount}",
+      "saveLine": "推迟几天可节省约₩{amount}",
+      "flatLine": "变化不大，差异不明显",
+      "footnote": "按每次加油{liters}L计算 · 区间为简单推算（仅供参考）"
+    }
+  },
+  "notice": {
+    "label": "公告",
+    "goToLinkAria": "前往公告链接",
+    "hideTodayLabel": "今日不再显示"
   }
 }

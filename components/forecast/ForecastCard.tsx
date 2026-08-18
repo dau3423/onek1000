@@ -11,10 +11,12 @@
 //   useEffect + fetch 패턴을 따른다(코드베이스에 react-query 미도입 — 불필요 의존성 추가 회피).
 
 import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { track } from '@/lib/analytics';
 import { FuelIcon } from '@/components/icons';
-import type { ProductCode } from '@/types/station';
-import { PRODUCT_LABEL, SIDO_NAME } from '@/types/station';
+import type { ProductCode, SidoCode } from '@/types/station';
+import { SIDO_NAME } from '@/types/station';
+import { useProductLabel, useSidoLabel } from '@/lib/i18n/labels';
 import { ForecastChart, type ForecastSeriesPoint, type ForecastBand } from './ForecastChart';
 import ForecastSavingsSim from './ForecastSavingsSim';
 import ForecastDrivers from './ForecastDrivers';
@@ -74,42 +76,44 @@ interface Props {
 // 이 미만이면 '약한 신호' 톤(단정 금지, 배지/색 흐리게). 최신 모델 신뢰도가 낮은 편(0~35%)이라 중요.
 const LOW_CONF_PCT = 20;
 
-// 방향별 표시 메타(배지/색/카피). 색은 마커 톤(상승=경고, 하락=차분한 파랑, 보합=중립)과 일관.
-const DIR_META: Record<Direction, {
+// 방향별 스타일(색). 마커 톤(상승=경고, 하락=차분한 파랑, 보합=중립)과 일관.
+const DIR_STYLE: Record<Direction, {
   arrow: string;
-  label: string; // 배지 라벨
-  copy: string; // 단정 추천 카피
-  weakCopy: string; // 저신뢰 톤 카피
   badge: string; // 배지 색 클래스(고신뢰)
   badgeWeak: string; // 배지 색 클래스(저신뢰: 흐리게)
 }> = {
   up: {
     arrow: '▲',
-    label: '상승 예상',
-    copy: '오를 전망 — 지금 채우는 게 유리해요',
-    weakCopy: '약하게 오를 가능성 — 참고만 하세요',
     badge: 'bg-expensive/10 text-expensive',
     badgeWeak: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
   },
   down: {
     arrow: '▼',
-    label: '하락 예상',
-    copy: '내릴 전망 — 급하지 않으면 며칠 기다려도 좋아요',
-    weakCopy: '약하게 내릴 가능성 — 참고만 하세요',
     badge: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400',
     badgeWeak: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
   },
   flat: {
     arrow: '─',
-    label: '보합 예상',
-    copy: '당분간 큰 변동은 적을 전망',
-    weakCopy: '당분간 큰 변동은 적을 전망',
     badge: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300',
     badgeWeak: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
   },
 };
 
+// 방향별 표시 카피(배지 라벨/단정 추천 카피/저신뢰 톤 카피). 번역 카탈로그(forecast.direction.*) 원본.
+function useDirCopy(): Record<Direction, { label: string; copy: string; weakCopy: string }> {
+  const t = useTranslations('forecast.direction');
+  return {
+    up: { label: t('up.label'), copy: t('up.copy'), weakCopy: t('up.weakCopy') },
+    down: { label: t('down.label'), copy: t('down.copy'), weakCopy: t('down.weakCopy') },
+    flat: { label: t('flat.label'), copy: t('flat.copy'), weakCopy: t('flat.weakCopy') },
+  };
+}
+
 export function ForecastCard({ product, region = 'nation' }: Props) {
+  const t = useTranslations('forecast');
+  const dirCopy = useDirCopy();
+  const productLabel = useProductLabel();
+  const sidoLabel = useSidoLabel();
   const [data, setData] = useState<ForecastResponse | null>(null);
   const [expanded, setExpanded] = useState(false);
   // 지역 전환은 내부 상태로 관리(prop은 초기값으로만 사용). 변경 시 자동 재조회.
@@ -166,21 +170,21 @@ export function ForecastCard({ product, region = 'nation' }: Props) {
   //  - latest 없고 전국이면 컴포넌트 전체 미렌더(다른 배너처럼 조용히).
   if (!latest) {
     if (selectedRegion !== 'nation') {
-      const sidoName = SIDO_NAME[selectedRegion as keyof typeof SIDO_NAME] ?? '이 지역';
+      const sidoName = sidoLabel(selectedRegion as SidoCode);
       return (
         <section className="mx-3 mb-3 mt-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
           <div className="flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
-            <FuelIcon className="h-4 w-4" />{PRODUCT_LABEL[product]} 주유 타이밍 전망
+            <FuelIcon className="h-4 w-4" />{t('cardTitle', { product: productLabel(product) })}
           </div>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-            {sidoName} 지역은 데이터 축적 중이에요.
+            {t('regionAccumulating', { region: sidoName })}
           </p>
           <button
             type="button"
             onClick={() => setSelectedRegion('nation')}
             className="mt-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20"
           >
-            전국 기준으로 보기
+            {t('viewNationButton')}
           </button>
         </section>
       );
@@ -191,33 +195,35 @@ export function ForecastCard({ product, region = 'nation' }: Props) {
   const { direction, confidence, targetDate } = latest;
   // confidence 0 이거나 저신뢰면 '약한 신호' 톤. flat 은 본래 중립이라 단정 카피를 쓰지 않음.
   const weak = confidence < LOW_CONF_PCT || confidence === 0;
-  const meta = DIR_META[direction];
+  const style = DIR_STYLE[direction];
+  const meta = dirCopy[direction];
   const copy = weak ? meta.weakCopy : meta.copy;
-  const badgeClass = weak ? meta.badgeWeak : meta.badge;
-  const productLabel = PRODUCT_LABEL[product];
+  const badgeClass = weak ? style.badgeWeak : style.badge;
   // 그래프 캡션용 지역 라벨 — 전국=nation, 그 외 시도명. 선택 region을 반영(시도 선택 시 '전국' 오표기 방지).
   const regionLabel = selectedRegion === 'nation'
-    ? '전국'
-    : (SIDO_NAME[selectedRegion as keyof typeof SIDO_NAME] ?? '선택 지역');
+    ? t('nationLabel')
+    : sidoLabel(selectedRegion as SidoCode);
 
   // 정확도(실측 적중률) 상시 표시 — '신뢰도'(모델 신호강도)와는 별개.
   //   과소표본 오해 방지를 위해 n>=5(임계) + directionalHitRate 존재할 때만 노출.
   const acc = data?.accuracy ?? null;
   const showAccuracy = acc != null && acc.directionalHitRate != null && acc.n >= 5;
   const accPct = showAccuracy ? Math.round((acc!.directionalHitRate as number) * 100) : null;
-  const accWindowLabel = showAccuracy ? (acc!.windowDays > 0 ? `최근 ${acc!.windowDays}일` : '전체') : '';
+  const accWindowLabel = showAccuracy
+    ? (acc!.windowDays > 0 ? t('recentWindowLabel', { days: acc!.windowDays }) : t('overallWindowLabel'))
+    : '';
 
   return (
     <section ref={cardRef} className="mx-3 mb-3 mt-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
-            <FuelIcon className="h-4 w-4" />{productLabel} 주유 타이밍 전망
+            <FuelIcon className="h-4 w-4" />{t('cardTitle', { product: productLabel(product) })}
           </div>
           <div className="mt-1 flex items-center gap-1.5">
             <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${badgeClass}`}>
-              <span aria-hidden>{meta.arrow}</span>
-              {weak ? '약한 신호' : meta.label}
+              <span aria-hidden>{style.arrow}</span>
+              {weak ? t('weakSignal') : meta.label}
             </span>
           </div>
           <p className={`mt-2 text-sm font-semibold ${weak ? 'text-gray-600 dark:text-gray-300' : 'text-gray-900 dark:text-gray-100'}`}>
@@ -229,36 +235,36 @@ export function ForecastCard({ product, region = 'nation' }: Props) {
           <div className={`text-lg font-bold ${weak ? 'text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
             {Math.round(confidence)}%
           </div>
-          <div className="text-[10px] text-gray-400">신뢰도</div>
+          <div className="text-[10px] text-gray-400">{t('confidenceLabel')}</div>
         </div>
       </div>
 
       {/* 지역 전환 — 전국 + 시도별. 선택 시 자동 재조회(같은 data로 그래프/복기/시뮬/근거 전부 반영). */}
       <div className="mt-2 flex items-center justify-between gap-2">
         <select
-          aria-label="예측 지역 선택"
+          aria-label={t('regionSelectAria')}
           value={selectedRegion}
           onChange={(e) => setSelectedRegion(e.target.value)}
           className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
         >
-          <option value="nation">전국</option>
-          {Object.entries(SIDO_NAME).map(([code, name]) => (
+          <option value="nation">{t('nationLabel')}</option>
+          {Object.keys(SIDO_NAME).map((code) => (
             <option key={code} value={code}>
-              {name}
+              {sidoLabel(code as SidoCode)}
             </option>
           ))}
         </select>
         {/* 정확도(실측 적중률) 상시 표시 — '신뢰도'(모델 신호강도)와 구분. */}
         {showAccuracy ? (
           <span className="text-[11px] text-gray-400">
-            {accWindowLabel}(상승·하락 예측) 정확도 {accPct}%
+            {t('accuracyLine', { window: accWindowLabel, pct: accPct as number })}
           </span>
         ) : null}
       </div>
 
       <div className="mt-2 flex items-center justify-between text-[11px] text-gray-400">
         <span>
-          향후 {latest.horizonDays}일 전망(모델 {data?.modelVersion}) · {targetDate}까지
+          {t('horizonLine', { horizonDays: latest.horizonDays, modelVersion: data?.modelVersion ?? '', targetDate })}
         </span>
         {data?.series.length ? (
           <button
@@ -272,7 +278,7 @@ export function ForecastCard({ product, region = 'nation' }: Props) {
             className="rounded-full px-2 py-0.5 font-medium text-primary hover:bg-primary/10"
             aria-expanded={expanded}
           >
-            {expanded ? '그래프 접기' : '추이 보기'}
+            {t('graphToggle', { expanded: expanded ? 'true' : 'false' })}
           </button>
         ) : null}
       </div>
@@ -281,7 +287,7 @@ export function ForecastCard({ product, region = 'nation' }: Props) {
         <div className="mt-3 border-t border-gray-100 pt-3 dark:border-gray-800">
           <ForecastChart series={data.series} band={data.band} direction={direction} weak={weak} />
           <p className="mt-1 text-[10px] text-gray-400">
-            최근 {data.series.length}일 {regionLabel} 평균 소매가(실측) · 점선/음영은 단순 투영(참고용)
+            {t('chartCaption', { days: data.series.length, region: regionLabel })}
           </p>
           {/* 부가: 절감 시뮬(C5) → 선행지표 근거(C6) → 복기 타임라인(B). 각자 null 가드 보유. */}
           <ForecastSavingsSim band={data.band} direction={direction} />
