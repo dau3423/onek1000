@@ -978,14 +978,46 @@ export function relativeFromNow(iso: string | null, locale: string): string {
 Modify `scripts/i18n-scan.mjs` — `ROOTS` 를 교체하고 제외 목록을 둔다:
 
 ```js
-const ROOTS = ['app/(intl)', 'components'];
-// components/ 아래 번역 대상이 아닌 것 — 관리자·법정고지·결제·광고·계측.
+// lib/map·lib/route 도 포함한다 — 마커 라벨·경로 헬퍼가 UI 문자열을 직접 만든다.
+// lib/ 전체를 넣지는 않는다: 실측 462건 중 대부분이 결제·인증 에러 메시지, SEO 콘텐츠,
+// 법정 사업자 정보처럼 **번역 대상이 아닌** 것이라 0건 게이트가 다시 도달 불가능해진다.
+const ROOTS = ['app/(intl)', 'components', 'lib/map', 'lib/route'];
+// 번역 대상이 아닌 것 — 관리자·법정고지·결제·광고·계측.
 const EXCLUDE = [
   'components/admin/', 'components/legal/', 'components/billing/',
   'components/promo/', 'components/referral/', 'components/ads/',
   'components/forecast/', 'components/notice/',
 ];
 ```
+
+- [ ] **추가 Step: `i18n-ignore` 주석 지원 (예외를 파일 밖 목록이 아니라 현장에 남긴다)**
+
+번역하면 안 되는 한국어가 소수 존재한다(고유명사, 하위호환 상수 등). 이걸 스크립트의 EXCLUDE 목록으로
+관리하면 **왜 예외인지가 코드에서 멀어져** 다음 사람이 판단할 수 없다. 대신 현장 주석으로 표시한다.
+
+`i18n-scan.mjs` 에 다음을 추가한다: 어떤 줄의 **바로 앞 줄**이 `i18n-ignore` 를 포함하는 주석이면 그 줄을
+건너뛴다. 사유를 같이 적게 강제되므로 목록 방식보다 자기설명적이다.
+
+```js
+// 앞 줄에 i18n-ignore 주석이 있으면 건너뛴다(사유를 현장에 남기게 하려는 장치).
+const prev = (lines[i - 1] ?? '').trim();
+if (prev.includes('i18n-ignore')) return;
+```
+
+- [ ] **추가 Step: UI 로 흘러가는 `lib/` 한국어 처리 (실측 11건)**
+
+`lib/map`·`lib/route` 를 스캔에 넣으면 아래가 드러난다. 처리 방침이 다르니 구분한다.
+
+| 위치 | 내용 | 처리 |
+|---|---|---|
+| `lib/map/carwashMarker.ts` (4) | 마커 라벨 셀프세차/손세차/자동세차/세차장 | **번역** — 지도에 그대로 보이는 UI 문자열이다. `labels.washType` 과 문구가 다르니(마커는 더 짧다) 합치지 말고 별도 키로 둔다 |
+| `lib/map/evMarker.ts` (1) | `${n}/${m}대${' · 급속'}` | **번역 + ICU** — 문자열 접합이라 어순이 다른 언어에서 깨진다 |
+| `lib/map/navi.ts` (3) | 카카오맵 / T맵 / 네이버지도 | **미번역** — 고유명사(R16 과 일관). `i18n-ignore` 주석 |
+| `lib/map/navi.ts` (2) | `origin.name ?? '내 위치'` | **미번역** — 외부 내비 앱에 넘기는 `sName` 파라미터다. 받는 앱이 한국어 앱이라 한국어가 오히려 자연스럽다. `i18n-ignore` 주석에 이 사유를 적는다 |
+| `lib/route/recentPlaces.ts` (1) | `LEGACY_MY_LOCATION_NAME_KO` | **미번역** — 영속 데이터 하위호환용 고정 리터럴. 번역하면 하위호환이 깨진다. `i18n-ignore` 주석 |
+
+이 파일들은 React 컴포넌트가 아니므로 `t` 를 인자로 넘기지 말고, 텍스트를 카탈로그로 옮겨 **소비 컴포넌트가
+코드로 번역**하게 한다(Task 4 의 markerFace, Task 6 의 ev/format 과 같은 방식).
 
 `walk` 결과를 순회하기 전에 `if (EXCLUDE.some((e) => file.startsWith(e))) continue;` 를 넣는다.
 
