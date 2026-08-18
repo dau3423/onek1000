@@ -15,12 +15,14 @@ import {
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { distanceMeters } from '@/lib/map/geo';
 import { PinIcon, CheckIcon, CameraIcon, CloseIcon } from '@/components/icons';
+import type { PlaceType } from '@/types/review';
 
 interface Props {
-  stationId: string;
-  /** 주유소 좌표 — 있으면 작성 전에 클라이언트가 거리를 미리 보여주고 차단(서버가 최종 검증). */
-  stationLat?: number;
-  stationLng?: number;
+  targetType: PlaceType;
+  targetId: string;
+  /** 대상 장소 좌표 — 있으면 작성 전에 클라이언트가 거리를 미리 보여주고 차단(서버가 최종 검증). */
+  lat?: number;
+  lng?: number;
   onCreated?: () => void;
   onCancel?: () => void;
 }
@@ -35,8 +37,8 @@ function fmtDist(m: number): string {
   return m < 1000 ? `${Math.round(m)}m` : `${(m / 1000).toFixed(1)}km`;
 }
 
-export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCancel }: Props) {
-  const t = useTranslations('station.review');
+export function ReviewForm({ targetType, targetId, lat, lng, onCreated, onCancel }: Props) {
+  const t = useTranslations('review');
   const tCommon = useTranslations('common');
   const { status } = useSession();
   const router = useRouter();
@@ -52,16 +54,16 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 현재 위치 ↔ 주유소 거리 + 작성 가능 여부(주유소 좌표가 있을 때만 사전 판정).
+  // 현재 위치 ↔ 대상 장소 거리 + 작성 가능 여부(대상 좌표가 있을 때만 사전 판정).
   const allowedM =
     REVIEW_GEOFENCE_M +
     Math.min(geo.coords?.accuracy && geo.coords.accuracy > 0 ? geo.coords.accuracy : 0, REVIEW_GEOFENCE_ACCURACY_CAP_M);
   const distanceM = useMemo(() => {
-    if (stationLat == null || stationLng == null || !geo.coords) return null;
-    return distanceMeters(geo.coords.lat, geo.coords.lng, stationLat, stationLng);
-  }, [geo.coords, stationLat, stationLng]);
+    if (lat == null || lng == null || !geo.coords) return null;
+    return distanceMeters(geo.coords.lat, geo.coords.lng, lat, lng);
+  }, [geo.coords, lat, lng]);
   const tooFar = distanceM != null && distanceM > allowedM;
-  // 작성 가능: 위치 좌표가 있고(필수) + (주유소 좌표를 알 땐) 반경 이내.
+  // 작성 가능: 위치 좌표가 있고(필수) + (대상 좌표를 알 땐) 반경 이내.
   const locationReady = !!geo.coords && !tooFar;
 
   if (status !== 'authenticated') {
@@ -69,7 +71,7 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
       <div className="rounded-xl border border-dashed border-gray-300 p-4 text-center">
         <p className="text-sm text-gray-600">{t('loginRequired')}</p>
         <button
-          onClick={() => signIn(undefined, { callbackUrl: `/station/${encodeURIComponent(stationId)}` })}
+          onClick={() => signIn(undefined, { callbackUrl: `/station/${encodeURIComponent(targetId)}` })}
           className="mt-3 rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-white"
         >
           {t('login')}
@@ -131,7 +133,7 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/stations/${stationId}/reviews`, {
+      const res = await fetch(`/api/places/${targetType}/${targetId}/reviews`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,19 +1,19 @@
 'use client';
 
-// 주유소 상세 페이지에 들어가는 리뷰 섹션 — 통계/목록/작성을 한 번에 관리
+// 장소 상세 페이지에 들어가는 리뷰 섹션(주유소/충전소/세차장 공통) — 통계/목록/작성을 한 번에 관리
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { StarRating } from './StarRating';
 import { ReviewList } from './ReviewList';
 import { ReviewForm } from './ReviewForm';
-import type { Review, ReviewStats } from '@/types/review';
+import type { PlaceType, Review, ReviewStats } from '@/types/review';
 import { PencilIcon } from '@/components/icons';
 
-interface Props { stationId: string; stationLat?: number; stationLng?: number }
+interface Props { targetType: PlaceType; targetId: string; lat?: number; lng?: number }
 
-export function ReviewSection({ stationId, stationLat, stationLng }: Props) {
-  const t = useTranslations('station.review');
+export function ReviewSection({ targetType, targetId, lat, lng }: Props) {
+  const t = useTranslations('review');
   const tCommon = useTranslations('common');
   const [data, setData] = useState<{ reviews: Review[]; stats: ReviewStats } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -21,13 +21,13 @@ export function ReviewSection({ stationId, stationLat, stationLng }: Props) {
 
   const load = useCallback(async () => {
     try {
-      const r = await fetch(`/api/stations/${stationId}/reviews`);
+      const r = await fetch(`/api/places/${targetType}/${targetId}/reviews`);
       if (!r.ok) throw new Error(await r.text());
       setData(await r.json());
     } catch (e) {
       setError(t('loadFailed', { message: e instanceof Error ? e.message : String(e) }));
     }
-  }, [stationId, t]);
+  }, [targetType, targetId, t]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -79,9 +79,10 @@ export function ReviewSection({ stationId, stationLat, stationLng }: Props) {
       {writing && (
         <div className="mb-4">
           <ReviewForm
-            stationId={stationId}
-            stationLat={stationLat}
-            stationLng={stationLng}
+            targetType={targetType}
+            targetId={targetId}
+            lat={lat}
+            lng={lng}
             onCreated={() => { setWriting(false); load(); }}
             onCancel={() => setWriting(false)}
           />

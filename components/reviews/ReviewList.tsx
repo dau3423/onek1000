@@ -12,7 +12,7 @@ interface Props {
 }
 
 export function ReviewList({ reviews, onDeleted }: Props) {
-  const t = useTranslations('station.review');
+  const t = useTranslations('review');
   const locale = useLocale();
   const router = useRouter();
   const [openImage, setOpenImage] = useState<string | null>(null);
