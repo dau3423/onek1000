@@ -43,6 +43,8 @@ const ALLOWED_EVENTS = new Set([
   // ── 세차 묶음(FR-1/FR-3) — 위치/개인정보성 값은 담지 않는다.
   'carwash_filter_on',   // 세차 필터 칩 OFF→ON 전이(props 없음)
   'carwash_card_click',  // 세차 카드 CTA 클릭(props.bestDay=YYYY-MM-DD, props.grade)
+  // ── i18n(과업 11) — 감지/선택된 로케일 분포로 4개 언어 유지·번역 투자 우선순위를 판단.
+  'locale_active',       // 세션 내 로케일 활성화·전환(props.locale = ko|en|zh|ja)
 ]);
 
 function clientIp(req: NextRequest): string {
