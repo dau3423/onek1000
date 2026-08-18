@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ChatIcon, SmartphoneIcon } from '@/components/icons';
 import { normalizePhone, isValidPhone, formatPhone } from '@/lib/phone';
 
@@ -21,6 +22,7 @@ export function AlimtalkToggle({
   initialOptIn: boolean;
   initialPhone: string | null;
 }) {
+  const t = useTranslations('my');
   const [optIn, setOptIn] = useState(initialOptIn);
   const [busy, setBusy] = useState(false);
 
@@ -43,11 +45,11 @@ export function AlimtalkToggle({
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error ?? '저장에 실패했어요.');
+        throw new Error(data.error ?? t('alimtalk.saveFailed'));
       }
     } catch (e) {
       setOptIn(!next); // 실패 시 원복
-      alert(e instanceof Error ? e.message : '저장에 실패했어요.');
+      alert(e instanceof Error ? e.message : t('alimtalk.saveFailed'));
     } finally {
       setBusy(false);
     }
@@ -59,7 +61,7 @@ export function AlimtalkToggle({
     const digits = normalizePhone(phoneInput);
     // 빈 값은 삭제(null) 허용, 값이 있으면 형식 검증.
     if (digits !== '' && !isValidPhone(digits)) {
-      setPhoneError('휴대폰 번호를 정확히 입력해 주세요. (예: 010-1234-5678)');
+      setPhoneError(t('alimtalk.phoneInvalid'));
       return;
     }
     setPhoneBusy(true);
@@ -70,13 +72,13 @@ export function AlimtalkToggle({
         body: JSON.stringify({ phone: digits }),
       });
       const data = (await res.json().catch(() => ({}))) as { phone?: string | null; error?: string };
-      if (!res.ok) throw new Error(data.error ?? '저장에 실패했어요.');
+      if (!res.ok) throw new Error(data.error ?? t('alimtalk.saveFailed'));
       const next = data.phone ?? '';
       setSavedPhone(next);
       setPhoneInput(next ? formatPhone(next) : '');
       setPhoneSaved(true);
     } catch (e) {
-      setPhoneError(e instanceof Error ? e.message : '저장에 실패했어요.');
+      setPhoneError(e instanceof Error ? e.message : t('alimtalk.saveFailed'));
     } finally {
       setPhoneBusy(false);
     }
@@ -92,15 +94,15 @@ export function AlimtalkToggle({
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
-              <ChatIcon className="h-4 w-4" />카카오 알림톡 수신
+              <ChatIcon className="h-4 w-4" />{t('alimtalk.toggleLabel')}
             </div>
-            <p className="mt-0.5 text-xs text-gray-500">주유 할인·이벤트 소식을 카카오 알림톡으로 받기</p>
+            <p className="mt-0.5 text-xs text-gray-500">{t('alimtalk.toggleDescription')}</p>
           </div>
           <button
             type="button"
             role="switch"
             aria-checked={optIn}
-            aria-label="카카오 알림톡 수신"
+            aria-label={t('alimtalk.toggleLabel')}
             onClick={toggle}
             disabled={busy}
             className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-60 ${
@@ -116,11 +118,11 @@ export function AlimtalkToggle({
         </div>
         {needPhoneHint ? (
           <p className="mt-2 text-[11px] leading-snug text-primary">
-            알림톡을 받으려면 아래에 휴대폰 번호를 입력해 주세요.
+            {t('alimtalk.needPhoneHint')}
           </p>
         ) : (
           <p className="mt-2 text-[11px] leading-snug text-gray-400">
-            광고성 정보 수신에 동의하는 항목이에요. 언제든 끌 수 있어요.
+            {t('alimtalk.consentHint')}
           </p>
         )}
       </div>
@@ -128,10 +130,10 @@ export function AlimtalkToggle({
       {/* 휴대폰번호 입력/저장 — 알림톡 발송·결제에 사용 */}
       <div className="rounded-xl bg-gray-50 p-4">
         <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
-          <SmartphoneIcon className="h-4 w-4" />휴대폰 번호
+          <SmartphoneIcon className="h-4 w-4" />{t('alimtalk.phoneLabel')}
         </div>
         <p className="mt-0.5 text-xs text-gray-500">
-          {hasPhone ? `등록됨: ${maskPhone(savedPhone)}` : '알림톡 발송·결제에 사용돼요.'}
+          {hasPhone ? t('alimtalk.phoneRegistered', { phone: maskPhone(savedPhone) }) : t('alimtalk.phoneUsageHint')}
         </p>
         <div className="mt-2 flex gap-2">
           <input
@@ -144,10 +146,10 @@ export function AlimtalkToggle({
               if (phoneError) setPhoneError('');
               if (phoneSaved) setPhoneSaved(false);
             }}
-            placeholder="010-1234-5678"
+            placeholder={t('alimtalk.phonePlaceholder')}
             maxLength={13}
             aria-invalid={phoneError ? true : undefined}
-            aria-label="휴대폰 번호"
+            aria-label={t('alimtalk.phoneLabel')}
             className={`min-w-0 flex-1 rounded-xl border bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 ${
               phoneError
                 ? 'border-red-400 focus:border-red-400 focus:ring-red-400'
@@ -160,16 +162,16 @@ export function AlimtalkToggle({
             disabled={phoneBusy}
             className="shrink-0 rounded-xl bg-primary px-4 text-sm font-bold text-white transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {phoneBusy ? '저장 중' : '저장'}
+            {phoneBusy ? t('alimtalk.savingLabel') : t('saveAction')}
           </button>
         </div>
         {phoneError ? (
           <p className="mt-1 text-[11px] leading-tight text-red-500">{phoneError}</p>
         ) : phoneSaved ? (
-          <p className="mt-1 text-[11px] leading-tight text-green-600">저장했어요.</p>
+          <p className="mt-1 text-[11px] leading-tight text-green-600">{t('alimtalk.savedConfirmation')}</p>
         ) : (
           <p className="mt-1 text-[11px] leading-tight text-gray-400">
-            비워두고 저장하면 등록된 번호가 삭제돼요.
+            {t('alimtalk.clearHint')}
           </p>
         )}
       </div>

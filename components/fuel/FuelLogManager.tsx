@@ -5,8 +5,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { BoltIcon, ChartIcon, ChevronRightIcon, FuelIcon, MapIcon } from '@/components/icons';
-import { PRODUCT_LABEL } from '@/types/station';
+import { useProductLabel } from '@/lib/i18n/labels';
 import type { FuelLog, FuelLogStation } from '@/types/fuel-log';
 import { amountToQuantity, hasUsableUnitPrice, quantityToAmount, segmentKmPerL } from '@/lib/fuel/calc';
 import { MyStationsMap } from '@/components/fuel/MyStationsMap';
@@ -58,6 +59,7 @@ function computeStats(logs: FuelLog[]): Stats {
 type Tab = 'list' | 'map';
 
 export function FuelLogManager() {
+  const t = useTranslations('my');
   const [tab, setTab] = useState<Tab>('list');
   const [logs, setLogs] = useState<FuelLog[] | null>(null);
   const [page, setPage] = useState(0);
@@ -100,19 +102,19 @@ export function FuelLogManager() {
   };
 
   if (logs === null) {
-    return <p className="text-sm text-gray-400">불러오는 중…</p>;
+    return <p className="text-sm text-gray-400">{t('loading')}</p>;
   }
 
   if (logs.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
         <FuelIcon className="h-12 w-12 text-gray-300" />
-        <p className="text-sm text-gray-500">아직 기록이 없어요.</p>
+        <p className="text-sm text-gray-500">{t('fuelLog.emptyMessage')}</p>
         <p className="text-xs leading-relaxed text-gray-400">
-          주유소·충전소 상세에서 “여기서 주유 / 여기서 충전” 버튼 한 번으로 기록할 수 있어요.
+          {t('fuelLog.emptyHint')}
         </p>
         <Link href="/" className="mt-1 rounded-full bg-primary px-5 py-2 text-sm font-bold text-white">
-          지도에서 찾기
+          {t('findOnMap')}
         </Link>
       </div>
     );
@@ -122,8 +124,8 @@ export function FuelLogManager() {
     <div className="space-y-4">
       {/* 목록 / 지도 전환 토글 */}
       <div className="flex rounded-xl bg-gray-100 p-1">
-        <TabButton active={tab === 'list'} onClick={() => setTab('list')} label="목록" />
-        <TabButton active={tab === 'map'} onClick={() => setTab('map')} label="지도" />
+        <TabButton active={tab === 'list'} onClick={() => setTab('list')} label={t('fuelLog.tabList')} />
+        <TabButton active={tab === 'map'} onClick={() => setTab('map')} label={t('fuelLog.tabMap')} />
       </div>
 
       {tab === 'list' ? (
@@ -160,6 +162,7 @@ function TabButton({ active, onClick, label }: { active: boolean; onClick: () =>
 
 // 지도 탭 — 내가 주유한 주유소만 핀으로(방문 횟수 배지). 탭 진입 시 1회 조회.
 function MapTab() {
+  const t = useTranslations('my');
   const [stations, setStations] = useState<FuelLogStation[] | null>(null);
 
   useEffect(() => {
@@ -180,7 +183,7 @@ function MapTab() {
   if (stations === null) {
     return (
       <div className="flex h-[420px] items-center justify-center rounded-xl border border-gray-100 bg-gray-50 text-sm text-gray-400">
-        불러오는 중…
+        {t('loading')}
       </div>
     );
   }
@@ -192,8 +195,8 @@ function MapTab() {
         <div className="flex h-10 items-center justify-center">
           <MapIcon className="h-9 w-9 text-gray-300" />
         </div>
-        <p className="text-sm text-gray-500">아직 주유 기록이 없어요.</p>
-        <p className="text-xs text-gray-400">좌표가 있는 주유소 기록이 생기면 지도에 표시돼요.</p>
+        <p className="text-sm text-gray-500">{t('fuelLog.mapEmptyMessage')}</p>
+        <p className="text-xs text-gray-400">{t('fuelLog.mapEmptyHint')}</p>
       </div>
     );
   }
@@ -202,7 +205,7 @@ function MapTab() {
     <div className="space-y-2">
       <MyStationsMap stations={stations} />
       <p className="text-center text-[11px] text-gray-400">
-        핀의 숫자는 방문 횟수예요. 핀을 누르면 주유소 상세로 이동해요.
+        {t('fuelLog.mapHint')}
       </p>
     </div>
   );
@@ -229,6 +232,8 @@ function ListTab({
   loadMore: () => void;
 }) {
   const router = useRouter();
+  const t = useTranslations('my');
+  const productLabel = useProductLabel();
   const stats = computeStats(logs);
   const kmPerLById = computeKmPerLById(logs); // gas 항목 구간 연비(현재 로드분 기준)
 
@@ -247,16 +252,16 @@ function ListTab({
         className="flex items-center justify-between rounded-xl bg-primary/5 px-4 py-3 text-sm font-semibold text-primary hover:bg-primary/10"
       >
         <span className="flex items-center gap-1.5">
-          <ChartIcon className="h-4 w-4" />월별 주유비 · 연비 · 절약 리포트
+          <ChartIcon className="h-4 w-4" />{t('fuelLog.reportLinkLabel')}
         </span>
         <ChevronRightIcon className="h-4 w-4" />
       </Link>
 
       {/* 간단 통계 (현재 로드된 기록 기준) */}
       <div className="grid grid-cols-3 gap-2">
-        <StatCard label="기록 수" value={`${stats.count}건`} />
-        <StatCard label="총 주유비" value={stats.totalSpent > 0 ? `₩${stats.totalSpent.toLocaleString()}` : '-'} />
-        <StatCard label="평균 단가" value={stats.avgUnitPrice != null ? `₩${stats.avgUnitPrice.toLocaleString()}` : '-'} />
+        <StatCard label={t('fuelLog.statCountLabel')} value={t('fuelLog.countValue', { count: stats.count })} />
+        <StatCard label={t('totalSpentLabel')} value={stats.totalSpent > 0 ? `₩${stats.totalSpent.toLocaleString()}` : '-'} />
+        <StatCard label={t('avgUnitPriceLabel')} value={stats.avgUnitPrice != null ? `₩${stats.avgUnitPrice.toLocaleString()}` : '-'} />
       </div>
 
       <ul className="divide-y divide-gray-100 rounded-xl border border-gray-100">
@@ -271,18 +276,18 @@ function ListTab({
                 <button
                   type="button"
                   onClick={() => goDetail(l)}
-                  aria-label={`${l.stationName} 상세 보기`}
+                  aria-label={t('fuelLog.detailAria', { name: l.stationName })}
                   className="group -m-1 min-w-0 flex-1 rounded-lg p-1 text-left transition hover:bg-gray-50"
                 >
                   <span className="flex items-center gap-2">
                     <span className="truncate font-semibold text-gray-900">{l.stationName}</span>
                     {l.kind === 'ev' ? (
                       <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                        <BoltIcon className="h-3.5 w-3.5" />충전
+                        <BoltIcon className="h-3.5 w-3.5" />{t('fuelLog.chargeBadge')}
                       </span>
                     ) : (
                       <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600">
-                        <FuelIcon className="h-3.5 w-3.5" />{PRODUCT_LABEL[l.product]}
+                        <FuelIcon className="h-3.5 w-3.5" />{productLabel(l.product)}
                       </span>
                     )}
                     <ChevronRightIcon className="h-4 w-4 shrink-0 text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-gray-400" />
@@ -323,13 +328,13 @@ function ListTab({
                     onClick={() => setEditing(l.id)}
                     className="rounded-lg px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/5"
                   >
-                    편집
+                    {t('fuelLog.editAction')}
                   </button>
                   <button
                     onClick={() => remove(l.id)}
                     className="rounded-lg px-2 py-1 text-xs font-semibold text-red-500 hover:bg-red-50"
                   >
-                    삭제
+                    {t('deleteAction')}
                   </button>
                 </div>
               </div>
@@ -344,7 +349,7 @@ function ListTab({
           disabled={loadingMore}
           className="w-full rounded-lg border border-gray-200 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
         >
-          {loadingMore ? '불러오는 중…' : '더 보기'}
+          {loadingMore ? t('loading') : t('fuelLog.loadMoreAction')}
         </button>
       )}
     </div>
@@ -369,6 +374,8 @@ function EditForm({
   onSaved: (l: FuelLog) => void;
   onCancel: () => void;
 }) {
+  const t = useTranslations('my');
+  const tCommon = useTranslations('common');
   const isEv = log.kind === 'ev';
   const [amountWon, setAmountWon] = useState(log.amountWon != null ? String(log.amountWon) : '');
   const [liters, setLiters] = useState(log.liters != null ? String(log.liters) : '');
@@ -429,7 +436,7 @@ function EditForm({
         }),
       });
       const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error ?? '수정에 실패했어요.');
+      if (!res.ok) throw new Error(d.error ?? t('fuelLog.updateFailed'));
       onSaved(d.log as FuelLog);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -442,25 +449,28 @@ function EditForm({
     <div className="space-y-2.5">
       <div className="text-sm font-semibold text-gray-900">{log.stationName}</div>
       <div className="grid grid-cols-3 gap-2">
-        <Field label="금액(원)" value={amountWon} onChange={onAmountChange} inputMode="numeric" />
+        <Field label={t('fuelLog.amountLabel')} value={amountWon} onChange={onAmountChange} inputMode="numeric" />
         {isEv ? (
-          <Field label="충전량(kWh)" value={kwh} onChange={onQuantityChange} inputMode="decimal" />
+          <Field label={t('fuelLog.kwhLabel')} value={kwh} onChange={onQuantityChange} inputMode="decimal" />
         ) : (
-          <Field label="주유량(L)" value={liters} onChange={onQuantityChange} inputMode="decimal" />
+          <Field label={t('fuelLog.litersLabel')} value={liters} onChange={onQuantityChange} inputMode="decimal" />
         )}
-        <Field label="주행거리(km)" value={odometer} onChange={setOdometer} inputMode="numeric" />
+        <Field label={t('fuelLog.odometerLabel')} value={odometer} onChange={setOdometer} inputMode="numeric" />
       </div>
       {autoCalc && (
         <p className="text-[11px] text-gray-400">
-          단가 ₩{log.unitPrice!.toLocaleString()}/{isEv ? 'kWh' : 'L'} 기준 {isEv ? '충전량' : '주유량'}·금액이 자동
-          계산돼요. 직접 수정하면 그 값이 우선해요.
+          {t('fuelLog.autoCalcHint', {
+            price: log.unitPrice!.toLocaleString(),
+            unit: isEv ? 'kWh' : 'L',
+            kind: isEv ? 'ev' : 'gas',
+          })}
         </p>
       )}
       <input
         value={memo}
         onChange={(e) => setMemo(e.target.value)}
         maxLength={200}
-        placeholder="메모 (선택)"
+        placeholder={t('fuelLog.memoPlaceholder')}
         className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary"
       />
       {err && <p className="text-xs text-red-500">{err}</p>}
@@ -470,14 +480,14 @@ function EditForm({
           disabled={busy}
           className="flex-1 rounded-lg bg-primary py-2 text-sm font-bold text-white disabled:opacity-60"
         >
-          {busy ? '저장 중…' : '저장'}
+          {busy ? t('savingAction') : t('saveAction')}
         </button>
         <button
           onClick={onCancel}
           disabled={busy}
           className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
         >
-          취소
+          {tCommon('cancel')}
         </button>
       </div>
     </div>

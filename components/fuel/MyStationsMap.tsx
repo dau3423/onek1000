@@ -6,6 +6,7 @@
 // 핀에는 방문 횟수를 배지로 표시하고, 탭하면 /station/{id} 상세로 이동한다.
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { loadKakao } from '@/components/map/loadKakao';
 import type { FuelLogStation } from '@/types/fuel-log';
 
@@ -15,6 +16,7 @@ interface Props {
 
 export function MyStationsMap({ stations }: Props) {
   const router = useRouter();
+  const t = useTranslations('my');
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<kakao.maps.Map | null>(null);
   const overlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
@@ -37,12 +39,14 @@ export function MyStationsMap({ stations }: Props) {
         mapRef.current = map;
         setMapReady(true);
       } catch {
-        if (alive) setError('지도를 불러오지 못했어요.');
+        if (alive) setError(t('fuelLog.mapLoadError'));
       }
     })();
     return () => {
       alive = false;
     };
+    // t는 로케일이 바뀌어도 지도를 다시 초기화할 필요가 없어 의도적으로 deps에서 제외한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 핀 렌더 + bounds fit. stations 또는 지도 준비 상태 변경 시 갱신(둘 중 무엇이 먼저 와도 그려지게).
@@ -109,7 +113,7 @@ export function MyStationsMap({ stations }: Props) {
     <div
       ref={containerRef}
       className="h-[420px] w-full overflow-hidden rounded-xl border border-gray-100"
-      aria-label="내가 주유한 주유소 지도"
+      aria-label={t('fuelLog.mapAriaLabel')}
     />
   );
 }

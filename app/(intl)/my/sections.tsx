@@ -4,6 +4,7 @@
 
 import { cache } from 'react';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { ChevronRightIcon } from '@/components/icons';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { CancelButton } from '@/components/billing/CancelButton';
@@ -76,28 +77,26 @@ function deriveStatus(sub: Sub | null) {
 export async function SubscriptionSection({ userId }: { userId: string }) {
   const sub = await fetchSubscription(userId);
   const { isOnetime, periodEndStr, isActive, isCanceled, isTrial } = deriveStatus(sub);
+  const t = await getTranslations('my');
 
   if (sub && isActive) {
     // 라벨/값 분기:
     //  - 무료 체험(trial): "혜택 만료일" + trial 만료일, 가격은 "Free"(결제 없음).
     //  - 단건/해지건: "이용 만료" + 만료일.
     //  - 유료 정기(active): "다음 결제" + 다음 결제일.
-    const dateLabel = isTrial ? '혜택 만료일' : isOnetime || isCanceled ? '이용 만료' : '다음 결제';
-    const priceLabel = isTrial ? 'Free' : isOnetime ? '₩1,000 / 1개월' : '월 ₩1,000';
+    const dateKind = isTrial ? 'trial' : isOnetime || isCanceled ? 'expiry' : 'next';
+    const priceKind = isTrial ? 'trial' : isOnetime ? 'onetime' : 'monthly';
+    const badgeKind = isTrial ? 'trial' : isCanceled ? 'canceled' : 'active';
     return (
       <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
         <div className="flex items-center justify-between">
           <span className="rounded-full bg-primary px-2.5 py-0.5 text-[11px] font-bold text-white">
-            {isTrial
-              ? '무료 체험 중'
-              : isCanceled
-                ? '해지 예정'
-                : '광고 차단 이용 중'}
+            {t('subBadge', { kind: badgeKind })}
           </span>
-          <span className="text-xs text-gray-500">{priceLabel}</span>
+          <span className="text-xs text-gray-500">{t('subPriceLabel', { kind: priceKind })}</span>
         </div>
         <div className="mt-3 text-sm text-gray-700">
-          {dateLabel}: <strong>{periodEndStr ?? '-'}</strong>
+          {t('subDateLabel', { kind: dateKind })}: <strong>{periodEndStr ?? '-'}</strong>
         </div>
         {/* 단건/해지건은 끊을 자동결제가 없고, 무료 체험은 해지할 유료 구독이 아니므로 해지 버튼 미노출 */}
         {!isOnetime && !isCanceled && !isTrial && (
@@ -114,12 +113,12 @@ export async function SubscriptionSection({ userId }: { userId: string }) {
   // (예전 "베타 무료" 안내 카드 분기는 결제 진입점 노출을 위해 제거. 되돌릴 땐 BETA_FREE 분기를 다시 추가.)
   return (
     <div className="rounded-xl bg-gray-50 p-4">
-      <div className="text-sm text-gray-700">지금은 광고가 표시돼요.</div>
+      <div className="text-sm text-gray-700">{t('adShownNotice')}</div>
       <Link
         href="/pricing"
         className="mt-3 inline-flex items-center gap-1 rounded-full bg-primary px-4 py-2 text-xs font-bold text-white"
       >
-        ₩1,000으로 광고 끄기
+        {t('adBlockCta')}
         <ChevronRightIcon className="h-3.5 w-3.5" />
       </Link>
     </div>
@@ -176,38 +175,42 @@ async function countRows(table: string, column: string, userId: string): Promise
 
 export async function FavoriteCount({ userId }: { userId: string }) {
   const n = await countRows('favorites', 'station_id', userId);
-  return <span className="text-sm font-bold text-gray-900">{n}개</span>;
+  const t = await getTranslations('my');
+  return <span className="text-sm font-bold text-gray-900">{t('countBadge', { count: n })}</span>;
 }
 
 export async function FuelLogCount({ userId }: { userId: string }) {
   const n = await countRows('fuel_logs', 'id', userId);
+  const t = await getTranslations('my');
   return n > 0 ? (
-    <span className="text-sm font-bold text-gray-900">{n}개</span>
+    <span className="text-sm font-bold text-gray-900">{t('countBadge', { count: n })}</span>
   ) : (
     <span className="inline-flex items-center gap-0.5 text-sm text-primary">
-      보기<ChevronRightIcon className="h-3.5 w-3.5" />
+      {t('viewAction')}<ChevronRightIcon className="h-3.5 w-3.5" />
     </span>
   );
 }
 
 export async function VehicleCount({ userId }: { userId: string }) {
   const n = await countRows('vehicles', 'id', userId);
+  const t = await getTranslations('my');
   return n > 0 ? (
-    <span className="text-sm font-bold text-gray-900">{n}개</span>
+    <span className="text-sm font-bold text-gray-900">{t('countBadge', { count: n })}</span>
   ) : (
     <span className="inline-flex items-center gap-0.5 text-sm text-primary">
-      관리<ChevronRightIcon className="h-3.5 w-3.5" />
+      {t('manageAction')}<ChevronRightIcon className="h-3.5 w-3.5" />
     </span>
   );
 }
 
 export async function RegionCount({ userId }: { userId: string }) {
   const n = await countRows('interest_regions', 'id', userId);
+  const t = await getTranslations('my');
   return n > 0 ? (
-    <span className="text-sm font-bold text-gray-900">{n}개</span>
+    <span className="text-sm font-bold text-gray-900">{t('countBadge', { count: n })}</span>
   ) : (
     <span className="inline-flex items-center gap-0.5 text-sm text-primary">
-      관리<ChevronRightIcon className="h-3.5 w-3.5" />
+      {t('manageAction')}<ChevronRightIcon className="h-3.5 w-3.5" />
     </span>
   );
 }

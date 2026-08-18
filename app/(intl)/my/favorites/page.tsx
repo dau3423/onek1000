@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
+import { getTranslations } from 'next-intl/server';
 import { authOptions } from '@/lib/auth/options';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { BackButton } from '@/components/common/BackButton';
 import { ChevronRightIcon, HeartIcon } from '@/components/icons';
-import { BRAND_LABEL, BRAND_COLOR, type BrandCode } from '@/types/station';
+import { BRAND_COLOR, type BrandCode } from '@/types/station';
 
 interface FavRow {
   station_id: string;
@@ -16,6 +17,8 @@ interface FavRow {
 export default async function FavoritesPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) redirect('/auth/sign-in?callbackUrl=/my/favorites');
+  const t = await getTranslations('my');
+  const tLabels = await getTranslations('labels');
 
   let favs: FavRow[] = [];
   if (isSupabaseConfigured()) {
@@ -34,16 +37,16 @@ export default async function FavoritesPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
       <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-gray-100 bg-white/95 px-3 backdrop-blur">
-        <BackButton href="/my" />
-        <h1 className="font-bold text-gray-900">즐겨찾기 ({favs.length})</h1>
+        <BackButton href="/my" ariaLabel={t('backAria')} />
+        <h1 className="font-bold text-gray-900">{t('favorites.pageHeading', { count: favs.length })}</h1>
       </header>
 
       {favs.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
           <HeartIcon className="h-12 w-12 text-gray-300" />
-          <p className="text-sm text-gray-500">아직 즐겨찾기한 주유소가 없어요.</p>
+          <p className="text-sm text-gray-500">{t('favorites.emptyMessage')}</p>
           <Link href="/" className="rounded-full bg-primary px-5 py-2 text-sm font-bold text-white">
-            지도에서 찾기
+            {t('findOnMap')}
           </Link>
         </div>
       ) : (
@@ -63,10 +66,10 @@ export default async function FavoritesPage() {
                   />
                   <div className="flex-1">
                     <div className="font-semibold text-gray-900">{station?.name ?? f.station_id}</div>
-                    <div className="text-xs text-gray-500">{BRAND_LABEL[brand]}</div>
+                    <div className="text-xs text-gray-500">{tLabels(`brand.${brand}`)}</div>
                   </div>
                   <span className="inline-flex items-center gap-0.5 text-xs text-primary">
-                    상세<ChevronRightIcon className="h-3.5 w-3.5" />
+                    {t('favorites.detailAction')}<ChevronRightIcon className="h-3.5 w-3.5" />
                   </span>
                 </Link>
               </li>

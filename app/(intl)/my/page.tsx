@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
+import { getTranslations } from 'next-intl/server';
 import { authOptions } from '@/lib/auth/options';
 import { isSupabaseConfigured } from '@/lib/db/supabase';
 import { BackButton } from '@/components/common/BackButton';
@@ -46,6 +47,7 @@ import {
 export default async function MyPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) redirect('/auth/sign-in?callbackUrl=/my');
+  const t = await getTranslations('my');
 
   const userId = session.user.id;
   // 닉네임/이미지는 세션 토큰에 캐시됨 → 별도 DB 대기 없이 즉시 표시.
@@ -57,8 +59,8 @@ export default async function MyPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
       <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-gray-100 bg-white/95 px-3 backdrop-blur">
-        <BackButton href="/" ariaLabel="홈으로" />
-        <h1 className="font-bold text-gray-900">마이페이지</h1>
+        <BackButton href="/" ariaLabel={t('homeAria')} />
+        <h1 className="font-bold text-gray-900">{t('title')}</h1>
       </header>
 
       <section className="px-5 py-5">
@@ -75,19 +77,19 @@ export default async function MyPage() {
           - DB 미설정/폴백 경로: BETA_FREE 여부와 무관하게 항상 결제 CTA를 노출(심사 요건).
           비노출이 다시 필요하면 이 <section> 전체를 JSX 주석으로 감싸면 된다(코드 보존). */}
       <section className="border-t border-gray-100 px-5 py-5">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">광고 차단</h2>
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">{t('adBlockHeading')}</h2>
         {canQuery && userId ? (
           <Suspense fallback={<SubscriptionSkeleton />}>
             <SubscriptionSection userId={userId} />
           </Suspense>
         ) : (
           <div className="rounded-xl bg-gray-50 p-4">
-            <div className="text-sm text-gray-700">지금은 광고가 표시돼요.</div>
+            <div className="text-sm text-gray-700">{t('adShownNotice')}</div>
             <Link
               href="/pricing"
               className="mt-3 inline-flex items-center gap-1 rounded-full bg-primary px-4 py-2 text-xs font-bold text-white"
             >
-              ₩1,000으로 광고 끄기
+              {t('adBlockCta')}
               <ChevronRightIcon className="h-3.5 w-3.5" />
             </Link>
           </div>
@@ -95,36 +97,36 @@ export default async function MyPage() {
       </section>
 
       <section className="border-t border-gray-100 px-5 py-5">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">친구 추천</h2>
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">{t('referralHeading')}</h2>
         {/* 코드 lazy 발급/성공수는 클라이언트에서 /api/referral/me로 조회(서버 검증). */}
         <ReferralCard />
       </section>
 
       <section className="border-t border-gray-100 px-5 py-5">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">즐겨찾기</h2>
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">{t('favoritesHeading')}</h2>
         <Link href="/my/favorites" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
           <span className="flex items-center gap-1.5 text-sm text-gray-700">
-            <HeartIcon className="h-4 w-4 text-gray-500" />저장한 주유소
+            <HeartIcon className="h-4 w-4 text-gray-500" />{t('favoritesLabel')}
           </span>
           {canQuery && userId ? (
             <Suspense fallback={<BadgeSkeleton />}>
               <FavoriteCount userId={userId} />
             </Suspense>
           ) : (
-            <span className="text-sm font-bold text-gray-900">0개</span>
+            <span className="text-sm font-bold text-gray-900">{t('countBadge', { count: 0 })}</span>
           )}
         </Link>
       </section>
 
       <section className="border-t border-gray-100 px-5 py-5">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">내 기록</h2>
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">{t('myRecordsHeading')}</h2>
         <Link href="/my/fuel-logs" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
           <span className="flex items-center gap-1.5 text-sm text-gray-700">
             <span className="flex items-center gap-1">
               <FuelIcon className="h-4 w-4 text-gray-500" />
               <BoltIcon className="h-4 w-4 text-gray-500" />
             </span>
-            주유 · 충전 기록
+            {t('fuelChargeLogLabel')}
           </span>
           {canQuery && userId ? (
             <Suspense fallback={<BadgeSkeleton />}>
@@ -132,26 +134,26 @@ export default async function MyPage() {
             </Suspense>
           ) : (
             <span className="inline-flex items-center gap-0.5 text-sm text-primary">
-              보기<ChevronRightIcon className="h-3.5 w-3.5" />
+              {t('viewAction')}<ChevronRightIcon className="h-3.5 w-3.5" />
             </span>
           )}
         </Link>
         {/* 차계부/주유비 리포트 — 모든 회원 무료. 월별 주유비·연비·절약 통계. */}
         <Link href="/my/report" className="mt-2 flex items-center justify-between rounded-xl bg-gray-50 p-4">
           <span className="flex items-center gap-1.5 text-sm text-gray-700">
-            <ChartIcon className="h-4 w-4 text-gray-500" />주유 리포트 (월별 · 연비 · 절약)
+            <ChartIcon className="h-4 w-4 text-gray-500" />{t('fuelReportLinkLabel')}
           </span>
           <span className="inline-flex items-center gap-0.5 text-sm text-primary">
-            보기<ChevronRightIcon className="h-3.5 w-3.5" />
+            {t('viewAction')}<ChevronRightIcon className="h-3.5 w-3.5" />
           </span>
         </Link>
       </section>
 
       <section className="border-t border-gray-100 px-5 py-5">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">내 차량</h2>
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">{t('myVehicleHeading')}</h2>
         <Link href="/my/vehicles" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
           <span className="flex items-center gap-1.5 text-sm text-gray-700">
-            <CarIcon className="h-4 w-4 text-gray-500" />차량 / 기름 종류
+            <CarIcon className="h-4 w-4 text-gray-500" />{t('vehicleFuelTypeLabel')}
           </span>
           {canQuery && userId ? (
             <Suspense fallback={<BadgeSkeleton />}>
@@ -159,17 +161,17 @@ export default async function MyPage() {
             </Suspense>
           ) : (
             <span className="inline-flex items-center gap-0.5 text-sm text-primary">
-              관리<ChevronRightIcon className="h-3.5 w-3.5" />
+              {t('manageAction')}<ChevronRightIcon className="h-3.5 w-3.5" />
             </span>
           )}
         </Link>
       </section>
 
       <section className="border-t border-gray-100 px-5 py-5">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">관심 지역</h2>
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">{t('interestRegionHeading')}</h2>
         <Link href="/my/interest-regions" className="flex items-center justify-between rounded-xl bg-gray-50 p-4">
           <span className="flex items-center gap-1.5 text-sm text-gray-700">
-            <PinIcon className="h-4 w-4 text-gray-500" />관심 지역 최저가 알림
+            <PinIcon className="h-4 w-4 text-gray-500" />{t('interestRegionAlertLabel')}
           </span>
           {canQuery && userId ? (
             <Suspense fallback={<BadgeSkeleton />}>
@@ -177,7 +179,7 @@ export default async function MyPage() {
             </Suspense>
           ) : (
             <span className="inline-flex items-center gap-0.5 text-sm text-primary">
-              관리<ChevronRightIcon className="h-3.5 w-3.5" />
+              {t('manageAction')}<ChevronRightIcon className="h-3.5 w-3.5" />
             </span>
           )}
         </Link>
@@ -187,7 +189,7 @@ export default async function MyPage() {
       <ForecastMiniCard />
 
       <section className="border-t border-gray-100 px-5 py-5">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">알림</h2>
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">{t('notificationHeading')}</h2>
         {/* 프리미엄 판정은 서버에서 DB로 검증한 isActive를 그대로 전달(SEC-5).
             클라 세션(useSession) 갱신 타이밍과 무관하게 결제 직후 즉시 정확하게 반영된다. */}
         {canQuery && userId ? (
@@ -195,7 +197,7 @@ export default async function MyPage() {
             <PushSection userId={userId} />
           </Suspense>
         ) : (
-          <p className="text-xs text-gray-400">로그인하면 푸시 알림을 설정할 수 있어요.</p>
+          <p className="text-xs text-gray-400">{t('pushLoginHint')}</p>
         )}
         {/* 주유 타이밍(가격 인상) 예측 알림 옵트인 — 푸시 켠 사용자에게 forecast-notify 배치가 발송. */}
         {canQuery && userId ? (
@@ -206,7 +208,7 @@ export default async function MyPage() {
       </section>
 
       <section className="border-t border-gray-100 px-5 py-5">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">지원</h2>
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">{t('supportHeading')}</h2>
         <InstallButton />
         <a
           href="http://pf.kakao.com/_dcnGX/chat"
@@ -215,10 +217,10 @@ export default async function MyPage() {
           className="mt-2 flex items-center justify-between rounded-xl bg-gray-50 p-4"
         >
           <span className="flex items-center gap-1.5 text-sm text-gray-700">
-            <ChatIcon className="h-4 w-4 text-gray-500" />1:1 문의 (카카오톡 채널)
+            <ChatIcon className="h-4 w-4 text-gray-500" />{t('kakaoChatLabel')}
           </span>
           <span className="inline-flex items-center gap-0.5 text-sm text-primary">
-            채팅 열기<ChevronRightIcon className="h-3.5 w-3.5" />
+            {t('chatOpenAction')}<ChevronRightIcon className="h-3.5 w-3.5" />
           </span>
         </a>
         <a
@@ -226,16 +228,16 @@ export default async function MyPage() {
           className="mt-2 flex items-center justify-between rounded-xl bg-gray-50 p-4"
         >
           <span className="flex items-center gap-1.5 text-sm text-gray-700">
-            <MailIcon className="h-4 w-4 text-gray-500" />문의하기
+            <MailIcon className="h-4 w-4 text-gray-500" />{t('contactLabel')}
           </span>
           <span className="inline-flex items-center gap-0.5 text-sm text-primary">
-            이메일 보내기<ChevronRightIcon className="h-3.5 w-3.5" />
+            {t('emailSendAction')}<ChevronRightIcon className="h-3.5 w-3.5" />
           </span>
         </a>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 px-1 text-xs text-gray-400">
-          <Link href="/legal/terms" className="hover:underline">이용약관</Link>
-          <Link href="/legal/privacy" className="hover:underline">개인정보처리방침</Link>
-          <Link href="/legal/payment" className="hover:underline">유료 결제 이용약관</Link>
+          <Link href="/legal/terms" className="hover:underline">{t('termsLink')}</Link>
+          <Link href="/legal/privacy" className="hover:underline">{t('privacyLink')}</Link>
+          <Link href="/legal/payment" className="hover:underline">{t('paymentTermsLink')}</Link>
         </div>
       </section>
 

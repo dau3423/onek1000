@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { REVIEW_PHOTO_BYTE_MAX } from '@/types/review';
 import { NICKNAME_MAX, NICKNAME_MIN, validateNickname } from '@/lib/nickname';
 
@@ -22,6 +23,8 @@ interface Props {
  * API 호출(`/api/profile`)과 세션 `update()` 흐름은 기존 AvatarEditor/NicknameEditor와 동일.
  */
 export function ProfileHeader({ initialImage, initialNickname, fallbackName, email }: Props) {
+  const t = useTranslations('my');
+  const tCommon = useTranslations('common');
   // 변경 저장 후 세션을 즉시 반영(헤더/마이페이지 표시 갱신)
   const { update } = useSession();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -56,8 +59,8 @@ export function ProfileHeader({ initialImage, initialNickname, fallbackName, ema
     const file = e.target.files?.[0];
     if (fileRef.current) fileRef.current.value = '';
     if (!file) return;
-    if (!file.type.startsWith('image/')) return setAvatarErr('이미지 파일만 올릴 수 있어요.');
-    if (file.size > REVIEW_PHOTO_BYTE_MAX) return setAvatarErr('사진 용량은 5MB 이하만 가능해요.');
+    if (!file.type.startsWith('image/')) return setAvatarErr(t('profile.avatarTypeError'));
+    if (file.size > REVIEW_PHOTO_BYTE_MAX) return setAvatarErr(t('profile.avatarSizeError'));
 
     setAvatarErr(null);
     setAvatarBusy(true);
@@ -66,7 +69,7 @@ export function ProfileHeader({ initialImage, initialNickname, fallbackName, ema
       fd.append('avatar', file);
       const res = await fetch('/api/profile', { method: 'POST', body: fd });
       const d = await res.json();
-      if (!res.ok) throw new Error(d.error ?? '업로드에 실패했어요.');
+      if (!res.ok) throw new Error(d.error ?? t('profile.uploadFailed'));
       setImage(d.image ?? null);
       await update(); // 세션 갱신 → 헤더/표시 즉시 반영
     } catch (e2) {
@@ -86,7 +89,7 @@ export function ProfileHeader({ initialImage, initialNickname, fallbackName, ema
         body: JSON.stringify({ resetImage: true }),
       });
       const d = await res.json();
-      if (!res.ok) throw new Error(d.error ?? '변경에 실패했어요.');
+      if (!res.ok) throw new Error(d.error ?? t('profile.updateFailed'));
       setImage(d.image ?? null);
       await update();
     } catch (e2) {
@@ -99,7 +102,7 @@ export function ProfileHeader({ initialImage, initialNickname, fallbackName, ema
   const saveNickname = async () => {
     setNickErr(null);
     const v = validateNickname(nicknameInput);
-    if (!v.ok) return setNickErr(v.error ?? '닉네임을 확인해 주세요.');
+    if (!v.ok) return setNickErr(v.error ?? t('profile.nicknameCheckError'));
     if (v.value === nickname) {
       setEditing(false);
       return;
@@ -112,7 +115,7 @@ export function ProfileHeader({ initialImage, initialNickname, fallbackName, ema
         body: JSON.stringify({ nickname: v.value }),
       });
       const d = await res.json();
-      if (!res.ok) throw new Error(d.error ?? '변경에 실패했어요.');
+      if (!res.ok) throw new Error(d.error ?? t('profile.updateFailed'));
       setNickname(d.nickname);
       setNicknameInput(d.nickname);
       setEditing(false);
@@ -130,7 +133,7 @@ export function ProfileHeader({ initialImage, initialNickname, fallbackName, ema
     setNickErr(null);
   };
 
-  const displayName = nickname || fallbackName || '회원';
+  const displayName = nickname || fallbackName || t('profile.defaultDisplayName');
   const initial = displayName.trim()?.[0] ?? '·';
 
   return (
@@ -140,7 +143,7 @@ export function ProfileHeader({ initialImage, initialNickname, fallbackName, ema
         <div className="relative h-16 w-16 shrink-0">
           {image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={image} alt="프로필 사진" className="h-16 w-16 rounded-full object-cover" />
+            <img src={image} alt={t('profile.avatarAlt')} className="h-16 w-16 rounded-full object-cover" />
           ) : (
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-200 text-2xl font-bold text-gray-500">
               {initial}
@@ -153,14 +156,14 @@ export function ProfileHeader({ initialImage, initialNickname, fallbackName, ema
           {editing ? (
             <div className="space-y-2">
               <label className="text-xs text-gray-500" htmlFor="nickname-input">
-                새 닉네임 ({NICKNAME_MIN}~{NICKNAME_MAX}자, 한글·영문·숫자)
+                {t('profile.nicknameFieldLabel', { min: NICKNAME_MIN, max: NICKNAME_MAX })}
               </label>
               <input
                 id="nickname-input"
                 value={nicknameInput}
                 onChange={(e) => setNicknameInput(e.target.value)}
                 maxLength={NICKNAME_MAX}
-                placeholder="닉네임"
+                placeholder={t('profile.nicknamePlaceholder')}
                 className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary"
               />
               {nickErr && <p className="text-xs text-red-500">{nickErr}</p>}
@@ -170,14 +173,14 @@ export function ProfileHeader({ initialImage, initialNickname, fallbackName, ema
                   disabled={nickBusy}
                   className="flex-1 rounded-lg bg-primary py-2 text-sm font-bold text-white disabled:opacity-60"
                 >
-                  {nickBusy ? '저장 중…' : '저장'}
+                  {nickBusy ? t('savingAction') : t('saveAction')}
                 </button>
                 <button
                   onClick={cancelNickname}
                   disabled={nickBusy}
                   className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 disabled:opacity-60"
                 >
-                  취소
+                  {tCommon('cancel')}
                 </button>
               </div>
             </div>
@@ -192,7 +195,7 @@ export function ProfileHeader({ initialImage, initialNickname, fallbackName, ema
                   }}
                   className="shrink-0 rounded-lg px-2 py-0.5 text-xs font-semibold text-primary hover:bg-primary/5"
                 >
-                  변경
+                  {t('profile.changeAction')}
                 </button>
               </div>
               {email && <div className="mt-0.5 truncate text-xs text-gray-500">{email}</div>}
@@ -203,7 +206,7 @@ export function ProfileHeader({ initialImage, initialNickname, fallbackName, ema
                   disabled={avatarBusy}
                   className="rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
                 >
-                  {avatarBusy ? '처리 중…' : '사진 변경'}
+                  {avatarBusy ? t('profile.avatarProcessingLabel') : t('profile.avatarChangeLabel')}
                 </button>
                 {image && (
                   <button
@@ -211,7 +214,7 @@ export function ProfileHeader({ initialImage, initialNickname, fallbackName, ema
                     disabled={avatarBusy}
                     className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 disabled:opacity-60"
                   >
-                    기본으로
+                    {t('profile.resetToDefaultAction')}
                   </button>
                 )}
               </div>
