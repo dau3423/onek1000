@@ -114,7 +114,7 @@
       "layerGroupAria": "Map layer",
       "layerGas": "Gas Stations",
       "layerEv": "EV",
-      "layerCarwash": "Car Wash",
+      "layerCarwash": "Car wash",
       "layerAria": "{label} map",
       "fuelMenuAria": "Fuel type",
       "carwashMenuAria": "Car wash type"
@@ -345,9 +345,9 @@
       "near": "You're near the station (about {distance}). You can write a review.",
       "locationConfirmed": "Location confirmed. You can write a review.",
       "uploading": "Uploading…",
-      "addPhoto": "Add Photo",
+      "addPhoto": "Add photo",
       "submitting": "Submitting…",
-      "submit": "Submit Review",
+      "submit": "Submit review",
       "starLabel": "{n} stars"
     },
     "chart": {
@@ -364,7 +364,7 @@
       "startFromProvider": "Navigation to this {kind, select, carwash {car wash} other {station}} will start in {provider}.",
       "webFallbackHint": "If you don't have the app, it will open web/store guidance instead.",
       "starting": "Starting…",
-      "startNavigation": "Start Navigation",
+      "startNavigation": "Start navigation",
       "switchApp": "Use a different app",
       "withProvider": "{provider} navigation",
       "pickerAria": "Select navigation app",

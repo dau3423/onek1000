@@ -83,16 +83,16 @@ Task 12에서 en/zh/ja 표기 불일치를 정리했다. 아래는 정리 결과
   자연어 부연 설명에 쓰이는 전각 `（`로 통일.
 - **정리함(일본어)**: `길안내 시작` → `alert.navigateAria`를 "ナビを開始"에서 "経路案内開始"로 —
   카탈로그 전역에서 "길안내"는 8곳 이상 "経路案内"로 일관되게 쓰이는데 이 키만 "ナビ"를 썼다.
-- **그대로 둠(영어)**: `map.filterBar.layerCarwash`("Car Wash", 타이틀 케이스) vs
-  `map.carwashMarkerLabel.unknown`/`station.page.amenity.carwash`("Car wash", 문장 케이스).
-  카탈로그 전역을 확인한 결과 aria-label이 아닌 실제 버튼/토글/헤딩 문구는 예외 없이 타이틀
-  케이스(`View Details`, `Add Photo`, `Gas Stations` 등), 인라인 라벨/뱃지 문구는 예외 없이
-  문장 케이스(`Convenience store`, `Self wash`, `Auto wash` 등)를 쓰고 있었다. 두 값 모두 자기
-  컴포넌트군의 대소문자 규칙을 정확히 따르고 있어 임의 불일치가 아니라고 판단해 손대지 않았다.
-- **그대로 둠(영어)**: `station.navi.startNavigation`("Start Navigation") vs
-  `alert.navigateAria`("Start navigation"). 카탈로그의 `*Aria`로 끝나는 키(약 30개)는 예외 없이
-  문장 케이스, 그 외 버튼/헤딩 문구는 예외 없이 타이틀 케이스였다. 동일한 aria-vs-버튼 규칙이라
-  손대지 않았다. (zh/ja는 이 쌍이 이미 동일 문구였고, ja의 용어 자체 불일치는 위에서 정리함.)
+- **정리함(영어, 2차 수정)**: `map.filterBar.layerCarwash`("Car Wash"→"Car wash"),
+  `station.navi.startNavigation`("Start Navigation"→"Start navigation"),
+  `station.review.submit`("Submit Review"→"Submit review"),
+  `station.review.addPhoto`("Add Photo"→"Add photo"). 1차 검수에서는 "버튼/헤딩 문구는
+  타이틀 케이스, aria-label은 문장 케이스"라는 규칙으로 이 넷을 그대로 뒀으나, 카탈로그
+  버튼/액션 키를 전수 조사한 결과 그 규칙의 후반부가 틀렸다 — 문장 케이스가 38건, 타이틀
+  케이스는 이 4건뿐이었다(`Find cheapest along route`, `Open chat`, `Just save` 등이 다수).
+  즉 버튼 문구의 지배적 규칙은 문장 케이스이고, 이 4건이 예외였다. (aria-label 쪽 규칙은
+  맞았다 — 문장 케이스 25건 vs 타이틀 케이스 2건.) zh/ja는 해당 쌍이 이미 서로 일치하는
+  값이라 영향 없음을 확인했다.
 - **그대로 둠**: `{count}건`(로그/리뷰 — 한국어 "건"은 범용 단위지만 영어는 명사가 필요),
   `{count}회`(컴팩트 뱃지 vs 문장형 카운트), 셀프세차/자동세차의 `labels.washType.*` vs
   `map.carwashMarkerLabel.*`(마커는 의도적으로 짧게), `확인`(Confirm vs Got it — 서로 다른
