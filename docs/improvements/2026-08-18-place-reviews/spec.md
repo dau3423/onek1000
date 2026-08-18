@@ -63,7 +63,12 @@ alter table reviews alter column station_id drop not null;
 alter table reviews add constraint reviews_target_type_chk
   check (target_type in ('gas','ev','carwash'));
 
-drop index if exists reviews_user_station_unique;
+-- 구버전 라우트의 upsert 가 onConflict: 'user_id,station_id' 를 쓴다. Postgres 의 ON CONFLICT 는
+-- 정확히 그 컬럼 조합의 유니크 인덱스를 요구하므로 이 인덱스를 **지우면 안 된다** —
+-- 지우면 '마이그레이션 먼저' 순서에서 주유소 리뷰 작성이 전부 42P10 으로 실패한다.
+create unique index if not exists reviews_user_station_unique
+  on reviews (user_id, station_id);
+
 create unique index if not exists reviews_user_target_unique
   on reviews (user_id, target_type, coalesce(target_id, station_id));
 
@@ -97,6 +102,16 @@ group by target_type, coalesce(target_id, station_id);
   즉시 실패했을 것이다.**
 - **코드 먼저 / 마이그레이션 나중**: 신버전 코드가 컬럼 존재를 감지해 기존 `station_id` 경로로 동작한다
   (0039 에서 쓴 graceful degrade 패턴). EV·세차장 리뷰만 비활성 상태가 된다.
+
+> **정정(Task 1 리뷰에서 발견):** 초안은 `reviews_user_station_unique` 를 삭제하고 표현식 인덱스로
+> 교체하도록 썼다. **이는 위 첫 번째 순서를 깨뜨린다** — 구버전 라우트가
+> `.upsert(..., { onConflict: 'user_id,station_id' })` 를 쓰는데 Postgres 의 ON CONFLICT 는 정확히 그
+> 컬럼 조합의 유니크 인덱스를 요구하므로, 인덱스가 사라지면 주유소 리뷰 작성이 전부 42P10 으로
+> 실패한다. 이 명세의 안전성 논증은 NOT NULL 삽입 경로와 coalesce 조회 경로만 다뤘고 기존 upsert 의
+> 충돌 대상은 고려하지 않았다.
+> 조치: 두 인덱스를 **공존**시킨다. gas 행은 두 컬럼을 모두 채우므로 둘이 일치하고, ev/carwash 행은
+> `station_id` 가 null 인데 Postgres 는 유니크 인덱스에서 NULL 을 서로 다르게 보므로 구 인덱스가
+> 그 행들을 제약하지 않는다. 구버전 라우트 제거 후 구 인덱스를 정리한다.
 
 기존 행 백필용 `update` 문은 **필요 없다** — 기존 리뷰는 전부 주유소이고 기본값이 그 값이다.
 
