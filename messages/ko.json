@@ -1,6 +1,7 @@
 {
   "common": {
     "appName": "1000냥 주유소",
+    "backAria": "뒤로 가기",
     "close": "닫기",
     "navigate": "길안내",
     "viewDetail": "상세보기",

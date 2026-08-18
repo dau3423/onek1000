@@ -17,6 +17,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function EvStationDetailPage({ params }: Props) {
   const t = await getTranslations('ev');
+  const tCommon = await getTranslations('common');
   // 진입은 DB 스냅샷으로 즉시 표시. 외부(data.go.kr) 호출은 하지 않는다(빠른 진입).
   // 실시간 갱신은 EvChargerStatusPanel의 "새로고침" 버튼 → POST /api/ev/[statId]에서만.
   let detail: EvStationDetail | null = null;
@@ -32,7 +33,7 @@ export default async function EvStationDetailPage({ params }: Props) {
     <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
       {/* 헤더 */}
       <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-gray-100 bg-white/95 px-3 backdrop-blur">
-        <BackButton />
+        <BackButton ariaLabel={tCommon('backAria')} />
         <h1 className="flex-1 truncate font-bold text-gray-900">{detail.name}</h1>
       </header>
 

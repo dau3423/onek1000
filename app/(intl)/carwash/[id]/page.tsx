@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function CarwashDetailPage({ params }: Props) {
   const t = await getTranslations('carwash');
+  const tCommon = await getTranslations('common');
   // id = carwash_places PK(mgmt_no). Next가 이미 디코딩해 넘겨준다. 안전 검증 후 조회.
   const id = (params.id ?? '').trim();
   // 빈 값/과도한 길이는 조회 없이 즉시 없음 처리(원천 mgmt_no는 수십자 이내).
@@ -50,7 +51,7 @@ export default async function CarwashDetailPage({ params }: Props) {
     <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
       {/* 헤더 */}
       <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-gray-100 bg-white/95 px-3 backdrop-blur">
-        <BackButton />
+        <BackButton ariaLabel={tCommon('backAria')} />
         <h1 className="flex-1 truncate font-bold text-gray-900">{detail.name}</h1>
       </header>
 

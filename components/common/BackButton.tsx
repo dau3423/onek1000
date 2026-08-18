@@ -50,9 +50,16 @@ export function BackButton({ href, label, ariaLabel, className }: BackButtonProp
   }
 
   // Link 모드(href 지정): 목적지 고정 이동(히스토리 back 아님).
+  // 아래 aria-label 기본값("뒤로 가기")에 대해: BackButton은 /legal·/pricing 등 번역 provider 밖에서도
+  // 렌더돼 useTranslations 훅을 못 쓴다(런타임 에러) — 그래서 기본값이 한국어 고정 문자열이다.
+  // 단, "provider 밖에서만 렌더된다"는 뜻은 아니다 — app/(intl) 안에서도 렌더되며, 그 10개 호출부
+  // (station/ev/carwash/my/search/route 상세)는 전부 ariaLabel을 명시적으로 넘겨 이 기본값을 우회한다.
+  // provider 밖 호출부도 /legal은 라벨 모드(가시 텍스트가 접근성 이름이라 이 줄 자체를 안 탐),
+  // /pricing은 별도 명시적 ariaLabel이라 이 폴백을 타지 않는다 — 현재는 어디서도 도달하지 않는,
+  // 향후 호출부가 ariaLabel을 빠뜨렸을 때를 위한 안전망이다.
   if (href) {
     return (
-      // i18n-ignore: /legal·/billing·/pricing 등 번역 provider 밖에서도 렌더되는 공용 컴포넌트라 useTranslations를 쓸 수 없다(런타임 에러). 기본값은 한국어 고정.
+      // i18n-ignore: 위 설명 참고 — ariaLabel 미전달 시 방어적 기본값(provider 밖에서도 안전해야 함).
       <Link href={href} aria-label={ariaLabel ?? '뒤로 가기'} className={className ?? ICON_BTN}>
         <BackIcon className="h-6 w-6" />
       </Link>
@@ -67,11 +74,12 @@ export function BackButton({ href, label, ariaLabel, className }: BackButtonProp
       router.push('/');
     }
   };
+  // 아래 aria-label 기본값도 Link 모드와 동일한 이유·동일한 현재 도달 불가 상태다(위 설명 참고).
   return (
     <button
       type="button"
       onClick={onBack}
-      // i18n-ignore: /legal·/billing·/pricing 등 번역 provider 밖에서도 렌더되는 공용 컴포넌트라 useTranslations를 쓸 수 없다(런타임 에러). 기본값은 한국어 고정.
+      // i18n-ignore: 위 Link 모드와 동일 — ariaLabel 미전달 시 방어적 기본값(provider 밖에서도 안전해야 함).
       aria-label={ariaLabel ?? '뒤로 가기'}
       className={className ?? ICON_BTN}
     >

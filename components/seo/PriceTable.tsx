@@ -1,7 +1,10 @@
 // SEO 지역/시군구 랜딩 공용 — 유종별 최저가 TOP10 표.
-// i18n-ignore(파일 전체): app/regions/**(SSG, 291페이지) 전용 컴포넌트 — 번역 provider(app/(intl)) 밖이라
-// useTranslations를 쓰면 런타임 에러가 난다. /regions 자체가 이번 국제화 과제 범위 밖(한국어 SSG 유지)이므로
-// 이 컴포넌트의 한국어는 의도된 원본이다. 아래 각 줄에도 스캐너용 i18n-ignore를 개별로 남긴다.
+// app/regions/**(SSG, 291페이지) 전용 컴포넌트 — 번역 provider(app/(intl)) 밖이라 useTranslations를
+// 쓰면 런타임 에러가 난다. /regions 자체가 이번 국제화 과제 범위 밖(한국어 SSG 유지)이므로 이 컴포넌트의
+// 한국어는 의도된 원본이다. 주의: 이 설명 자체는 스캐너 예외가 아니다 — i18n-scan.mjs는 파일 단위가 아니라
+// "바로 앞 줄에 i18n-ignore가 있는 한 줄"만 건너뛴다. 그래서 아래 한국어가 있는 줄마다 개별
+// i18n-ignore 주석을 바로 위에 달아 두었다 — 이 파일에 새 한국어 줄을 추가한다면 그 줄도 마찬가지로
+// 바로 위에 i18n-ignore 주석을 달아야 스캔에서 제외된다(자동으로 커버되지 않는다).
 import { BRAND_LABEL, type DailyTop10Item } from '@/types/station';
 
 const won = (n: number) => n.toLocaleString('ko-KR');

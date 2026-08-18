@@ -40,6 +40,7 @@ export default async function StationDetailPage({ params }: Props) {
 
   const t = await getTranslations('station');
   const tLabels = await getTranslations('labels');
+  const tCommon = await getTranslations('common');
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
@@ -48,7 +49,7 @@ export default async function StationDetailPage({ params }: Props) {
       <InterstitialAd />
       {/* 헤더 */}
       <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-gray-100 bg-white/95 px-3 backdrop-blur">
-        <BackButton />
+        <BackButton ariaLabel={tCommon('backAria')} />
         <h1 className="flex-1 truncate font-bold text-gray-900">{detail.name}</h1>
         <FavoriteButton stationId={detail.id} />
       </header>
