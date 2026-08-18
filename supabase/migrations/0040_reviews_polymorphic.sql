@@ -22,10 +22,11 @@ alter table reviews drop constraint if exists reviews_target_type_chk;
 alter table reviews add constraint reviews_target_type_chk
   check (target_type in ('gas','ev','carwash'));
 
--- 사용자당 대상당 1개. coalesce 덕분에 구행(station_id만)과 신행(둘 다)이 같은 값으로 접혀
--- 전환기에 섞여 있어도 중복이 정확히 걸린다.
+-- 사용자당 대상당 1개.
+-- 신버전 코드가 upsert 의 충돌 대상으로 지정할 수 있어야 하므로 표현식이 아닌 평범한 인덱스로 둔다
+-- (ON CONFLICT 와 PostgREST onConflict 는 컬럼 이름만 받는다).
 create unique index if not exists reviews_user_target_unique
-  on reviews (user_id, target_type, coalesce(target_id, station_id));
+  on reviews (user_id, target_type, target_id);
 
 -- 구버전 코드의 upsert 가 onConflict: 'user_id,station_id' 를 쓴다. Postgres 의 ON CONFLICT 는
 -- 정확히 그 컬럼 조합의 유니크 인덱스를 요구하므로, 이 인덱스를 지우면 마이그레이션이 코드보다
