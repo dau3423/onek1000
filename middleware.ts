@@ -30,11 +30,20 @@ function detectLocale(header: string | null): string {
 }
 
 export function middleware(req: NextRequest) {
-  const res = NextResponse.next();
   const existing = req.cookies.get(LOCALE_COOKIE)?.value;
-  if (isLocale(existing)) return res;
+  if (isLocale(existing)) return NextResponse.next();
 
   const detected = detectLocale(req.headers.get('accept-language'));
+
+  // 요청 쪽에도 반영해야 이번 응답(첫 렌더)부터 감지된 로케일로 나간다.
+  // res.cookies 에만 쓰면 Set-Cookie 헤더는 나가지만, i18n/request.ts 의 cookies() 는
+  // "요청"을 보므로 그 요청엔 아직 쿠키가 없어 이번 렌더는 DEFAULT_LOCALE(한국어)로 나가고,
+  // 감지된 로케일은 다음 요청부터 반영된다 — 정확히 자동 감지가 막으려던 실패가 재현된다.
+  // req.cookies.set() 은 RequestCookies 내부에서 req.headers 를 직접 mutate 하므로,
+  // 그 mutate 된 headers 를 NextResponse.next({ request }) 로 넘기면 이번 요청의 다운스트림
+  // 렌더(RSC의 cookies())가 감지된 값을 즉시 보게 된다.
+  req.cookies.set(LOCALE_COOKIE, detected);
+  const res = NextResponse.next({ request: { headers: req.headers } });
   res.cookies.set(LOCALE_COOKIE, detected, {
     maxAge: ONE_YEAR,
     sameSite: 'lax',

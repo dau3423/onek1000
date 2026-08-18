@@ -955,9 +955,11 @@ export default function HomePage() {
             <RouteIcon className="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" />
             <div className="min-w-0 flex-1 truncate text-xs">
               <span className="font-bold text-gray-900 dark:text-gray-100">
-                {routePlan.from.name ?? t('depart')}
+                {/* name은 저장 시점 로케일로 굳은 문구일 수 있다 — "내 위치"였던 지점은
+                    isMyLocation 플래그로 판정해 항상 현재 로케일로 다시 그린다(name은 표시에 안 씀). */}
+                {routePlan.from.isMyLocation ? t('myLocationName') : (routePlan.from.name ?? t('depart'))}
                 <ChevronRightIcon className="mx-0.5 inline-block h-3 w-3 align-[-0.1em] text-gray-400" />
-                {routePlan.to.name ?? t('arrive')}
+                {routePlan.to.isMyLocation ? t('myLocationName') : (routePlan.to.name ?? t('arrive'))}
               </span>
               <span className="ml-1.5 text-gray-500 dark:text-gray-400">
                 {t('route.lowestCount', { count: routePlan.stations.length })}

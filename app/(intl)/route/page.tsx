@@ -393,7 +393,11 @@ function PointPicker({
           <span className="min-w-0 truncate text-right text-[11px] text-gray-600">
             {value.name ? (
               <>
-                <span className="font-semibold text-gray-700">{value.name}</span>
+                {/* name은 저장 시점 로케일로 굳은 문구일 수 있다 — "내 위치"였던 지점은
+                    isMyLocation 플래그로 판정해 항상 현재 로케일로 다시 그린다. */}
+                <span className="font-semibold text-gray-700">
+                  {value.isMyLocation ? myLocationLabel : value.name}
+                </span>
                 <span className="ml-1 text-gray-400">
                   {value.lat.toFixed(4)}, {value.lng.toFixed(4)}
                 </span>

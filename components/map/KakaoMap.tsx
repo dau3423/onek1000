@@ -998,8 +998,10 @@ export function KakaoMap({
       ov.setMap(map);
       routeOverlaysRef.current.push(ov);
     };
-    endpoint(fromPos, t('depart'), from.name, '#16A34A');
-    endpoint(toPos, t('arrive'), to.name, '#DC2626');
+    // name은 저장 시점 로케일로 굳은 문구일 수 있다 — "내 위치"였던 지점은 isMyLocation
+    // 플래그로 판정해 항상 현재 로케일로 다시 그린다(name은 표시에 안 씀).
+    endpoint(fromPos, t('depart'), from.isMyLocation ? t('myLocationName') : from.name, '#16A34A');
+    endpoint(toPos, t('arrive'), to.isMyLocation ? t('myLocationName') : to.name, '#DC2626');
 
     // (c) 경로 최저가 주유소 마커 — 기존 마커 톤(가격 라벨 + 동심원)을 활용.
     //     가격이 쌀수록 위(낮은 순위 숫자). 클릭 시 onRouteStationClick(없으면 onMarkerClick).
