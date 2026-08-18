@@ -93,7 +93,8 @@
       "denied": "Location access is blocked. Please allow it in your browser settings.",
       "followTitle": "Following your location (move the map to stop)",
       "moveTitle": "Move to my location / Follow",
-      "followOnAlt": "Follow mode on"
+      "followOnAlt": "Follow mode on",
+      "unsupported": "This browser doesn't support location services."
     },
     "legendButton": {
       "aria": "Map color guide"
@@ -689,7 +690,24 @@
     "pushVapidMissing": "The VAPID key is not configured.",
     "pushSubscribeFailed": "Push setup failed: {message}",
     "pushDisableAction": "Turn off push notifications",
-    "pushEnableAction": "Get favorite price change alerts"
+    "pushEnableAction": "Get favorite price change alerts",
+    "referral": {
+      "title": "Refer a friend, you both get 7 days of Premium",
+      "description": "When a friend signs up with your link, you both get 7 extra days of Premium.",
+      "copyAction": "Copy link",
+      "copiedAction": "Copied!",
+      "shareAction": "Share",
+      "shareText": "Find the cheapest gas station near you! Sign up and you both get 7 days of Premium 🎁",
+      "successCount": "<b>{count, plural, one {# successful referral} other {# successful referrals}}</b>",
+      "preparingMessage": "Preparing your referral link. Please try again in a moment."
+    },
+    "cancel": {
+      "confirmMessage": "Cancel your subscription?\nYou can keep using it ad-free until the end of your current period.",
+      "doneMessage": "Your subscription has been canceled.",
+      "failedPrefix": "Cancellation failed: {message}",
+      "processingLabel": "Processing...",
+      "buttonLabel": "Cancel subscription"
+    }
   },
   "auth": {
     "passwordTooShort": "Password must be at least 8 characters.",
@@ -704,7 +722,7 @@
       "tagline": "Start in 1 second with a social account",
       "benefitBeta": "No ads · Price drop alerts · Favorites, all free",
       "benefitFull": "Price drop alerts · Favorites · My fuel log, all free",
-      "inAppNotice": "Opened in the {kind} app",
+      "inAppNotice": "Opened in the {kind, select, kakaotalk {KakaoTalk} instagram {Instagram} facebook {Facebook} line {LINE} naver {Naver} band {Band} daum {Daum} twitter {X (Twitter)} daangn {Karrot} other {in-app}} app",
       "inAppGuideDefault": "For smooth sign-up and sign-in, please open this in an external browser like <b>Chrome / Safari</b>. (Google sign-in is blocked in in-app browsers.)",
       "openExternalButton": "Open in external browser",
       "iosManualGuide": "If it doesn’t switch automatically, tap <b>the menu (···) in the top right and choose “Open in Safari”</b>. Or copy the link below and paste it into your browser’s address bar.",
@@ -794,8 +812,8 @@
       "subheading": "You can launch it like an app. Just follow the steps below.",
       "step1Lead": "Tap the <strong>Share button</strong> at the bottom (or top) of Safari",
       "step1Trail": ".",
-      "step2": "Choose <strong>'Add to Home Screen'</strong> from the menu.",
-      "step3": "Tap <strong>'Add'</strong> in the top right to finish.",
+      "step2": "Choose <strong>'Add to Home Screen''</strong> from the menu.",
+      "step3": "Tap <strong>'Add''</strong> in the top right to finish.",
       "confirmButton": "Got it"
     }
   },
@@ -897,5 +915,15 @@
     "label": "Notice",
     "goToLinkAria": "Go to notice link",
     "hideTodayLabel": "Don't show again today"
+  },
+  "footer": {
+    "businessInfoHeading": "Business Information",
+    "nameLabel": "Company Name",
+    "ownerLabel": "Representative",
+    "addressLabel": "Business Address",
+    "registrationNumberLabel": "Business Registration No.",
+    "ecommerceNumberLabel": "E-Commerce Registration No.",
+    "phoneLabel": "Phone",
+    "emailLabel": "Email"
   }
 }

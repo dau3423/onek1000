@@ -93,7 +93,8 @@
       "denied": "定位权限已被阻止。请在浏览器设置中允许。",
       "followTitle": "正在跟随我的位置（移动地图可解除）",
       "moveTitle": "移动到我的位置 / 跟随",
-      "followOnAlt": "跟随模式已开启"
+      "followOnAlt": "跟随模式已开启",
+      "unsupported": "此浏览器不支持定位功能。"
     },
     "legendButton": {
       "aria": "地图颜色说明"
@@ -689,7 +690,24 @@
     "pushVapidMissing": "VAPID密钥未配置。",
     "pushSubscribeFailed": "推送设置失败：{message}",
     "pushDisableAction": "关闭推送通知",
-    "pushEnableAction": "接收收藏加油站降价提醒"
+    "pushEnableAction": "接收收藏加油站降价提醒",
+    "referral": {
+      "title": "推荐好友，双方各得7天高级会员",
+      "description": "好友通过你的链接注册后，你和好友都会延长7天高级会员权益。",
+      "copyAction": "复制链接",
+      "copiedAction": "已复制！",
+      "shareAction": "分享",
+      "shareText": "查找我附近的最低油价加油站！注册后双方各得7天高级会员 🎁",
+      "successCount": "已成功推荐 <b>{count}</b> 人",
+      "preparingMessage": "推荐链接准备中，请稍后重试。"
+    },
+    "cancel": {
+      "confirmMessage": "确定要取消订阅吗？\n在当前计费周期结束前，您仍可继续免广告使用。",
+      "doneMessage": "已成功取消订阅。",
+      "failedPrefix": "取消失败：{message}",
+      "processingLabel": "处理中...",
+      "buttonLabel": "取消订阅"
+    }
   },
   "auth": {
     "passwordTooShort": "密码至少需要8位。",
@@ -704,7 +722,7 @@
       "tagline": "用社交账号1秒开始",
       "benefitBeta": "无广告 · 降价提醒 · 收藏功能全部免费",
       "benefitFull": "降价提醒 · 收藏 · 我的加油记录全部免费",
-      "inAppNotice": "已在{kind}应用内打开",
+      "inAppNotice": "已在{kind, select, kakaotalk {KakaoTalk} instagram {Instagram} facebook {Facebook} line {LINE} naver {Naver} band {Band} daum {Daum} twitter {X（推特）} daangn {Karrot} other {}}应用内打开",
       "inAppGuideDefault": "为顺利注册/登录，请在<b>Chrome / Safari等外部浏览器</b>中打开。（Google登录在应用内浏览器中会被屏蔽。）",
       "openExternalButton": "在外部浏览器中打开",
       "iosManualGuide": "如果没有自动跳转，请点击<b>右上角菜单（···）中的\"在Safari中打开\"</b>。或复制下方链接粘贴到浏览器地址栏。",
@@ -897,5 +915,15 @@
     "label": "公告",
     "goToLinkAria": "前往公告链接",
     "hideTodayLabel": "今日不再显示"
+  },
+  "footer": {
+    "businessInfoHeading": "商家信息",
+    "nameLabel": "商号",
+    "ownerLabel": "代表者",
+    "addressLabel": "营业地址",
+    "registrationNumberLabel": "营业执照号",
+    "ecommerceNumberLabel": "通信销售业申报号",
+    "phoneLabel": "联系电话",
+    "emailLabel": "联系邮箱"
   }
 }

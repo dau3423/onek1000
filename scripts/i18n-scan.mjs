@@ -4,14 +4,27 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 // lib/map·lib/route 도 포함한다 — 마커 라벨·경로 헬퍼가 UI 문자열을 직접 만든다.
+// hooks/ 도 포함한다 — useGeolocation 등 훅이 컴포넌트에 그대로 노출되는 문자열을 만든다(§최종 리뷰 I3).
+// lib/inapp.ts 는 파일 단위로 추가한다 — inAppKindLabel 류가 번역된 문장에 보간되던 leak(§I3).
 // lib/ 전체를 넣지는 않는다: 실측 462건 중 대부분이 결제·인증 에러 메시지, SEO 콘텐츠,
 // 법정 사업자 정보처럼 **번역 대상이 아닌** 것이라 0건 게이트가 다시 도달 불가능해진다.
-const ROOTS = ['app/(intl)', 'components', 'lib/map', 'lib/route'];
-// 번역 대상이 아닌 것 — 운영자 전용 관리 화면, 법정고지, 한국 결제 플로우.
-// ads·forecast·notice는 한때 여기 있었지만 실제로는 홈 화면 UI라 번역 대상이다(Task 13).
+const ROOTS = ['app/(intl)', 'components', 'hooks', 'lib/map', 'lib/route', 'lib/inapp.ts'];
+// 번역 대상이 아닌 것 — 파일 단위로 고른다(디렉터리 단위 EXCLUDE는 실제로 (intl) 안에서
+// 렌더되는 파일을 숨겨 세 번 사고가 났다: i18n-ignore 절반짜리 사유 → 디렉터리명 기준 EXCLUDE →
+// legal/referral/billing 디렉터리 통째 제외. 이제부터는 각 파일이 어디서 렌더되는지 확인하고
+// 그 근거를 여기 적는다). 감사 결과는 .superpowers/sdd/plan/fixwave-report.md 참고.
 const EXCLUDE = [
-  'components/admin/', 'components/legal/', 'components/billing/',
-  'components/promo/', 'components/referral/',
+  // app/admin(관리자 전용, (intl) 밖) 에서만 쓰인다.
+  'components/admin/RegionTileMap.tsx',
+  // 죽은 코드 — app/(intl)/page.tsx 의 import가 주석 처리되어 있어 현재 아무 데서도 렌더되지 않는다.
+  // 되살리는 순간(주석 해제) 이 예외도 함께 지우고 번역해야 한다.
+  'components/promo/WelcomePromo.tsx',
+  // app/pricing/page.tsx((intl) 밖, 결제 플로우)에서만 쓰인다.
+  'components/billing/SubscribeButton.tsx',
+  // app/billing/success/page.tsx((intl) 밖, 결제 완료 플로우)에서만 쓰인다.
+  'components/billing/SessionRefresher.tsx',
+  // app/layout.tsx(루트 레이아웃, (intl) 밖)에 전역 마운트된다 — provider 밖.
+  'components/referral/ReferralClaim.tsx',
 ];
 const HANGUL = /[가-힣]/;
 
@@ -22,6 +35,12 @@ function walk(dir, out = []) {
     else if (/\.tsx?$/.test(p)) out.push(p);
   }
   return out;
+}
+
+/** ROOTS 항목은 디렉터리 또는 단일 파일일 수 있다(lib/inapp.ts 처럼 lib/ 전체를 끌어들이지 않고
+ *  파일 하나만 넣고 싶은 경우). */
+function filesUnder(root) {
+  return statSync(root).isDirectory() ? walk(root) : [root];
 }
 
 /** 따옴표 밖의 `//` 이후를 잘라낸다. 문자열 리터럴 안의 // (예: 'https://…') 는 보존한다.
@@ -42,8 +61,8 @@ function stripTrailingComment(line) {
 
 let total = 0;
 for (const root of ROOTS) {
-  for (const file of walk(root)) {
-    if (EXCLUDE.some((e) => file.startsWith(e))) continue;
+  for (const file of filesUnder(root)) {
+    if (EXCLUDE.includes(file)) continue;
     const lines = readFileSync(file, 'utf8').split('\n');
     let inBlockComment = false;
     lines.forEach((line, i) => {

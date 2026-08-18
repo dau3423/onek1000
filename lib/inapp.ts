@@ -131,31 +131,10 @@ export function isInAppBrowser(ua?: string): boolean {
   return getInAppKindFromUA(ua ?? getUserAgent()) !== null;
 }
 
-/** 종류별 한국어 표시명(안내 문구용). */
-export function inAppKindLabel(kind: InAppKind): string {
-  switch (kind) {
-    case 'kakaotalk':
-      return '카카오톡';
-    case 'instagram':
-      return '인스타그램';
-    case 'facebook':
-      return '페이스북';
-    case 'line':
-      return '라인';
-    case 'naver':
-      return '네이버 앱';
-    case 'band':
-      return '밴드';
-    case 'daum':
-      return '다음 앱';
-    case 'twitter':
-      return 'X(트위터)';
-    case 'daangn':
-      return '당근마켓';
-    default:
-      return '인앱';
-  }
-}
+// 종류별 표시명은 더 이상 여기서 만들지 않는다 — lib/inapp.ts는 컴포넌트가 아니라 t()를 쓸 수
+// 없어 한국어를 하드코딩했었다(§i18n 최종 리뷰 I3). InAppKind 코드값을 그대로 소비 측(예:
+// SignInClient.tsx)에 넘기고, 카탈로그의 auth.signIn.inAppNotice ICU select에서 로케일별로
+// 번역한다(markerFace.ts·ev/format.ts·carwashMarker.ts와 동일하게 "코드를 반환, 컴포넌트가 번역").
 
 /** 현재 페이지 전체 URL(callbackUrl 등 쿼리 포함). SSR 안전. */
 export function currentUrl(): string {

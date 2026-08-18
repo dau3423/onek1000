@@ -93,7 +93,8 @@
       "denied": "위치 권한이 차단되었습니다. 브라우저 설정에서 허용해주세요.",
       "followTitle": "내 위치 따라가는 중 (지도를 움직이면 해제)",
       "moveTitle": "내 위치로 이동 / 따라가기",
-      "followOnAlt": "따라가기 모드 켜짐"
+      "followOnAlt": "따라가기 모드 켜짐",
+      "unsupported": "이 브라우저에서는 위치 정보를 지원하지 않아요."
     },
     "legendButton": {
       "aria": "지도 색상 안내"
@@ -689,7 +690,24 @@
     "pushVapidMissing": "VAPID 키가 설정되지 않았어요.",
     "pushSubscribeFailed": "푸시 설정 실패: {message}",
     "pushDisableAction": "푸시 알림 끄기",
-    "pushEnableAction": "즐겨찾기 가격 변동 알림 받기"
+    "pushEnableAction": "즐겨찾기 가격 변동 알림 받기",
+    "referral": {
+      "title": "친구 추천하면 둘 다 프리미엄 혜택 7일",
+      "description": "내 링크로 친구가 가입하면 친구와 나 모두 프리미엄 혜택 7일이 연장돼요.",
+      "copyAction": "링크 복사",
+      "copiedAction": "복사됨!",
+      "shareAction": "공유하기",
+      "shareText": "내 주변 최저가 주유소 찾기! 가입하면 둘 다 프리미엄 혜택 7일 🎁",
+      "successCount": "추천 성공 <b>{count}명</b>",
+      "preparingMessage": "추천 링크를 준비 중이에요. 잠시 후 다시 시도해 주세요."
+    },
+    "cancel": {
+      "confirmMessage": "구독을 해지하시겠어요?\n현재 기간 종료일까지는 광고 없이 계속 사용할 수 있어요.",
+      "doneMessage": "해지가 완료됐어요.",
+      "failedPrefix": "해지 실패: {message}",
+      "processingLabel": "처리 중...",
+      "buttonLabel": "구독 해지하기"
+    }
   },
   "auth": {
     "passwordTooShort": "비밀번호는 8자 이상이어야 합니다.",
@@ -704,7 +722,7 @@
       "tagline": "소셜 계정으로 1초만에 시작",
       "benefitBeta": "광고 없이 · 가격 하락 알림 · 즐겨찾기까지 전부 무료",
       "benefitFull": "가격 하락 알림 · 즐겨찾기 · 내 주유기록까지 무료",
-      "inAppNotice": "{kind} 앱에서 열렸어요",
+      "inAppNotice": "{kind, select, kakaotalk {카카오톡} instagram {인스타그램} facebook {페이스북} line {라인} naver {네이버 앱} band {밴드} daum {다음 앱} twitter {X(트위터)} daangn {당근마켓} other {인앱}} 앱에서 열렸어요",
       "inAppGuideDefault": "원활한 가입·로그인을 위해 <b>Chrome / Safari 같은 외부 브라우저</b>에서 열어주세요. (구글 로그인은 인앱 브라우저에서 차단됩니다.)",
       "openExternalButton": "외부 브라우저로 열기",
       "iosManualGuide": "자동 전환이 안 되면 <b>우측 상단 메뉴(···)에서 “Safari로 열기”</b>를 눌러주세요. 또는 아래 버튼으로 링크를 복사해 브라우저 주소창에 붙여넣어도 됩니다.",
@@ -794,8 +812,8 @@
       "subheading": "앱처럼 빠르게 실행할 수 있어요. 아래 순서대로 진행하세요.",
       "step1Lead": "사파리 하단(또는 상단)의 <strong>공유 버튼</strong>",
       "step1Trail": "을 누르세요.",
-      "step2": "메뉴에서 <strong>'홈 화면에 추가'</strong>를 선택하세요.",
-      "step3": "오른쪽 위 <strong>'추가'</strong>를 누르면 완료돼요.",
+      "step2": "메뉴에서 <strong>'홈 화면에 추가''</strong>를 선택하세요.",
+      "step3": "오른쪽 위 <strong>'추가''</strong>를 누르면 완료돼요.",
       "confirmButton": "확인"
     }
   },
@@ -897,5 +915,15 @@
     "label": "공지",
     "goToLinkAria": "공지 링크로 이동",
     "hideTodayLabel": "오늘 하루 보지 않기"
+  },
+  "footer": {
+    "businessInfoHeading": "사업자 정보",
+    "nameLabel": "상호명",
+    "ownerLabel": "대표자명",
+    "addressLabel": "사업장주소",
+    "registrationNumberLabel": "사업자등록번호",
+    "ecommerceNumberLabel": "통신판매업 신고번호",
+    "phoneLabel": "대표전화번호",
+    "emailLabel": "대표이메일"
   }
 }

@@ -93,7 +93,8 @@
       "denied": "位置情報の利用がブロックされています。ブラウザの設定で許可してください。",
       "followTitle": "現在地に追従中（地図を動かすと解除）",
       "moveTitle": "現在地へ移動 / 追従",
-      "followOnAlt": "追従モードON"
+      "followOnAlt": "追従モードON",
+      "unsupported": "このブラウザは位置情報に対応していません。"
     },
     "legendButton": {
       "aria": "地図の色分けガイド"
@@ -689,7 +690,24 @@
     "pushVapidMissing": "VAPIDキーが設定されていません。",
     "pushSubscribeFailed": "プッシュ設定に失敗しました: {message}",
     "pushDisableAction": "プッシュ通知をオフにする",
-    "pushEnableAction": "お気に入りの価格変動通知を受け取る"
+    "pushEnableAction": "お気に入りの価格変動通知を受け取る",
+    "referral": {
+      "title": "友達を紹介すると2人ともプレミアム特典7日間",
+      "description": "あなたのリンクから友達が登録すると、友達とあなたの両方にプレミアム特典が7日間延長されます。",
+      "copyAction": "リンクをコピー",
+      "copiedAction": "コピーしました！",
+      "shareAction": "共有する",
+      "shareText": "近くの最安値ガソリンスタンドを探そう！登録で2人ともプレミアム特典7日間 🎁",
+      "successCount": "紹介成功 <b>{count}人</b>",
+      "preparingMessage": "紹介リンクを準備しています。しばらくしてからもう一度お試しください。"
+    },
+    "cancel": {
+      "confirmMessage": "定期購読を解約しますか？\n現在の期間終了日までは広告なしでご利用いただけます。",
+      "doneMessage": "解約が完了しました。",
+      "failedPrefix": "解約に失敗しました：{message}",
+      "processingLabel": "処理中...",
+      "buttonLabel": "定期購読を解約する"
+    }
   },
   "auth": {
     "passwordTooShort": "パスワードは8文字以上で入力してください。",
@@ -704,7 +722,7 @@
       "tagline": "ソーシャルアカウントで1秒スタート",
       "benefitBeta": "広告なし・値下げ通知・お気に入りまで全部無料",
       "benefitFull": "値下げ通知・お気に入り・給油記録まで無料",
-      "inAppNotice": "{kind}アプリ内で開かれています",
+      "inAppNotice": "{kind, select, kakaotalk {KakaoTalk} instagram {Instagram} facebook {Facebook} line {LINE} naver {Naver} band {Band} daum {Daum} twitter {X（Twitter）} daangn {Karrot} other {}}アプリ内で開かれています",
       "inAppGuideDefault": "スムーズな登録・ログインのため、<b>Chrome / Safariなどの外部ブラウザ</b>で開いてください。（Googleログインはアプリ内ブラウザでブロックされます。）",
       "openExternalButton": "外部ブラウザで開く",
       "iosManualGuide": "自動で切り替わらない場合は、<b>右上のメニュー（···）から「Safariで開く」</b>をタップしてください。または下のボタンでリンクをコピーし、ブラウザのアドレスバーに貼り付けてください。",
@@ -897,5 +915,15 @@
     "label": "お知らせ",
     "goToLinkAria": "お知らせのリンクへ移動",
     "hideTodayLabel": "今日は表示しない"
+  },
+  "footer": {
+    "businessInfoHeading": "事業者情報",
+    "nameLabel": "商号",
+    "ownerLabel": "代表者名",
+    "addressLabel": "事業所住所",
+    "registrationNumberLabel": "事業者登録番号",
+    "ecommerceNumberLabel": "通信販売業申告番号",
+    "phoneLabel": "代表電話番号",
+    "emailLabel": "代表メールアドレス"
   }
 }

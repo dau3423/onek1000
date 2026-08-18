@@ -10,6 +10,11 @@ import { bearingDeg } from '@/lib/map/geo';
  */
 interface Coords { lat: number; lng: number; accuracy?: number; heading: number | null }
 
+// 브라우저 자체 Geolocation API 미지원 시의 에러 코드. 훅은 컴포넌트가 아니라 t()를 쓸 수
+// 없으므로 문자열 코드만 반환하고, 소비 측(컴포넌트)에서 번역한다(markerFace.ts 등과 동일 패턴).
+// 네이티브 PositionError.message(브라우저가 주는 영어 원문)와 섞이므로 충돌 없는 상수로 구분한다.
+export const GEO_UNSUPPORTED = 'GEO_UNSUPPORTED' as const;
+
 interface GeoState {
   coords: Coords | null;
   error: string | null;
@@ -35,7 +40,7 @@ export function useGeolocation(enabled: boolean): GeoState & {
   useEffect(() => {
     if (!enabled) return;
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      setState({ coords: null, error: 'Geolocation 미지원', status: 'unavailable' });
+      setState({ coords: null, error: GEO_UNSUPPORTED, status: 'unavailable' });
       return;
     }
 

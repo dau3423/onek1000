@@ -11,7 +11,6 @@ import {
   copyCurrentUrl,
   getInAppKind,
   getPlatform,
-  inAppKindLabel,
   openExternalBrowser,
   type InAppKind,
 } from '@/lib/inapp';
@@ -158,7 +157,7 @@ function SignInInner() {
       {isInApp && (
         <div className="mt-6 w-full rounded-2xl border border-orange-200 bg-orange-50 p-4">
           <p className="text-[13px] font-bold text-orange-900">
-            {tSignIn('inAppNotice', { kind: inAppKindLabel(inAppKind) })}
+            {tSignIn('inAppNotice', { kind: inAppKind ?? 'unknown' })}
           </p>
           <p className="mt-1 text-[12px] leading-relaxed text-orange-800">
             {tSignIn.rich('inAppGuideDefault', boldTag)}

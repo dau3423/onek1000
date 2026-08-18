@@ -8,12 +8,15 @@
 // 코드/성공수는 /api/referral/me에서 가져온다(없으면 lazy 발급됨). SSR 안전: fetch는 effect에서.
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { GiftIcon } from '@/components/icons';
 import { copyCurrentUrl } from '@/lib/inapp';
 
 const SITE_ORIGIN = 'https://onek1000.kr';
 
 export function ReferralCard() {
+  const t = useTranslations('my.referral');
+  const tCommon = useTranslations('common');
   const [code, setCode] = useState<string | null>(null);
   const [successCount, setSuccessCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -58,8 +61,8 @@ export function ReferralCard() {
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try {
         await navigator.share({
-          title: '1000냥 주유소',
-          text: '내 주변 최저가 주유소 찾기! 가입하면 둘 다 프리미엄 혜택 7일 🎁',
+          title: tCommon('appName'),
+          text: t('shareText'),
           url: link,
         });
         return;
@@ -75,11 +78,11 @@ export function ReferralCard() {
   return (
     <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
       <div className="text-sm font-bold text-gray-900">
-        친구 추천하면 둘 다 프리미엄 혜택 7일{' '}
+        {t('title')}{' '}
         <GiftIcon className="inline-block h-4 w-4 align-[-0.125em]" />
       </div>
       <p className="mt-1 text-xs text-gray-600">
-        내 링크로 친구가 가입하면 친구와 나 모두 프리미엄 혜택 7일이 연장돼요.
+        {t('description')}
       </p>
 
       {loading ? (
@@ -95,23 +98,26 @@ export function ReferralCard() {
               onClick={handleCopy}
               className="flex-1 rounded-full border border-gray-300 bg-white py-2 text-xs font-bold text-gray-700 active:bg-gray-100"
             >
-              {copied ? '복사됨!' : '링크 복사'}
+              {copied ? t('copiedAction') : t('copyAction')}
             </button>
             <button
               type="button"
               onClick={handleShare}
               className="flex-1 rounded-full bg-primary py-2 text-xs font-bold text-white active:opacity-90"
             >
-              공유하기
+              {t('shareAction')}
             </button>
           </div>
           <div className="mt-3 text-xs text-gray-600">
-            추천 성공 <strong className="text-primary">{successCount}명</strong>
+            {t.rich('successCount', {
+              count: successCount,
+              b: (chunks) => <strong className="text-primary">{chunks}</strong>,
+            })}
           </div>
         </>
       ) : (
         <p className="mt-3 text-xs text-gray-500">
-          추천 링크를 준비 중이에요. 잠시 후 다시 시도해 주세요.
+          {t('preparingMessage')}
         </p>
       )}
     </div>

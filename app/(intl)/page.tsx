@@ -30,7 +30,7 @@ import { RouteLoginPrompt } from '@/components/route/RouteLoginPrompt';
 import { NoticePopup } from '@/components/notice/NoticePopup';
 import { BusinessFooter } from '@/components/legal/BusinessFooter';
 import { useMapStore, getInitialMapView, getInitialRoutePlan, type MapView } from '@/stores/map';
-import { useGeolocation } from '@/hooks/useGeolocation';
+import { useGeolocation, GEO_UNSUPPORTED } from '@/hooks/useGeolocation';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useFullscreen } from '@/hooks/useFullscreen';
 import { quantize, distanceMeters, distancePointToPath } from '@/lib/map/geo';
@@ -1061,8 +1061,10 @@ export default function HomePage() {
           title={
             geo.status === 'denied'
               ? t('gps.denied')
-              : geo.error
-                ?? (follow ? t('gps.followTitle') : t('gps.moveTitle'))
+              : geo.error === GEO_UNSUPPORTED
+                ? t('gps.unsupported')
+                : geo.error
+                  ?? (follow ? t('gps.followTitle') : t('gps.moveTitle'))
           }
         >
           {geo.status === 'denied'

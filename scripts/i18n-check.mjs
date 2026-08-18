@@ -1,6 +1,9 @@
 // ko.json 을 원본으로 삼아 나머지 로케일의 키 누락·잉여를 검사한다. 번역 완료 판정 기준.
 // 값이 빈 문자열인 키도 "미번역"으로 잡는다 — 키만 만들어두고 번역을 안 채운 상태를 놓치지 않기 위해.
 import { readFileSync } from 'node:fs';
+// ICU 파싱 검사용 — next-intl 이 이미 의존성으로 가져온 패키지라 추가 설치가 필요 없다.
+// `'` 뒤에 `<`/`{`/`#` 가 오면 인용 모드가 열려 태그가 문자열로 먹히는 부류(UNCLOSED_TAG 등)를 잡는다.
+import { parse as parseIcu } from '@formatjs/icu-messageformat-parser';
 
 // 로케일 목록은 i18n/config.ts 에서 파생한다 — 하드코딩하면 단일 출처가 둘로 갈린다.
 // (.mjs 에서 .ts 를 import 할 수 없으므로 정규식으로 읽는다.)
@@ -79,7 +82,7 @@ for (const locale of LOCALES.filter((l) => l !== BASE)) {
   const checked = [];
   for (const [constName, ns, file] of pairs) {
     const consts = block(readSrc(file), constName);
-    if (!consts) { console.log(`⚠️  ${constName} 파싱 실패 — 검사 건너뜀`); continue; }
+    if (!consts) { failed = true; console.log(`❌ ${constName} 파싱 실패 — 검사를 건너뛸 수 없음(하드 실패 처리)`); continue; }
     checked.push(`${ns}(${Object.keys(consts).length})`);
     for (const [code, val] of Object.entries(consts)) {
       const key = `${ns}.${code}`;
@@ -90,6 +93,27 @@ for (const locale of LOCALES.filter((l) => l !== BASE)) {
     }
   }
   if (!failed) console.log(`✅ 상수 ↔ ko.json 라벨 일치: ${checked.join(', ')}`);
+}
+
+// ── ICU 파싱: 카탈로그 4개 로케일 전체를 @formatjs 파서로 실제 파싱해 본다.
+//    key 파리티·라벨 드리프트와 달리 이건 "문법이 유효한가"만 본다 — UNCLOSED_TAG 류를
+//    영구히 막는다(§I1, 어포스트로피가 </> 앞에서 ICU 인용을 여는 버그).
+{
+  let icuBad = 0;
+  for (const locale of LOCALES) {
+    const flat = flatten(load(locale));
+    for (const [key, value] of Object.entries(flat)) {
+      if (typeof value !== 'string') continue;
+      try {
+        parseIcu(value);
+      } catch (e) {
+        failed = true;
+        icuBad++;
+        console.log(`❌ ICU 파싱 실패 ${locale}.${key}: ${e.message} :: "${value}"`);
+      }
+    }
+  }
+  if (icuBad === 0) console.log(`✅ ICU 파싱: ${LOCALES.length}개 로케일 전체 유효`);
 }
 
 process.exit(failed ? 1 : 0);
