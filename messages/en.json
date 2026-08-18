@@ -467,5 +467,49 @@
     "cellAriaDust": ", fine dust {dust}",
     "rain": "Rain {pop}%",
     "rainUnknown": "Rain —"
+  },
+  "search": {
+    "backAria": "Back",
+    "placeholder": "Station name or address",
+    "minLengthHint": "Enter at least 2 characters.",
+    "searching": "Searching...",
+    "noResults": "No results found.",
+    "priceBasis": "Prices shown for {product}",
+    "selfBadge": "Self-service",
+    "noPriceInfo": "No price info",
+    "loadingFallback": "Loading..."
+  },
+  "route": {
+    "loadingSession": "Loading...",
+    "locationPermissionRequired": "Location permission is required.",
+    "missingPoints": "Please set a starting point and destination first.",
+    "searchFailed": "Search failed",
+    "noStationsFound": "No gas stations found within 2km of the route. Try adjusting your start or destination.",
+    "homeAria": "Home",
+    "searchingLabel": "Searching...",
+    "findCheapestButton": "Find cheapest along route",
+    "recentPlacesHeading": "Recent & frequent places",
+    "recentPlaceTitle": "{name} · {count} visits",
+    "recentPlaceCount": "×{count}",
+    "deleteAria": "Remove {name}",
+    "emptyHint": "We'll find gas stations within 2km of your road route.",
+    "distanceFromRoute": "{distance} from route",
+    "placesUnavailable": "Place search isn't available. Please use \"{myLocation}\" instead.",
+    "searchError": "An error occurred while searching. Please try again.",
+    "placeSearchFailed": "Place search failed.",
+    "placeSearchPlaceholder": "Search place or address (e.g. Gangnam Station)",
+    "placeSearchingLabel": "Searching…",
+    "placeSearchButton": "Search",
+    "noPlacesFound": "No results found.",
+    "loginPrompt": {
+      "dialogAria": "Login prompt",
+      "titleLine1": "Log in to unlock",
+      "titleLine2": "every feature for free",
+      "subtitle": "Sign up in 1 second — every feature is free.",
+      "benefit1": "Real-time cheapest gas stations along your route",
+      "benefit2": "Price drop alerts · Favorites",
+      "benefit3": "Your fuel log, completely free",
+      "confirm": "Confirm"
+    }
   }
 }

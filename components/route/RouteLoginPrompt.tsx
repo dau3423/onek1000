@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { useMapStore } from '@/stores/map';
 import { RouteIcon, BellIcon, FuelIcon } from '@/components/icons';
 
@@ -39,6 +40,7 @@ const PROMPT_DELAY_MS = 5000;
  *     로그인에 성공한 경우(authenticated)에는 플래그만 정리하고 경로를 보존한다.
  */
 export function RouteLoginPrompt() {
+  const t = useTranslations('route.loginPrompt');
   const router = useRouter();
   const { status } = useSession();
   const [open, setOpen] = useState(false);
@@ -108,35 +110,35 @@ export function RouteLoginPrompt() {
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-5"
       role="dialog"
       aria-modal="true"
-      aria-label="로그인 안내"
+      aria-label={t('dialogAria')}
     >
       <div className="relative w-full max-w-[340px] rounded-2xl bg-white p-6 pb-[calc(24px+env(safe-area-inset-bottom))] shadow-2xl dark:bg-gray-900">
         <p className="text-center text-lg font-bold leading-snug text-gray-900 dark:text-gray-50">
-          로그인하고 모든 기능을
+          {t('titleLine1')}
           <br />
-          무료로 누려보세요
+          {t('titleLine2')}
         </p>
         <p className="mt-2 text-center text-sm leading-relaxed text-gray-500 dark:text-gray-400">
-          가입은 1초, 전 기능을 무료로 쓸 수 있어요.
+          {t('subtitle')}
         </p>
 
         <ul className="mt-5 space-y-2.5">
           <li className="flex items-start gap-2.5">
             <RouteIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <span className="text-sm font-medium leading-snug text-gray-800 dark:text-gray-200">
-              경로 위 실시간 최저가 주유소
+              {t('benefit1')}
             </span>
           </li>
           <li className="flex items-start gap-2.5">
             <BellIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <span className="text-sm font-medium leading-snug text-gray-800 dark:text-gray-200">
-              가격 하락 알림 · 즐겨찾기
+              {t('benefit2')}
             </span>
           </li>
           <li className="flex items-start gap-2.5">
             <FuelIcon className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <span className="text-sm font-medium leading-snug text-gray-800 dark:text-gray-200">
-              내 주유 기록까지 전부 무료
+              {t('benefit3')}
             </span>
           </li>
         </ul>
@@ -145,7 +147,7 @@ export function RouteLoginPrompt() {
           onClick={handleConfirm}
           className="mt-6 w-full rounded-xl bg-primary px-4 py-3.5 text-base font-bold text-white shadow-sm hover:bg-primary-dark"
         >
-          확인
+          {t('confirm')}
         </button>
       </div>
     </div>

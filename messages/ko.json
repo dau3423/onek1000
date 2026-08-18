@@ -467,5 +467,49 @@
     "cellAriaDust": ", 미세먼지 {dust}",
     "rain": "강수 {pop}%",
     "rainUnknown": "강수 —"
+  },
+  "search": {
+    "backAria": "뒤로 가기",
+    "placeholder": "주유소 이름 또는 주소",
+    "minLengthHint": "두 글자 이상 입력해주세요.",
+    "searching": "검색 중...",
+    "noResults": "검색 결과가 없어요.",
+    "priceBasis": "가격은 {product} 기준",
+    "selfBadge": "셀프",
+    "noPriceInfo": "가격 정보 없음",
+    "loadingFallback": "로딩 중..."
+  },
+  "route": {
+    "loadingSession": "불러오는 중...",
+    "locationPermissionRequired": "위치 권한이 필요합니다.",
+    "missingPoints": "출발/도착을 먼저 지정해주세요.",
+    "searchFailed": "검색 실패",
+    "noStationsFound": "경로 반경 2km 내 주유소를 찾지 못했어요. 출발/도착을 조정해보세요.",
+    "homeAria": "홈으로",
+    "searchingLabel": "검색 중...",
+    "findCheapestButton": "경로 위 최저가 찾기",
+    "recentPlacesHeading": "최근·자주 가는 위치",
+    "recentPlaceTitle": "{name} · {count}회",
+    "recentPlaceCount": "{count}회",
+    "deleteAria": "{name} 삭제",
+    "emptyHint": "도로 경로 반경 2km 내 주유소를 찾아드려요.",
+    "distanceFromRoute": "경로에서 {distance}",
+    "placesUnavailable": "장소 검색을 사용할 수 없습니다. \"{myLocation}\"를 이용해주세요.",
+    "searchError": "검색 중 오류가 발생했어요. 다시 시도해주세요.",
+    "placeSearchFailed": "장소 검색에 실패했어요.",
+    "placeSearchPlaceholder": "장소·주소 검색 (예: 강남역)",
+    "placeSearchingLabel": "검색…",
+    "placeSearchButton": "검색",
+    "noPlacesFound": "검색 결과가 없어요.",
+    "loginPrompt": {
+      "dialogAria": "로그인 안내",
+      "titleLine1": "로그인하고 모든 기능을",
+      "titleLine2": "무료로 누려보세요",
+      "subtitle": "가입은 1초, 전 기능을 무료로 쓸 수 있어요.",
+      "benefit1": "경로 위 실시간 최저가 주유소",
+      "benefit2": "가격 하락 알림 · 즐겨찾기",
+      "benefit3": "내 주유 기록까지 전부 무료",
+      "confirm": "확인"
+    }
   }
 }

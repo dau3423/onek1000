@@ -467,5 +467,49 @@
     "cellAriaDust": "、微細粉じん {dust}",
     "rain": "降水 {pop}%",
     "rainUnknown": "降水 —"
+  },
+  "search": {
+    "backAria": "戻る",
+    "placeholder": "ガソリンスタンド名または住所",
+    "minLengthHint": "2文字以上入力してください。",
+    "searching": "検索中...",
+    "noResults": "検索結果がありません。",
+    "priceBasis": "{product}基準の価格です",
+    "selfBadge": "セルフ",
+    "noPriceInfo": "価格情報なし",
+    "loadingFallback": "読み込み中..."
+  },
+  "route": {
+    "loadingSession": "読み込み中...",
+    "locationPermissionRequired": "位置情報の権限が必要です。",
+    "missingPoints": "出発地と到着地を先に指定してください。",
+    "searchFailed": "検索に失敗しました",
+    "noStationsFound": "ルート半径2km以内にガソリンスタンドが見つかりませんでした。出発地・到着地を調整してみてください。",
+    "homeAria": "ホームへ",
+    "searchingLabel": "検索中...",
+    "findCheapestButton": "ルート上の最安値を探す",
+    "recentPlacesHeading": "最近・よく行く場所",
+    "recentPlaceTitle": "{name} · {count}回",
+    "recentPlaceCount": "{count}回",
+    "deleteAria": "{name}を削除",
+    "emptyHint": "道路ルート半径2km以内のガソリンスタンドをお探しします。",
+    "distanceFromRoute": "ルートから {distance}",
+    "placesUnavailable": "場所検索を利用できません。「{myLocation}」をご利用ください。",
+    "searchError": "検索中にエラーが発生しました。もう一度お試しください。",
+    "placeSearchFailed": "場所検索に失敗しました。",
+    "placeSearchPlaceholder": "場所・住所を検索（例：江南駅）",
+    "placeSearchingLabel": "検索…",
+    "placeSearchButton": "検索",
+    "noPlacesFound": "検索結果がありません。",
+    "loginPrompt": {
+      "dialogAria": "ログイン案内",
+      "titleLine1": "ログインしてすべての機能を",
+      "titleLine2": "無料でお楽しみください",
+      "subtitle": "登録は1秒、全機能を無料で使えます。",
+      "benefit1": "ルート上のリアルタイム最安値ガソリンスタンド",
+      "benefit2": "値下げ通知 · お気に入り",
+      "benefit3": "給油記録まで全部無料",
+      "confirm": "確認"
+    }
   }
 }

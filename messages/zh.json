@@ -467,5 +467,49 @@
     "cellAriaDust": "，细颗粒物 {dust}",
     "rain": "降水 {pop}%",
     "rainUnknown": "降水 —"
+  },
+  "search": {
+    "backAria": "返回",
+    "placeholder": "加油站名称或地址",
+    "minLengthHint": "请输入至少两个字。",
+    "searching": "搜索中...",
+    "noResults": "没有搜索结果。",
+    "priceBasis": "价格以 {product} 为准",
+    "selfBadge": "自助",
+    "noPriceInfo": "暂无价格信息",
+    "loadingFallback": "加载中..."
+  },
+  "route": {
+    "loadingSession": "加载中...",
+    "locationPermissionRequired": "需要位置权限。",
+    "missingPoints": "请先设置出发地和目的地。",
+    "searchFailed": "搜索失败",
+    "noStationsFound": "路线2公里范围内未找到加油站，请调整出发地或目的地。",
+    "homeAria": "首页",
+    "searchingLabel": "搜索中...",
+    "findCheapestButton": "查找路线上的最低价",
+    "recentPlacesHeading": "最近·常用地点",
+    "recentPlaceTitle": "{name} · {count}次",
+    "recentPlaceCount": "{count}次",
+    "deleteAria": "删除 {name}",
+    "emptyHint": "为您查找道路路线2公里范围内的加油站。",
+    "distanceFromRoute": "距路线 {distance}",
+    "placesUnavailable": "无法使用地点搜索，请使用\"{myLocation}\"。",
+    "searchError": "搜索时发生错误，请重试。",
+    "placeSearchFailed": "地点搜索失败。",
+    "placeSearchPlaceholder": "搜索地点·地址（例：江南站）",
+    "placeSearchingLabel": "搜索中…",
+    "placeSearchButton": "搜索",
+    "noPlacesFound": "没有搜索结果。",
+    "loginPrompt": {
+      "dialogAria": "登录提示",
+      "titleLine1": "登录即可免费",
+      "titleLine2": "使用全部功能",
+      "subtitle": "1秒即可注册，所有功能免费使用。",
+      "benefit1": "实时查看路线上的最低价加油站",
+      "benefit2": "降价提醒 · 收藏",
+      "benefit3": "加油记录也完全免费",
+      "confirm": "确认"
+    }
   }
 }

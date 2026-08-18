@@ -5,13 +5,15 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { loadKakao } from '@/components/map/loadKakao';
 import { BackButton } from '@/components/common/BackButton';
 import { CloseIcon, PinIcon } from '@/components/icons';
 import { ROUTE_ENTRY_FLAG } from '@/components/route/RouteLoginPrompt';
 import { useMapStore } from '@/stores/map';
 import { track } from '@/lib/analytics';
-import { BRAND_LABEL, BRAND_COLOR, PRODUCT_LABEL, type BrandCode, type ProductCode, type StationWithPrice } from '@/types/station';
+import { useBrandLabel, useProductLabel } from '@/lib/i18n/labels';
+import { BRAND_COLOR, type BrandCode, type ProductCode, type StationWithPrice } from '@/types/station';
 import {
   getRecentPlaces,
   recordRecentPlace,
@@ -47,6 +49,7 @@ type SearchResult = {
 };
 
 export default function RouteCheapestPage() {
+  const t = useTranslations('route');
   const { status } = useSession();
 
   // 경로별 최저가는 비회원에게도 완전 개방(진입·입력·검색·결과까지). 로그인 유도 없음.
@@ -54,7 +57,7 @@ export default function RouteCheapestPage() {
   if (status === 'loading') {
     return (
       <main className="mx-auto flex min-h-dvh max-w-md items-center justify-center bg-white text-sm text-gray-400">
-        불러오는 중...
+        {t('loadingSession')}
       </main>
     );
   }
@@ -63,6 +66,14 @@ export default function RouteCheapestPage() {
 }
 
 function RouteCheapestInner() {
+  const t = useTranslations('route');
+  const tMap = useTranslations('map');
+  const brandLabel = useBrandLabel();
+  const productLabel = useProductLabel();
+  // 지도 화면(app/(intl)/page.tsx)이 GPS 현재 위치에 붙이는 이름과 같은 문구를 쓴다
+  // (map.myLocationName) — 로케일별로 갈리면 "내 위치"로 기록된 최근 위치가 다른 언어에서
+  // 중복 판정에서 빠지거나(문구가 갈려서) 엉뚱하게 남는다.
+  const myLocationLabel = tMap('myLocationName');
   const router = useRouter();
   const { data: session, status: authStatus } = useSession();
   const setRoutePlan = useMapStore((s) => s.setRoutePlan);
@@ -92,10 +103,10 @@ function RouteCheapestInner() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (p) => {
-        const v: Point = { lat: p.coords.latitude, lng: p.coords.longitude, name: '내 위치' };
+        const v: Point = { lat: p.coords.latitude, lng: p.coords.longitude, name: myLocationLabel };
         which === 'from' ? setFrom(v) : setTo(v);
       },
-      () => alert('위치 권한이 필요합니다.'),
+      () => alert(t('locationPermissionRequired')),
     );
   };
 
@@ -108,7 +119,7 @@ function RouteCheapestInner() {
     // 입력·장소검색·경로 검색·최저가 결과 보기까지 로그인 없이 사용 가능.
     // 우리 DB + 서버 경유 directions 조회라 클라이언트 인증과 무관하다.
     // (외부 길안내 시작(NaviButton)만 별도로 회원 가드를 유지한다 — 메인 지도 측에서 처리.)
-    if (!from || !to) { setError('출발/도착을 먼저 지정해주세요.'); return; }
+    if (!from || !to) { setError(t('missingPoints')); return; }
     // 경로 최저가 검색 실행 계측 — 좌표/검색어는 담지 않는다(props 없음). fire-and-forget.
     track('route_search');
     setError(null); setLoading(true);
@@ -120,7 +131,7 @@ function RouteCheapestInner() {
       });
       const res = await fetch(`/api/route-cheapest?${q}`);
       const j = await res.json();
-      if (!res.ok) throw new Error(j.error ?? '검색 실패');
+      if (!res.ok) throw new Error(j.error ?? t('searchFailed'));
       const stations: StationWithPrice[] = j.stations ?? [];
       // 도로 경로 점들(directions 성공 시 도로 따라, 실패 시 출발/도착 직선 2점).
       const path: { lat: number; lng: number }[] =
@@ -130,14 +141,14 @@ function RouteCheapestInner() {
       setResults(stations);
       if (stations.length === 0) {
         // 경로 주변에 주유소가 없으면 지도로 보낼 게 없으므로 페이지에 머물며 안내.
-        setError('경로 반경 2km 내 주유소를 찾지 못했어요. 출발/도착을 조정해보세요.');
+        setError(t('noStationsFound'));
         return;
       }
       // 탐색한 위치를 최근/자주 목록에 기록(중복은 count++ & lastAt 갱신).
       // - 도착지(to)는 항상 기록 대상. 출발지(from)도 별도 항목으로 기록한다.
-      // - 단 "내 위치/현재위치" 같은 동적 항목과 이름 없는 좌표는 제외(재사용 의미 없음).
+      // - 단 "내 위치" 같은 동적 항목과 이름 없는 좌표는 제외(재사용 의미 없음).
       const isStaticPlace = (p: Point) =>
-        !!p.name && p.name !== '내 위치' && p.name !== '현재위치';
+        !!p.name && p.name !== myLocationLabel;
       if (isStaticPlace(to)) {
         recordRecentPlace({ placeId: to.placeId, name: to.name as string, lat: to.lat, lng: to.lng });
       }
@@ -174,19 +185,19 @@ function RouteCheapestInner() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
       <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b border-gray-100 bg-white/95 px-3 backdrop-blur">
-        <BackButton href="/" ariaLabel="홈으로" />
-        <h1 className="font-bold text-gray-900">경로별 최저가</h1>
+        <BackButton href="/" ariaLabel={t('homeAria')} />
+        <h1 className="font-bold text-gray-900">{tMap('header.routeAria')}</h1>
       </header>
 
       <section className="space-y-3 px-5 py-4">
         <PointPicker
-          label="출발"
+          label={tMap('depart')}
           value={from}
           onMyLocation={() => pickMyLocation('from')}
           onSelect={(p) => setPoint('from', p)}
         />
         <PointPicker
-          label="도착"
+          label={tMap('arrive')}
           value={to}
           onMyLocation={() => pickMyLocation('to')}
           onSelect={(p) => setPoint('to', p)}
@@ -203,7 +214,7 @@ function RouteCheapestInner() {
                   : 'shrink-0 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700'
               }
             >
-              {PRODUCT_LABEL[p]}
+              {productLabel(p)}
             </button>
           ))}
         </div>
@@ -213,7 +224,7 @@ function RouteCheapestInner() {
           disabled={loading}
           className="w-full rounded-xl bg-primary py-3 font-bold text-white shadow-sm disabled:opacity-60"
         >
-          {loading ? '검색 중...' : '경로 위 최저가 찾기'}
+          {loading ? t('searchingLabel') : t('findCheapestButton')}
         </button>
         {error && <p className="text-xs text-red-500">{error}</p>}
       </section>
@@ -221,7 +232,7 @@ function RouteCheapestInner() {
       {recent.length > 0 && (
         <section className="border-t border-gray-100 px-5 py-4">
           <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
-            최근·자주 가는 위치
+            {t('recentPlacesHeading')}
           </h2>
           <ul className="flex flex-wrap gap-2">
             {recent.map((p) => (
@@ -232,14 +243,14 @@ function RouteCheapestInner() {
                     // 클릭 시 도착지(to)에 좌표·이름 포함해 채워 바로 재검색 가능하게.
                     onClick={() => setPoint('to', toRoutePoint(p))}
                     className="max-w-[10rem] truncate py-1.5 font-semibold text-gray-800 hover:text-primary"
-                    title={`${p.name} · ${p.count}회`}
+                    title={t('recentPlaceTitle', { name: p.name, count: p.count })}
                   >
                     {p.name}
-                    {p.count > 1 && <span className="ml-1 text-gray-400">{p.count}회</span>}
+                    {p.count > 1 && <span className="ml-1 text-gray-400">{t('recentPlaceCount', { count: p.count })}</span>}
                   </button>
                   <button
                     type="button"
-                    aria-label={`${p.name} 삭제`}
+                    aria-label={t('deleteAria', { name: p.name })}
                     onClick={() => setRecent(removeRecentPlace(p))}
                     // 초소형 예외(§4-2): 칩 컨테이너가 40px 미만이라 44/40px 히트영역을 못 지킨다.
                     // 버튼을 h-7 w-7(28px)까지 키우고 -my-1로 칩 시각 높이를 유지한다.
@@ -257,7 +268,7 @@ function RouteCheapestInner() {
       <section className="border-t border-gray-100">
         {results.length === 0 && !loading && (
           <p className="px-5 py-6 text-sm text-gray-400">
-            도로 경로 반경 2km 내 주유소를 찾아드려요.
+            {t('emptyHint')}
           </p>
         )}
         <ul className="divide-y divide-gray-100">
@@ -272,7 +283,7 @@ function RouteCheapestInner() {
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-semibold text-gray-900">{s.name}</div>
                   <div className="truncate text-xs text-gray-500">
-                    {BRAND_LABEL[s.brand]} · 경로에서 {s.distance ? Math.round(s.distance) : '-'}m
+                    {brandLabel(s.brand)} · {t('distanceFromRoute', { distance: `${s.distance ? Math.round(s.distance) : '-'}m` })}
                   </div>
                 </div>
                 <div className="text-sm font-extrabold text-gray-900">
@@ -295,6 +306,9 @@ function PointPicker({
   onMyLocation: () => void;
   onSelect: (p: Point) => void;
 }) {
+  const t = useTranslations('route');
+  const tMap = useTranslations('map');
+  const myLocationLabel = tMap('myLocationName');
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [places, setPlaces] = useState<SearchResult[] | null>(null);
@@ -315,9 +329,9 @@ function PointPicker({
     }
   }, [value]);
 
-  // "내 위치"가 선택된 상태(query가 정확히 "내 위치")일 때만 좌측 Pin을 노출한다.
+  // "내 위치"가 선택된 상태(query가 정확히 myLocationLabel)일 때만 좌측 Pin을 노출한다.
   // 한 글자라도 수정하면 조건이 깨져 일반 입력 상태로 복귀한다(§5 A안).
-  const isMyLocation = query === '내 위치';
+  const isMyLocation = query === myLocationLabel;
 
   const runSearch = async () => {
     const keyword = query.trim();
@@ -328,7 +342,7 @@ function PointPicker({
     try {
       const kakao = await loadKakao();
       if (!kakao.maps.services?.Places) {
-        throw new Error('장소 검색을 사용할 수 없습니다. "내 위치"를 이용해주세요.');
+        throw new Error(t('placesUnavailable', { myLocation: myLocationLabel }));
       }
       const ps = new kakao.maps.services.Places();
       ps.keywordSearch(keyword, (data, status) => {
@@ -346,12 +360,12 @@ function PointPicker({
         } else if (status === kakao.maps.services.Status.ZERO_RESULT) {
           setPlaces([]);
         } else {
-          setSearchError('검색 중 오류가 발생했어요. 다시 시도해주세요.');
+          setSearchError(t('searchError'));
         }
       });
     } catch (e) {
       setSearching(false);
-      setSearchError(e instanceof Error ? e.message : '장소 검색에 실패했어요.');
+      setSearchError(e instanceof Error ? e.message : t('placeSearchFailed'));
     }
   };
 
@@ -397,7 +411,7 @@ function PointPicker({
                 runSearch();
               }
             }}
-            placeholder="장소·주소 검색 (예: 강남역)"
+            placeholder={t('placeSearchPlaceholder')}
             className={`w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:bg-white focus:outline-none ${isMyLocation ? 'pl-9' : 'pl-3'}`}
             enterKeyHint="search"
           />
@@ -407,7 +421,7 @@ function PointPicker({
           disabled={searching || !query.trim()}
           className="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
         >
-          {searching ? '검색…' : '검색'}
+          {searching ? t('placeSearchingLabel') : t('placeSearchButton')}
         </button>
       </div>
 
@@ -416,7 +430,7 @@ function PointPicker({
       {places !== null && (
         <div className="mb-2 max-h-56 overflow-y-auto rounded-lg border border-gray-100">
           {places.length === 0 ? (
-            <p className="px-3 py-3 text-xs text-gray-400">검색 결과가 없어요.</p>
+            <p className="px-3 py-3 text-xs text-gray-400">{t('noPlacesFound')}</p>
           ) : (
             <ul className="divide-y divide-gray-100">
               {places.map((p) => (
@@ -437,7 +451,7 @@ function PointPicker({
 
       <button onClick={onMyLocation} className="flex w-full items-center justify-center gap-1 rounded-lg bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-200">
         <PinIcon className="h-4 w-4" />
-        내 위치
+        {myLocationLabel}
       </button>
     </div>
   );
