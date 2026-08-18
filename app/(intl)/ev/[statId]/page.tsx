@@ -6,6 +6,7 @@ import { NaviButton } from '@/components/station/NaviButton';
 import { EvChargerStatusPanel } from '@/components/ev/EvChargerStatusPanel';
 import { EvChargeLogButton } from '@/components/ev/EvChargeLogButton';
 import { MyEvLogsSection } from '@/components/ev/MyEvLogsSection';
+import { ReviewSection } from '@/components/reviews/ReviewSection';
 import type { EvStationDetail } from '@/types/ev';
 import { BoltIcon, BuildingIcon, PinIcon, PhoneIcon, ClockIcon } from '@/components/icons';
 
@@ -95,6 +96,9 @@ export default async function EvStationDetailPage({ params }: Props) {
 
       {/* 내 충전 기록 — 로그인 사용자의 이 충전소 기록(없으면/비로그인은 자동 숨김) */}
       <MyEvLogsSection statId={detail.statId} />
+
+      {/* 리뷰 — 주유소 상세와 동일 위치(CTA 바로 위). 충전소 좌표를 넘겨 작성 전 지오펜스(근처에서만 작성) 안내/검증 */}
+      <ReviewSection targetType="ev" targetId={params.statId} lat={detail.lat} lng={detail.lng} />
 
       {/* CTA */}
       <section className="mt-auto space-y-2 border-t border-gray-100 bg-gray-50 px-5 py-4 pb-[calc(16px+env(safe-area-inset-bottom))]">
