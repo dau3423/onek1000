@@ -861,7 +861,9 @@ export default function HomePage() {
           ? j.path
           : [{ lat, lng }, { lat: dest.lat, lng: dest.lng }];
         setRoutePlan({
-          from: { lat, lng, name: t('myLocationName') },
+          // isMyLocation: true — routePlan은 localStorage에 영속되므로, name(로케일별 표시 문구)이
+          // 아니라 이 플래그로 "내 위치였다"는 사실을 보존한다(route/page.tsx의 RoutePoint 참고).
+          from: { lat, lng, name: t('myLocationName'), isMyLocation: true },
           to: dest,
           product: reqProduct,
           stations: newStations,
@@ -1334,7 +1336,7 @@ export default function HomePage() {
         <NaviConfirm
           station={naviTarget}
           kind={naviKind}
-          origin={myLocation ? { name: t('myLocationName'), lat: myLocation.lat, lng: myLocation.lng } : null}
+          origin={myLocation ? { name: t('myLocationName'), lat: myLocation.lat, lng: myLocation.lng, isMyLocation: true } : null}
           onClose={() => {
             setNaviTarget(null);
             setNaviKind('gas'); // 다음 주유소/충전소 길안내를 위해 기본값으로 복귀

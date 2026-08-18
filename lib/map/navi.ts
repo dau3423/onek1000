@@ -26,6 +26,12 @@ export interface NaviOrigin {
   name?: string;
   lat: number;
   lng: number;
+  /**
+   * GPS 현재 위치로 만들어진 출발지인지 여부(표시/URL 전달용 name과 별개로, 동일성 판정이
+   * 필요해지면 여기를 봐야 한다 — name은 로케일별 문구라 비교에 쓰면 안 된다).
+   * 현재는 어디서도 비교하지 않고 정보용으로만 채워둔다(RoutePoint.isMyLocation과 동형 유지).
+   */
+  isMyLocation?: boolean;
 }
 
 /** 지원하는 내비 앱 식별자 */

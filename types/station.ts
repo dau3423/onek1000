@@ -175,6 +175,13 @@ export interface RoutePoint {
   lat: number;
   lng: number;
   name?: string;
+  /**
+   * 이 지점이 GPS 현재 위치("내 위치")로 만들어졌는지 여부.
+   * name은 t('map.myLocationName')으로 로케일마다 다른 문구가 들어가므로 동일성 판정에
+   * 쓰면 안 된다(로케일 전환·localStorage 영속 후 문구가 갈리면 조용히 어긋난다) —
+   * 반드시 이 불리언으로 판정할 것. name은 표시 전용.
+   */
+  isMyLocation?: boolean;
 }
 
 /**

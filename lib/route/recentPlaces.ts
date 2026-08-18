@@ -6,6 +6,15 @@ import type { RoutePoint } from '@/types/station';
 
 const KEY = 'onek:recentPlaces';
 
+/**
+ * 이 앱이 한국어 전용이던 시절 "내 위치"라는 이름으로 localStorage(recentPlaces·routePlan)에
+ * 저장된 지점이 아직 남아 있을 수 있다. 새 데이터는 RoutePoint.isMyLocation 플래그로 판정하고,
+ * 그 플래그가 없는 레거시 데이터에 한해서만 이 문자열로 판정한다(하위 호환).
+ * 국제화 이후 저장된 데이터만 남을 만큼 시간이 지나면(오래된 저장값 자연 만료) 지울 수 있다.
+ * lib/ 아래(스캔 대상 app/(intl) 밖)에 둔 이유: i18n:scan이 하드코딩 한글로 오탐하지 않도록.
+ */
+export const LEGACY_MY_LOCATION_NAME_KO = '내 위치';
+
 /** 내부 보관 상한(너무 커지지 않도록). 화면엔 이 중 상위 20개만 노출. */
 const MAX_STORE = 50;
 /** 화면 노출 상한. */

@@ -19,11 +19,14 @@ import {
   recordRecentPlace,
   removeRecentPlace,
   toRoutePoint,
+  LEGACY_MY_LOCATION_NAME_KO,
   type RecentPlace,
 } from '@/lib/route/recentPlaces';
 
 // placeId: 카카오 장소 id(최근 위치 동일성 판정용). "내 위치"처럼 검색 외 지정엔 없음.
-type Point = { lat: number; lng: number; name?: string; placeId?: string };
+// isMyLocation: GPS 현재 위치로 만들어진 지점인지 여부. name은 로케일별 표시 문구(t('map.myLocationName'))라
+// 동일성 판정에 쓰면 안 되므로(로케일 전환 시 문구가 갈린다) 반드시 이 플래그로 판정한다.
+type Point = { lat: number; lng: number; name?: string; placeId?: string; isMyLocation?: boolean };
 
 /** 경로 화면이 지원하는 유종 선택지(휘발유/경유/LPG). */
 const ROUTE_PRODUCTS: ProductCode[] = ['B027', 'D047', 'C004'];
@@ -103,7 +106,7 @@ function RouteCheapestInner() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (p) => {
-        const v: Point = { lat: p.coords.latitude, lng: p.coords.longitude, name: myLocationLabel };
+        const v: Point = { lat: p.coords.latitude, lng: p.coords.longitude, name: myLocationLabel, isMyLocation: true };
         which === 'from' ? setFrom(v) : setTo(v);
       },
       () => alert(t('locationPermissionRequired')),
@@ -147,8 +150,10 @@ function RouteCheapestInner() {
       // 탐색한 위치를 최근/자주 목록에 기록(중복은 count++ & lastAt 갱신).
       // - 도착지(to)는 항상 기록 대상. 출발지(from)도 별도 항목으로 기록한다.
       // - 단 "내 위치" 같은 동적 항목과 이름 없는 좌표는 제외(재사용 의미 없음).
+      //   isMyLocation 플래그로 판정(name은 로케일별로 바뀌므로 비교 불가) + 레거시 한국어
+      //   이름 데이터 하위 호환.
       const isStaticPlace = (p: Point) =>
-        !!p.name && p.name !== myLocationLabel;
+        !!p.name && !p.isMyLocation && p.name !== LEGACY_MY_LOCATION_NAME_KO;
       if (isStaticPlace(to)) {
         recordRecentPlace({ placeId: to.placeId, name: to.name as string, lat: to.lat, lng: to.lng });
       }
@@ -158,9 +163,11 @@ function RouteCheapestInner() {
       setRecent(getRecentPlaces());
 
       // 결과를 store에 담아 메인 지도로 이동 → 도로 경로 Polyline + 출발/도착/최저가 마커 표시.
+      // isMyLocation 플래그도 함께 넘긴다 — routePlan은 localStorage에 영속되므로, 이후 다른
+      // 로케일로 읽더라도(문구가 갈려도) "내 위치였다"는 사실 자체는 그대로 보존돼야 한다.
       setRoutePlan({
-        from: { lat: from.lat, lng: from.lng, name: from.name },
-        to: { lat: to.lat, lng: to.lng, name: to.name },
+        from: { lat: from.lat, lng: from.lng, name: from.name, isMyLocation: from.isMyLocation },
+        to: { lat: to.lat, lng: to.lng, name: to.name, isMyLocation: to.isMyLocation },
         product,
         stations,
         path,
@@ -315,23 +322,24 @@ function PointPicker({
   const [searchError, setSearchError] = useState<string | null>(null);
 
   // 외부에서 확정된 지점(value)의 이름을 입력란에 반영한다.
-  // - "내 위치" 선택 → 입력란에 플레인 텍스트 "내 위치" 표시(이모지 없음, AC-1-5).
-  //   시각 구분은 아래 입력 래퍼의 좌측 PinIcon(query === '내 위치'일 때만)으로 처리한다(§5 A안).
+  // - "내 위치" 선택 → 입력란에 플레인 텍스트로 표시(이모지 없음, AC-1-5).
+  //   시각 구분은 아래 입력 래퍼의 좌측 PinIcon(isMyLocationSelected일 때만)으로 처리한다(§5 A안).
   // - 장소 검색 후 선택 → 그 장소명으로 덮어쓰기
   // 부모는 지점 확정 시마다 새 객체를 만들므로, value 참조가 바뀔 때만 동기화한다.
   // (사용자가 입력란에 직접 타이핑하는 동안에는 value가 그대로라 검색어가 보존된다.)
   const lastSyncedValue = useRef<Point | null>(null);
+  // "내 위치"가 선택된 상태인지는 value.isMyLocation 플래그로 판정한다(텍스트 비교 금지 —
+  // myLocationLabel은 로케일마다 문구가 달라 비교가 어긋난다). 레거시 데이터(플래그 없이
+  // 한국어 이름만 있는 예전 저장값)는 이름으로 한 번만 판정해 하위 호환한다.
+  const [isMyLocationSelected, setIsMyLocationSelected] = useState(false);
   useEffect(() => {
     if (value === lastSyncedValue.current) return;
     lastSyncedValue.current = value;
     if (value?.name) {
       setQuery(value.name);
+      setIsMyLocationSelected(!!value.isMyLocation || value.name === LEGACY_MY_LOCATION_NAME_KO);
     }
   }, [value]);
-
-  // "내 위치"가 선택된 상태(query가 정확히 myLocationLabel)일 때만 좌측 Pin을 노출한다.
-  // 한 글자라도 수정하면 조건이 깨져 일반 입력 상태로 복귀한다(§5 A안).
-  const isMyLocation = query === myLocationLabel;
 
   const runSearch = async () => {
     const keyword = query.trim();
@@ -399,12 +407,16 @@ function PointPicker({
 
       <div className="mb-2 flex gap-2">
         <div className="relative min-w-0 flex-1">
-          {isMyLocation && (
+          {isMyLocationSelected && (
             <PinIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
           )}
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              // 한 글자라도 수정하면 "내 위치" 선택 상태가 깨져 일반 입력 상태로 복귀한다(§5 A안).
+              setIsMyLocationSelected(false);
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
@@ -412,7 +424,7 @@ function PointPicker({
               }
             }}
             placeholder={t('placeSearchPlaceholder')}
-            className={`w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:bg-white focus:outline-none ${isMyLocation ? 'pl-9' : 'pl-3'}`}
+            className={`w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:bg-white focus:outline-none ${isMyLocationSelected ? 'pl-9' : 'pl-3'}`}
             enterKeyHint="search"
           />
         </div>
