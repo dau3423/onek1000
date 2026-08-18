@@ -123,11 +123,11 @@ export function ReviewForm({ targetType, targetId, lat, lng, onCreated, onCancel
     }
     // 지오펜스: 위치가 없거나 주유소에서 멀면 작성 차단(서버도 동일 검증).
     if (!geo.coords) {
-      setError(t('locationRequired'));
+      setError(t('locationRequired', { type: targetType }));
       return;
     }
     if (tooFar && distanceM != null) {
-      setError(t('tooFar', { distance: fmtDist(distanceM) }));
+      setError(t('tooFar', { type: targetType, distance: fmtDist(distanceM) }));
       return;
     }
     setBusy(true);
@@ -151,7 +151,7 @@ export function ReviewForm({ targetType, targetId, lat, lng, onCreated, onCancel
         try {
           const j = await res.json();
           if (j?.code === 'too_far') {
-            msg = t('tooFar', { distance: fmtDist(j.distanceM ?? 0) });
+            msg = t('tooFar', { type: targetType, distance: fmtDist(j.distanceM ?? 0) });
           } else if (j?.code === 'location_required') {
             msg = t('locationCheckRequired');
           } else if (typeof j?.error === 'string') {
@@ -219,7 +219,7 @@ export function ReviewForm({ targetType, targetId, lat, lng, onCreated, onCancel
           <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
             <span className="flex items-start gap-1">
               <PinIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-              {t('locationPermissionNeeded')}
+              {t('locationPermissionNeeded', { type: targetType })}
             </span>
             <button
               onClick={geo.request}
@@ -241,12 +241,12 @@ export function ReviewForm({ targetType, targetId, lat, lng, onCreated, onCancel
         ) : tooFar && distanceM != null ? (
           <div className="flex items-start gap-1 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
             <PinIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-            {t('tooFarDetail', { distance: fmtDist(distanceM), radius: REVIEW_GEOFENCE_M })}
+            {t('tooFarDetail', { type: targetType, distance: fmtDist(distanceM), radius: REVIEW_GEOFENCE_M })}
           </div>
         ) : distanceM != null ? (
           <div className="flex items-start gap-1 rounded-lg bg-green-50 px-3 py-2 text-[11px] text-green-700">
             <CheckIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-            {t('near', { distance: fmtDist(distanceM) })}
+            {t('near', { type: targetType, distance: fmtDist(distanceM) })}
           </div>
         ) : (
           <div className="flex items-start gap-1 rounded-lg bg-green-50 px-3 py-2 text-[11px] text-green-700">
