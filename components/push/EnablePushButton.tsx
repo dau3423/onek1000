@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { BellIcon, BellOffIcon } from '@/components/icons';
 
 function urlBase64ToUint8Array(base64: string): Uint8Array {
@@ -17,6 +18,7 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
  *   호출부(PushSection)가 로그인 기준값을 넘긴다. 미지정 시 로그인 여부로 폴백.
  */
 export function EnablePushButton({ isPremium: allowProp }: { isPremium?: boolean } = {}) {
+  const t = useTranslations('my');
   const { data } = useSession();
   // 로그인만 되어 있으면 허용(결제 무관). 넘어온 값이 있으면 우선.
   const allow = allowProp ?? Boolean(data?.user?.id);
@@ -34,7 +36,7 @@ export function EnablePushButton({ isPremium: allowProp }: { isPremium?: boolean
 
   if (!allow) {
     return (
-      <p className="text-xs text-gray-400">로그인하면 푸시 알림을 설정할 수 있어요.</p>
+      <p className="text-xs text-gray-400">{t('pushLoginHint')}</p>
     );
   }
 
@@ -50,7 +52,7 @@ export function EnablePushButton({ isPremium: allowProp }: { isPremium?: boolean
         setSubscribed(false);
       } else {
         const { publicKey } = await fetch('/api/push/vapid').then((r) => r.json());
-        if (!publicKey) throw new Error('VAPID 키가 설정되지 않았어요.');
+        if (!publicKey) throw new Error(t('pushVapidMissing'));
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(publicKey),
@@ -64,7 +66,7 @@ export function EnablePushButton({ isPremium: allowProp }: { isPremium?: boolean
         setSubscribed(true);
       }
     } catch (e) {
-      alert('푸시 설정 실패: ' + (e instanceof Error ? e.message : String(e)));
+      alert(t('pushSubscribeFailed', { message: e instanceof Error ? e.message : String(e) }));
     } finally {
       setBusy(false);
     }
@@ -78,11 +80,11 @@ export function EnablePushButton({ isPremium: allowProp }: { isPremium?: boolean
     >
       {subscribed ? (
         <>
-          <BellIcon className="h-4 w-4" />푸시 알림 끄기
+          <BellIcon className="h-4 w-4" />{t('pushDisableAction')}
         </>
       ) : (
         <>
-          <BellOffIcon className="h-4 w-4" />즐겨찾기 가격 변동 알림 받기
+          <BellOffIcon className="h-4 w-4" />{t('pushEnableAction')}
         </>
       )}
     </button>

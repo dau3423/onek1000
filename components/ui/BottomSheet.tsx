@@ -499,7 +499,8 @@ function CarwashRow({
           <button
             onClick={() => onNavigate(place)}
             aria-label={t('bottomSheet.navigateAria', { name: place.name })}
-            title={tCommon('navigate') /* CarwashRow는 원래 "길안내" 단독 타이틀 — common과 동일 텍스트 */}
+            // CarwashRow는 원래 "길안내" 단독 타이틀 — common과 동일 텍스트
+            title={tCommon('navigate')}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
           >
             <Image src="/icons/icon_transparent.png" alt="" width={36} height={36} className="block" />

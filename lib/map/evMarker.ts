@@ -48,8 +48,11 @@ function evPinSvg(size: number, color: string, hasFast: boolean): string {
   </svg>`;
 }
 
-/** 충전소 마커 HTML 콘텐츠 생성(라벨 포함/미포함). showLabel=줌인 시 "사용가능/전체" 라벨 노출. */
-export function buildEvMarkerContent(s: EvStationMarker, showLabel: boolean): HTMLDivElement {
+/** 충전소 마커 HTML 콘텐츠 생성(라벨 포함/미포함). showLabel=줌인 시 "사용가능/전체" 라벨 노출.
+ *  label=이미 번역된 라벨 텍스트(호출부가 map.evMarkerLabel ICU 메시지로 번역해 전달).
+ *  이 모듈은 React 컴포넌트가 아니라 useTranslations를 쓸 수 없다(markerFace.ts·ev/format.ts와 같은 이유).
+ *  단순 문자열 접합이 아니라 ICU select로 만든 메시지를 쓰는 이유: 어순이 다른 언어에서 깨지지 않도록. */
+export function buildEvMarkerContent(s: EvStationMarker, showLabel: boolean, label: string): HTMLDivElement {
   const available = s.availableChargers > 0;
   const color = available ? AVAILABLE_COLOR : BUSY_COLOR;
   // 사용가능은 강조(크게), 불가는 약화(작게). 라벨 줌에서는 라벨이 있어 핀을 조금 작게 둔다.
@@ -63,16 +66,16 @@ export function buildEvMarkerContent(s: EvStationMarker, showLabel: boolean): HT
   // 사용가능 핀은 약간 위로(z) 올려 겹칠 때 우선 보이게 한다.
   content.style.zIndex = available ? '2' : '1';
 
-  const label = showLabel
+  const html = showLabel
     ? `
       <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
         <div style="padding:3px 8px;border-radius:10px;background:${color};color:white;font-size:11px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
-          ${s.availableChargers}/${s.totalChargers}대${s.hasFast ? ' · 급속' : ''}
+          ${label}
         </div>
         <div style="width:8px;height:8px;background:${color};transform:rotate(45deg);margin-top:-4px"></div>
         <div style="margin-top:-1px">${pin}</div>
       </div>`
     : `<div style="display:flex;justify-content:center">${pin}</div>`;
-  content.innerHTML = label;
+  content.innerHTML = html;
   return content;
 }

@@ -52,6 +52,7 @@ export function BackButton({ href, label, ariaLabel, className }: BackButtonProp
   // Link 모드(href 지정): 목적지 고정 이동(히스토리 back 아님).
   if (href) {
     return (
+      // i18n-ignore: /legal·/billing·/pricing 등 번역 provider 밖에서도 렌더되는 공용 컴포넌트라 useTranslations를 쓸 수 없다(런타임 에러). 기본값은 한국어 고정.
       <Link href={href} aria-label={ariaLabel ?? '뒤로 가기'} className={className ?? ICON_BTN}>
         <BackIcon className="h-6 w-6" />
       </Link>
@@ -70,6 +71,7 @@ export function BackButton({ href, label, ariaLabel, className }: BackButtonProp
     <button
       type="button"
       onClick={onBack}
+      // i18n-ignore: /legal·/billing·/pricing 등 번역 provider 밖에서도 렌더되는 공용 컴포넌트라 useTranslations를 쓸 수 없다(런타임 에러). 기본값은 한국어 고정.
       aria-label={ariaLabel ?? '뒤로 가기'}
       className={className ?? ICON_BTN}
     >

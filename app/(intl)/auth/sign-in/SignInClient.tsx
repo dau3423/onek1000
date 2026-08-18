@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 import {
   copyCurrentUrl,
@@ -17,7 +18,12 @@ import {
 import { BETA_FREE } from '@/lib/flags';
 import { track } from '@/lib/analytics';
 
+const boldTag = { b: (chunks: React.ReactNode) => <b>{chunks}</b> };
+
 function SignInInner() {
+  const t = useTranslations('auth');
+  const tSignIn = useTranslations('auth.signIn');
+  const tCommon = useTranslations('common');
   const params = useSearchParams();
   const router = useRouter();
   const callbackUrl = params.get('callbackUrl') ?? '/';
@@ -81,7 +87,7 @@ function SignInInner() {
   async function loginWithCredentials(): Promise<boolean> {
     const res = await signIn('credentials', { email, password, redirect: false, callbackUrl });
     if (res?.error || !res?.ok) {
-      setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+      setError(tSignIn('invalidCredentials'));
       return false;
     }
     return true;
@@ -91,15 +97,15 @@ function SignInInner() {
     e.preventDefault();
     setError('');
     if (!email.trim() || !password) {
-      setError('이메일과 비밀번호를 입력해 주세요.');
+      setError(tSignIn('missingFields'));
       return;
     }
     if (mode === 'signup' && password.length < 8) {
-      setError('비밀번호는 8자 이상이어야 합니다.');
+      setError(t('passwordTooShort'));
       return;
     }
     if (mode === 'signup' && password !== confirm) {
-      setError('비밀번호가 일치하지 않습니다.');
+      setError(t('passwordMismatch'));
       return;
     }
     setSubmitting(true);
@@ -115,7 +121,7 @@ function SignInInner() {
         });
         if (!res.ok) {
           const data = await res.json().catch(() => null);
-          setError(data?.error ?? '가입 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+          setError(data?.error ?? tSignIn('signupError'));
           return;
         }
         track('signup_success');
@@ -134,60 +140,50 @@ function SignInInner() {
     <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-6">
       <Image
         src="/icons/app_icon.png"
-        alt="1000냥 주유소"
+        alt={tCommon('appName')}
         width={64}
         height={64}
         className="rounded-2xl"
         priority
       />
-      <h1 className="mt-4 text-xl font-bold text-gray-900">1000냥 주유소</h1>
-      <p className="mt-1 text-sm text-gray-500">소셜 계정으로 1초만에 시작</p>
+      <h1 className="mt-4 text-xl font-bold text-gray-900">{tCommon('appName')}</h1>
+      <p className="mt-1 text-sm text-gray-500">{tSignIn('tagline')}</p>
 
       {/* 가입 혜택 한 줄 — 외부 브라우저 유도/소셜 버튼과 함께 가입 동기를 살짝 보강. */}
       {/* [베타 전면무료] 베타엔 광고 제거 포함 전 기능 무료 가치를 전면에 내세운다. 플래그 off 시 기존 카피로 원복. */}
       <p className="mt-2 text-center text-[12px] text-gray-400">
-        {BETA_FREE
-          ? '광고 없이 · 가격 하락 알림 · 즐겨찾기까지 전부 무료'
-          : '가격 하락 알림 · 즐겨찾기 · 내 주유기록까지 무료'}
+        {BETA_FREE ? tSignIn('benefitBeta') : tSignIn('benefitFull')}
       </p>
 
       {isInApp && (
         <div className="mt-6 w-full rounded-2xl border border-orange-200 bg-orange-50 p-4">
           <p className="text-[13px] font-bold text-orange-900">
-            {inAppKindLabel(inAppKind)} 앱에서 열렸어요
+            {tSignIn('inAppNotice', { kind: inAppKindLabel(inAppKind) })}
           </p>
           <p className="mt-1 text-[12px] leading-relaxed text-orange-800">
-            원활한 가입·로그인을 위해 <b>Chrome / Safari 같은 외부 브라우저</b>에서
-            열어주세요. (구글 로그인은 인앱 브라우저에서 차단됩니다.)
+            {tSignIn.rich('inAppGuideDefault', boldTag)}
           </p>
 
           <button
             onClick={handleOpenExternal}
             className="mt-3 w-full rounded-xl bg-orange-500 py-3 text-sm font-bold text-white hover:bg-orange-600"
           >
-            외부 브라우저로 열기
+            {tSignIn('openExternalButton')}
           </button>
 
           {/* iOS는 강제 외부 열기가 막혀 있어 수동 안내를, 그 외도 폴백으로 복사를 제공. */}
           {(showManual || isIos) && (
             <div className="mt-3 rounded-xl bg-white/70 p-3 text-[12px] leading-relaxed text-orange-800">
               {isIos ? (
-                <p>
-                  자동 전환이 안 되면 <b>우측 상단 메뉴(···)에서 &ldquo;Safari로 열기&rdquo;</b>를
-                  눌러주세요. 또는 아래 버튼으로 링크를 복사해 브라우저 주소창에 붙여넣어도 됩니다.
-                </p>
+                <p>{tSignIn.rich('iosManualGuide', boldTag)}</p>
               ) : (
-                <p>
-                  이 화면이 보이면 <b>우측 상단(또는 하단)의 ⋮ / 공유 메뉴에서
-                  &ldquo;다른 브라우저로 열기&rdquo;</b>를 누르거나, <b>복사된 링크를 Chrome /
-                  Safari 주소창에 붙여넣어</b> 주세요.
-                </p>
+                <p>{tSignIn.rich('androidManualGuide', boldTag)}</p>
               )}
               <button
                 onClick={handleCopyUrl}
                 className="mt-2 w-full rounded-lg border border-orange-300 bg-white py-2 text-[12px] font-semibold text-orange-700 hover:bg-orange-50"
               >
-                {copied ? '링크가 복사되었어요' : '현재 링크 복사하기'}
+                {copied ? tSignIn('linkCopied') : tSignIn('copyLinkButton')}
               </button>
             </div>
           )}
@@ -196,7 +192,7 @@ function SignInInner() {
 
       {duplicateNotice && (
         <div className="mt-6 w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
-          다른 기기에서 로그인되어 현재 기기는 로그아웃되었습니다. 계정당 1개의 기기에서만 사용할 수 있어요. 다시 로그인해 주세요.
+          {tSignIn('duplicateNotice')}
         </div>
       )}
 
@@ -207,7 +203,7 @@ function SignInInner() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/kakao.png" alt="" width={20} height={20} className="h-5 w-5 object-contain" />
-          카카오로 시작하기
+          {tSignIn('kakaoStart')}
         </button>
         <button
           onClick={() => handleOAuth('google')}
@@ -215,7 +211,7 @@ function SignInInner() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/google.png" alt="" width={20} height={20} className="h-5 w-5 object-contain" />
-          구글로 시작하기
+          {tSignIn('googleStart')}
         </button>
       </div>
 
@@ -223,7 +219,7 @@ function SignInInner() {
       <div className="mt-6 w-full">
         <div className="flex items-center gap-3">
           <span className="h-px flex-1 bg-gray-200" />
-          <span className="text-[11px] text-gray-400">또는 이메일로</span>
+          <span className="text-[11px] text-gray-400">{tSignIn('orEmailDivider')}</span>
           <span className="h-px flex-1 bg-gray-200" />
         </div>
         <form onSubmit={handleEmailSubmit} className="mt-3 space-y-2">
@@ -231,7 +227,7 @@ function SignInInner() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="이메일"
+            placeholder={t('emailPlaceholder')}
             autoComplete="email"
             inputMode="email"
             autoCapitalize="none"
@@ -242,7 +238,7 @@ function SignInInner() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder={mode === 'signup' ? '비밀번호 (8자 이상)' : '비밀번호'}
+            placeholder={mode === 'signup' ? tSignIn('passwordPlaceholderSignup') : tSignIn('passwordPlaceholderLogin')}
             autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
             className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
           />
@@ -251,7 +247,7 @@ function SignInInner() {
               type="password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              placeholder="비밀번호 확인"
+              placeholder={tSignIn('confirmPasswordPlaceholder')}
               autoComplete="new-password"
               className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
             />
@@ -263,25 +259,25 @@ function SignInInner() {
             className="w-full rounded-xl bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60"
           >
             {submitting
-              ? mode === 'signup' ? '가입 중...' : '로그인 중...'
-              : mode === 'signup' ? '이메일로 가입하기' : '이메일로 로그인'}
+              ? mode === 'signup' ? tSignIn('submittingSignup') : tSignIn('submittingLogin')
+              : mode === 'signup' ? tSignIn('submitSignup') : tSignIn('submitLogin')}
           </button>
         </form>
         {mode === 'login' && (
           <p className="mt-2 text-center text-[12px]">
             <Link href="/auth/forgot-password" className="text-gray-400 underline hover:text-gray-600">
-              비밀번호를 잊으셨나요?
+              {tSignIn('forgotPasswordLink')}
             </Link>
           </p>
         )}
         <p className="mt-3 text-center text-[12px] text-gray-500">
-          {mode === 'signup' ? '이미 계정이 있나요? ' : '계정이 없나요? '}
+          {mode === 'signup' ? tSignIn('toggleToLoginPrompt') : tSignIn('toggleToSignupPrompt')}
           <button
             type="button"
             onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); setConfirm(''); }}
             className="font-semibold text-orange-600 underline"
           >
-            {mode === 'signup' ? '로그인' : '회원가입'}
+            {mode === 'signup' ? tSignIn('toggleToLoginAction') : tSignIn('toggleToSignupAction')}
           </button>
         </p>
       </div>
@@ -290,22 +286,19 @@ function SignInInner() {
           무료 가치 중심 문구로 톤다운한다(링크 삭제 아님). 플래그 off 시 기존 강조 문구로 원복. */}
       {BETA_FREE ? (
         <p className="mt-8 text-center text-[11px] text-gray-400">
-          로그인하면{' '}
-          <Link href="/legal/terms" className="underline">이용약관</Link>
-          {', '}
-          <Link href="/legal/privacy" className="underline">개인정보처리방침</Link>
-          에 동의한 것으로 간주됩니다.{' '}
-          <Link href="/legal/payment" className="text-gray-300 underline">결제 약관</Link>
+          {tSignIn.rich('consentBeta', {
+            terms: (chunks) => <Link href="/legal/terms" className="underline">{chunks}</Link>,
+            privacy: (chunks) => <Link href="/legal/privacy" className="underline">{chunks}</Link>,
+            payment: (chunks) => <Link href="/legal/payment" className="text-gray-300 underline">{chunks}</Link>,
+          })}
         </p>
       ) : (
         <p className="mt-8 text-center text-[11px] text-gray-400">
-          로그인하면{' '}
-          <Link href="/legal/terms" className="underline">이용약관</Link>
-          {', '}
-          <Link href="/legal/privacy" className="underline">개인정보처리방침</Link>
-          {' '}및{' '}
-          <Link href="/legal/payment" className="underline">유료 결제 이용약관</Link>
-          에 동의한 것으로 간주됩니다.
+          {tSignIn.rich('consentFull', {
+            terms: (chunks) => <Link href="/legal/terms" className="underline">{chunks}</Link>,
+            privacy: (chunks) => <Link href="/legal/privacy" className="underline">{chunks}</Link>,
+            payment: (chunks) => <Link href="/legal/payment" className="underline">{chunks}</Link>,
+          })}
         </p>
       )}
 
@@ -315,15 +308,16 @@ function SignInInner() {
         rel="noopener noreferrer"
         className="mt-4 text-center text-[12px] text-gray-500 underline hover:text-gray-700"
       >
-        1:1 문의 (카카오톡 채널)
+        {tSignIn('contactLabel')}
       </a>
     </main>
   );
 }
 
 export default function SignInClient() {
+  const t = useTranslations('auth');
   return (
-    <Suspense fallback={<div className="flex min-h-dvh items-center justify-center text-sm text-gray-500">로딩 중...</div>}>
+    <Suspense fallback={<div className="flex min-h-dvh items-center justify-center text-sm text-gray-500">{t('loadingFallback')}</div>}>
       <SignInInner />
     </Suspense>
   );

@@ -579,7 +579,9 @@ export default function HomePage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lat, lng }),
       keepalive: true,
-    }).catch(() => { /* best-effort — 실패 무시 */ });
+    }).catch(() => {
+      // best-effort — 실패 무시
+    });
     // 좌표 변화에만 반응(geo.coords 전체 의존 시 watch 갱신마다 재실행) — radius 효과와 동일 패턴.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authStatus, geo.coords?.lat, geo.coords?.lng]);

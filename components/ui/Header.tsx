@@ -9,6 +9,7 @@ import { SettingsIcon } from '@/components/icons';
 
 export function Header() {
   const t = useTranslations('map.header');
+  const tCommon = useTranslations('common');
   const { data, status } = useSession();
   const signedIn = status === 'authenticated';
   // [베타 전면무료] 베타엔 업그레이드 암시(프리미엄 배지)를 감추고 일반 프로필로 통일한다.
@@ -23,14 +24,14 @@ export function Header() {
       <Link href="/" className="tap-press flex min-w-0 items-center gap-2">
         <Image
           src="/icons/app_icon.png"
-          alt="1000냥 주유소"
+          alt={tCommon('appName')}
           width={36}
           height={36}
           className="shrink-0 rounded-lg"
           priority
         />
         {/* 모바일 포함 전 화면에서 노출. 좁은 화면에서 아이콘과 겹치지 않게 truncate + 모바일 폰트 축소 */}
-        <span className="truncate text-sm font-bold text-gray-900 sm:text-base">1000냥 주유소</span>
+        <span className="truncate text-sm font-bold text-gray-900 sm:text-base">{tCommon('appName')}</span>
       </Link>
 
       <div className="flex shrink-0 items-center gap-1">

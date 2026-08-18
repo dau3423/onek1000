@@ -5,7 +5,9 @@
     "viewDetail": "詳細を見る",
     "loading": "読み込み中…",
     "cancel": "キャンセル",
-    "retry": "再試行"
+    "retry": "再試行",
+    "appName": "1000ウォンガソリンスタンド",
+    "favoriteAria": "お気に入り"
   },
   "labels": {
     "product": {
@@ -235,7 +237,14 @@
       "myPageAria": "マイページ",
       "login": "ログイン",
       "adFreeUsing": "広告非表示利用中"
-    }
+    },
+    "carwashMarkerLabel": {
+      "self": "セルフ洗車",
+      "hand": "手洗い",
+      "auto": "自動洗車",
+      "unknown": "洗車場"
+    },
+    "evMarkerLabel": "{available}/{total}基{fast, select, true { · 急速} other {}}"
   },
   "station": {
     "self": "セルフ",
@@ -389,6 +398,7 @@
     "refreshError": "リアルタイムの状態を取得できませんでした。しばらくしてからもう一度お試しください。（表示中は最新の保存値です）",
     "chargerListTitle": "充電器（{count}基）",
     "chargerType": {
+      "10": "DCコンボ+NACS",
       "01": "DC CHAdeMO",
       "02": "AC普通",
       "03": "DC CHAdeMO+AC3相",
@@ -397,8 +407,7 @@
       "06": "DC CHAdeMO+AC3相+DCコンボ",
       "07": "AC3相",
       "08": "DCコンボ（普通）",
-      "09": "DC CHAdeMO+DCコンボ",
-      "10": "DCコンボ+NACS"
+      "09": "DC CHAdeMO+DCコンボ"
     },
     "chargerTypeOther": "その他（{code}）",
     "chargerTypeUnknown": "その他",
@@ -670,6 +679,125 @@
       "deleteFailed": "退会に失敗しました: {message}",
       "processingLabel": "処理中...",
       "deleteButtonLabel": "退会する"
+    },
+    "signOut": {
+      "button": "ログアウト",
+      "confirmAria": "ログアウト確認",
+      "confirmHeading": "ログアウトしますか？",
+      "confirmBody": "ログアウトすると、お気に入りやサブスクなどの情報を見るには再度ログインが必要です。",
+      "confirming": "ログアウト中…"
+    },
+    "pushVapidMissing": "VAPIDキーが設定されていません。",
+    "pushSubscribeFailed": "プッシュ設定に失敗しました: {message}",
+    "pushDisableAction": "プッシュ通知をオフにする",
+    "pushEnableAction": "お気に入りの価格変動通知を受け取る"
+  },
+  "auth": {
+    "passwordTooShort": "パスワードは8文字以上で入力してください。",
+    "passwordMismatch": "パスワードが一致しません。",
+    "emailPlaceholder": "メールアドレス",
+    "backToSignIn": "ログインに戻る",
+    "loadingFallback": "読み込み中...",
+    "signIn": {
+      "invalidCredentials": "メールアドレスまたはパスワードが正しくありません。",
+      "missingFields": "メールアドレスとパスワードを入力してください。",
+      "signupError": "登録中にエラーが発生しました。しばらくしてからもう一度お試しください。",
+      "tagline": "ソーシャルアカウントで1秒スタート",
+      "benefitBeta": "広告なし・値下げ通知・お気に入りまで全部無料",
+      "benefitFull": "値下げ通知・お気に入り・給油記録まで無料",
+      "inAppNotice": "{kind}アプリ内で開かれています",
+      "inAppGuideDefault": "スムーズな登録・ログインのため、<b>Chrome / Safariなどの外部ブラウザ</b>で開いてください。（Googleログインはアプリ内ブラウザでブロックされます。）",
+      "openExternalButton": "外部ブラウザで開く",
+      "iosManualGuide": "自動で切り替わらない場合は、<b>右上のメニュー（···）から「Safariで開く」</b>をタップしてください。または下のボタンでリンクをコピーし、ブラウザのアドレスバーに貼り付けてください。",
+      "androidManualGuide": "この画面が表示された場合は、<b>右上（または下部）の⋮ / 共有メニューから「別のブラウザで開く」</b>を選択するか、<b>コピーされたリンクをChrome / Safariのアドレスバーに貼り付けて</b>ください。",
+      "linkCopied": "リンクをコピーしました",
+      "copyLinkButton": "現在のリンクをコピー",
+      "duplicateNotice": "他の端末でログインされたため、この端末はログアウトされました。1つのアカウントにつき1台の端末でのみ利用できます。もう一度ログインしてください。",
+      "kakaoStart": "Kakaoで始める",
+      "googleStart": "Googleで始める",
+      "orEmailDivider": "またはメールアドレスで",
+      "passwordPlaceholderSignup": "パスワード（8文字以上）",
+      "passwordPlaceholderLogin": "パスワード",
+      "confirmPasswordPlaceholder": "パスワード確認",
+      "submittingSignup": "登録中...",
+      "submittingLogin": "ログイン中...",
+      "submitSignup": "メールアドレスで登録",
+      "submitLogin": "メールアドレスでログイン",
+      "forgotPasswordLink": "パスワードをお忘れですか？",
+      "toggleToLoginPrompt": "アカウントをお持ちですか？ ",
+      "toggleToSignupPrompt": "アカウントをお持ちでないですか？ ",
+      "toggleToLoginAction": "ログイン",
+      "toggleToSignupAction": "会員登録",
+      "consentBeta": "ログインすることで<terms>利用規約</terms>、<privacy>プライバシーポリシー</privacy>に同意したものとみなされます。<payment>決済規約</payment>",
+      "consentFull": "ログインすることで<terms>利用規約</terms>、<privacy>プライバシーポリシー</privacy>および<payment>有料サービス利用規約</payment>に同意したものとみなされます。",
+      "contactLabel": "1:1お問い合わせ（カカオトークチャンネル）"
+    },
+    "forgotPassword": {
+      "heading": "パスワードをお忘れの方",
+      "sentHeading": "メールをご確認ください",
+      "sentBody1": "ご入力のメールアドレスが登録済みのアカウントの場合、<b>パスワード再設定リンク</b>を送信しました。",
+      "sentBody2": "メールが届かない場合は迷惑メールフォルダもご確認ください。（リンクの有効期限は1時間です）",
+      "description": "登録済みのメールアドレスを入力すると、再設定リンクをお送りします。",
+      "submitting": "送信中...",
+      "submitButton": "再設定リンクを受け取る"
+    },
+    "resetPassword": {
+      "genericError": "処理中にエラーが発生しました。もう一度お試しください。",
+      "invalidLinkHeading": "無効なリンクです",
+      "invalidLinkBody": "再設定リンクが正しくありません。もう一度リクエストしてください。",
+      "backToForgotPassword": "パスワードをお忘れの方へ",
+      "doneHeading": "パスワードが変更されました",
+      "doneBody": "新しいパスワードで再度ログインしてください。",
+      "goToSignIn": "ログインへ進む",
+      "formHeading": "新しいパスワードを設定",
+      "formDescription": "新しく使用するパスワードを入力してください。",
+      "newPasswordPlaceholder": "新しいパスワード（8文字以上）",
+      "confirmPasswordPlaceholder": "新しいパスワードの確認",
+      "submitting": "変更中...",
+      "submitButton": "パスワードを変更"
+    }
+  },
+  "alert": {
+    "navigateAria": "ナビを開始",
+    "priceTrend": {
+      "closeAria": "通知を閉じる",
+      "risingLabel": "この地域のガソリン価格が上昇中",
+      "heading": "値上がり前に給油しましょう",
+      "stats": "{product}直近7日平均{pct}↑{avgSuffix}"
+    },
+    "radius": {
+      "warningLabel": "1km圏内にもっと安いところが!",
+      "avgLevel": "平均的な水準",
+      "diffAmount": "{sign}₩{amount}",
+      "diffCompare": "（{diff}・平均比）"
+    },
+    "route": {
+      "notifTitle": "🚗 経路上の最安値ガソリンスタンド",
+      "notifBody": "{name} · ₩{price}（{brand}）· {distance}先",
+      "bannerLabel": "経路上の最安値ガソリンスタンドが{distance}先に!"
+    }
+  },
+  "pwa": {
+    "installBanner": {
+      "heading": "アプリでもっと速く",
+      "body": "ホーム画面に追加してすぐに最安値を確認できます。",
+      "ctaMethod": "方法",
+      "ctaInstall": "インストール",
+      "closeAria": "インストール案内を閉じる"
+    },
+    "installButton": {
+      "label": "ホーム画面にアプリをインストール",
+      "ctaMethod": "方法を見る"
+    },
+    "installGuide": {
+      "dialogAria": "ホーム画面に追加する案内",
+      "heading": "ホーム画面に{appName}を追加",
+      "subheading": "アプリのように素早く起動できます。以下の手順で進めてください。",
+      "step1Lead": "Safari下部(または上部)の<strong>共有ボタン</strong>",
+      "step1Trail": "をタップしてください。",
+      "step2": "メニューから<strong>「ホーム画面に追加」</strong>を選択してください。",
+      "step3": "右上の<strong>「追加」</strong>をタップすると完了です。",
+      "confirmButton": "確認"
     }
   }
 }

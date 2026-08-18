@@ -5,13 +5,10 @@
 import type { CarwashMarker, WashType } from '@/types/carwash';
 import { WASH_TYPE_COLOR } from '@/types/carwash';
 
-// 줌인(level ≤ 6) 라벨 텍스트. 팝업 뱃지 라벨과 달리 짧게(핀 위 표기용).
-const MARKER_LABEL: Record<WashType, string> = {
-  self: '셀프세차',
-  hand: '손세차',
-  auto: '자동세차',
-  unknown: '세차장',
-};
+// 줌인(level ≤ 6) 라벨 텍스트(셀프세차/손세차/자동세차/세차장)는 여기 두지 않는다.
+// 이 모듈은 React 컴포넌트가 아니라 useTranslations를 쓸 수 없으므로, messages/{locale}.json의
+// map.carwashMarkerLabel.<type>으로 옮기고 소비처(KakaoMap)가 유형 코드로 직접 번역해
+// buildCarwashMarkerContent에 label 인자로 넘긴다(markerFace.ts·ev/format.ts와 같은 방식).
 
 /** 유형별 흰색 글리프(0 0 24 24 좌표계). 머리 원 안에 스케일해 얹는다. */
 function glyphSvg(type: WashType): string {
@@ -48,8 +45,9 @@ function carwashPinSvg(size: number, color: string, type: WashType): string {
   </svg>`;
 }
 
-/** 세차장 마커 HTML 콘텐츠 생성. showLabel=줌인(level ≤ 6) 시 유형 라벨 노출. */
-export function buildCarwashMarkerContent(place: CarwashMarker, showLabel: boolean): HTMLDivElement {
+/** 세차장 마커 HTML 콘텐츠 생성. showLabel=줌인(level ≤ 6) 시 유형 라벨 노출.
+ *  label=이미 번역된 유형 라벨 텍스트(호출부가 map.carwashMarkerLabel.<type>로 번역해 전달). */
+export function buildCarwashMarkerContent(place: CarwashMarker, showLabel: boolean, label: string): HTMLDivElement {
   const type = place.washType;
   const color = WASH_TYPE_COLOR[type];
   const size = showLabel ? 30 : 34;
@@ -62,16 +60,16 @@ export function buildCarwashMarkerContent(place: CarwashMarker, showLabel: boole
   // 미확인(회색)은 살짝 아래로, 유형 확정 핀을 위로 올려 겹칠 때 우선 보이게 한다.
   content.style.zIndex = type === 'unknown' ? '1' : '2';
 
-  const label = showLabel
+  const html = showLabel
     ? `
       <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
         <div style="padding:3px 8px;border-radius:10px;background:${color};color:white;font-size:11px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
-          ${MARKER_LABEL[type]}
+          ${label}
         </div>
         <div style="width:8px;height:8px;background:${color};transform:rotate(45deg);margin-top:-4px"></div>
         <div style="margin-top:-1px">${pin}</div>
       </div>`
     : `<div style="display:flex;justify-content:center">${pin}</div>`;
-  content.innerHTML = label;
+  content.innerHTML = html;
   return content;
 }

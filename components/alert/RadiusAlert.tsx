@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import type { StationWithPrice } from '@/types/station';
-import { BRAND_LABEL } from '@/types/station';
+import { useBrandLabel } from '@/lib/i18n/labels';
 import { playAlertChime } from '@/lib/sound';
 import { WarningIcon, CloseIcon } from '@/components/icons';
 
@@ -16,6 +17,10 @@ interface Props {
 }
 
 export function RadiusAlert({ station, averagePrice, onClick, onDismiss, onNavigate }: Props) {
+  const t = useTranslations('alert');
+  const tCommon = useTranslations('common');
+  const tMap = useTranslations('map.bottomSheet');
+  const brandLabel = useBrandLabel();
   // 알람 배너가 새로 뜰 때(대상 주유소가 바뀔 때 포함) 짧은 효과음.
   // 이 컴포넌트는 알람 노출 조건에서만 마운트되므로, 마운트=배너 등장이다.
   // autoplay 차단 시 playAlertChime이 조용히 무시한다.
@@ -29,7 +34,9 @@ export function RadiusAlert({ station, averagePrice, onClick, onDismiss, onNavig
   const hasAvg = Number.isFinite(averagePrice) && averagePrice > 0;
   const diff = station.price - averagePrice;
   // 음수면 "-72원", 양수면 "+72원"(평균보다 비싼데도 노출된 경우 방어), 0이면 "평균 수준".
-  const diffText = diff === 0 ? '평균 수준' : `${diff > 0 ? '+' : '-'}${Math.abs(diff).toLocaleString()}원`;
+  const diffText = diff === 0
+    ? t('radius.avgLevel')
+    : t('radius.diffAmount', { sign: diff > 0 ? '+' : '-', amount: Math.abs(diff).toLocaleString() });
   const distanceText = station.distance != null
     ? station.distance < 1000 ? `${Math.round(station.distance)}m` : `${(station.distance / 1000).toFixed(1)}km`
     : '';
@@ -46,7 +53,7 @@ export function RadiusAlert({ station, averagePrice, onClick, onDismiss, onNavig
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-        aria-label="닫기"
+        aria-label={tCommon('close')}
         className="absolute right-1 top-1 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/20 text-white hover:bg-black/35 active:bg-black/40"
       >
         <CloseIcon className="h-5 w-5" />
@@ -54,30 +61,30 @@ export function RadiusAlert({ station, averagePrice, onClick, onDismiss, onNavig
       <div className="min-w-0 flex-1 cursor-pointer" onClick={onClick}>
         {/* 1행(헤더) */}
         <div className="flex items-center gap-1 text-[11px] opacity-90">
-          <WarningIcon className="h-3.5 w-3.5" />1km 안에 더 싼 곳!
+          <WarningIcon className="h-3.5 w-3.5" />{t('radius.warningLabel')}
         </div>
         {/* 2행 + 3행 */}
         <div className="mt-0.5 text-base font-bold">
           ₩{station.price.toLocaleString()}
           {hasAvg && (
             <span className="ml-1.5 text-[11px] font-normal opacity-90">
-              ({diffText} · 평균 대비)
+              {t('radius.diffCompare', { diff: diffText })}
             </span>
           )}
         </div>
         <div className="truncate text-[11px] opacity-90">
-          {BRAND_LABEL[station.brand]} {station.name}{distanceText ? ` · ${distanceText}` : ''}
+          {brandLabel(station.brand)} {station.name}{distanceText ? ` · ${distanceText}` : ''}
         </div>
       </div>
       {onNavigate && (
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onNavigate(); }}
-          aria-label="길안내 시작"
-          title="카카오내비 길안내"
+          aria-label={t('navigateAria')}
+          title={tMap('kakaoNaviTitle')}
           className="shrink-0 self-end rounded-lg bg-white/20 px-2.5 py-2 text-sm font-bold text-white hover:bg-white/30"
         >
-          길안내
+          {tCommon('navigate')}
         </button>
       )}
     </div>

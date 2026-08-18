@@ -5,7 +5,9 @@
     "viewDetail": "View Details",
     "loading": "Loading…",
     "cancel": "Cancel",
-    "retry": "Retry"
+    "retry": "Retry",
+    "appName": "1000 Won Gas Station",
+    "favoriteAria": "Favorites"
   },
   "labels": {
     "product": {
@@ -235,7 +237,14 @@
       "myPageAria": "My Page",
       "login": "Log in",
       "adFreeUsing": "Ad-free active"
-    }
+    },
+    "carwashMarkerLabel": {
+      "self": "Self wash",
+      "hand": "Hand wash",
+      "auto": "Auto wash",
+      "unknown": "Car wash"
+    },
+    "evMarkerLabel": "{available}/{total}{fast, select, true { · Fast} other {}}"
   },
   "station": {
     "self": "Self-service",
@@ -389,6 +398,7 @@
     "refreshError": "Couldn't fetch live status. Please try again shortly. (Showing the most recently saved values)",
     "chargerListTitle": "Chargers ({count})",
     "chargerType": {
+      "10": "DC Combo + NACS",
       "01": "DC CHAdeMO",
       "02": "AC Slow",
       "03": "DC CHAdeMO + AC 3-phase",
@@ -397,8 +407,7 @@
       "06": "DC CHAdeMO + AC 3-phase + DC Combo",
       "07": "AC 3-phase",
       "08": "DC Combo (Slow)",
-      "09": "DC CHAdeMO + DC Combo",
-      "10": "DC Combo + NACS"
+      "09": "DC CHAdeMO + DC Combo"
     },
     "chargerTypeOther": "Other ({code})",
     "chargerTypeUnknown": "Other",
@@ -670,6 +679,125 @@
       "deleteFailed": "Account deletion failed: {message}",
       "processingLabel": "Processing...",
       "deleteButtonLabel": "Delete account"
+    },
+    "signOut": {
+      "button": "Sign out",
+      "confirmAria": "Confirm sign out",
+      "confirmHeading": "Sign out?",
+      "confirmBody": "You'll need to sign in again to see your favorites, subscription, and other info.",
+      "confirming": "Signing out…"
+    },
+    "pushVapidMissing": "The VAPID key is not configured.",
+    "pushSubscribeFailed": "Push setup failed: {message}",
+    "pushDisableAction": "Turn off push notifications",
+    "pushEnableAction": "Get favorite price change alerts"
+  },
+  "auth": {
+    "passwordTooShort": "Password must be at least 8 characters.",
+    "passwordMismatch": "Passwords do not match.",
+    "emailPlaceholder": "Email",
+    "backToSignIn": "Back to sign in",
+    "loadingFallback": "Loading...",
+    "signIn": {
+      "invalidCredentials": "Incorrect email or password.",
+      "missingFields": "Please enter your email and password.",
+      "signupError": "Sign-up failed. Please try again in a moment.",
+      "tagline": "Start in 1 second with a social account",
+      "benefitBeta": "No ads · Price drop alerts · Favorites, all free",
+      "benefitFull": "Price drop alerts · Favorites · My fuel log, all free",
+      "inAppNotice": "Opened in the {kind} app",
+      "inAppGuideDefault": "For smooth sign-up and sign-in, please open this in an external browser like <b>Chrome / Safari</b>. (Google sign-in is blocked in in-app browsers.)",
+      "openExternalButton": "Open in external browser",
+      "iosManualGuide": "If it doesn’t switch automatically, tap <b>the menu (···) in the top right and choose “Open in Safari”</b>. Or copy the link below and paste it into your browser’s address bar.",
+      "androidManualGuide": "If you see this screen, tap <b>the ⋮ / share menu (top or bottom) and choose “Open in another browser”</b>, or <b>paste the copied link into Chrome / Safari’s address bar</b>.",
+      "linkCopied": "Link copied",
+      "copyLinkButton": "Copy current link",
+      "duplicateNotice": "You were signed out because another device signed in. Only one device can be used per account. Please sign in again.",
+      "kakaoStart": "Continue with Kakao",
+      "googleStart": "Continue with Google",
+      "orEmailDivider": "Or with email",
+      "passwordPlaceholderSignup": "Password (8+ characters)",
+      "passwordPlaceholderLogin": "Password",
+      "confirmPasswordPlaceholder": "Confirm password",
+      "submittingSignup": "Signing up...",
+      "submittingLogin": "Signing in...",
+      "submitSignup": "Sign up with email",
+      "submitLogin": "Sign in with email",
+      "forgotPasswordLink": "Forgot your password?",
+      "toggleToLoginPrompt": "Already have an account? ",
+      "toggleToSignupPrompt": "Don't have an account? ",
+      "toggleToLoginAction": "Sign in",
+      "toggleToSignupAction": "Sign up",
+      "consentBeta": "By signing in, you agree to the <terms>Terms of Service</terms> and <privacy>Privacy Policy</privacy>. <payment>Payment Terms</payment>",
+      "consentFull": "By signing in, you agree to the <terms>Terms of Service</terms>, <privacy>Privacy Policy</privacy>, and <payment>Paid Service Terms</payment>.",
+      "contactLabel": "1:1 Inquiry (KakaoTalk Channel)"
+    },
+    "forgotPassword": {
+      "heading": "Forgot Password",
+      "sentHeading": "Please check your email",
+      "sentBody1": "If this email is registered, we've sent a <b>password reset link</b>.",
+      "sentBody2": "If you don't see it, check your spam folder. (The link is valid for 1 hour)",
+      "description": "Enter your registered email and we'll send you a reset link.",
+      "submitting": "Sending...",
+      "submitButton": "Get reset link"
+    },
+    "resetPassword": {
+      "genericError": "Something went wrong. Please try again.",
+      "invalidLinkHeading": "Invalid link",
+      "invalidLinkBody": "This reset link is invalid. Please request a new one.",
+      "backToForgotPassword": "Go to forgot password",
+      "doneHeading": "Password changed",
+      "doneBody": "Please sign in again with your new password.",
+      "goToSignIn": "Go to sign in",
+      "formHeading": "Set new password",
+      "formDescription": "Enter the new password you'd like to use.",
+      "newPasswordPlaceholder": "New password (8+ characters)",
+      "confirmPasswordPlaceholder": "Confirm new password",
+      "submitting": "Changing...",
+      "submitButton": "Change password"
+    }
+  },
+  "alert": {
+    "navigateAria": "Start navigation",
+    "priceTrend": {
+      "closeAria": "Dismiss alert",
+      "risingLabel": "Fuel prices rising near you",
+      "heading": "Fill up before it goes up",
+      "stats": "{product} 7-day average {pct} ↑{avgSuffix}"
+    },
+    "radius": {
+      "warningLabel": "Cheaper option within 1km!",
+      "avgLevel": "Near average",
+      "diffAmount": "{sign}₩{amount}",
+      "diffCompare": "({diff} vs. average)"
+    },
+    "route": {
+      "notifTitle": "🚗 Cheapest station on your route",
+      "notifBody": "{name} · ₩{price} ({brand}) · {distance} ahead",
+      "bannerLabel": "Cheapest station on your route {distance} ahead!"
+    }
+  },
+  "pwa": {
+    "installBanner": {
+      "heading": "Get there faster with the app",
+      "body": "Add to your home screen to check the lowest prices instantly.",
+      "ctaMethod": "How",
+      "ctaInstall": "Install",
+      "closeAria": "Dismiss install prompt"
+    },
+    "installButton": {
+      "label": "Install app on home screen",
+      "ctaMethod": "See how"
+    },
+    "installGuide": {
+      "dialogAria": "Add to home screen guide",
+      "heading": "Add {appName} to your home screen",
+      "subheading": "You can launch it like an app. Just follow the steps below.",
+      "step1Lead": "Tap the <strong>Share button</strong> at the bottom (or top) of Safari",
+      "step1Trail": ".",
+      "step2": "Choose <strong>'Add to Home Screen'</strong> from the menu.",
+      "step3": "Tap <strong>'Add'</strong> in the top right to finish.",
+      "confirmButton": "Got it"
     }
   }
 }

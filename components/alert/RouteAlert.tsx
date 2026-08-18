@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import type { StationWithPrice } from '@/types/station';
-import { BRAND_LABEL } from '@/types/station';
+import { useBrandLabel } from '@/lib/i18n/labels';
 import { playAlertChime, notifyRouteAlert, isNotifyGranted } from '@/lib/sound';
 import { CarIcon, CloseIcon } from '@/components/icons';
 
@@ -25,6 +26,10 @@ interface Props {
  * 기존 내 주변 RadiusAlert와 형태를 맞추되, "경로상 최저가" 문구로 구분한다.
  */
 export function RouteAlert({ station, distanceM, onClick, onDismiss, onNavigate }: Props) {
+  const t = useTranslations('alert');
+  const tCommon = useTranslations('common');
+  const tMap = useTranslations('map.bottomSheet');
+  const brandLabel = useBrandLabel();
   // "N00m 앞" — 100m 단위 반올림(1km 미만), 그 이상은 km.
   const distanceText = distanceM < 1000
     ? `${Math.max(100, Math.round(distanceM / 100) * 100)}m`
@@ -40,8 +45,13 @@ export function RouteAlert({ station, distanceM, onClick, onDismiss, onNavigate 
     playAlertChime(granted ? 0.8 : 1);
     if (granted) {
       notifyRouteAlert({
-        title: '🚗 경로상 최저가 주유소',
-        body: `${station.name} · ₩${station.price.toLocaleString()} (${BRAND_LABEL[station.brand]}) · ${distanceText} 앞`,
+        title: t('route.notifTitle'),
+        body: t('route.notifBody', {
+          name: station.name,
+          price: station.price.toLocaleString(),
+          brand: brandLabel(station.brand),
+          distance: distanceText,
+        }),
         tag: `route-alert-${station.id}`,
       });
     }
@@ -61,19 +71,19 @@ export function RouteAlert({ station, distanceM, onClick, onDismiss, onNavigate 
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-        aria-label="닫기"
+        aria-label={tCommon('close')}
         className="absolute right-1 top-1 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/20 text-white hover:bg-black/35 active:bg-black/40"
       >
         <CloseIcon className="h-5 w-5" />
       </button>
       <div className="min-w-0 flex-1 cursor-pointer" onClick={onClick}>
         <div className="flex items-center gap-1 text-[11px] opacity-90">
-          <CarIcon className="h-3.5 w-3.5" />경로상 최저가 주유소 {distanceText} 앞!
+          <CarIcon className="h-3.5 w-3.5" />{t('route.bannerLabel', { distance: distanceText })}
         </div>
         <div className="mt-0.5 text-sm font-bold">
           ₩{station.price.toLocaleString()}
           <span className="ml-1.5 text-[11px] font-normal opacity-90">
-            ({BRAND_LABEL[station.brand]})
+            ({brandLabel(station.brand)})
           </span>
         </div>
         <div className="truncate text-[11px] opacity-90">{station.name}</div>
@@ -82,11 +92,11 @@ export function RouteAlert({ station, distanceM, onClick, onDismiss, onNavigate 
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onNavigate(); }}
-          aria-label="길안내 시작"
-          title="카카오내비 길안내"
+          aria-label={t('navigateAria')}
+          title={tMap('kakaoNaviTitle')}
           className="shrink-0 self-end rounded-lg bg-white/20 px-2.5 py-2 text-sm font-bold text-white hover:bg-white/30"
         >
-          길안내
+          {tCommon('navigate')}
         </button>
       )}
     </div>

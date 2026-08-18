@@ -766,7 +766,12 @@ export function KakaoMap({
 
     const showLabel = map.getLevel() <= 6; // 충전소는 가격이 없어 조금 더 일찍 라벨 노출
     for (const s of evStations ?? []) {
-      const content = buildEvMarkerContent(s, showLabel);
+      const label = t('evMarkerLabel', {
+        available: s.availableChargers,
+        total: s.totalChargers,
+        fast: s.hasFast ? 'true' : 'false',
+      });
+      const content = buildEvMarkerContent(s, showLabel, label);
       content.addEventListener('click', () => onEvMarkerClickRef.current?.(s));
       // 사용가능(available>0) 충전소를 위에 그려 겹칠 때 우선 보이게 한다(강조).
       // 급속 보유는 그 다음 가중치. (마커 색/뱃지로도 구분되지만 z순서로 한 번 더 강조)
@@ -781,7 +786,7 @@ export function KakaoMap({
       overlay.setMap(map);
       evOverlaysRef.current.push(overlay);
     }
-  }, [ready, layer, evStations, mapLevel]);
+  }, [ready, layer, evStations, mapLevel, t]);
 
   // 독립 세차장 마커 — layer='carwash'일 때만 렌더(주유소/EV 마커와 독립 오버레이).
   // 세차장 1곳=1마커. 색=유형(셀프 파랑/손세차 보라/자동 틸/미확인 회색), 라벨=줌인(level≤6) 시 유형.
@@ -798,7 +803,8 @@ export function KakaoMap({
 
     const showLabel = map.getLevel() <= 6; // 세차장은 가격이 없어 조금 더 일찍 라벨 노출(EV와 동일)
     for (const p of carwashPlaces ?? []) {
-      const content = buildCarwashMarkerContent(p, showLabel);
+      const label = t(`carwashMarkerLabel.${p.washType}`);
+      const content = buildCarwashMarkerContent(p, showLabel, label);
       content.addEventListener('click', () => onCarwashMarkerClickRef.current?.(p));
       // 유형 확정 핀을 미확인(회색) 위에 그려 겹칠 때 우선 보이게 한다.
       const z = 2 + (p.washType !== 'unknown' ? 1 : 0);
@@ -812,7 +818,7 @@ export function KakaoMap({
       overlay.setMap(map);
       carwashOverlaysRef.current.push(overlay);
     }
-  }, [ready, layer, carwashPlaces, mapLevel]);
+  }, [ready, layer, carwashPlaces, mapLevel, t]);
 
   // 회색 점(비하이라이트 주유소) 오버레이 — 일정 줌 이상 확대(level ≤ GRAY_DOT_MAX_LEVEL)일 때만.
   // allStations(화면 내 전체 주유소) 중, 이미 강조/일반 마커로 그려진 id를 제외한 나머지를

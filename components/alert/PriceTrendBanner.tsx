@@ -10,8 +10,9 @@
 //  - 위치는 좌표를 ~1km(소수 2자리)로 양자화해 같은 지역에서 잦은 재호출을 막는다.
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { ProductCode } from '@/types/station';
-import { PRODUCT_LABEL } from '@/types/station';
+import { useProductLabel } from '@/lib/i18n/labels';
 import { TrendUpIcon, CloseIcon } from '@/components/icons';
 
 interface PriceTrendResponse {
@@ -49,6 +50,8 @@ function isDismissedToday(): boolean {
 }
 
 export function PriceTrendBanner({ lat, lng, product }: Props) {
+  const t = useTranslations('alert.priceTrend');
+  const productLabel = useProductLabel();
   const [trend, setTrend] = useState<PriceTrendResponse | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
@@ -104,19 +107,22 @@ export function PriceTrendBanner({ lat, lng, product }: Props) {
           right-1 top-1 오프셋으로 배너 박스 크기는 불변(§4-2). */}
       <button
         onClick={onDismiss}
-        aria-label="알림 닫기"
+        aria-label={t('closeAria')}
         className="absolute right-1 top-1 z-10 flex h-10 w-10 items-center justify-center rounded-full text-white/90 hover:bg-white/15 hover:text-white"
       >
         <CloseIcon className="h-5 w-5" />
       </button>
       <div className="flex-1">
         <div className="flex items-center gap-1 text-[11px] opacity-90">
-          <TrendUpIcon className="h-3.5 w-3.5" />내 지역 기름값 오름세
+          <TrendUpIcon className="h-3.5 w-3.5" />{t('risingLabel')}
         </div>
-        <div className="mt-0.5 text-base font-bold">오르기 전에 채우세요</div>
+        <div className="mt-0.5 text-base font-bold">{t('heading')}</div>
         <div className="text-[11px] opacity-90">
-          {PRODUCT_LABEL[product]} 최근 7일 평균 {pctText} ↑
-          {trend!.recentAvg ? ` · ₩${trend!.recentAvg.toLocaleString()}` : ''}
+          {t('stats', {
+            product: productLabel(product),
+            pct: pctText,
+            avgSuffix: trend!.recentAvg ? ` · ₩${trend!.recentAvg.toLocaleString()}` : '',
+          })}
         </div>
       </div>
     </div>

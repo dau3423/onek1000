@@ -1,11 +1,13 @@
 {
   "common": {
+    "appName": "1000냥 주유소",
     "close": "닫기",
     "navigate": "길안내",
     "viewDetail": "상세보기",
     "loading": "로딩 중…",
     "cancel": "취소",
-    "retry": "다시 시도"
+    "retry": "다시 시도",
+    "favoriteAria": "즐겨찾기"
   },
   "labels": {
     "product": {
@@ -235,7 +237,14 @@
       "myPageAria": "마이페이지",
       "login": "로그인",
       "adFreeUsing": "광고 차단 이용 중"
-    }
+    },
+    "carwashMarkerLabel": {
+      "self": "셀프세차",
+      "hand": "손세차",
+      "auto": "자동세차",
+      "unknown": "세차장"
+    },
+    "evMarkerLabel": "{available}/{total}대{fast, select, true { · 급속} other {}}"
   },
   "station": {
     "self": "셀프",
@@ -389,6 +398,7 @@
     "refreshError": "실시간 상태를 가져오지 못했어요. 잠시 후 다시 시도해 주세요. (현재 표시는 최근 저장값)",
     "chargerListTitle": "충전기 ({count}대)",
     "chargerType": {
+      "10": "DC콤보+NACS",
       "01": "DC차데모",
       "02": "AC완속",
       "03": "DC차데모+AC3상",
@@ -397,8 +407,7 @@
       "06": "DC차데모+AC3상+DC콤보",
       "07": "AC3상",
       "08": "DC콤보(완속)",
-      "09": "DC차데모+DC콤보",
-      "10": "DC콤보+NACS"
+      "09": "DC차데모+DC콤보"
     },
     "chargerTypeOther": "기타({code})",
     "chargerTypeUnknown": "기타",
@@ -670,6 +679,125 @@
       "deleteFailed": "회원탈퇴 실패: {message}",
       "processingLabel": "처리 중...",
       "deleteButtonLabel": "회원탈퇴"
+    },
+    "signOut": {
+      "button": "로그아웃",
+      "confirmAria": "로그아웃 확인",
+      "confirmHeading": "로그아웃 하시겠어요?",
+      "confirmBody": "로그아웃하면 다시 로그인해야 즐겨찾기·구독 등 내 정보를 볼 수 있어요.",
+      "confirming": "로그아웃 중…"
+    },
+    "pushVapidMissing": "VAPID 키가 설정되지 않았어요.",
+    "pushSubscribeFailed": "푸시 설정 실패: {message}",
+    "pushDisableAction": "푸시 알림 끄기",
+    "pushEnableAction": "즐겨찾기 가격 변동 알림 받기"
+  },
+  "auth": {
+    "passwordTooShort": "비밀번호는 8자 이상이어야 합니다.",
+    "passwordMismatch": "비밀번호가 일치하지 않습니다.",
+    "emailPlaceholder": "이메일",
+    "backToSignIn": "로그인으로 돌아가기",
+    "loadingFallback": "로딩 중...",
+    "signIn": {
+      "invalidCredentials": "이메일 또는 비밀번호가 올바르지 않습니다.",
+      "missingFields": "이메일과 비밀번호를 입력해 주세요.",
+      "signupError": "가입 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+      "tagline": "소셜 계정으로 1초만에 시작",
+      "benefitBeta": "광고 없이 · 가격 하락 알림 · 즐겨찾기까지 전부 무료",
+      "benefitFull": "가격 하락 알림 · 즐겨찾기 · 내 주유기록까지 무료",
+      "inAppNotice": "{kind} 앱에서 열렸어요",
+      "inAppGuideDefault": "원활한 가입·로그인을 위해 <b>Chrome / Safari 같은 외부 브라우저</b>에서 열어주세요. (구글 로그인은 인앱 브라우저에서 차단됩니다.)",
+      "openExternalButton": "외부 브라우저로 열기",
+      "iosManualGuide": "자동 전환이 안 되면 <b>우측 상단 메뉴(···)에서 “Safari로 열기”</b>를 눌러주세요. 또는 아래 버튼으로 링크를 복사해 브라우저 주소창에 붙여넣어도 됩니다.",
+      "androidManualGuide": "이 화면이 보이면 <b>우측 상단(또는 하단)의 ⋮ / 공유 메뉴에서 “다른 브라우저로 열기”</b>를 누르거나, <b>복사된 링크를 Chrome / Safari 주소창에 붙여넣어</b> 주세요.",
+      "linkCopied": "링크가 복사되었어요",
+      "copyLinkButton": "현재 링크 복사하기",
+      "duplicateNotice": "다른 기기에서 로그인되어 현재 기기는 로그아웃되었습니다. 계정당 1개의 기기에서만 사용할 수 있어요. 다시 로그인해 주세요.",
+      "kakaoStart": "카카오로 시작하기",
+      "googleStart": "구글로 시작하기",
+      "orEmailDivider": "또는 이메일로",
+      "passwordPlaceholderSignup": "비밀번호 (8자 이상)",
+      "passwordPlaceholderLogin": "비밀번호",
+      "confirmPasswordPlaceholder": "비밀번호 확인",
+      "submittingSignup": "가입 중...",
+      "submittingLogin": "로그인 중...",
+      "submitSignup": "이메일로 가입하기",
+      "submitLogin": "이메일로 로그인",
+      "forgotPasswordLink": "비밀번호를 잊으셨나요?",
+      "toggleToLoginPrompt": "이미 계정이 있나요? ",
+      "toggleToSignupPrompt": "계정이 없나요? ",
+      "toggleToLoginAction": "로그인",
+      "toggleToSignupAction": "회원가입",
+      "consentBeta": "로그인하면 <terms>이용약관</terms>, <privacy>개인정보처리방침</privacy>에 동의한 것으로 간주됩니다. <payment>결제 약관</payment>",
+      "consentFull": "로그인하면 <terms>이용약관</terms>, <privacy>개인정보처리방침</privacy> 및 <payment>유료 결제 이용약관</payment>에 동의한 것으로 간주됩니다.",
+      "contactLabel": "1:1 문의 (카카오톡 채널)"
+    },
+    "forgotPassword": {
+      "heading": "비밀번호 찾기",
+      "sentHeading": "메일을 확인해 주세요",
+      "sentBody1": "입력하신 이메일이 가입된 계정이라면 <b>비밀번호 재설정 링크</b>를 보냈어요.",
+      "sentBody2": "메일이 안 보이면 스팸함도 확인해 주세요. (링크는 1시간 동안 유효)",
+      "description": "가입한 이메일을 입력하면 재설정 링크를 보내드려요.",
+      "submitting": "전송 중...",
+      "submitButton": "재설정 링크 받기"
+    },
+    "resetPassword": {
+      "genericError": "처리 중 오류가 발생했습니다. 다시 시도해 주세요.",
+      "invalidLinkHeading": "유효하지 않은 링크",
+      "invalidLinkBody": "재설정 링크가 올바르지 않습니다. 다시 요청해 주세요.",
+      "backToForgotPassword": "비밀번호 찾기로 가기",
+      "doneHeading": "비밀번호가 변경되었어요",
+      "doneBody": "새 비밀번호로 다시 로그인해 주세요.",
+      "goToSignIn": "로그인하러 가기",
+      "formHeading": "새 비밀번호 설정",
+      "formDescription": "새로 사용할 비밀번호를 입력해 주세요.",
+      "newPasswordPlaceholder": "새 비밀번호 (8자 이상)",
+      "confirmPasswordPlaceholder": "새 비밀번호 확인",
+      "submitting": "변경 중...",
+      "submitButton": "비밀번호 변경"
+    }
+  },
+  "alert": {
+    "navigateAria": "길안내 시작",
+    "priceTrend": {
+      "closeAria": "알림 닫기",
+      "risingLabel": "내 지역 기름값 오름세",
+      "heading": "오르기 전에 채우세요",
+      "stats": "{product} 최근 7일 평균 {pct} ↑{avgSuffix}"
+    },
+    "radius": {
+      "warningLabel": "1km 안에 더 싼 곳!",
+      "avgLevel": "평균 수준",
+      "diffAmount": "{sign}{amount}원",
+      "diffCompare": "({diff} · 평균 대비)"
+    },
+    "route": {
+      "notifTitle": "🚗 경로상 최저가 주유소",
+      "notifBody": "{name} · ₩{price} ({brand}) · {distance} 앞",
+      "bannerLabel": "경로상 최저가 주유소 {distance} 앞!"
+    }
+  },
+  "pwa": {
+    "installBanner": {
+      "heading": "앱으로 더 빠르게",
+      "body": "홈 화면에 추가하고 바로 최저가를 확인하세요.",
+      "ctaMethod": "방법",
+      "ctaInstall": "설치",
+      "closeAria": "설치 안내 닫기"
+    },
+    "installButton": {
+      "label": "홈 화면에 앱 설치",
+      "ctaMethod": "방법 보기"
+    },
+    "installGuide": {
+      "dialogAria": "홈 화면에 추가 안내",
+      "heading": "홈 화면에 {appName} 추가하기",
+      "subheading": "앱처럼 빠르게 실행할 수 있어요. 아래 순서대로 진행하세요.",
+      "step1Lead": "사파리 하단(또는 상단)의 <strong>공유 버튼</strong>",
+      "step1Trail": "을 누르세요.",
+      "step2": "메뉴에서 <strong>'홈 화면에 추가'</strong>를 선택하세요.",
+      "step3": "오른쪽 위 <strong>'추가'</strong>를 누르면 완료돼요.",
+      "confirmButton": "확인"
     }
   }
 }

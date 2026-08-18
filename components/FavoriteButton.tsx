@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { HeartIcon, HeartFilledIcon } from '@/components/icons';
 
 interface Props { stationId: string }
 
 export function FavoriteButton({ stationId }: Props) {
+  const t = useTranslations('common');
   const { status } = useSession();
   const router = useRouter();
   const [fav, setFav] = useState(false);
@@ -51,7 +53,7 @@ export function FavoriteButton({ stationId }: Props) {
     <button
       onClick={toggle}
       disabled={busy}
-      aria-label="즐겨찾기"
+      aria-label={t('favoriteAria')}
       aria-pressed={fav}
       className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-50"
     >

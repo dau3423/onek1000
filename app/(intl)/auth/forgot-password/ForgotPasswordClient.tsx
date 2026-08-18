@@ -2,8 +2,13 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
+
+const boldTag = { b: (chunks: React.ReactNode) => <b>{chunks}</b> };
 
 export default function ForgotPasswordClient() {
+  const t = useTranslations('auth');
+  const tForgot = useTranslations('auth.forgotPassword');
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   // 보안상 서버는 이메일 존재 여부를 알려주지 않으므로, 성공/실패 구분 없이 "보냈어요" 안내만 표시한다.
@@ -29,28 +34,28 @@ export default function ForgotPasswordClient() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-6">
-      <h1 className="text-xl font-bold text-gray-900">비밀번호 찾기</h1>
+      <h1 className="text-xl font-bold text-gray-900">{tForgot('heading')}</h1>
 
       {sent ? (
         <div className="mt-6 w-full rounded-2xl border border-orange-200 bg-orange-50 p-5 text-center">
-          <p className="text-sm font-semibold text-orange-900">메일을 확인해 주세요</p>
+          <p className="text-sm font-semibold text-orange-900">{tForgot('sentHeading')}</p>
           <p className="mt-2 text-[13px] leading-relaxed text-orange-800">
-            입력하신 이메일이 가입된 계정이라면 <b>비밀번호 재설정 링크</b>를 보냈어요.
+            {tForgot.rich('sentBody1', boldTag)}
             <br />
-            메일이 안 보이면 스팸함도 확인해 주세요. (링크는 1시간 동안 유효)
+            {tForgot('sentBody2')}
           </p>
         </div>
       ) : (
         <>
           <p className="mt-1 text-center text-sm text-gray-500">
-            가입한 이메일을 입력하면 재설정 링크를 보내드려요.
+            {tForgot('description')}
           </p>
           <form onSubmit={handleSubmit} className="mt-6 w-full space-y-2">
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="이메일"
+              placeholder={t('emailPlaceholder')}
               autoComplete="email"
               inputMode="email"
               autoCapitalize="none"
@@ -62,14 +67,14 @@ export default function ForgotPasswordClient() {
               disabled={submitting}
               className="w-full rounded-xl bg-gray-900 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60"
             >
-              {submitting ? '전송 중...' : '재설정 링크 받기'}
+              {submitting ? tForgot('submitting') : tForgot('submitButton')}
             </button>
           </form>
         </>
       )}
 
       <Link href="/auth/sign-in" className="mt-6 text-[13px] text-gray-500 underline hover:text-gray-700">
-        로그인으로 돌아가기
+        {t('backToSignIn')}
       </Link>
     </main>
   );

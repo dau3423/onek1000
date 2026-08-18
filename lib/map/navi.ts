@@ -37,10 +37,13 @@ export interface NaviOrigin {
 /** 지원하는 내비 앱 식별자 */
 export type NaviProvider = 'kakao' | 'tmap' | 'naver';
 
-/** 앱 표시명(UI 문구용) */
+/** 앱 표시명(UI 문구용). 내비 앱 고유명사 — 로케일 무관하게 번역하지 않는다(navi 선택 시트의 R16과 일관). */
 export const NAVI_PROVIDER_LABEL: Record<NaviProvider, string> = {
+  // i18n-ignore: 내비 앱 고유명사(카카오맵) — 번역하지 않는다.
   kakao: '카카오맵',
+  // i18n-ignore: 내비 앱 고유명사(T맵) — 번역하지 않는다.
   tmap: 'T맵',
+  // i18n-ignore: 내비 앱 고유명사(네이버지도) — 번역하지 않는다.
   naver: '네이버지도',
 };
 
@@ -90,6 +93,7 @@ export function setPreferredNavi(provider: NaviProvider): void {
 export function kakaoMapDirectionsUrl(dest: NaviDestination, origin?: NaviOrigin | null): string {
   if (origin) {
     const params = new URLSearchParams({
+      // i18n-ignore: 외부 내비 앱(카카오맵)에 넘기는 sName 파라미터 — 받는 앱이 한국어 앱이라 한국어가 자연스럽다.
       sName: origin.name ?? '내 위치',
       eName: dest.name,
       from: `${origin.lat},${origin.lng}`,
@@ -152,6 +156,7 @@ export function naverNaviUrl(dest: NaviDestination, origin?: NaviOrigin | null):
     parts.push(
       `slat=${origin.lat}`,
       `slng=${origin.lng}`,
+      // i18n-ignore: 외부 내비 앱(네이버지도)에 넘기는 sname 파라미터 — 받는 앱이 한국어 앱이라 한국어가 자연스럽다.
       `sname=${encodeURIComponent(origin.name ?? '내 위치')}`,
     );
   }

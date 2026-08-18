@@ -5,7 +5,9 @@
     "viewDetail": "查看详情",
     "loading": "加载中…",
     "cancel": "取消",
-    "retry": "重试"
+    "retry": "重试",
+    "appName": "千元加油站",
+    "favoriteAria": "收藏"
   },
   "labels": {
     "product": {
@@ -235,7 +237,14 @@
       "myPageAria": "我的页面",
       "login": "登录",
       "adFreeUsing": "使用无广告中"
-    }
+    },
+    "carwashMarkerLabel": {
+      "self": "自助洗车",
+      "hand": "手洗",
+      "auto": "自动洗车",
+      "unknown": "洗车场"
+    },
+    "evMarkerLabel": "{available}/{total}个{fast, select, true { · 快充} other {}}"
   },
   "station": {
     "self": "自助",
@@ -389,6 +398,7 @@
     "refreshError": "未能获取实时状态，请稍后重试。（当前显示为最近保存的数据）",
     "chargerListTitle": "充电桩（{count}个）",
     "chargerType": {
+      "10": "DC Combo+NACS",
       "01": "DC CHAdeMO",
       "02": "AC慢充",
       "03": "DC CHAdeMO+AC三相",
@@ -397,8 +407,7 @@
       "06": "DC CHAdeMO+AC三相+DC Combo",
       "07": "AC三相",
       "08": "DC Combo（慢充）",
-      "09": "DC CHAdeMO+DC Combo",
-      "10": "DC Combo+NACS"
+      "09": "DC CHAdeMO+DC Combo"
     },
     "chargerTypeOther": "其他（{code}）",
     "chargerTypeUnknown": "其他",
@@ -670,6 +679,125 @@
       "deleteFailed": "账户注销失败:{message}",
       "processingLabel": "处理中...",
       "deleteButtonLabel": "注销账户"
+    },
+    "signOut": {
+      "button": "退出登录",
+      "confirmAria": "确认退出登录",
+      "confirmHeading": "要退出登录吗？",
+      "confirmBody": "退出登录后需要重新登录才能查看收藏、订阅等信息。",
+      "confirming": "退出登录中…"
+    },
+    "pushVapidMissing": "VAPID密钥未配置。",
+    "pushSubscribeFailed": "推送设置失败：{message}",
+    "pushDisableAction": "关闭推送通知",
+    "pushEnableAction": "接收收藏加油站降价提醒"
+  },
+  "auth": {
+    "passwordTooShort": "密码至少需要8位。",
+    "passwordMismatch": "两次输入的密码不一致。",
+    "emailPlaceholder": "邮箱",
+    "backToSignIn": "返回登录",
+    "loadingFallback": "加载中...",
+    "signIn": {
+      "invalidCredentials": "邮箱或密码不正确。",
+      "missingFields": "请输入邮箱和密码。",
+      "signupError": "注册时发生错误。请稍后重试。",
+      "tagline": "用社交账号1秒开始",
+      "benefitBeta": "无广告 · 降价提醒 · 收藏功能全部免费",
+      "benefitFull": "降价提醒 · 收藏 · 我的加油记录全部免费",
+      "inAppNotice": "已在{kind}应用内打开",
+      "inAppGuideDefault": "为顺利注册/登录，请在<b>Chrome / Safari等外部浏览器</b>中打开。（Google登录在应用内浏览器中会被屏蔽。）",
+      "openExternalButton": "在外部浏览器中打开",
+      "iosManualGuide": "如果没有自动跳转，请点击<b>右上角菜单（···）中的\"在Safari中打开\"</b>。或复制下方链接粘贴到浏览器地址栏。",
+      "androidManualGuide": "如果看到此画面，请点击<b>右上角（或下方）⋮ / 分享菜单中的\"在其他浏览器中打开\"</b>，或<b>将复制的链接粘贴到Chrome / Safari地址栏</b>。",
+      "linkCopied": "链接已复制",
+      "copyLinkButton": "复制当前链接",
+      "duplicateNotice": "由于在其他设备登录，当前设备已登出。每个账号仅可在1台设备上使用。请重新登录。",
+      "kakaoStart": "使用Kakao开始",
+      "googleStart": "使用Google开始",
+      "orEmailDivider": "或使用邮箱",
+      "passwordPlaceholderSignup": "密码（8位以上）",
+      "passwordPlaceholderLogin": "密码",
+      "confirmPasswordPlaceholder": "确认密码",
+      "submittingSignup": "注册中...",
+      "submittingLogin": "登录中...",
+      "submitSignup": "使用邮箱注册",
+      "submitLogin": "使用邮箱登录",
+      "forgotPasswordLink": "忘记密码了吗？",
+      "toggleToLoginPrompt": "已有账号？ ",
+      "toggleToSignupPrompt": "没有账号？ ",
+      "toggleToLoginAction": "登录",
+      "toggleToSignupAction": "注册",
+      "consentBeta": "登录即表示您同意<terms>服务条款</terms>、<privacy>隐私政策</privacy>。<payment>付款条款</payment>",
+      "consentFull": "登录即表示您同意<terms>服务条款</terms>、<privacy>隐私政策</privacy>及<payment>付费服务条款</payment>。",
+      "contactLabel": "1:1咨询（Kakao Talk频道）"
+    },
+    "forgotPassword": {
+      "heading": "找回密码",
+      "sentHeading": "请查收邮件",
+      "sentBody1": "如果该邮箱已注册，我们已发送<b>密码重置链接</b>。",
+      "sentBody2": "如未收到，请查看垃圾邮件箱。（链接1小时内有效）",
+      "description": "输入注册邮箱即可收到重置链接。",
+      "submitting": "发送中...",
+      "submitButton": "获取重置链接"
+    },
+    "resetPassword": {
+      "genericError": "处理时发生错误。请重试。",
+      "invalidLinkHeading": "链接无效",
+      "invalidLinkBody": "重置链接不正确。请重新申请。",
+      "backToForgotPassword": "去找回密码",
+      "doneHeading": "密码已修改",
+      "doneBody": "请使用新密码重新登录。",
+      "goToSignIn": "去登录",
+      "formHeading": "设置新密码",
+      "formDescription": "请输入要使用的新密码。",
+      "newPasswordPlaceholder": "新密码（8位以上）",
+      "confirmPasswordPlaceholder": "确认新密码",
+      "submitting": "修改中...",
+      "submitButton": "修改密码"
+    }
+  },
+  "alert": {
+    "navigateAria": "开始导航",
+    "priceTrend": {
+      "closeAria": "关闭提醒",
+      "risingLabel": "我所在地区油价上涨",
+      "heading": "趁涨价前加油吧",
+      "stats": "{product}近7天平均{pct}↑{avgSuffix}"
+    },
+    "radius": {
+      "warningLabel": "1公里内有更便宜的地方！",
+      "avgLevel": "接近平均水平",
+      "diffAmount": "{sign}₩{amount}",
+      "diffCompare": "（{diff}·相比平均价）"
+    },
+    "route": {
+      "notifTitle": "🚗 路线上的最低价加油站",
+      "notifBody": "{name} · ₩{price}（{brand}）· 前方{distance}",
+      "bannerLabel": "路线上的最低价加油站，前方{distance}！"
+    }
+  },
+  "pwa": {
+    "installBanner": {
+      "heading": "用App更快找到最低价",
+      "body": "添加到主屏幕，立即查看最低价。",
+      "ctaMethod": "方法",
+      "ctaInstall": "安装",
+      "closeAria": "关闭安装提示"
+    },
+    "installButton": {
+      "label": "将App安装到主屏幕",
+      "ctaMethod": "查看方法"
+    },
+    "installGuide": {
+      "dialogAria": "添加到主屏幕指南",
+      "heading": "将{appName}添加到主屏幕",
+      "subheading": "可以像App一样快速启动。请按以下步骤操作。",
+      "step1Lead": "点击Safari底部（或顶部）的<strong>分享按钮</strong>",
+      "step1Trail": "。",
+      "step2": "在菜单中选择<strong>\"添加到主屏幕\"</strong>。",
+      "step3": "点击右上角的<strong>\"添加\"</strong>即可完成。",
+      "confirmButton": "知道了"
     }
   }
 }

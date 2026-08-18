@@ -136,6 +136,7 @@ export function CarwashDayCard({ onCta, lat, lng }: Props) {
     );
     if (best.popNext != null && best.popNext >= 40) {
       parts.push(t('reasonNextPop', { day: fullWeekday(nextDate(best.date), locale), pop: best.popNext }));
+    // i18n-ignore: dustGrade는 기상청/에어코리아 외부 데이터의 한국어 등급값 그대로 비교하는 것 — DB/외부 원본이라 비교값을 번역하지 않는다.
     } else if (best.dustGrade?.includes('나쁨')) {
       // dustGrade는 기상청/에어코리아 외부 데이터의 한국어 등급값 그대로 — DB/외부 원본이라 번역하지 않는다.
       parts.push(t('reasonDust', { dust: best.dustGrade }));
