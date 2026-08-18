@@ -35,7 +35,8 @@
 | `supabase/migrations/0040_reviews_polymorphic.sql` | `reviews` 다형화 + `place_review_stats` 뷰 |
 | `supabase/migrations/0041_review_reports.sql` | `review_reports` 테이블 |
 | `lib/places/target.ts` | 장소 종류별 존재 검증 + 좌표 조회(지오펜스용) 단일 출처 |
-| `app/api/places/[type]/[id]/reviews/route.ts` | 통합 리뷰 GET/POST |
+| `lib/api/place-reviews.ts` | 리뷰 GET/POST 핸들러 본체(라우트 간 공유) |
+| `app/api/places/[type]/[id]/reviews/route.ts` | 통합 리뷰 라우트 — 종류 검증 후 공통 핸들러 호출 |
 | `app/api/reviews/[id]/report/route.ts` | 신고 접수 |
 | `app/api/admin/reviews/reports/route.ts` | 미처리 신고 목록(관리자) |
 | `app/api/admin/reviews/[id]/route.ts` | 전역 숨김/해제(관리자) |
@@ -139,16 +140,21 @@ export function isPlaceType(v: string | undefined | null): v is PlaceType {
 }
 ```
 
-그리고 `Review` 인터페이스의 `stationId` 줄을 아래로 교체한다:
+그리고 `Review` 인터페이스의 `stationId` 줄 **아래에** 두 필드를 **선택적으로** 추가한다.
+`stationId` 는 이 태스크에서 건드리지 않는다:
 
 ```ts
-  /** 장소 종류. */
-  targetType: PlaceType;
+  stationId: string;
+  /** 장소 종류. T2(API)·T3(컴포넌트)가 채우기 시작하면 그때 필수로 조인다. */
+  targetType?: PlaceType;
   /** 장소 식별자 — gas=stations.id, ev=ev_chargers.stat_id, carwash=carwash_places.mgmt_no. */
-  targetId: string;
-  /** @deprecated 전환기 호환용. gas 리뷰에만 채워지며 target_id 와 같은 값이다. */
-  stationId?: string;
+  targetId?: string;
 ```
+
+> **선택적으로 두는 이유**: 여기서 `stationId` 를 곧장 교체하면 아직 손대지 않은 4개 파일
+> (`app/api/stations/[id]/reviews/route.ts`, `lib/mock/reviews.ts`, 리뷰 컴포넌트들)이 컴파일되지 않고,
+> 이 태스크의 커밋이 **깨진 트리**를 남긴다. 중간에 멈추면 브랜치가 빌드되지 않는다.
+> 필수 전환은 그 파일들을 실제로 다시 쓰는 T2·T3 에서 한다.
 
 `CreateReviewInput` 은 그대로 둔다 — 대상은 URL 경로로 전달되므로 본문에 넣지 않는다.
 
@@ -215,12 +221,11 @@ function num(v: unknown): number | null {
 - [ ] **Step 4: 게이트 통과 확인**
 
 ```bash
-npm run typecheck && npm run lint
+npm run typecheck && npm run lint && npm run build
 ```
 
-Expected: `types/review.ts` 의 `stationId` → `targetType`/`targetId` 변경 때문에 **기존 코드에서 타입 오류가 난다**(`app/api/stations/[id]/reviews/route.ts`, `lib/mock/reviews.ts`, 리뷰 컴포넌트). 이 태스크에서는 **오류 목록을 기록만 하고 고치지 않는다** — Task 2·3이 그 파일들을 다시 쓴다. 오류 파일 목록을 리포트에 남긴다.
-
-> 예외: 오류가 위 4개 파일 밖에서도 난다면 예상 밖 소비자가 있다는 뜻이므로 **보고**한다.
+Expected: **전부 통과한다.** 새 필드가 선택적이라 기존 코드는 그대로 컴파일된다. 오류가 하나라도 나면
+`Review` 를 소비하는 예상 밖의 코드가 있다는 뜻이므로 **고치지 말고 보고**한다 — 계획이 놓친 소비자다.
 
 - [ ] **Step 5: 커밋**
 
@@ -286,7 +291,19 @@ Create `app/api/places/[type]/[id]/reviews/route.ts`. 기존 `app/api/stations/[
 ```
 
 3. mock 분기를 `listMockReviews(targetType, params.id)` 로.
-4. 조회 필터를 `.eq('station_id', params.id)` 에서 아래로:
+4. **id 형식을 먼저 검증한다.** 아래 `or` 필터는 경로값을 PostgREST 필터 **문법 문자열**에 그대로
+   넣으므로, 쉼표·괄호·점이 든 값이면 필터가 의도와 다르게 파싱된다. 세 종류의 실제 식별자
+   (주유소 UNI_ID, EV stat_id, 세차장 mgmt_no)는 모두 영숫자와 `._-` 안에 들어간다:
+
+```ts
+  // PostgREST or() 는 문자열 문법이라 경로값을 그대로 보간하면 필터가 깨진다.
+  const ID_OK = /^[A-Za-z0-9._-]{1,64}$/;
+  if (!ID_OK.test(params.id)) {
+    return NextResponse.json({ error: 'invalid place id' }, { status: 400 });
+  }
+```
+
+5. 조회 필터를 `.eq('station_id', params.id)` 에서 아래로:
 
 ```ts
     .or(`target_id.eq.${params.id},and(target_id.is.null,station_id.eq.${params.id})`)
@@ -296,8 +313,8 @@ Create `app/api/places/[type]/[id]/reviews/route.ts`. 기존 `app/api/stations/[
 > 이 `or` 는 SQL 의 `coalesce(target_id, station_id) = id` 와 같은 뜻이다. 전환기에 `target_id` 가
 > 비어 있는 구행(주유소)도 함께 잡기 위해 필요하다.
 
-5. 매핑에서 `stationId: r.station_id` 를 `targetType: r.target_type, targetId: r.target_id ?? r.station_id` 로.
-6. select 목록에 `target_type, target_id, station_id` 를 추가한다.
+6. 매핑에서 `stationId: r.station_id` 를 `targetType: r.target_type, targetId: r.target_id ?? r.station_id` 로.
+7. select 목록에 `target_type, target_id, station_id` 를 추가한다.
 
 - [ ] **Step 3: 통합 라우트 — 컬럼 부재 graceful degrade**
 
@@ -370,23 +387,38 @@ upsert 는 기존 코드의 충돌 처리 방식을 그대로 따른다(사용�
 
 Modify `app/api/stations/[id]/reviews/route.ts` — 파일 전체를 아래로 교체:
 
+**핸들러 본체는 `lib/api/place-reviews.ts` 로 뺀다.** 라우트 모듈이 다른 라우트 모듈을 import 하는 것은
+Next 에서 보장된 동작이 아니므로, 두 라우트가 공통 함수를 부르는 형태로 만든다.
+
+Create `lib/api/place-reviews.ts` — Step 2~4에서 작성한 GET/POST 본체를 그대로 옮기고 아래 시그니처로
+export 한다:
+
 ```ts
-// 주유소 리뷰 — 통합 라우트(/api/places/gas/[id]/reviews)로 위임하는 얇은 껍데기.
+export async function listPlaceReviews(req: Request, type: PlaceType, id: string): Promise<Response>
+export async function createPlaceReview(req: Request, type: PlaceType, id: string): Promise<Response>
+```
+
+`app/api/places/[type]/[id]/reviews/route.ts` 는 종류 검증 후 이 함수들을 부른다.
+
+Modify `app/api/stations/[id]/reviews/route.ts` — 파일 전체를 아래로 교체:
+
+```ts
+// 주유소 리뷰 — 공통 핸들러(lib/api/place-reviews.ts)를 gas 로 호출하는 얇은 껍데기.
 //
 // 지우지 않는 이유는 배포 순서다. 새 코드가 배포된 직후에도 브라우저에 떠 있는 구버전 페이지가
-// 이 경로로 GET/POST 를 보낸다. 위임을 남겨두면 그 창에서 리뷰 조회·작성이 실패하지 않는다.
+// 이 경로로 GET/POST 를 보낸다. 남겨두면 그 창에서 리뷰 조회·작성이 실패하지 않는다.
 // 소비자가 모두 새 경로로 옮겨간 뒤 제거한다.
-import { GET as placesGet, POST as placesPost } from '@/app/api/places/[type]/[id]/reviews/route';
+import { listPlaceReviews, createPlaceReview } from '@/lib/api/place-reviews';
 
 export const runtime = 'nodejs';
 export const revalidate = 30;
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
-  return placesGet(req, { params: { type: 'gas', id: params.id } });
+  return listPlaceReviews(req, 'gas', params.id);
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  return placesPost(req, { params: { type: 'gas', id: params.id } });
+  return createPlaceReview(req, 'gas', params.id);
 }
 ```
 
@@ -408,6 +440,8 @@ curl -s -o /dev/null -w "ev %{http_code}\n"      "http://localhost:3510/api/plac
 curl -s -o /dev/null -w "carwash %{http_code}\n" "http://localhost:3510/api/places/carwash/<실제mgmtNo>/reviews"
 # 잘못된 종류는 400
 curl -s -o /dev/null -w "bogus %{http_code}\n"   "http://localhost:3510/api/places/hotel/x/reviews"
+# 필터 문법을 깨는 id 는 400 (R2)
+curl -s -o /dev/null -w "badid %{http_code}\n"   "http://localhost:3510/api/places/gas/a,b(c)/reviews"
 # 기존 경로 위임이 살아 있는지
 curl -s -o /dev/null -w "legacy %{http_code}\n"  "http://localhost:3510/api/stations/<실제주유소ID>/reviews"
 ```
