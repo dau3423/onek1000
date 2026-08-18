@@ -372,7 +372,22 @@
     "addPhoto": "Add photo",
     "submitting": "Submitting…",
     "submit": "Submit review",
-    "starLabel": "{n} stars"
+    "starLabel": "{n} stars",
+    "report": {
+      "action": "Report",
+      "ariaLabel": "Report this review",
+      "title": "Report this review?",
+      "reasonSpam": "Ads / spam",
+      "reasonAbuse": "Abusive language",
+      "reasonIrrelevant": "Not related to this place",
+      "reasonFalseInfo": "False information",
+      "reasonOther": "Other",
+      "detailPlaceholder": "Details (optional, 200 characters)",
+      "submit": "Report",
+      "cancel": "Cancel",
+      "done": "Reported. This review will no longer be shown to you.",
+      "failed": "Couldn't submit the report. Please try again later."
+    }
   },
   "ev": {
     "label": "EV Charging Station",

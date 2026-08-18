@@ -372,7 +372,22 @@
     "addPhoto": "写真を追加",
     "submitting": "登録中…",
     "submit": "レビューを登録",
-    "starLabel": "{n}点"
+    "starLabel": "{n}点",
+    "report": {
+      "action": "通報",
+      "ariaLabel": "このレビューを通報する",
+      "title": "このレビューを通報しますか？",
+      "reasonSpam": "広告・スパム",
+      "reasonAbuse": "誹謗中傷",
+      "reasonIrrelevant": "場所と無関係な内容",
+      "reasonFalseInfo": "虚偽の情報",
+      "reasonOther": "その他",
+      "detailPlaceholder": "詳細（任意、200文字まで）",
+      "submit": "通報する",
+      "cancel": "キャンセル",
+      "done": "通報しました。このレビューは今後表示されません。",
+      "failed": "通報に失敗しました。しばらくしてからもう一度お試しください。"
+    }
   },
   "ev": {
     "label": "EV充電スタンド",

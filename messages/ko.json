@@ -372,7 +372,22 @@
     "addPhoto": "사진 추가",
     "submitting": "등록 중…",
     "submit": "리뷰 등록",
-    "starLabel": "{n}점"
+    "starLabel": "{n}점",
+    "report": {
+      "action": "신고",
+      "ariaLabel": "이 리뷰 신고하기",
+      "title": "이 리뷰를 신고할까요?",
+      "reasonSpam": "광고·스팸",
+      "reasonAbuse": "욕설·비방",
+      "reasonIrrelevant": "장소와 무관한 내용",
+      "reasonFalseInfo": "허위 정보",
+      "reasonOther": "기타",
+      "detailPlaceholder": "자세한 내용 (선택, 200자)",
+      "submit": "신고하기",
+      "cancel": "취소",
+      "done": "신고했습니다. 이 리뷰는 회원님께 더 이상 표시되지 않습니다.",
+      "failed": "신고에 실패했어요. 잠시 후 다시 시도해 주세요."
+    }
   },
   "ev": {
     "label": "전기차 충전소",

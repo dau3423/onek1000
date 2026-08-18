@@ -372,7 +372,22 @@
     "addPhoto": "添加照片",
     "submitting": "提交中…",
     "submit": "提交评论",
-    "starLabel": "{n}星"
+    "starLabel": "{n}星",
+    "report": {
+      "action": "举报",
+      "ariaLabel": "举报这条评论",
+      "title": "要举报这条评论吗？",
+      "reasonSpam": "广告·垃圾信息",
+      "reasonAbuse": "辱骂·诽谤",
+      "reasonIrrelevant": "与该地点无关的内容",
+      "reasonFalseInfo": "虚假信息",
+      "reasonOther": "其他",
+      "detailPlaceholder": "详细说明（可选，200字以内）",
+      "submit": "提交举报",
+      "cancel": "取消",
+      "done": "举报已提交。这条评论将不再对您显示。",
+      "failed": "举报失败，请稍后重试。"
+    }
   },
   "ev": {
     "label": "电动汽车充电站",

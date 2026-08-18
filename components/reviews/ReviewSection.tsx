@@ -96,6 +96,7 @@ export function ReviewSection({ targetType, targetId, lat, lng }: Props) {
         <ReviewList
           reviews={data.reviews}
           onDeleted={() => load()}
+          onReported={() => load()}
         />
       )}
     </section>
