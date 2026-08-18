@@ -1,8 +1,21 @@
 // 1000냥 주유소 - 리뷰 타입
 
+/** 리뷰를 달 수 있는 장소 종류. DB target_type 값과 1:1. */
+export type PlaceType = 'gas' | 'ev' | 'carwash';
+
+export const PLACE_TYPES: readonly PlaceType[] = ['gas', 'ev', 'carwash'] as const;
+
+export function isPlaceType(v: string | undefined | null): v is PlaceType {
+  return !!v && (PLACE_TYPES as readonly string[]).includes(v);
+}
+
 export interface Review {
   id: string;
   stationId: string;
+  /** 장소 종류. T2(API)·T3(컴포넌트)가 채우기 시작하면 그때 필수로 조인다. */
+  targetType?: PlaceType;
+  /** 장소 식별자 — gas=stations.id, ev=ev_chargers.stat_id, carwash=carwash_places.mgmt_no. */
+  targetId?: string;
   user: {
     id: string;
     /** 표시용 닉네임(없으면 name → '익명' 폴백) */
