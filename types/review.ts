@@ -61,3 +61,16 @@ export const REVIEW_PHOTO_BYTE_MAX = 5 * 1024 * 1024; // 5MB
 export const REVIEW_GEOFENCE_M = 500;
 // 정확도 가산 상한(m) — accuracy가 아무리 커도 이 값까지만 허용 반경에 더한다.
 export const REVIEW_GEOFENCE_ACCURACY_CAP_M = 300;
+
+/** 신고 사유. DB check 제약과 1:1. */
+export type ReportReason = 'spam' | 'abuse' | 'irrelevant' | 'false_info' | 'other';
+
+export const REPORT_REASONS: readonly ReportReason[] = [
+  'spam', 'abuse', 'irrelevant', 'false_info', 'other',
+] as const;
+
+export function isReportReason(v: string | undefined | null): v is ReportReason {
+  return !!v && (REPORT_REASONS as readonly string[]).includes(v);
+}
+
+export const REPORT_DETAIL_MAX = 200;

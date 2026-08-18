@@ -160,7 +160,19 @@ export async function listPlaceReviews(_req: Request, targetType: PlaceType, id:
         : computeStats(reviews);
   }
 
-  return NextResponse.json({ reviews, stats });
+  // 개인 숨김: 로그인 사용자가 신고한 리뷰는 그 사용자에게 보이지 않는다.
+  // review_reports 테이블 부재(0041 미적용)면 조용히 건너뛴다.
+  // 통계(stats)는 이미 위에서 필터 전 목록으로 계산했다 — 신고가 평점을 흔드는 수단이 되면 안 된다.
+  let reportedIds = new Set<string>();
+  if (myUserId) {
+    const { data: reps } = await sb
+      .from('review_reports')
+      .select('review_id')
+      .eq('user_id', myUserId);
+    if (reps) reportedIds = new Set(reps.map((r) => r.review_id as string));
+  }
+
+  return NextResponse.json({ reviews: reviews.filter((r) => !reportedIds.has(r.id)), stats });
 }
 
 // ─── POST: 리뷰 작성 ───
