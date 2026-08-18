@@ -125,9 +125,10 @@ export async function listPlaceReviews(_req: Request, targetType: PlaceType, id:
     };
   });
 
-  // 통계: gas 는 기존 station_review_stats 뷰(0004, 항상 존재 · 정확 집계)를 그대로 쓴다.
-  // ev/carwash 는 전용 뷰(place_review_stats, 0040)가 아직 없는 배포 상태를 고려해
-  // 방금 가져온 목록으로 계산한다.
+  // 통계: 두 종류 모두 view-first 다 — 목록은 .limit(100) 이 걸려 있어 rows 로 계산하면
+  // 100건을 넘는 장소의 카운트/평균이 조용히 축소된다. gas 는 기존 station_review_stats 뷰
+  // (0004, 항상 존재), ev/carwash 는 place_review_stats 뷰(0040)를 먼저 쓰고, 뷰가 없거나
+  // (0040 미적용) 조회가 실패하는 경우에만 방금 가져온 목록으로 계산한다.
   let stats: ReviewStats;
   if (targetType === 'gas') {
     const { data: statsRow } = await sb
@@ -143,7 +144,20 @@ export async function listPlaceReviews(_req: Request, targetType: PlaceType, id:
         }
       : computeStats(reviews);
   } else {
-    stats = computeStats(reviews);
+    const { data: statsRow, error: statsError } = await sb
+      .from('place_review_stats')
+      .select('review_count, rating_avg, r1, r2, r3, r4, r5')
+      .eq('target_type', targetType)
+      .eq('target_id', id)
+      .maybeSingle();
+    stats =
+      !statsError && statsRow
+        ? {
+            count: statsRow.review_count,
+            average: Number(statsRow.rating_avg) || 0,
+            distribution: { 1: statsRow.r1, 2: statsRow.r2, 3: statsRow.r3, 4: statsRow.r4, 5: statsRow.r5 },
+          }
+        : computeStats(reviews);
   }
 
   return NextResponse.json({ reviews, stats });
@@ -248,10 +262,44 @@ export async function createPlaceReview(req: Request, targetType: PlaceType, id:
   // 아직 존재할 수 없었으므로(신기능) 이 순서 의존은 안전하다.
   const onConflict = targetType === 'gas' ? 'user_id,station_id' : 'user_id,target_type,target_id';
 
-  const { data, error } = await sb.from('reviews').upsert(payload, { onConflict }).select().single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const primary = await sb.from('reviews').upsert(payload, { onConflict }).select().single();
 
-  return NextResponse.json({ ok: true, review: { id: data.id } });
+  if (primary.error) {
+    // 0040 미적용 환경: target_type/target_id 컬럼이 없어 PostgREST 가 42703 을 던진다.
+    // GET 과 똑같이 "쿼리가 에러나면 폴백" 방식으로 감지한다(별도 판별 로직을 두지 않는다) —
+    // 이 라우트는 ReviewForm/ReviewSection 이 실제로 쓰는 현재 서비스 중인 쓰기 경로이므로
+    // GET 만 폴백을 갖고 POST 가 500 을 내면 배포 순서 안전성 보장이 깨진다.
+    if (targetType !== 'gas') {
+      // ev/carwash 는 target_id 없이는 저장할 방법이 없다(station_id 로 대신 저장할 대상 자체가
+      // 없다). 화면이 "아직 이용할 수 없음"을 보여줄 수 있도록 500 대신 503 + 코드로 구분한다.
+      return NextResponse.json(
+        {
+          error: 'place review writes are not available until a pending migration is applied',
+          code: 'migration_required',
+        },
+        { status: 503 },
+      );
+    }
+    // gas: 구버전과 동일한 station_id 전용 payload/충돌 대상으로 재시도한다. target_id 없이
+    // 저장되지만, 이는 GET 이 이미 처리하는 구행 모양과 정확히 같다(coalesce(target_id,
+    // station_id) 로 계속 조회된다) — 마이그레이션 적용 후 별도 백필 없이도 자연히 맞아든다.
+    const legacyPayload = {
+      user_id: user.id,
+      station_id: id,
+      rating: body.rating,
+      content,
+      photo_paths: photoPaths,
+    };
+    const legacy = await sb
+      .from('reviews')
+      .upsert(legacyPayload, { onConflict: 'user_id,station_id' })
+      .select()
+      .single();
+    if (legacy.error) return NextResponse.json({ error: legacy.error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, review: { id: legacy.data.id } });
+  }
+
+  return NextResponse.json({ ok: true, review: { id: primary.data.id } });
 }
 
 // ─── 통계 헬퍼 (mock / ev·carwash 용) ───

@@ -25,6 +25,13 @@ alter table reviews add constraint reviews_target_type_chk
 -- 사용자당 대상당 1개.
 -- 신버전 코드가 upsert 의 충돌 대상으로 지정할 수 있어야 하므로 표현식이 아닌 평범한 인덱스로 둔다
 -- (ON CONFLICT 와 PostgREST onConflict 는 컬럼 이름만 받는다).
+--
+-- 주의(운영 중 실제로 겪은 문제): `if not exists` 는 이름으로만 판단하고 정의 변경은 보지 않는다.
+-- 이 파일의 이전 초안(coalesce(target_id, station_id) 표현식 인덱스)을 이미 손으로 적용한
+-- 적이 있다면, 이 문장은 이름이 같다는 이유로 아무 일도 하지 않고 조용히 넘어간다 — 즉 옛
+-- 표현식 인덱스가 그대로 남는다. 이 저장소는 마이그레이션을 손으로 적용하므로, 이전 초안을
+-- 이미 돌렸다면 재적용 전에 반드시 아래로 인덱스를 지우고 다시 만들어야 한다:
+--   drop index if exists reviews_user_target_unique;
 create unique index if not exists reviews_user_target_unique
   on reviews (user_id, target_type, target_id);
 
