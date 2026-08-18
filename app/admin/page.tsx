@@ -201,6 +201,11 @@ const TOOLS: { href: string; title: string; desc: string }[] = [
     title: '주유 타이밍 예측 정확도',
     desc: '예측 누적 적중률(hit-rate)·유종/방향별·최근 예측 추적(내부용).',
   },
+  {
+    href: '/admin/reviews',
+    title: '리뷰 신고 관리',
+    desc: '신고된 리뷰 대기열 확인 + 숨김/기각 처리(자동 숨김 없음, 사람이 직접 판단).',
+  },
 ];
 
 export default async function AdminPage() {
