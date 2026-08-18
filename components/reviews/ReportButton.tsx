@@ -2,8 +2,10 @@
 
 // 리뷰 신고 버튼 + 사유 선택 모달.
 // 신고 접수 즉시 그 리뷰는 신고자 본인 목록에서 사라진다(서버가 다음 조회부터 필터링).
-// 안내 없이 사라지면 "내가 삭제했나?" 오해가 생기므로, 성공 시 반드시 done 안내를 띄운 뒤
-// 부모(onReported)에게 알려 목록을 갱신시킨다.
+// 안내 없이 사라지면 "내가 삭제했나?" 오해가 생기므로, 성공 시 반드시 done 안내를 띄운다.
+// ⚠️ 목록 갱신(onReported)은 submit 성공 직후가 아니라 **다이얼로그를 닫을 때** 호출한다 —
+//    이 안내 자체가 그 리뷰의 <li> 서브트리 안에서 렌더되므로, submit 직후 바로 갱신하면
+//    리스트에서 카드가 사라지는 순간 안내도 함께 unmount 돼 사용자가 읽기도 전에 사라진다.
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
@@ -33,8 +35,12 @@ export function ReportButton({ reviewId, onReported }: Props) {
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 닫을 때만 목록을 갱신한다 — done 안내가 뜬 카드를 submit 직후 바로 지우면
+  // 안내 문구가 리뷰와 함께 사라져 버린다(사용자가 읽기도 전에). 확인 버튼/ESC/바깥 클릭
+  // 전부 이 close()를 거치므로 셋 다 "읽고 닫으면 그제서야 갱신"이 보장된다.
   const close = () => {
     if (busy) return;
+    if (done) onReported(reviewId); // 부모가 목록에서 제거 — 사용자가 안내를 확인한 뒤에만
     setOpen(false);
     setReason(null);
     setDetail('');
@@ -64,9 +70,12 @@ export function ReportButton({ reviewId, onReported }: Props) {
         body: JSON.stringify({ reason, detail: detail.trim() || undefined }),
       });
       if (!res.ok) throw new Error(await res.text());
-      setDone(true); // "신고했습니다. 이 리뷰는 회원님께 더 이상 표시되지 않습니다"
-      onReported(reviewId); // 부모가 목록에서 제거
-    } catch {
+      setDone(true); // "신고했습니다. 이 리뷰는 회원님께 더 이상 표시되지 않습니다" — 목록 갱신은 close()에서.
+    } catch (e) {
+      // 사용자에게는 일반화된 안내만 보여주고, 실제 원인은 콘솔에 남긴다 —
+      // review_reports 테이블이 아직 적용 전인 환경처럼 라이브로 관찰이 안 되는 실패 경로라
+      // 유일한 단서를 버리면 나중에 추적이 훨씬 어려워진다.
+      console.error('[ReportButton] report submit failed', e);
       setError(t('failed'));
     } finally {
       setBusy(false);
