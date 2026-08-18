@@ -51,7 +51,7 @@ const BADGE_DARK: Record<WashType, string> = {
 
 /**
  * 세차유형 뱃지 — 목록 아이템(sm)·상세 페이지(md)에서 공용.
- * 색만으로 구분하지 않도록 글리프 + 라벨(WASH_TYPE_LABEL)을 항상 병기한다(접근성/색각).
+ * 색만으로 구분하지 않도록 글리프 + 라벨(useWashTypeLabel)을 항상 병기한다(접근성/색각).
  *
  * forceLight=true면 dark: 변형 없이 라이트 팔레트만 렌더한다 — 상세 페이지처럼
  * OS 다크모드여도 화이트로 통일하는 라이트 전용 화면에서 다크 pill이 뜨는 것을 막는다.

@@ -71,17 +71,14 @@
     "fuelSavedToast": "給油記録を保存しました",
     "priceTier": {
       "cheap": {
-        "label": "良い",
         "mood": "良い",
         "hint": "安め"
       },
       "normal": {
-        "label": "普通",
         "mood": "普通",
         "hint": "普通"
       },
       "expensive": {
-        "label": "非常に悪い",
         "mood": "非常に悪い",
         "hint": "高め"
       }
@@ -546,7 +543,7 @@
     "notificationHeading": "通知",
     "pushLoginHint": "ログインするとプッシュ通知を設定できます。",
     "supportHeading": "サポート",
-    "kakaoChatLabel": "1:1お問い合わせ(カカオトークチャンネル)",
+    "kakaoChatLabel": "1:1お問い合わせ（カカオトークチャンネル）",
     "chatOpenAction": "チャットを開く",
     "contactLabel": "お問い合わせ",
     "emailSendAction": "メールを送る",
@@ -760,7 +757,7 @@
     }
   },
   "alert": {
-    "navigateAria": "ナビを開始",
+    "navigateAria": "経路案内開始",
     "priceTrend": {
       "closeAria": "通知を閉じる",
       "risingLabel": "この地域のガソリン価格が上昇中",

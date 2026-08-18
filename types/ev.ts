@@ -5,26 +5,6 @@
 export type ChargerTypeCode =
   | '01' | '02' | '03' | '04' | '05' | '06' | '07' | '08' | '09' | '10';
 
-/** 충전기 타입 코드 → 사람이 읽는 라벨 */
-export const CHARGER_TYPE_LABEL: Record<string, string> = {
-  '01': 'DC차데모',
-  '02': 'AC완속',
-  '03': 'DC차데모+AC3상',
-  '04': 'DC콤보',
-  '05': 'DC차데모+DC콤보',
-  '06': 'DC차데모+AC3상+DC콤보',
-  '07': 'AC3상',
-  '08': 'DC콤보(완속)',
-  '09': 'DC차데모+DC콤보',
-  '10': 'DC콤보+NACS',
-};
-
-/** 충전기 타입 코드 라벨(미지정 코드는 '기타(코드)'). */
-export function chargerTypeLabel(code?: string | null): string {
-  const c = String(code ?? '').trim();
-  return CHARGER_TYPE_LABEL[c] ?? (c ? `기타(${c})` : '기타');
-}
-
 /**
  * 급속/완속 구분.
  * - AC완속(02)/AC3상(07)/DC콤보(완속)(08)은 완속으로, 그 외 DC 계열은 급속으로 본다.
@@ -46,20 +26,6 @@ export function chargerSpeed(code?: string | null, outputKw?: number | null): Ch
 
 /** 충전기 상태 코드 (data.go.kr stat). */
 export type ChargerStatCode = '0' | '1' | '2' | '3' | '4' | '5';
-
-export const CHARGER_STAT_LABEL: Record<string, string> = {
-  '0': '알수없음',
-  '1': '통신이상',
-  '2': '사용가능',
-  '3': '충전중',
-  '4': '운영중지',
-  '5': '점검중',
-};
-
-export function chargerStatLabel(code?: string | null): string {
-  const c = String(code ?? '').trim();
-  return CHARGER_STAT_LABEL[c] ?? '알수없음';
-}
 
 /** 상태 코드 색 톤(배지). 사용가능=초록, 충전중=노랑, 그 외=회색. */
 export function chargerStatTone(code?: string | null): 'available' | 'busy' | 'off' {

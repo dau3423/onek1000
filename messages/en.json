@@ -63,7 +63,7 @@
     "depart": "From",
     "arrive": "To",
     "myLocationName": "My Location",
-    "selfService": "Self-serve",
+    "selfService": "Self-service",
     "available": "Available",
     "fastCharge": "Fast",
     "slowCharge": "Slow",
@@ -71,17 +71,14 @@
     "fuelSavedToast": "Fuel log saved",
     "priceTier": {
       "cheap": {
-        "label": "Good",
         "mood": "Good",
         "hint": "Cheaper"
       },
       "normal": {
-        "label": "Normal",
         "mood": "Normal",
         "hint": "Normal"
       },
       "expensive": {
-        "label": "Very Bad",
         "mood": "Very Bad",
         "hint": "Pricier"
       }
@@ -237,7 +234,7 @@
       "routeAria": "Cheapest along route",
       "myPageAdFreeAria": "My Page (ad-free)",
       "myPageAria": "My Page",
-      "login": "Log in",
+      "login": "Sign in",
       "adFreeUsing": "Ad-free active"
     },
     "carwashMarkerLabel": {
@@ -328,7 +325,7 @@
       "photoAlt": "Review photo",
       "justNow": "Just now",
       "loginRequired": "You need to sign in to write a review.",
-      "login": "Sign In",
+      "login": "Sign in",
       "photoMaxError": "You can upload up to {max} photos.",
       "photoTooLarge": "{name} — exceeds 5MB",
       "uploadFailed": "Upload failed: {message}",

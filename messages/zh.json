@@ -71,17 +71,14 @@
     "fuelSavedToast": "已保存加油记录",
     "priceTier": {
       "cheap": {
-        "label": "好",
         "mood": "好",
         "hint": "偏低"
       },
       "normal": {
-        "label": "一般",
         "mood": "一般",
         "hint": "一般"
       },
       "expensive": {
-        "label": "很差",
         "mood": "很差",
         "hint": "偏高"
       }
@@ -125,7 +122,7 @@
     "carwashFilter": {
       "all": "全部",
       "self": "自助",
-      "hand": "手工洗车",
+      "hand": "手洗",
       "auto": "自动"
     },
     "brandFilter": {
@@ -546,7 +543,7 @@
     "notificationHeading": "通知",
     "pushLoginHint": "登录后可设置推送通知。",
     "supportHeading": "支持",
-    "kakaoChatLabel": "1:1咨询(Kakao Talk频道)",
+    "kakaoChatLabel": "1:1咨询（Kakao Talk频道）",
     "chatOpenAction": "打开聊天",
     "contactLabel": "联系我们",
     "emailSendAction": "发送邮件",

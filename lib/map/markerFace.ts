@@ -13,10 +13,11 @@ export interface TierFaceMeta {
   color: string;
 }
 
-// 범례용 라벨/표정(좋음·보통·매우 나쁨)·힌트(싼 편·보통·비싼 편) 텍스트는 여기 두지 않는다.
-// 이 모듈은 React 컴포넌트가 아니라 useTranslations를 쓸 수 없으므로, 그 세 필드는
-// messages/{locale}.json의 map.priceTier.<tier>.{label,mood,hint}로 옮기고 소비처(MarkerLegend)가
+// 범례용 표정(좋음·보통·매우 나쁨)·힌트(싼 편·보통·비싼 편) 텍스트는 여기 두지 않는다.
+// 이 모듈은 React 컴포넌트가 아니라 useTranslations를 쓸 수 없으므로, 그 두 필드는
+// messages/{locale}.json의 map.priceTier.<tier>.{mood,hint}로 옮기고 소비처(MarkerLegend)가
 // tier 코드로 직접 번역한다. tier 코드(cheap/normal/expensive) 자체는 내부 식별자라 변경하지 않는다.
+// (.label 하위 키는 Task 12에서 삭제됨 — 소비자가 없었다.)
 export const TIER_FACE: Record<PriceTier, TierFaceMeta> = {
   cheap: { color: '#16A34A' },
   normal: { color: '#EAB308' },

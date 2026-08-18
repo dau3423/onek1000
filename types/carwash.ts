@@ -7,14 +7,6 @@ export type WashType = 'self' | 'hand' | 'auto' | 'unknown';
 /** 유형 필터 값. 'all'=미확인 포함 전체(FR-3 기본값). */
 export type CarwashTypeFilter = 'all' | 'self' | 'hand' | 'auto';
 
-/** 유형 → 사람이 읽는 라벨(팝업/범례 뱃지). unknown은 "유형 미확인"으로 정직 표기(AC-2.5). */
-export const WASH_TYPE_LABEL: Record<WashType, string> = {
-  self: '셀프세차',
-  hand: '손세차·디테일',
-  auto: '자동세차',
-  unknown: '유형 미확인',
-};
-
 /** 유형 → 핀/뱃지 색(design §2-3 팔레트). EV 초록·주유소 tier 색과 겹치지 않게 blue/violet/cyan/gray. */
 export const WASH_TYPE_COLOR: Record<WashType, string> = {
   self: '#2563EB',
