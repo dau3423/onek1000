@@ -138,6 +138,79 @@ DELETE    /api/reviews/[id]                  변경 없음(리뷰 UUID 기준이
 
 **바뀌지 않는 것**: 별점·본문 500자·사용자당 1개·수정 허용·`is_hidden`·사진 업로드 흐름.
 
+## 신고 · 모더레이션
+
+### 착수 전 실측: 모더레이션 도구는 존재하지 않았다
+
+`is_hidden` 컬럼은 있지만 **코드 전체에서 읽기만 하고 어디서도 쓰지 않는다**(조회 필터 한 줄이 전부).
+부적절한 리뷰를 내리려면 운영자가 Supabase SQL 편집기에서 직접 UPDATE 해야 했다. 따라서 이 작업은
+"신고 접수 추가"가 아니라 **모더레이션 기능의 신설**이다 — 신고를 받아도 처리할 화면이 없으면
+아무 일도 일어나지 않는다.
+
+### 동작 규칙
+
+1. **신고 즉시, 신고자에게만 그 리뷰가 보이지 않는다.** 불쾌한 것을 본 사람은 즉각 해결을 얻는다.
+2. **자동 전역 숨김은 하지 않는다.** N건 임계 자동 숨김은 악용 경로가 된다 — 이 앱은 리뷰가 업주
+   이해관계와 직결돼(가격·품질 평가) 불리한 리뷰를 조직적으로 내릴 동기가 일반 커뮤니티보다 강하다.
+   억울하게 숨겨진 리뷰의 작성자에게는 항의 창구조차 없다.
+3. **전역 숨김은 운영자가 `/admin` 에서 판단**한다. 운영자가 주기적으로 확인한다.
+
+### 스키마 `0041_review_reports.sql`
+
+```sql
+create table if not exists review_reports (
+  id          uuid primary key default gen_random_uuid(),
+  review_id   uuid not null references reviews(id) on delete cascade,
+  user_id     uuid not null references users(id) on delete cascade,
+  reason      text not null check (reason in ('spam','abuse','irrelevant','false_info','other')),
+  detail      text check (char_length(detail) <= 200),
+  resolved_at timestamptz,                 -- 운영자가 처리한 시각. null = 대기 중
+  created_at  timestamptz default now()
+);
+
+-- 한 사용자가 같은 리뷰를 여러 번 신고해도 1건
+create unique index if not exists review_reports_user_review_unique
+  on review_reports (review_id, user_id);
+
+-- 운영자 대기열: 미처리 신고를 최신순으로
+create index if not exists review_reports_open_idx
+  on review_reports (created_at desc) where resolved_at is null;
+
+-- 개인 숨김 조회용
+create index if not exists review_reports_user_idx on review_reports (user_id, review_id);
+```
+
+여기서는 **외래키를 건다.** 리뷰 테이블과 달리 대상이 하나(`reviews`)로 확정되고, 리뷰가 지워지면
+그 신고는 의미가 없으므로 `cascade` 가 정확한 동작이다. `reviews` 에서 FK 를 뺀 이유(대상 테이블이
+셋, EV 는 대상 행 자체가 없음)가 여기엔 적용되지 않는다.
+
+### 개인 숨김 구현
+
+리뷰 목록 조회 시, 로그인 사용자가 신고한 `review_id` 를 제외한다. 비로그인 사용자에게는 해당 없다.
+소규모라 `not in (select review_id from review_reports where user_id = ?)` 로 충분하다.
+개인 숨김은 신고 행에서 파생되므로 **영속적이며 별도 저장이 필요 없다.**
+
+### API
+
+```
+POST   /api/reviews/[id]/report        신고 접수 (로그인 필수, 본인 리뷰 신고 불가)
+GET    /api/admin/reviews/reports      대기 중 신고 목록 (관리자 전용)
+PATCH  /api/admin/reviews/[id]         { hidden: boolean } — 전역 숨김/해제
+POST   /api/admin/reviews/reports/[id]/dismiss   신고 기각(resolved_at 설정, 리뷰는 그대로)
+```
+
+관리자 API 는 기존 `ADMIN_EMAILS` 게이트를 그대로 쓴다(`lib/auth/admin.ts`).
+
+### 운영자 화면 `/admin/reviews`
+
+미처리 신고를 리뷰 단위로 묶어 보여준다: 리뷰 본문·사진·별점·장소, 신고 건수, 신고 사유 목록,
+신고자. 동작은 **숨김 / 기각** 두 가지, 그리고 이미 숨긴 리뷰의 **해제**.
+
+**신고자를 기록해 두는 이유**는 조직적 신고 식별이다. 같은 사용자들이 특정 장소의 리뷰만 반복해서
+신고하는 패턴은 데이터가 없으면 사후에도 알 수 없다.
+
+`/admin` 은 운영자 전용이라 **다국어 대상이 아니다**(기존 범위 결정과 동일). 한국어로 만든다.
+
 ## UI · 다국어
 
 **컴포넌트 일반화**
@@ -164,25 +237,31 @@ ReviewSection({ stationId, stationLat, stationLng })
 
 키를 세 벌로 늘리면 나중에 문구를 고칠 때 한 군데를 놓친다.
 
+**신고 UI 도 다국어 대상이다** — 신고 버튼, 사유 선택(스팸/욕설·비방/무관한 내용/허위 정보/기타),
+상세 입력, 완료 안내. 신고 직후 사용자에게는 그 리뷰가 목록에서 사라지므로, **왜 사라졌는지 알리는
+문구가 필요하다**(예: "신고했습니다. 이 리뷰는 회원님께 더 이상 표시되지 않습니다"). 안 그러면
+리뷰가 삭제된 것으로 오해한다. 운영자 화면(`/admin`)만 한국어 전용이다.
+
 **게이트**: 새 문구 전부 4개 로케일(ko/en/zh/ja)에 넣고 `i18n:scan` 0 유지. 영어에서 수량 뒤에 명사가
 오면 ICU `plural` 을 쓴다(`1 review` / `2 reviews`) — 같은 실수를 이미 한 번 고쳤다.
 
 ## 범위
 
-**포함**: 마이그레이션 0040, 통합 API 라우트 + 기존 라우트 위임, 컴포넌트 일반화, EV·세차장 상세
-페이지 배치, 카탈로그 키 이동 및 신규 문구 4개 언어.
+**포함**: 마이그레이션 0040(리뷰 다형화) + 0041(신고), 통합 API 라우트 + 기존 라우트 위임,
+컴포넌트 일반화, EV·세차장 상세 페이지 배치, 카탈로그 키 이동 및 신규 문구 4개 언어,
+**신고 접수 + 개인 숨김 + 운영자 모더레이션 화면**.
 
 **제외**
 - **"내 리뷰" 화면** — 지금도 없다. 통합 테이블이 이를 가능하게 하지만 이번 요청이 아니다(YAGNI).
-- **신고 기능** — 모더레이션은 `is_hidden` 수동 처리 그대로. 아래 리스크 참조.
 - **`station_review_stats` 제거** — 소비자 이전 후 별도 정리.
 - **소프트 삭제로의 sync 전환** — 근본 해결이지만 sync 3개와 조회 RPC 전부를 건드려야 하고 이번 범위 밖.
 
 ## 리스크 · 미해결
 
-- **모더레이션 부담이 3배가 된다.** 신고 기능이 없어 운영자가 직접 발견해야 하는데 리뷰 대상이 세
-  종류로 늘어난다. 사진까지 포함하므로 부적절한 이미지 노출 위험도 같이 늘어난다. 이번 범위 밖이지만
-  리뷰량이 늘면 신고 기능이 다음 우선순위가 될 가능성이 높다.
+- **운영자가 볼 때까지 부적절한 내용이 전체에는 노출된다.** 자동 숨김이 없으므로 전역 숨김은 운영자
+  주기 확인에 달려 있다. 신고자 본인에게는 즉시 사라지므로 가장 불쾌한 당사자는 즉각 해결되지만,
+  다른 사용자에게는 남는다. 확인 주기가 길어지면 이 창이 커진다 — 운영 중 체감되면 웹푸시 알림(인프라
+  이미 있음)을 붙이는 것이 다음 수단이다.
 - **고아 리뷰**: FK 가 없으므로 영영 사라진 장소(철거된 충전기 등)의 리뷰가 DB 에 남는다. 화면에는
   나오지 않아 무해하나, 나중에 "내 리뷰" 화면을 만들면 죽은 링크로 보인다. 그때 "없어진 장소" 표기로
   처리한다.
