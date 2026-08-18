@@ -577,7 +577,7 @@
       "chargeBadge": "充電",
       "editAction": "編集",
       "loadMoreAction": "もっと見る",
-      "amountLabel": "金額(円)",
+      "amountLabel": "金額(₩)",
       "kwhLabel": "充電量(kWh)",
       "litersLabel": "給油量(L)",
       "odometerLabel": "走行距離(km)",

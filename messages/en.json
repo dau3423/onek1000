@@ -83,7 +83,7 @@
       }
     },
     "route": {
-      "lowestCount": "· {count} lowest-price stations",
+      "lowestCount": "· {count, plural, one {# lowest-price station} other {# lowest-price stations}}",
       "clearAria": "Clear route"
     },
     "gps": {
@@ -181,8 +181,8 @@
       "expand": "Expand ▴",
       "tabArea": "This Area",
       "tabNearby": "Nearby {radius}",
-      "titleEvArea": "{count} charging stations in this area",
-      "titleCarwashArea": "{count} car washes in this area",
+      "titleEvArea": "{count, plural, one {# charging station in this area} other {# charging stations in this area}}",
+      "titleCarwashArea": "{count, plural, one {# car wash in this area} other {# car washes in this area}}",
       "titleCarwashOnlyNearby": "Lowest car-wash-available prices within {radius}",
       "titleCarwashOnlyArea": "Top {count} lowest car-wash-available prices in this area",
       "titleNearby": "Top {count} lowest prices within {radius}",
@@ -298,7 +298,7 @@
       "priceAutoFillHint": "The unit price is auto-filled with the current price. You can edit it later.",
       "editHintFuelLog": "You can edit the amount and fuel volume in My Page > Fuel Log.",
       "myFuelLogs": "My Fuel Log",
-      "myFuelLogsCount": "{count} logs",
+      "myFuelLogsCount": "{count, plural, one {# log} other {# logs}}",
       "chargeLabel": "Charge",
       "visitOnly": "Visit only",
       "editHintMyLogs": "You can edit the amount and fuel volume in My Page > My Logs."
@@ -307,7 +307,7 @@
       "loadFailed": "Failed to load reviews: {message}",
       "heading": "Reviews",
       "writeReview": "Write a Review",
-      "count": "{count} reviews",
+      "count": "{count, plural, one {# review} other {# reviews}}",
       "none": "No reviews yet. Be the first to leave one.",
       "confirmDelete": "Delete this review?",
       "deleteFailed": "Delete failed: {message}",
@@ -425,7 +425,7 @@
     "editHint": "You can edit the value later from My Page.",
     "editHintDone": "You can edit the charge amount and cost in My Page > My Logs.",
     "myLogsTitle": "My Charging Log",
-    "myLogsCount": "{count} logs",
+    "myLogsCount": "{count, plural, one {# log} other {# logs}}",
     "chargeLabel": "Charge",
     "visitOnly": "Visit only",
     "myLogsEditHint": "You can edit the amount and charge volume in My Page > My Logs."
@@ -489,7 +489,7 @@
     "searchingLabel": "Searching...",
     "findCheapestButton": "Find cheapest along route",
     "recentPlacesHeading": "Recent & frequent places",
-    "recentPlaceTitle": "{name} · {count} visits",
+    "recentPlaceTitle": "{name} · {count, plural, one {# visit} other {# visits}}",
     "recentPlaceCount": "×{count}",
     "deleteAria": "Remove {name}",
     "emptyHint": "We'll find gas stations within 2km of your road route.",
@@ -572,7 +572,7 @@
       "mapAriaLabel": "Map of stations you've filled up at",
       "reportLinkLabel": "Monthly fuel cost · economy · savings report",
       "statCountLabel": "Logs",
-      "countValue": "{count} logs",
+      "countValue": "{count, plural, one {# log} other {# logs}}",
       "detailAria": "View details for {name}",
       "chargeBadge": "Charge",
       "editAction": "Edit",
@@ -596,7 +596,7 @@
       "monthlyChartTitle": "Monthly fuel cost",
       "totalLitersLabel": "Total fuel volume",
       "fuelCountLabel": "Fill-ups",
-      "countValue": "{count} times",
+      "countValue": "{count, plural, one {# time} other {# times}}",
       "economyHintNoOdometer": "Enter your odometer reading (km) when editing a log to calculate fuel economy (km/L).",
       "economyHintNeedMore": "Once you have 2 or more consecutive logs with mileage and fuel volume, we'll show your average economy.",
       "evSectionTitle": "EV Charging (reference)",
