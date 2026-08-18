@@ -13,6 +13,8 @@ import { useLocale, useTranslations } from 'next-intl';
 import { track } from '@/lib/analytics';
 import { DropletIcon, ChevronRightIcon } from '@/components/icons';
 import type { CarwashGrade } from '@/lib/weather/kma';
+import type { SidoCode } from '@/types/station';
+import { useSidoLabel } from '@/lib/i18n/labels';
 
 // 조회 API 응답 계약(lib/weather/kma 의 CarwashIndexResult 와 동일 필드).
 interface CarwashDay {
@@ -24,7 +26,10 @@ interface CarwashDay {
   dustGrade: string | null;
 }
 interface CarwashIndexResponse {
-  region: string;
+  region: SidoCode;
+  // API가 한국어 고정 라벨(SIDO_NAME[region])을 얹어 보내지만, 이 화면(en/zh/ja 포함)에서는
+  // 쓰지 않는다 — region 코드로 useSidoLabel() 훅을 통해 로케일에 맞는 라벨을 직접 뽑는다.
+  // API 응답 계약 자체는 유지(다른 소비자 대비)하되 필드는 읽지 않는다.
   regionName: string;
   days: CarwashDay[];
   best: CarwashDay | null;
@@ -80,6 +85,7 @@ const SEOUL = { lat: 37.5665, lng: 126.9780 };
 export function CarwashDayCard({ onCta, lat, lng }: Props) {
   const t = useTranslations('carwash');
   const locale = useLocale();
+  const sidoLabel = useSidoLabel();
   const gradeLabel = (grade: CarwashGrade): string => t(`grade.${grade}`);
   const [data, setData] = useState<CarwashIndexResponse | null>(null);
   const [hidden, setHidden] = useState(false);
@@ -113,7 +119,8 @@ export function CarwashDayCard({ onCta, lat, lng }: Props) {
   // graceful 미렌더: 숨김 / 데이터 없음 / 지수 없음(배치 미실행·실패).
   if (hidden || !data || data.days.length === 0 || !data.best) return null;
 
-  const { days, best, regionName } = data;
+  const { days, best, region } = data;
+  const regionLabel = sidoLabel(region);
   const allBad = days.every((d) => d.grade === 'bad');
   const today = kstToday();
 
@@ -169,7 +176,7 @@ export function CarwashDayCard({ onCta, lat, lng }: Props) {
       {/* 헤더행: 좌 라벨(지역 기준) / 우 오늘 하루 숨김 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
-          <DropletIcon className="h-4 w-4" />{t('regionBasis', { region: regionName })}
+          <DropletIcon className="h-4 w-4" />{t('regionBasis', { region: regionLabel })}
         </div>
         <button
           type="button"
