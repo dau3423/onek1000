@@ -8,7 +8,8 @@
     "loading": "로딩 중…",
     "cancel": "취소",
     "retry": "다시 시도",
-    "favoriteAria": "즐겨찾기"
+    "favoriteAria": "즐겨찾기",
+    "changeLanguage": "언어 변경"
   },
   "labels": {
     "product": {

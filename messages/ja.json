@@ -8,7 +8,8 @@
     "retry": "再試行",
     "appName": "1000ウォンガソリンスタンド",
     "backAria": "戻る",
-    "favoriteAria": "お気に入り"
+    "favoriteAria": "お気に入り",
+    "changeLanguage": "言語を変更"
   },
   "labels": {
     "product": {

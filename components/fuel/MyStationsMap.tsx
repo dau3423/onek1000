@@ -20,7 +20,10 @@ export function MyStationsMap({ stations }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<kakao.maps.Map | null>(null);
   const overlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  // 실패 여부만 state로 두고 문구는 렌더 시 t()로 매번 다시 얻는다 — 문자열 자체를 state에 담으면
+  // 헤더 언어 전환(router.refresh) 후에도 마운트 시점 로케일 그대로 굳어 남는다(마운트-1회 effect라
+  // 재실행되지 않음. t를 deps에서 뺀 이유는 초기화 effect 재실행 방지이지, 문구 갱신 포기가 아니다).
+  const [mapLoadFailed, setMapLoadFailed] = useState(false);
   // 지도 초기화는 async라 마운트 시점엔 mapRef가 null. ref 변경은 effect 재실행을 트리거하지 않으므로,
   // 준비 완료를 state로 알려 핀 렌더 effect가 지도 준비 후 재실행되게 한다(메인 KakaoMap의 ready 패턴과 동일).
   const [mapReady, setMapReady] = useState(false);
@@ -39,7 +42,7 @@ export function MyStationsMap({ stations }: Props) {
         mapRef.current = map;
         setMapReady(true);
       } catch {
-        if (alive) setError(t('fuelLog.mapLoadError'));
+        if (alive) setMapLoadFailed(true);
       }
     })();
     return () => {
@@ -101,10 +104,10 @@ export function MyStationsMap({ stations }: Props) {
     }
   }, [stations, router, mapReady]);
 
-  if (error) {
+  if (mapLoadFailed) {
     return (
       <div className="flex h-[420px] items-center justify-center rounded-xl border border-gray-100 bg-gray-50 text-sm text-gray-500">
-        {error}
+        {t('fuelLog.mapLoadError')}
       </div>
     );
   }

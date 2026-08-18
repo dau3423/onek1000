@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import { BETA_FREE } from '@/lib/flags';
 import { SettingsIcon } from '@/components/icons';
+import { LocaleSwitcher } from '@/components/i18n/LocaleSwitcher';
 
 export function Header() {
   const t = useTranslations('map.header');
@@ -34,6 +35,8 @@ export function Header() {
         <span className="truncate text-sm font-bold text-gray-900 sm:text-base">{tCommon('appName')}</span>
       </Link>
 
+      {/* 언어 전환 추가로 아이콘이 4개가 됐다. 44px(터치 타깃 최소)로 통일해 360px에서도
+          앱 이름이 잘리지 않게 한다 — 이전에 48px 4개로 "1000냥 주..." 잘림이 났던 전례와 동일 원인. */}
       <div className="flex shrink-0 items-center gap-1">
         {/* 관리자 전용 콘솔 진입 — 관리자(ADMIN_EMAILS)에게만 노출. 작은 배지형 링크. */}
         {isAdmin && (
@@ -47,24 +50,25 @@ export function Header() {
             <span className="hidden sm:inline">{t('adminLabel')}</span>
           </Link>
         )}
+        <LocaleSwitcher />
         <Link
           href="/search"
           aria-label={t('searchAria')}
-          className="tap-press flex h-12 w-12 items-center justify-center rounded-full hover:bg-gray-100"
+          className="tap-press flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-100"
         >
           <Image src="/icons/icon_search.png" alt="" width={30} height={30} />
         </Link>
         <Link
           href="/route"
           aria-label={t('routeAria')}
-          className="tap-press flex h-12 w-12 items-center justify-center rounded-full hover:bg-gray-100"
+          className="tap-press flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-100"
           title={t('routeAria')}
         >
           <Image src="/icons/icon_run.png" alt="" width={30} height={30} />
         </Link>
         <Link
           href={signedIn ? '/my' : '/auth/sign-in'}
-          className="tap-press flex h-12 w-12 items-center justify-center rounded-full hover:bg-gray-100"
+          className="tap-press flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-100"
           aria-label={signedIn ? (isPremium ? t('myPageAdFreeAria') : t('myPageAria')) : t('login')}
           title={signedIn && isPremium ? t('adFreeUsing') : (data?.user?.email ?? t('login'))}
         >

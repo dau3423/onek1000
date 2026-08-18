@@ -8,7 +8,8 @@
     "retry": "重试",
     "appName": "千元加油站",
     "backAria": "返回",
-    "favoriteAria": "收藏"
+    "favoriteAria": "收藏",
+    "changeLanguage": "更改语言"
   },
   "labels": {
     "product": {
