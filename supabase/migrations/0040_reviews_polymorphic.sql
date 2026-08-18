@@ -24,9 +24,17 @@ alter table reviews add constraint reviews_target_type_chk
 
 -- 사용자당 대상당 1개. coalesce 덕분에 구행(station_id만)과 신행(둘 다)이 같은 값으로 접혀
 -- 전환기에 섞여 있어도 중복이 정확히 걸린다.
-drop index if exists reviews_user_station_unique;
 create unique index if not exists reviews_user_target_unique
   on reviews (user_id, target_type, coalesce(target_id, station_id));
+
+-- 구버전 코드의 upsert 가 onConflict: 'user_id,station_id' 를 쓴다. Postgres 의 ON CONFLICT 는
+-- 정확히 그 컬럼 조합의 유니크 인덱스를 요구하므로, 이 인덱스를 지우면 마이그레이션이 코드보다
+-- 먼저 적용되는 순서에서 주유소 리뷰 작성이 전부 42P10 으로 실패한다.
+-- ev/carwash 행은 station_id 가 null 이고 Postgres 는 유니크 인덱스에서 NULL 을 서로 다르게 보므로
+-- 이 인덱스가 그 행들을 제약하지 않는다 — 두 인덱스는 공존해도 충돌하지 않는다.
+-- 구버전 라우트(app/api/stations/[id]/reviews/route.ts)를 제거한 뒤 별도로 정리한다.
+create unique index if not exists reviews_user_station_unique
+  on reviews (user_id, station_id);
 
 create index if not exists reviews_target_idx
   on reviews (target_type, coalesce(target_id, station_id), created_at desc)
