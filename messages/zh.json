@@ -491,7 +491,8 @@
     "cellAriaPop": "，降水概率{pop}%",
     "cellAriaDust": "，细颗粒物 {dust}",
     "rain": "降水 {pop}%",
-    "rainUnknown": "降水 —"
+    "rainUnknown": "降水 —",
+    "lockedTitle": "适合洗车的日子"
   },
   "search": {
     "backAria": "返回",
@@ -788,6 +789,9 @@
       "confirmPasswordPlaceholder": "确认新密码",
       "submitting": "修改中...",
       "submitButton": "修改密码"
+    },
+    "loginGate": {
+      "cta": "登录后查看"
     }
   },
   "alert": {

@@ -491,7 +491,8 @@
     "cellAriaPop": ", rain chance {pop}%",
     "cellAriaDust": ", fine dust {dust}",
     "rain": "Rain {pop}%",
-    "rainUnknown": "Rain —"
+    "rainUnknown": "Rain —",
+    "lockedTitle": "Good day to wash your car"
   },
   "search": {
     "backAria": "Back",
@@ -788,6 +789,9 @@
       "confirmPasswordPlaceholder": "Confirm new password",
       "submitting": "Changing...",
       "submitButton": "Change password"
+    },
+    "loginGate": {
+      "cta": "Sign in to view"
     }
   },
   "alert": {

@@ -491,7 +491,8 @@
     "cellAriaPop": ", 강수확률 {pop}%",
     "cellAriaDust": ", 미세먼지 {dust}",
     "rain": "강수 {pop}%",
-    "rainUnknown": "강수 —"
+    "rainUnknown": "강수 —",
+    "lockedTitle": "세차하기 좋은 날"
   },
   "search": {
     "backAria": "뒤로 가기",
@@ -788,6 +789,9 @@
       "confirmPasswordPlaceholder": "새 비밀번호 확인",
       "submitting": "변경 중...",
       "submitButton": "비밀번호 변경"
+    },
+    "loginGate": {
+      "cta": "로그인하고 확인"
     }
   },
   "alert": {

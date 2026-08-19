@@ -1032,8 +1032,14 @@ export default function HomePage() {
         {/* 내 위치 / 따라가기 버튼 — 누르면 따라가기 ON(위치 자동 추적), 다시 누르면 즉시 내 위치로 재이동 */}
         <button
           onClick={() => {
-            // 내 위치 이동/따라가기는 비회원도 사용 가능(가입 전 가치 체험).
-            // 위치 권한은 브라우저 단에서 처리되므로 로그인 불필요.
+            // 내 위치 이동/따라가기는 회원 전용 — 비로그인은 로그인 화면으로 보낸다.
+            // requireAuth 를 쓰지 않는 이유: 그 헬퍼는 가드 통과 시 알림 권한 요청까지 함께 하므로,
+            // 위치 버튼을 눌렀는데 시스템 알림 권한 팝업이 뜨는 흐름이 된다.
+            // 세션 확인 중(loading)에는 막지 않는다(깜빡임/오차단 방지 — 이 화면의 일관된 규칙).
+            if (authStatus === 'unauthenticated') {
+              signIn(undefined, { callbackUrl: '/' });
+              return;
+            }
             setGeoEnabled(true);
             geo.request();
             // 따라가기 모드 ON: 이후 위치 갱신마다 지도가 내 위치를 따라간다.

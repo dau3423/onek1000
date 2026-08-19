@@ -4,12 +4,16 @@
 //  - /api/carwash-index 를 조회해 이번 주(오늘~D+3) 세차 지수를 보여준다.
 //  - 데이터 없음/오늘 하루 숨김이면 스스로 미렌더(graceful). 지도 아래 문서 흐름에 배치.
 //  - CTA 탭 시 계측(carwash_card_click) 후 부모 콜백(onCta)로 세차 칩 활성/스크롤/시트 열기를 위임.
+//  - 회원 전용 값: 비로그인이면 제목만 남기고 지수는 블러 + 로그인 유도(LoginBlurGate).
+//    이때 /api/carwash-index 호출 자체를 하지 않는다 — 블러는 CSS라 값을 DOM에 넣으면 걷어낼 수 있다.
 //
 // 데이터 페칭: 코드베이스에 react-query 미도입 → ForecastCard 와 동일하게
 //   useEffect + fetch + AbortController 패턴을 따른다(불필요 의존성 추가 회피).
 
 import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { useLocale, useTranslations } from 'next-intl';
+import { LoginBlurGate } from '@/components/auth/LoginBlurGate';
 import { track } from '@/lib/analytics';
 import { DropletIcon, ChevronRightIcon } from '@/components/icons';
 import type { CarwashGrade } from '@/lib/weather/kma';
@@ -82,11 +86,17 @@ const GRADE_CLASS: Record<CarwashGrade, string> = {
 
 const SEOUL = { lat: 37.5665, lng: 126.9780 };
 
+// 카드 껍데기 클래스 — 잠금 상태와 정상 상태가 같은 크기·테두리를 갖도록 공유한다.
+const CARD_CLASS =
+  'mx-3 mb-3 mt-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900';
+
 export function CarwashDayCard({ onCta, lat, lng }: Props) {
   const t = useTranslations('carwash');
   const locale = useLocale();
   const sidoLabel = useSidoLabel();
   const gradeLabel = (grade: CarwashGrade): string => t(`grade.${grade}`);
+  const { status: authStatus } = useSession();
+  const locked = authStatus === 'unauthenticated';
   const [data, setData] = useState<CarwashIndexResponse | null>(null);
   const [hidden, setHidden] = useState(false);
 
@@ -101,7 +111,9 @@ export function CarwashDayCard({ onCta, lat, lng }: Props) {
 
   // 세차 지수 조회 — 좌표 있으면 사용, 없으면 서울 폴백(위치를 저장하지 않는 일회성 조회).
   useEffect(() => {
-    if (hidden) return;
+    // 세션 확인 중(loading)에도 호출하지 않는다 — 비로그인 사용자에게 실제 값이 잠깐 보였다가
+    // 잠기는 것을 막기 위해, 인증이 확정된 뒤에만 조회한다.
+    if (hidden || authStatus !== 'authenticated') return;
     const q = new URLSearchParams({
       lat: String(lat ?? SEOUL.lat),
       lng: String(lng ?? SEOUL.lng),
@@ -114,10 +126,38 @@ export function CarwashDayCard({ onCta, lat, lng }: Props) {
         if (e?.name !== 'AbortError') setData(null);
       });
     return () => ac.abort();
-  }, [hidden, lat, lng]);
+  }, [hidden, lat, lng, authStatus]);
 
-  // graceful 미렌더: 숨김 / 데이터 없음 / 지수 없음(배치 미실행·실패).
-  if (hidden || !data || data.days.length === 0 || !data.best) return null;
+  // "오늘 하루 숨김"은 로그인 여부와 무관하게 존중한다.
+  if (hidden) return null;
+
+  // 비로그인: 제목 줄만 선명하게 두고 값 영역은 블러 + 로그인 유도.
+  // 실제 지수는 받아오지 않았으므로 아래는 값이 아니라 자리표시자다.
+  if (locked) {
+    return (
+      <section aria-label={t('dayCardAria')} className={CARD_CLASS}>
+        <div className="flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+          <DropletIcon className="h-4 w-4" />{t('lockedTitle')}
+        </div>
+        <LoginBlurGate>
+          <div className="mt-2">
+            <div className="h-5 w-2/3 rounded bg-gray-200 dark:bg-gray-700" />
+            <div className="mt-2 h-3.5 w-5/6 rounded bg-gray-100 dark:bg-gray-800" />
+            <div className="mt-3 grid grid-cols-4 gap-1.5">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="h-[68px] rounded-xl bg-gray-100 dark:bg-gray-800" />
+              ))}
+            </div>
+            <div className="mt-3 h-11 rounded-xl bg-gray-200 dark:bg-gray-700" />
+          </div>
+        </LoginBlurGate>
+      </section>
+    );
+  }
+
+  // graceful 미렌더: 데이터 없음 / 지수 없음(배치 미실행·실패). 세션 확인 중(loading)도 여기로 온다
+  // — 데이터를 아직 받지 않았으므로 기존의 "데이터 도착 전 미렌더"와 같은 상태다.
+  if (!data || data.days.length === 0 || !data.best) return null;
 
   const { days, best, region } = data;
   const regionLabel = sidoLabel(region);
@@ -171,7 +211,7 @@ export function CarwashDayCard({ onCta, lat, lng }: Props) {
   return (
     <section
       aria-label={t('dayCardAria')}
-      className="mx-3 mb-3 mt-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
+      className={CARD_CLASS}
     >
       {/* 헤더행: 좌 라벨(지역 기준) / 우 오늘 하루 숨김 */}
       <div className="flex items-center justify-between">

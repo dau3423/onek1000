@@ -509,6 +509,16 @@ export function SparkleIcon({ className }: IconProps) {
   );
 }
 
+// 비로그인 잠금 표시(LoginBlurGate) — 자물쇠. 잠긴 콘텐츠 위 오버레이 버튼에서만 쓴다.
+export function LockIcon({ className }: IconProps) {
+  return (
+    <Stroke className={className}>
+      <rect x="4" y="10" width="16" height="11" rx="2" />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    </Stroke>
+  );
+}
+
 /**
  * TOP10 핀 반짝이 — React 컴포넌트가 아니라 KakaoMap 마커 빌더(HTML 문자열)에 삽입하는
  * SVG 마크업 문자열. 12px · fill="currentColor"라 감싸는 span의 CSS color를 상속한다.

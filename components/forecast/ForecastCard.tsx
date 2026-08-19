@@ -2,7 +2,9 @@
 
 // 주유 타이밍 예측 — 메인 예측 카드.
 // 현재 선택 유종(product) 기준으로 /api/forecast 조회 → 방향 배지 + 한 줄 추천 + 추이 그래프(탭 시 확장).
-//  - 데이터 출처: 우리 DB(price_forecast / domestic_price_daily)만. 비로그인 포함 전체 사용자.
+//  - 데이터 출처: 우리 DB(price_forecast / domestic_price_daily)만.
+//  - 회원 전용 값: 비로그인이면 제목만 남기고 방향/추천/신뢰도는 블러 + 로그인 유도(LoginBlurGate).
+//    이때 /api/forecast 호출 자체를 하지 않는다 — 블러는 CSS라 값을 DOM에 넣으면 걷어낼 수 있다.
 //  - 정확도(hit-rate)는 노출하지 않는다(내부 전용). 여기선 신뢰도%만 표시.
 //  - 저신뢰(<LOW_CONF_PCT)면 단정 카피 대신 '약한 신호' 톤 + 배지/색을 흐리게(과장 금지).
 //  - 신호 없음/결측(비대상 유종·USE_MOCK·DB 미설정)이면 카드 자체를 렌더하지 않음(graceful).
@@ -11,7 +13,9 @@
 //   useEffect + fetch 패턴을 따른다(코드베이스에 react-query 미도입 — 불필요 의존성 추가 회피).
 
 import { useEffect, useRef, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
+import { LoginBlurGate } from '@/components/auth/LoginBlurGate';
 import { track } from '@/lib/analytics';
 import { FuelIcon } from '@/components/icons';
 import type { ProductCode, SidoCode } from '@/types/station';
@@ -76,6 +80,10 @@ interface Props {
 // 이 미만이면 '약한 신호' 톤(단정 금지, 배지/색 흐리게). 최신 모델 신뢰도가 낮은 편(0~35%)이라 중요.
 const LOW_CONF_PCT = 20;
 
+// 카드 껍데기 클래스 — 잠금 상태와 정상 상태가 같은 크기·테두리를 갖도록 공유한다.
+const CARD_CLASS =
+  'mx-3 mb-3 mt-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900';
+
 // 방향별 스타일(색). 마커 톤(상승=경고, 하락=차분한 파랑, 보합=중립)과 일관.
 const DIR_STYLE: Record<Direction, {
   arrow: string;
@@ -114,6 +122,8 @@ export function ForecastCard({ product, region = 'nation' }: Props) {
   const dirCopy = useDirCopy();
   const productLabel = useProductLabel();
   const sidoLabel = useSidoLabel();
+  const { status: authStatus } = useSession();
+  const locked = authStatus === 'unauthenticated';
   const [data, setData] = useState<ForecastResponse | null>(null);
   const [expanded, setExpanded] = useState(false);
   // 지역 전환은 내부 상태로 관리(prop은 초기값으로만 사용). 변경 시 자동 재조회.
@@ -124,6 +134,9 @@ export function ForecastCard({ product, region = 'nation' }: Props) {
   const pendingScrollRef = useRef(false);
 
   useEffect(() => {
+    // 세션 확인 중(loading)에도 호출하지 않는다 — 비로그인 사용자에게 실제 전망이 잠깐 보였다가
+    // 잠기는 것을 막기 위해, 인증이 확정된 뒤에만 조회한다.
+    if (authStatus !== 'authenticated') return;
     const ac = new AbortController();
     const params = new URLSearchParams({ product, region: selectedRegion });
     fetch(`/api/forecast?${params}`, { signal: ac.signal })
@@ -133,7 +146,7 @@ export function ForecastCard({ product, region = 'nation' }: Props) {
         if (e?.name !== 'AbortError') setData(null);
       });
     return () => ac.abort();
-  }, [product, selectedRegion]);
+  }, [product, selectedRegion, authStatus]);
 
   // 딥링크 자동 펼침 + 스크롤 — 미니카드/푸시가 /?forecast=1 로 진입하면 추이 그래프를 펼치고
   //   카드를 화면으로 끌어온다. 카드가 메인 첫 화면(지도) 아래 흐름에 있어 below-the-fold이기 때문.
@@ -164,6 +177,32 @@ export function ForecastCard({ product, region = 'nation' }: Props) {
     pendingScrollRef.current = false;
     return () => cancelAnimationFrame(raf);
   }, [hasLatest]);
+  // 비로그인: 제목 줄만 선명하게 두고 값 영역은 블러 + 로그인 유도.
+  // 전망을 받아오지 않았으므로 아래는 값이 아니라 자리표시자다.
+  // (로그인 후 그 유종·지역에 전망이 없으면 카드가 사라질 수 있다 — 전국 전망은 상시 존재해 드문 경우.)
+  if (locked) {
+    return (
+      <section className={CARD_CLASS}>
+        <div className="flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+          <FuelIcon className="h-4 w-4" />{t('cardTitle', { product: productLabel(product) })}
+        </div>
+        <LoginBlurGate>
+          <div className="mt-2 flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="h-5 w-24 rounded-full bg-gray-200 dark:bg-gray-700" />
+              <div className="mt-2 h-4 w-4/5 rounded bg-gray-100 dark:bg-gray-800" />
+            </div>
+            <div className="shrink-0 space-y-1">
+              <div className="h-6 w-12 rounded bg-gray-200 dark:bg-gray-700" />
+              <div className="h-2.5 w-12 rounded bg-gray-100 dark:bg-gray-800" />
+            </div>
+          </div>
+          <div className="mt-3 h-3 w-2/3 rounded bg-gray-100 dark:bg-gray-800" />
+        </LoginBlurGate>
+      </section>
+    );
+  }
+
   // graceful 분기:
   //  - latest 있으면 정상 카드.
   //  - latest 없고 지역(시도) 선택 중이면 '데이터 축적 중' 안내 + 전국 전환 버튼(빈 화면 금지).
@@ -172,7 +211,7 @@ export function ForecastCard({ product, region = 'nation' }: Props) {
     if (selectedRegion !== 'nation') {
       const sidoName = sidoLabel(selectedRegion as SidoCode);
       return (
-        <section className="mx-3 mb-3 mt-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        <section className={CARD_CLASS}>
           <div className="flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
             <FuelIcon className="h-4 w-4" />{t('cardTitle', { product: productLabel(product) })}
           </div>
@@ -214,7 +253,7 @@ export function ForecastCard({ product, region = 'nation' }: Props) {
     : '';
 
   return (
-    <section ref={cardRef} className="mx-3 mb-3 mt-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <section ref={cardRef} className={CARD_CLASS}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
