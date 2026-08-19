@@ -2,19 +2,23 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useTranslations, useLocale } from 'next-intl';
 import { StarRating } from './StarRating';
+import { ReportButton } from './ReportButton';
 import type { Review } from '@/types/review';
 
 interface Props {
   reviews: Review[];
   onDeleted?: (id: string) => void;
+  onReported?: (id: string) => void;
 }
 
-export function ReviewList({ reviews, onDeleted }: Props) {
-  const t = useTranslations('station.review');
+export function ReviewList({ reviews, onDeleted, onReported }: Props) {
+  const t = useTranslations('review');
   const locale = useLocale();
   const router = useRouter();
+  const { status } = useSession();
   const [openImage, setOpenImage] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -63,13 +67,22 @@ export function ReviewList({ reviews, onDeleted }: Props) {
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-sm font-semibold text-gray-900">
-                    {displayName}
-                  </span>
-                  <span className="text-[11px] text-gray-400">
-                    {formatRelative(r.createdAt, locale, t('justNow'))}
-                  </span>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="truncate text-sm font-semibold text-gray-900">
+                      {displayName}
+                    </span>
+                    <span className="text-[11px] text-gray-400">
+                      {formatRelative(r.createdAt, locale, t('justNow'))}
+                    </span>
+                  </div>
+                  {/* 본인 리뷰는 신고 불가(서버 400)라 렌더하지 않고, 비로그인은 눌러도 401이라 숨긴다 */}
+                  {!r.isMine && status === 'authenticated' && (
+                    <ReportButton
+                      reviewId={r.id}
+                      onReported={(id) => onReported?.(id)}
+                    />
+                  )}
                 </div>
                 <div className="mt-0.5">
                   <StarRating value={r.rating} size="sm" readOnly />

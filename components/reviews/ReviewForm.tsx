@@ -15,12 +15,21 @@ import {
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { distanceMeters } from '@/lib/map/geo';
 import { PinIcon, CheckIcon, CameraIcon, CloseIcon } from '@/components/icons';
+import type { PlaceType } from '@/types/review';
+
+// 장소 종류별 상세 페이지 경로. 로그인 복귀(callbackUrl) 용 — 종류가 늘어나면 여기 한 줄만 추가한다.
+const PLACE_DETAIL_PATH: Record<PlaceType, string> = {
+  gas: '/station',
+  ev: '/ev',
+  carwash: '/carwash',
+};
 
 interface Props {
-  stationId: string;
-  /** 주유소 좌표 — 있으면 작성 전에 클라이언트가 거리를 미리 보여주고 차단(서버가 최종 검증). */
-  stationLat?: number;
-  stationLng?: number;
+  targetType: PlaceType;
+  targetId: string;
+  /** 대상 장소 좌표 — 있으면 작성 전에 클라이언트가 거리를 미리 보여주고 차단(서버가 최종 검증). */
+  lat?: number;
+  lng?: number;
   onCreated?: () => void;
   onCancel?: () => void;
 }
@@ -35,8 +44,8 @@ function fmtDist(m: number): string {
   return m < 1000 ? `${Math.round(m)}m` : `${(m / 1000).toFixed(1)}km`;
 }
 
-export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCancel }: Props) {
-  const t = useTranslations('station.review');
+export function ReviewForm({ targetType, targetId, lat, lng, onCreated, onCancel }: Props) {
+  const t = useTranslations('review');
   const tCommon = useTranslations('common');
   const { status } = useSession();
   const router = useRouter();
@@ -52,16 +61,16 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 현재 위치 ↔ 주유소 거리 + 작성 가능 여부(주유소 좌표가 있을 때만 사전 판정).
+  // 현재 위치 ↔ 대상 장소 거리 + 작성 가능 여부(대상 좌표가 있을 때만 사전 판정).
   const allowedM =
     REVIEW_GEOFENCE_M +
     Math.min(geo.coords?.accuracy && geo.coords.accuracy > 0 ? geo.coords.accuracy : 0, REVIEW_GEOFENCE_ACCURACY_CAP_M);
   const distanceM = useMemo(() => {
-    if (stationLat == null || stationLng == null || !geo.coords) return null;
-    return distanceMeters(geo.coords.lat, geo.coords.lng, stationLat, stationLng);
-  }, [geo.coords, stationLat, stationLng]);
+    if (lat == null || lng == null || !geo.coords) return null;
+    return distanceMeters(geo.coords.lat, geo.coords.lng, lat, lng);
+  }, [geo.coords, lat, lng]);
   const tooFar = distanceM != null && distanceM > allowedM;
-  // 작성 가능: 위치 좌표가 있고(필수) + (주유소 좌표를 알 땐) 반경 이내.
+  // 작성 가능: 위치 좌표가 있고(필수) + (대상 좌표를 알 땐) 반경 이내.
   const locationReady = !!geo.coords && !tooFar;
 
   if (status !== 'authenticated') {
@@ -69,7 +78,11 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
       <div className="rounded-xl border border-dashed border-gray-300 p-4 text-center">
         <p className="text-sm text-gray-600">{t('loginRequired')}</p>
         <button
-          onClick={() => signIn(undefined, { callbackUrl: `/station/${encodeURIComponent(stationId)}` })}
+          onClick={() =>
+            signIn(undefined, {
+              callbackUrl: `${PLACE_DETAIL_PATH[targetType]}/${encodeURIComponent(targetId)}`,
+            })
+          }
           className="mt-3 rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-white"
         >
           {t('login')}
@@ -121,17 +134,17 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
     }
     // 지오펜스: 위치가 없거나 주유소에서 멀면 작성 차단(서버도 동일 검증).
     if (!geo.coords) {
-      setError(t('locationRequired'));
+      setError(t('locationRequired', { type: targetType }));
       return;
     }
     if (tooFar && distanceM != null) {
-      setError(t('tooFar', { distance: fmtDist(distanceM) }));
+      setError(t('tooFar', { type: targetType, distance: fmtDist(distanceM) }));
       return;
     }
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/stations/${stationId}/reviews`, {
+      const res = await fetch(`/api/places/${targetType}/${targetId}/reviews`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -149,9 +162,11 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
         try {
           const j = await res.json();
           if (j?.code === 'too_far') {
-            msg = t('tooFar', { distance: fmtDist(j.distanceM ?? 0) });
+            msg = t('tooFar', { type: targetType, distance: fmtDist(j.distanceM ?? 0) });
           } else if (j?.code === 'location_required') {
             msg = t('locationCheckRequired');
+          } else if (j?.code === 'migration_required') {
+            msg = t('unavailable');
           } else if (typeof j?.error === 'string') {
             msg = j.error;
           }
@@ -217,7 +232,7 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
           <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
             <span className="flex items-start gap-1">
               <PinIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-              {t('locationPermissionNeeded')}
+              {t('locationPermissionNeeded', { type: targetType })}
             </span>
             <button
               onClick={geo.request}
@@ -239,12 +254,12 @@ export function ReviewForm({ stationId, stationLat, stationLng, onCreated, onCan
         ) : tooFar && distanceM != null ? (
           <div className="flex items-start gap-1 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
             <PinIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-            {t('tooFarDetail', { distance: fmtDist(distanceM), radius: REVIEW_GEOFENCE_M })}
+            {t('tooFarDetail', { type: targetType, distance: fmtDist(distanceM), radius: REVIEW_GEOFENCE_M })}
           </div>
         ) : distanceM != null ? (
           <div className="flex items-start gap-1 rounded-lg bg-green-50 px-3 py-2 text-[11px] text-green-700">
             <CheckIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-            {t('near', { distance: fmtDist(distanceM) })}
+            {t('near', { type: targetType, distance: fmtDist(distanceM) })}
           </div>
         ) : (
           <div className="flex items-start gap-1 rounded-lg bg-green-50 px-3 py-2 text-[11px] text-green-700">

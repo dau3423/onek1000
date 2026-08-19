@@ -4,6 +4,7 @@ import { queryCarwashDetail } from '@/lib/db/carwash';
 import { BackButton } from '@/components/common/BackButton';
 import { NaviButton } from '@/components/station/NaviButton';
 import { CarwashTypeBadge } from '@/components/carwash/CarwashTypeBadge';
+import { ReviewSection } from '@/components/reviews/ReviewSection';
 import type { CarwashDetail } from '@/types/carwash';
 import { PinIcon, PhoneIcon, ClockIcon, CoinIcon } from '@/components/icons';
 
@@ -72,6 +73,9 @@ export default async function CarwashDetailPage({ params }: Props) {
           </p>
         )}
       </section>
+
+      {/* 리뷰 — 주유소 상세와 동일 위치(부가 정보 섹션 바로 위). 세차장 좌표를 넘겨 작성 전 지오펜스(근처에서만 작성) 안내/검증 */}
+      <ReviewSection targetType="carwash" targetId={id} lat={detail.lat} lng={detail.lng} />
 
       {/* 운영 정보 — 값이 있는 항목만 노출(채움률 낮음, undefined/빈값 노출 금지). 하나도 없으면 안내. */}
       <section className="border-t border-gray-100 px-5 py-4">

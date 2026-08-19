@@ -63,9 +63,16 @@ alter table reviews alter column station_id drop not null;
 alter table reviews add constraint reviews_target_type_chk
   check (target_type in ('gas','ev','carwash'));
 
-drop index if exists reviews_user_station_unique;
+-- 구버전 라우트의 upsert 가 onConflict: 'user_id,station_id' 를 쓴다. Postgres 의 ON CONFLICT 는
+-- 정확히 그 컬럼 조합의 유니크 인덱스를 요구하므로 이 인덱스를 **지우면 안 된다** —
+-- 지우면 '마이그레이션 먼저' 순서에서 주유소 리뷰 작성이 전부 42P10 으로 실패한다.
+create unique index if not exists reviews_user_station_unique
+  on reviews (user_id, station_id);
+
+-- 표현식이 아닌 평범한 컬럼 인덱스로 둔다. ON CONFLICT/PostgREST onConflict 는 컬럼 이름 조합만
+-- 충돌 대상으로 받을 수 있고, coalesce(...) 같은 표현식 인덱스는 이름을 붙여도 대상으로 지정할 수 없다.
 create unique index if not exists reviews_user_target_unique
-  on reviews (user_id, target_type, coalesce(target_id, station_id));
+  on reviews (user_id, target_type, target_id);
 
 create index if not exists reviews_target_idx
   on reviews (target_type, coalesce(target_id, station_id), created_at desc)
@@ -98,7 +105,49 @@ group by target_type, coalesce(target_id, station_id);
 - **코드 먼저 / 마이그레이션 나중**: 신버전 코드가 컬럼 존재를 감지해 기존 `station_id` 경로로 동작한다
   (0039 에서 쓴 graceful degrade 패턴). EV·세차장 리뷰만 비활성 상태가 된다.
 
-기존 행 백필용 `update` 문은 **필요 없다** — 기존 리뷰는 전부 주유소이고 기본값이 그 값이다.
+> **정정(Task 1 리뷰에서 발견):** 초안은 `reviews_user_station_unique` 를 삭제하고 표현식 인덱스로
+> 교체하도록 썼다. **이는 위 첫 번째 순서를 깨뜨린다** — 구버전 라우트가
+> `.upsert(..., { onConflict: 'user_id,station_id' })` 를 쓰는데 Postgres 의 ON CONFLICT 는 정확히 그
+> 컬럼 조합의 유니크 인덱스를 요구하므로, 인덱스가 사라지면 주유소 리뷰 작성이 전부 42P10 으로
+> 실패한다. 이 명세의 안전성 논증은 NOT NULL 삽입 경로와 coalesce 조회 경로만 다뤘고 기존 upsert 의
+> 충돌 대상은 고려하지 않았다.
+> 조치: 두 인덱스를 **공존**시킨다. gas 행은 두 컬럼을 모두 채우므로 둘이 일치하고, ev/carwash 행은
+> `station_id` 가 null 인데 Postgres 는 유니크 인덱스에서 NULL 을 서로 다르게 보므로 구 인덱스가
+> 그 행들을 제약하지 않는다.
+>
+> **정정 2(최종 브랜치 리뷰에서 발견):** 위 조치를 구현하면서 `reviews_user_target_unique` 자체도
+> **표현식이 아닌 평범한 컬럼 인덱스**(`on reviews (user_id, target_type, target_id)`)로 바뀌었다 —
+> 이유는 같다, ON CONFLICT/PostgREST `onConflict` 는 컬럼 이름 조합만 대상으로 지정할 수 있고
+> `coalesce(...)` 표현식 인덱스는 이름을 붙여도 그 대상이 될 수 없다. 이 사실은 아래 두 가지를
+> **거짓으로 만든다**: (1) "기존 행 백필용 update 문은 필요 없다" — 평범한 컬럼 인덱스에서 Postgres 는
+> 유니크 제약에서 NULL 을 서로 다르게 보므로, `target_id` 가 null 인 기존 gas 행은 이 인덱스로 전혀
+> 걸러지지 않는다. (2) "유니크 인덱스가 coalesce(target_id, station_id) 인 덕분에 구/신 행이 섞여도
+> 중복이 정확히 걸린다"(§API, 아래) — 실제로는 걸리지 않는다. 그 결과 **gas 의 "사용자당 장소당 1개"
+> 제약과 gas upsert 의 충돌 대상은 지금 오로지 `reviews_user_station_unique` 하나에 의존한다.**
+> 구버전 라우트 제거 후 구 인덱스를 정리하되, 그냥 지우면 안 된다 — 아래 "안전한 정리 순서"를 따른다.
+
+**기존 행 백필이 필요 없다는 말은 틀렸다.** 표현식 인덱스였다면 `coalesce(target_id, station_id)` 가
+구행도 커버해 백필이 불필요했겠지만, 실제로 채택된 것은 평범한 컬럼 인덱스라 `target_id is null` 인
+구행은 새 인덱스의 보호를 받지 못한다. 백필 시점과 순서는 아래 "안전한 정리 순서"를 본다.
+
+### 안전한 정리 순서 (구버전 라우트/구 인덱스 정리 — 아직 수행하지 않음)
+
+`reviews_user_station_unique` 를 곧바로 지우면 안 된다. `target_id` 가 null 인 기존 gas 행은
+`reviews_user_target_unique (user_id, target_type, target_id)` 로 전혀 제약되지 않으므로, 그 인덱스만
+남은 상태에서 gas 쓰기 경로(`onConflict: 'user_id,station_id'`)가 그대로면 대상 인덱스가 사라져
+**42P10** 으로 전부 실패한다 — 이 브랜치가 고쳤던 바로 그 장애의 재현이다. 순서를 반드시 지킨다:
+
+1. **백필**: 기존 gas 행의 `target_id` 를 채운다.
+   ```sql
+   update reviews set target_id = station_id
+   where target_type = 'gas' and target_id is null;
+   ```
+2. **코드 전환**: gas 쓰기 경로의 `onConflict` 를 `'user_id,station_id'` 에서
+   `'user_id,target_type,target_id'` 로 바꿔 배포하고, 신버전이 서비스 중임을 확인한다.
+3. **그다음에만** `drop index reviews_user_station_unique;` 를 실행한다.
+
+세 단계를 이 순서로 밟아야 안전하다. (1) 없이 (3) 을 하면 구행이 무방비 상태가 되고, (2) 없이 (3) 을
+하면 gas 쓰기 자체가 42P10 으로 죽는다.
 
 ### `station_review_stats` 는 남긴다
 
@@ -133,8 +182,11 @@ DELETE    /api/reviews/[id]                  변경 없음(리뷰 UUID 기준이
 두 컬럼을 함께 채우면 양쪽 리더가 같은 결과를 본다. `ev`/`carwash` 는 `station_id` 를 null 로 둔다
 (대상이 `stations` 에 없으므로).
 
-유니크 인덱스가 `coalesce(target_id, station_id)` 인 덕분에 구/신 행이 섞여도 중복이 정확히 걸린다 —
-구버전 행(station_id 만)과 신버전 행(둘 다)이 같은 값으로 접히기 때문이다.
+**정정:** 아래 문장은 초안 당시 표현식 인덱스를 전제로 썼으나, 실제로 채택된 `reviews_user_target_unique`
+는 평범한 컬럼 인덱스(`user_id, target_type, target_id`)라 이 주장은 성립하지 않는다 —
+자세한 내용과 안전한 정리 순서는 위 "배포 순서 양방향 안전" 절의 "정정 2" 를 본다. 지금 gas 의
+"사용자당 장소당 1개" 는 `reviews_user_target_unique` 가 아니라 기존 `reviews_user_station_unique`
+(`user_id, station_id`)가 잡고 있다 — gas 행은 `station_id` 를 항상 채우므로 이 인덱스가 유효하다.
 
 **바뀌지 않는 것**: 별점·본문 500자·사용자당 1개·수정 허용·`is_hidden`·사진 업로드 흐름.
 

@@ -39,7 +39,7 @@ function Star({ state, sizeCls }: { state: 'filled' | 'half' | 'empty'; sizeCls:
 }
 
 export function StarRating({ value, onChange, size = 'md', readOnly = false }: Props) {
-  const t = useTranslations('station.review');
+  const t = useTranslations('review');
   const sizeCls = STAR_SIZES[size];
   return (
     <div className="inline-flex items-center gap-0.5 leading-none">
