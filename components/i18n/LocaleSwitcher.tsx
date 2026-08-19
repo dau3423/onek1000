@@ -9,7 +9,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { LOCALES, LOCALE_LABEL, LOCALE_COOKIE, type Locale } from '@/i18n/config';
-import { GlobeIcon } from '@/components/icons';
 import clsx from 'clsx';
 
 const ONE_YEAR = 60 * 60 * 24 * 365;
@@ -53,7 +52,23 @@ export function LocaleSwitcher() {
         title={t('changeLanguage')}
         className="tap-press flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-100"
       >
-        <GlobeIcon className="h-[26px] w-[26px] text-gray-700" />
+        {/* 헤더의 나머지 아이콘(검색·경로)이 오렌지 라인아트 PNG라, 남색 굵은 선 글로브만 혼자
+            무거워 보였다. 같은 결로 맞추려고 primary 색 + 얇은 선(1.6)으로 바꾼다.
+            strokeWidth 를 낮추려면 공용 GlobeIcon(2.0 고정) 대신 여기서 직접 그린다. */}
+        <svg
+          viewBox="0 0 24 24"
+          className="h-[27px] w-[27px] text-primary"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.6}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <circle cx="12" cy="12" r="9" />
+          <path d="M3 12h18" />
+          <path d="M12 3c2.5 2.6 3.8 5.7 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3z" />
+        </svg>
       </button>
 
       {open && (

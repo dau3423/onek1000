@@ -1035,7 +1035,11 @@ export default function HomePage() {
             // 내 위치 이동/따라가기는 회원 전용 — 비로그인은 로그인 화면으로 보낸다.
             // requireAuth 를 쓰지 않는 이유: 그 헬퍼는 가드 통과 시 알림 권한 요청까지 함께 하므로,
             // 위치 버튼을 눌렀는데 시스템 알림 권한 팝업이 뜨는 흐름이 된다.
-            // 세션 확인 중(loading)에는 막지 않는다(깜빡임/오차단 방지 — 이 화면의 일관된 규칙).
+            // 세션이 확정되기 전(loading)에는 아무것도 하지 않는다. 통과시키면 비회원이
+            // 세션 조회가 느린 순간(iOS 설치형 PWA 복귀 등)에 제한을 그대로 통과하고,
+            // 로그인으로 보내면 이미 로그인한 사용자를 잘못 내쫓는다 — 둘 다 틀리므로
+            // 확정될 때까지(보통 수백 ms) 탭을 무시하는 쪽을 택했다.
+            if (authStatus === 'loading') return;
             if (authStatus === 'unauthenticated') {
               signIn(undefined, { callbackUrl: '/' });
               return;
