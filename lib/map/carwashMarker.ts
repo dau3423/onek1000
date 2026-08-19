@@ -55,7 +55,6 @@ export function buildCarwashMarkerContent(place: CarwashMarker, showLabel: boole
 
   const content = document.createElement('div');
   content.className = 'cursor-pointer select-none';
-  content.style.transform = 'translate(-50%, -100%)';
   content.style.position = 'relative';
   // 미확인(회색)은 살짝 아래로, 유형 확정 핀을 위로 올려 겹칠 때 우선 보이게 한다.
   content.style.zIndex = type === 'unknown' ? '1' : '2';

@@ -562,7 +562,6 @@ export function KakaoMap({
 
       const content = document.createElement('div');
       content.className = 'cursor-pointer select-none';
-      content.style.transform = 'translate(-50%, -100%)';
       content.style.position = 'relative';
       content.dataset.sid = s.id; // 경로 최저가 blink 강조 대상 탐색용(id 기준 dedup)
 
@@ -577,17 +576,22 @@ export function KakaoMap({
       const face = areaRank != null
         ? numberMarkerSvg(tier, faceSize, areaRank, { ring: brandColor, ringWidth: 8, gap: 4 })
         : faceMarkerSvg(tier, faceSize, { ring: brandColor, ringWidth: 8, gap: 4 });
+      // 가격 라벨은 흐름에서 빼(absolute) 콘텐츠 박스가 항상 "얼굴 원"과 같아지게 한다.
+      // 박스 크기가 라벨 유무에 따라 달라지면 앵커 기준점이 흔들려, 같은 주유소가
+      // 라벨 있을 때/없을 때 다른 자리에 찍힌다(실제로 그 증상이 있었다).
       content.innerHTML = showLabel
         ? `
-        <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
-          <div style="padding:4px 8px;border-radius:10px;background:${tierColor};color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
-            ₩${s.price.toLocaleString()}
+        <div style="position:relative;display:flex;justify-content:center">
+          <div style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;padding-bottom:1px">
+            <div style="padding:4px 8px;border-radius:10px;background:${tierColor};color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
+              ₩${s.price.toLocaleString()}
+            </div>
+            <div style="width:8px;height:8px;background:${tierColor};transform:rotate(45deg);margin-top:-4px"></div>
           </div>
-          <div style="width:8px;height:8px;background:${tierColor};transform:rotate(45deg);margin-top:-4px"></div>
-          <div style="margin-top:-1px">${face}</div>
+          ${face}
         </div>`
         : `
-        <div style="position:relative;display:flex;flex-direction:column;align-items:center">
+        <div style="position:relative;display:flex;justify-content:center">
           ${face}
         </div>`;
 
@@ -596,7 +600,9 @@ export function KakaoMap({
       const overlay = new window.kakao.maps.CustomOverlay({
         position: new window.kakao.maps.LatLng(s.lat, s.lng),
         content,
-        yAnchor: 1,
+        // 꼬리 없는 원형 마커 → 원의 '중심'이 좌표. (핀류는 아래 끝이 좌표: yAnchor 1)
+        xAnchor: 0.5,
+        yAnchor: 0.5,
         clickable: true,
         zIndex: 1,
       });
@@ -625,7 +631,6 @@ export function KakaoMap({
       const r = t.rank;
       const content = document.createElement('div');
       content.className = 'cursor-pointer select-none';
-      content.style.transform = 'translate(-50%, -100%)';
       content.style.position = 'relative';
       content.dataset.sid = t.id; // 경로 최저가 blink 강조 대상 탐색용(id 기준 dedup)
 
@@ -707,7 +712,6 @@ export function KakaoMap({
 
       const content = document.createElement('div');
       content.className = 'cursor-pointer select-none';
-      content.style.transform = 'translate(-50%, -100%)';
       content.style.position = 'relative';
       content.dataset.sid = s.id; // 경로 최저가 blink 강조 대상 탐색용(id 기준 dedup)
 
@@ -849,7 +853,6 @@ export function KakaoMap({
 
       const content = document.createElement('div');
       content.className = 'cursor-pointer select-none';
-      content.style.transform = 'translate(-50%, -50%)';
       // 진회색 원 + 해골(skull) 아이콘(가격/브랜드색/라벨 없음). 순위권 표정 마커보다 조금 작게 깔린다.
       content.innerHTML = skullMarkerSvg(24);
       content.addEventListener('click', () => onMarkerClick?.(pointToStation(p)));
@@ -905,7 +908,6 @@ export function KakaoMap({
       // top10만 순위 숫자(numberMarkerSvg), 나머지는 tier 표정(faceMarkerSvg)으로 차등.
       const content = document.createElement('div');
       content.className = 'cursor-pointer select-none';
-      content.style.transform = 'translate(-50%, -100%)';
       content.style.position = 'relative';
       const tier = priceTier(s.price, expThresholds);
       const tierColor = TIER_FACE[tier].color;
@@ -914,23 +916,29 @@ export function KakaoMap({
       const face = rank != null
         ? numberMarkerSvg(tier, faceSize, rank, { ring: brandColor, ringWidth: 8, gap: 4 })
         : faceMarkerSvg(tier, faceSize, { ring: brandColor, ringWidth: 8, gap: 4 });
+      // 가격 라벨은 흐름에서 빼(absolute) 콘텐츠 박스가 항상 "얼굴 원"과 같아지게 한다.
+      // 박스 크기가 라벨 유무에 따라 달라지면 앵커 기준점이 흔들려, 같은 주유소가
+      // 라벨 있을 때/없을 때 다른 자리에 찍힌다(실제로 그 증상이 있었다).
       content.innerHTML = showLabel
         ? `
-        <div style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
-          <div style="padding:4px 8px;border-radius:10px;background:${tierColor};color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
-            ₩${s.price.toLocaleString()}
+        <div style="position:relative;display:flex;justify-content:center">
+          <div style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;padding-bottom:1px">
+            <div style="padding:4px 8px;border-radius:10px;background:${tierColor};color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
+              ₩${s.price.toLocaleString()}
+            </div>
+            <div style="width:8px;height:8px;background:${tierColor};transform:rotate(45deg);margin-top:-4px"></div>
           </div>
-          <div style="width:8px;height:8px;background:${tierColor};transform:rotate(45deg);margin-top:-4px"></div>
-          <div style="margin-top:-1px">${face}</div>
+          ${face}
         </div>`
         : `
-        <div style="position:relative;display:flex;flex-direction:column;align-items:center">
+        <div style="position:relative;display:flex;justify-content:center">
           ${face}
         </div>`;
       content.addEventListener('click', () => onMarkerClick?.(s));
       const overlay = new window.kakao.maps.CustomOverlay({
         position: new window.kakao.maps.LatLng(s.lat, s.lng),
-        content, yAnchor: 1, clickable: true,
+        // 꼬리 없는 원형 마커 → 원의 '중심'이 좌표.
+        content, xAnchor: 0.5, yAnchor: 0.5, clickable: true,
         // top10(순위 강조)은 비-top10 위에 그려지도록. 순위 높을수록 더 위로.
         zIndex: rank != null ? 10 + (11 - rank) : 1,
       });
@@ -984,7 +992,6 @@ export function KakaoMap({
     const endpoint = (pos: kakao.maps.LatLng, label: string, name: string | undefined, color: string) => {
       const el = document.createElement('div');
       el.className = 'select-none';
-      el.style.transform = 'translate(-50%, -100%)';
       el.innerHTML = `
         <div style="display:flex;flex-direction:column;align-items:center">
           <div style="padding:3px 8px;border-radius:9px;background:${color};color:#fff;font-size:11px;font-weight:800;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
@@ -1017,18 +1024,20 @@ export function KakaoMap({
       const brandColor = BRAND_COLOR[s.brand] ?? '#666';
       const content = document.createElement('div');
       content.className = 'cursor-pointer select-none';
-      content.style.transform = 'translate(-50%, -100%)';
       content.style.position = 'relative';
       const badge = numberMarkerSvg(tier, 28, rank, { ring: brandColor, ringWidth: 8, gap: 4 });
       // route-blink: 마커 본체 아래에 펄스 링(globals.css)을 깔아 경로 최저가 주유소를
       // 한눈에 찾게 한다. 출발/도착 핀과 구분되도록 이 마커에만 적용한다.
+      // 가격 라벨은 absolute — 콘텐츠 박스를 배지 원과 같게 유지한다(일반 마커와 동일 이유).
       content.innerHTML = `
-        <div class="route-blink" style="position:relative;display:flex;flex-direction:column;align-items:center;gap:2px">
-          <div style="padding:4px 8px;border-radius:10px;background:${tierColor};color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
-            ₩${s.price.toLocaleString()}
+        <div class="route-blink" style="position:relative;display:flex;justify-content:center">
+          <div style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;padding-bottom:1px">
+            <div style="padding:4px 8px;border-radius:10px;background:${tierColor};color:white;font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap">
+              ₩${s.price.toLocaleString()}
+            </div>
+            <div style="width:8px;height:8px;background:${tierColor};transform:rotate(45deg);margin-top:-4px"></div>
           </div>
-          <div style="width:8px;height:8px;background:${tierColor};transform:rotate(45deg);margin-top:-4px"></div>
-          <div style="margin-top:-1px">${badge}</div>
+          ${badge}
         </div>`;
       content.addEventListener('click', () => {
         (onRouteStationClickRef.current ?? onMarkerClickRef.current)?.(s);
@@ -1038,7 +1047,8 @@ export function KakaoMap({
       if (blinkEl instanceof HTMLElement) routeBlinkElsRef.current.set(s.id, blinkEl);
       const ov = new window.kakao.maps.CustomOverlay({
         position: new window.kakao.maps.LatLng(s.lat, s.lng),
-        content, yAnchor: 1, clickable: true, zIndex: 15,
+        // 꼬리 없는 원형 배지 → 원의 '중심'이 좌표.
+        content, xAnchor: 0.5, yAnchor: 0.5, clickable: true, zIndex: 15,
       });
       ov.setMap(map);
       routeOverlaysRef.current.push(ov);

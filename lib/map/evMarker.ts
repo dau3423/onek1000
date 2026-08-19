@@ -61,7 +61,6 @@ export function buildEvMarkerContent(s: EvStationMarker, showLabel: boolean, lab
 
   const content = document.createElement('div');
   content.className = 'cursor-pointer select-none';
-  content.style.transform = 'translate(-50%, -100%)';
   content.style.position = 'relative';
   // 사용가능 핀은 약간 위로(z) 올려 겹칠 때 우선 보이게 한다.
   content.style.zIndex = available ? '2' : '1';
