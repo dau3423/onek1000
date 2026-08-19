@@ -131,6 +131,13 @@ export function CarwashDayCard({ onCta, lat, lng }: Props) {
   // "오늘 하루 숨김"은 로그인 여부와 무관하게 존중한다.
   if (hidden) return null;
 
+  // 세션 미확정(loading): 아무것도 렌더하지 않는다.
+  // locked 는 'unauthenticated' 일 때만 참이라 loading 구간은 잠금이 아닌데, 그 사이
+  // 이전에 인증됐던 동안 받아둔 data 가 남아 있으면 그대로 값이 보인다 — 헤더는 같은 순간
+  // 로그아웃(자물쇠)으로 보이므로 "로그아웃 상태인데 값이 보이는" 화면이 된다.
+  // (iOS 설치형 PWA 에서 뒤로가기 복귀 시 세션 재조회가 걸리며 실제로 발생했다.)
+  if (authStatus === 'loading') return null;
+
   // 비로그인: 제목 줄만 선명하게 두고 값 영역은 블러 + 로그인 유도.
   // 실제 지수는 받아오지 않았으므로 아래는 값이 아니라 자리표시자다.
   if (locked) {
