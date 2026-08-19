@@ -206,8 +206,39 @@ export default function HomePage() {
   // 단, 복원된 경우 지도 '중심'은 복원 시점을 유지해야 하므로 KakaoMap에
   // suppressAutoCenter={!!restoredView}를 넘겨 첫 좌표 획득 시 자동 센터링만 억제한다.
   // (즉 "위치는 잡되, 지도는 복원 위치 그대로".) 거부/미지원이면 기존처럼 graceful.
+  //
+  // 단, 권한 상태를 먼저 본다(Permissions API):
+  //  - granted : 이미 허용 → 프롬프트 없이 바로 추적(브라우저가 다시 묻지 않는다).
+  //  - prompt  : 아직 안 물어봤거나 브라우저가 허용을 유지하지 않은 상태 → 지금처럼 자동 요청.
+  //              (첫 방문자는 여기서 한 번 요청을 받아야 '내 주변'이 바로 동작한다.)
+  //  - denied  : 호출해봐야 매번 실패만 하므로 아예 시작하지 않는다. 나중에 설정에서 허용하면
+  //              onchange 로 감지해 새로고침 없이 추적을 시작한다.
+  // Permissions API 미지원(구형 Safari 등)이면 종전대로 무조건 시작한다.
   useEffect(() => {
-    setGeoEnabled(true);
+    let cancelled = false;
+    let perm: PermissionStatus | null = null;
+    const start = () => { if (!cancelled) setGeoEnabled(true); };
+    const onChange = () => { if (perm?.state !== 'denied') start(); };
+
+    let q: Promise<PermissionStatus> | null = null;
+    try {
+      q = navigator.permissions?.query({ name: 'geolocation' as PermissionName }) ?? null;
+    } catch {
+      q = null; // 'geolocation' 이름을 모르는 브라우저 → 폴백
+    }
+    if (!q) { start(); return; }
+
+    q.then((status) => {
+      if (cancelled) return;
+      perm = status;
+      status.addEventListener('change', onChange);
+      if (status.state !== 'denied') start();
+    }).catch(() => start());
+
+    return () => {
+      cancelled = true;
+      perm?.removeEventListener('change', onChange);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [radiusStations, setRadiusStations] = useState<StationWithPrice[]>([]);
