@@ -76,6 +76,10 @@ export async function listPlaceReviews(_req: Request, targetType: PlaceType, id:
   if (primary.error) {
     // 0040 미적용 환경: target_type/target_id 컬럼이 없다. gas 는 기존 station_id 경로로 폴백하고,
     // ev/carwash 는 아직 저장할 수 없으므로 빈 목록을 준다(화면이 깨지지 않게).
+    // 감지를 넓게 잡은 채 유지한다(park 근거: 컬럼 부재가 항상 42703 은 아니고 PGRST205 등 스키마
+    // 캐시 계열 코드로도 온다 — 좁히면 그 경로에서 진짜 500 이 되살아난다). 다만 원인을 완전히
+    // 삼키면 운영자가 디버깅할 신호가 없으므로 로그는 남긴다.
+    console.error('[place-reviews] GET primary query failed, degrading:', primary.error);
     if (targetType !== 'gas') {
       return NextResponse.json({ reviews: [], stats: emptyStats() });
     }
@@ -281,6 +285,7 @@ export async function createPlaceReview(req: Request, targetType: PlaceType, id:
     // GET 과 똑같이 "쿼리가 에러나면 폴백" 방식으로 감지한다(별도 판별 로직을 두지 않는다) —
     // 이 라우트는 ReviewForm/ReviewSection 이 실제로 쓰는 현재 서비스 중인 쓰기 경로이므로
     // GET 만 폴백을 갖고 POST 가 500 을 내면 배포 순서 안전성 보장이 깨진다.
+    console.error('[place-reviews] POST primary upsert failed, degrading:', primary.error);
     if (targetType !== 'gas') {
       // ev/carwash 는 target_id 없이는 저장할 방법이 없다(station_id 로 대신 저장할 대상 자체가
       // 없다). 화면이 "아직 이용할 수 없음"을 보여줄 수 있도록 500 대신 503 + 코드로 구분한다.

@@ -48,6 +48,9 @@ export async function resolvePlaceTarget(
 }
 
 function num(v: unknown): number | null {
+  // null/undefined 는 "좌표 없음" 이지 0 이 아니다. Number(null) === 0 이라 이 가드가 없으면
+  // 좌표 없는 장소가 (0,0) 취급돼 지오펜스가 사용자를 실제 지구 반대편만큼 떨어진 것으로 판정한다.
+  if (v === null || v === undefined) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }

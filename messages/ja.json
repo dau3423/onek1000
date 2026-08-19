@@ -357,6 +357,7 @@
     "locationRequired": "レビューは{type, select, gas {給油所} ev {充電スタンド} carwash {洗車場} other {場所}}の近くでのみ作成できます。位置情報を許可してください。",
     "tooFar": "{type, select, gas {給油所} ev {充電スタンド} carwash {洗車場} other {場所}}から約{distance}離れています。{type, select, gas {給油所} ev {充電スタンド} carwash {洗車場} other {場所}}の近くで作成してください。",
     "submitFailed": "作成に失敗しました。しばらくしてからもう一度お試しください。",
+    "unavailable": "この場所のレビュー機能はまだご利用いただけません。しばらくしてからもう一度お試しください。",
     "locationCheckRequired": "位置情報の確認が必要です。位置情報を許可してからもう一度お試しください。",
     "ratingLabel": "評価",
     "placeholder": "ご利用の感想を簡単にお聞かせください（任意）",

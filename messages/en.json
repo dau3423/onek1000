@@ -357,6 +357,7 @@
     "locationRequired": "Reviews can only be written near the {type, select, gas {station} ev {charging station} carwash {car wash} other {place}}. Please allow location access.",
     "tooFar": "You're about {distance} away from the {type, select, gas {station} ev {charging station} carwash {car wash} other {place}}. Please write your review near the {type, select, gas {station} ev {charging station} carwash {car wash} other {place}}.",
     "submitFailed": "Failed to submit. Please try again later.",
+    "unavailable": "Reviews for this place aren't available yet. Please try again later.",
     "locationCheckRequired": "Location check required. Please allow location access and try again.",
     "ratingLabel": "Rating",
     "placeholder": "Share your experience briefly (optional)",

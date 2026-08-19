@@ -17,6 +17,13 @@ import { distanceMeters } from '@/lib/map/geo';
 import { PinIcon, CheckIcon, CameraIcon, CloseIcon } from '@/components/icons';
 import type { PlaceType } from '@/types/review';
 
+// 장소 종류별 상세 페이지 경로. 로그인 복귀(callbackUrl) 용 — 종류가 늘어나면 여기 한 줄만 추가한다.
+const PLACE_DETAIL_PATH: Record<PlaceType, string> = {
+  gas: '/station',
+  ev: '/ev',
+  carwash: '/carwash',
+};
+
 interface Props {
   targetType: PlaceType;
   targetId: string;
@@ -71,7 +78,11 @@ export function ReviewForm({ targetType, targetId, lat, lng, onCreated, onCancel
       <div className="rounded-xl border border-dashed border-gray-300 p-4 text-center">
         <p className="text-sm text-gray-600">{t('loginRequired')}</p>
         <button
-          onClick={() => signIn(undefined, { callbackUrl: `/station/${encodeURIComponent(targetId)}` })}
+          onClick={() =>
+            signIn(undefined, {
+              callbackUrl: `${PLACE_DETAIL_PATH[targetType]}/${encodeURIComponent(targetId)}`,
+            })
+          }
           className="mt-3 rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-white"
         >
           {t('login')}
@@ -154,6 +165,8 @@ export function ReviewForm({ targetType, targetId, lat, lng, onCreated, onCancel
             msg = t('tooFar', { type: targetType, distance: fmtDist(j.distanceM ?? 0) });
           } else if (j?.code === 'location_required') {
             msg = t('locationCheckRequired');
+          } else if (j?.code === 'migration_required') {
+            msg = t('unavailable');
           } else if (typeof j?.error === 'string') {
             msg = j.error;
           }

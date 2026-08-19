@@ -357,6 +357,7 @@
     "locationRequired": "只能在{type, select, gas {加油站} ev {充电站} carwash {洗车场} other {地点}}附近写评论，请允许获取位置信息。",
     "tooFar": "您距离{type, select, gas {加油站} ev {充电站} carwash {洗车场} other {地点}}约{distance}，请在{type, select, gas {加油站} ev {充电站} carwash {洗车场} other {地点}}附近撰写评论。",
     "submitFailed": "提交失败，请稍后重试。",
+    "unavailable": "该地点的评论功能暂时无法使用，请稍后重试。",
     "locationCheckRequired": "需要确认位置，请允许获取位置后重试。",
     "ratingLabel": "评分",
     "placeholder": "简单分享一下您的体验（可选）",

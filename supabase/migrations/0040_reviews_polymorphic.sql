@@ -40,7 +40,12 @@ create unique index if not exists reviews_user_target_unique
 -- 먼저 적용되는 순서에서 주유소 리뷰 작성이 전부 42P10 으로 실패한다.
 -- ev/carwash 행은 station_id 가 null 이고 Postgres 는 유니크 인덱스에서 NULL 을 서로 다르게 보므로
 -- 이 인덱스가 그 행들을 제약하지 않는다 — 두 인덱스는 공존해도 충돌하지 않는다.
--- 구버전 라우트(app/api/stations/[id]/reviews/route.ts)를 제거한 뒤 별도로 정리한다.
+--
+-- 주의: 위 reviews_user_target_unique 는 평범한 컬럼 인덱스라(coalesce 표현식이 아니다) target_id
+-- 가 null 인 기존 gas 행을 전혀 제약하지 않는다 — 즉 지금 gas 의 유니크 제약과 upsert 충돌 대상은
+-- 이 인덱스 하나에 전부 의존한다. 구버전 라우트 제거 후에도 이 인덱스를 곧바로 지우면 안 된다.
+-- docs/improvements/2026-08-18-place-reviews/spec.md 의 "안전한 정리 순서"(백필 → gas onConflict
+-- 전환·배포 → 그다음에 drop) 를 반드시 그 순서로 밟은 뒤에만 정리한다.
 create unique index if not exists reviews_user_station_unique
   on reviews (user_id, station_id);
 

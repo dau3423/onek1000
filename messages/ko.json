@@ -357,6 +357,7 @@
     "locationRequired": "리뷰는 {type, select, gas {주유소} ev {충전소} carwash {세차장} other {장소}} 근처에서만 작성할 수 있어요. 위치를 허용해 주세요.",
     "tooFar": "{type, select, gas {주유소} ev {충전소} carwash {세차장} other {장소}}에서 약 {distance} 떨어져 있어요. {type, select, gas {주유소} ev {충전소} carwash {세차장} other {장소}} 근처에서 작성해 주세요.",
     "submitFailed": "작성에 실패했어요. 잠시 후 다시 시도해 주세요.",
+    "unavailable": "이 장소의 리뷰 기능은 아직 이용할 수 없어요. 잠시 후 다시 시도해 주세요.",
     "locationCheckRequired": "위치 확인이 필요해요. 위치를 허용한 뒤 다시 시도해 주세요.",
     "ratingLabel": "별점",
     "placeholder": "다녀온 경험을 짧게 남겨주세요 (선택)",
