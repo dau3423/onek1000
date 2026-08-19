@@ -199,6 +199,10 @@ export default function HomePage() {
   // 위치 기반 반경 조회 (내 주변 TOP10 + 1km 알람)
   const [geoEnabled, setGeoEnabled] = useState(false);
   const geo = useGeolocation(geoEnabled);
+  // geo.request 는 렌더마다 새로 만들어지므로, 마운트 시 1회만 도는 아래 effect 가
+  // 옛 클로저를 잡지 않도록 ref 로 최신값을 들고 있는다.
+  const geoRequestRef = useRef(geo.request);
+  geoRequestRef.current = geo.request;
 
   // 첫 진입 시 항상 위치 추적을 시작한다 (FR-2.1).
   // 복원된 시점(restoredView: 새로고침/상세 왕복)이 있어도 위치 요청은 그대로 수행해야
@@ -207,38 +211,26 @@ export default function HomePage() {
   // suppressAutoCenter={!!restoredView}를 넘겨 첫 좌표 획득 시 자동 센터링만 억제한다.
   // (즉 "위치는 잡되, 지도는 복원 위치 그대로".) 거부/미지원이면 기존처럼 graceful.
   //
-  // 단, 권한 상태를 먼저 본다(Permissions API):
-  //  - granted : 이미 허용 → 프롬프트 없이 바로 추적(브라우저가 다시 묻지 않는다).
-  //  - prompt  : 아직 안 물어봤거나 브라우저가 허용을 유지하지 않은 상태 → 지금처럼 자동 요청.
-  //              (첫 방문자는 여기서 한 번 요청을 받아야 '내 주변'이 바로 동작한다.)
-  //  - denied  : 호출해봐야 매번 실패만 하므로 아예 시작하지 않는다. 나중에 설정에서 허용하면
-  //              onchange 로 감지해 새로고침 없이 추적을 시작한다.
-  // Permissions API 미지원(구형 Safari 등)이면 종전대로 무조건 시작한다.
+  // 권한 상태로 미리 거르지 않는다 — 진입할 때마다 그냥 시작한다.
+  //  - 이미 허용한 사용자: 브라우저가 granted 를 기억하므로 팝업 없이 위치가 잡힌다.
+  //  - 거부했던 사용자: 다음 접속에 다시 물어볼 수 있어야 한다(iOS 는 세션이 끝나면
+  //    prompt 로 돌아간다). 우리가 미리 막으면 그 기회를 없앤다.
   useEffect(() => {
-    let cancelled = false;
-    let perm: PermissionStatus | null = null;
-    const start = () => { if (!cancelled) setGeoEnabled(true); };
-    const onChange = () => { if (perm?.state !== 'denied') start(); };
+    setGeoEnabled(true);
 
+    // 사용자가 나중에 브라우저/OS 설정에서 허용으로 바꾼 경우 — 그 시점엔 이미 시작된 watch 가
+    // 거부로 끝나 있으므로, 새로고침 없이 한 번 다시 요청한다. (Permissions API 미지원이면 생략)
+    let status: PermissionStatus | null = null;
+    const onChange = () => { if (status?.state === 'granted') geoRequestRef.current(); };
     let q: Promise<PermissionStatus> | null = null;
     try {
       q = navigator.permissions?.query({ name: 'geolocation' as PermissionName }) ?? null;
     } catch {
-      q = null; // 'geolocation' 이름을 모르는 브라우저 → 폴백
+      q = null;
     }
-    if (!q) { start(); return; }
+    q?.then((st) => { status = st; st.addEventListener('change', onChange); }).catch(() => {});
 
-    q.then((status) => {
-      if (cancelled) return;
-      perm = status;
-      status.addEventListener('change', onChange);
-      if (status.state !== 'denied') start();
-    }).catch(() => start());
-
-    return () => {
-      cancelled = true;
-      perm?.removeEventListener('change', onChange);
-    };
+    return () => { status?.removeEventListener('change', onChange); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [radiusStations, setRadiusStations] = useState<StationWithPrice[]>([]);
