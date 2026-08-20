@@ -1,9 +1,17 @@
+// 문서 요청에서 (1) 로케일 쿠키 자동 감지, (2) device_id 쿠키 발급을 처리한다.
+//
+// device_id 를 여기서 심는 이유: 예전엔 /api/visit 과 /api/event 가 각자 "없으면 발급"했는데,
+// 첫 방문에는 두 요청이 동시에 나가 서로 다른 UUID 를 발급했다. 같은 사람이 page_visits 와
+// funnel_events 에 다른 ID 로 남아 퍼널 비율이 무의미해졌다(실측 겹침 7%).
+// 문서 요청이 항상 수집 요청보다 먼저 오므로, 발급을 여기 하나로 모으면 두 테이블이 같은 ID 를 쓴다.
+//
 // 첫 방문 시 브라우저 언어를 감지해 로케일 쿠키를 심는다. 이미 쿠키가 있으면 사용자의 선택이므로 건드리지 않는다.
 //
 // ⚠️ 여기서 쿠키를 심어도 /regions 같은 정적 페이지는 여전히 정적 HTML(한국어)로 서빙된다 — 의도된 동작이다.
 //    로케일이 실제로 적용되는 곳은 app/(intl)/ 아래뿐이다.
 import { NextResponse, type NextRequest } from 'next/server';
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isLocale } from '@/i18n/config';
+import { DEVICE_COOKIE, DEVICE_COOKIE_MAX_AGE, isValidDeviceId } from '@/lib/analytics/device';
 
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
@@ -30,8 +38,33 @@ function detectLocale(header: string | null): string {
 }
 
 export function middleware(req: NextRequest) {
+  // ── device_id: 없거나 형식이 깨졌을 때만 발급. 수집 라우트는 읽기만 한다.
+  const did = req.cookies.get(DEVICE_COOKIE)?.value;
+  const newDeviceId = isValidDeviceId(did) ? null : crypto.randomUUID();
+  if (newDeviceId) {
+    // 요청 쪽에도 반영 — 이 요청의 다운스트림(RSC 등)이 바로 볼 수 있게 한다(로케일과 같은 이유).
+    req.cookies.set(DEVICE_COOKIE, newDeviceId);
+  }
+
+  const setDeviceCookie = (res: NextResponse): NextResponse => {
+    if (newDeviceId) {
+      res.cookies.set(DEVICE_COOKIE, newDeviceId, {
+        path: '/',
+        maxAge: DEVICE_COOKIE_MAX_AGE,
+        sameSite: 'lax',
+        httpOnly: true, // 클라이언트가 읽을 필요가 없다(서버가 식별한다)
+        secure: process.env.NODE_ENV === 'production',
+      });
+    }
+    return res;
+  };
+
   const existing = req.cookies.get(LOCALE_COOKIE)?.value;
-  if (isLocale(existing)) return NextResponse.next();
+  if (isLocale(existing)) {
+    return setDeviceCookie(
+      newDeviceId ? NextResponse.next({ request: { headers: req.headers } }) : NextResponse.next(),
+    );
+  }
 
   const detected = detectLocale(req.headers.get('accept-language'));
 
@@ -50,7 +83,7 @@ export function middleware(req: NextRequest) {
     path: '/',
     httpOnly: false, // 전환 UI가 클라이언트에서 읽고 쓴다
   });
-  return res;
+  return setDeviceCookie(res);
 }
 
 export const config = {

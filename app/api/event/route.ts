@@ -1,7 +1,9 @@
 // 퍼널 이벤트 수집 — 공개(인증 불필요). /api/visit 과 동일한 device_id 쿠키·세션·rate-limit 패턴.
 //
 // 흐름:
-//   1) onek_did 쿠키로 device_id 식별(없으면 발급 + Set-Cookie). VisitPing이 먼저 발급하므로 보통 존재.
+//   1) onek_did 쿠키로 device_id 식별. 발급은 하지 않는다 — 미들웨어가 문서 요청에서 이미 심었다.
+//      쿠키가 없으면 기록을 건너뛴다. 예전엔 여기서도 발급해서, 첫 방문에 /api/visit 과 각자 다른
+//      UUID 를 만들어 같은 사람이 두 테이블에 다른 ID 로 남았다(겹침 7%).
 //   2) 로그인 세션이면 user_id 동봉(없으면 null).
 //   3) IP rate limit 통과 시 funnel_events에 1행 insert.
 //
@@ -9,6 +11,8 @@
 //   클라이언트는 navigator.sendBeacon으로 fire-and-forget 전송한다(응답을 읽지 않음).
 
 import { NextResponse, type NextRequest } from 'next/server';
+import { DEVICE_COOKIE, isValidDeviceId } from '@/lib/analytics/device';
+import { isBotUserAgent } from '@/lib/analytics/bot';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/options';
 import { recordEvent } from '@/lib/db/stats';
@@ -16,9 +20,6 @@ import { redis, keys } from '@/lib/cache/redis';
 
 export const runtime = 'nodejs';
 
-const DEVICE_COOKIE = 'onek_did';
-const ONE_YEAR_SEC = 365 * 24 * 60 * 60;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // 이벤트는 방문보다 빈번하므로 한도를 넉넉히(IP당 60초에 60회). 초과 시 기록만 스킵.
 const RATE_WINDOW_SEC = 60;
@@ -68,13 +69,15 @@ export async function POST(req: NextRequest) {
     /* ignore */
   }
 
-  // 1) device_id: 쿠키에서 읽고 없거나 깨졌으면 발급.
+  // 1) device_id: 미들웨어가 심은 쿠키를 읽기만 한다. 없으면 기록하지 않는다(잘못된 ID 로 남기느니 뺀다).
   const existing = req.cookies.get(DEVICE_COOKIE)?.value;
-  const isValid = typeof existing === 'string' && UUID_RE.test(existing);
-  const deviceId = isValid ? existing : crypto.randomUUID();
+  const deviceId = isValidDeviceId(existing) ? existing : null;
 
-  // 화이트리스트 밖 이벤트는 기록하지 않되, 쿠키 발급/200 응답은 유지.
-  if (ALLOWED_EVENTS.has(event)) {
+  // 봇/크롤러는 퍼널에서 뺀다(방문 집계와 같은 기준).
+  const bot = isBotUserAgent(req.headers.get('user-agent'));
+
+  // 화이트리스트 밖 이벤트는 기록하지 않되, 200 응답은 유지.
+  if (deviceId && !bot && ALLOWED_EVENTS.has(event)) {
     // 2) 로그인 세션이면 user_id 동봉.
     let userId: string | null = null;
     try {
@@ -91,15 +94,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const res = NextResponse.json({ ok: true });
-  if (!isValid) {
-    res.cookies.set(DEVICE_COOKIE, deviceId, {
-      path: '/',
-      maxAge: ONE_YEAR_SEC,
-      sameSite: 'lax',
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-    });
-  }
-  return res;
+  // 쿠키는 미들웨어가 심는다 — 여기서는 발급하지 않는다(ID 불일치의 원인이었다).
+  return NextResponse.json({ ok: true });
 }

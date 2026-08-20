@@ -2,7 +2,9 @@
 // 디바이스 기준 고유 방문을 page_visits에 하루 1회 기록한다(관리자 "오늘 방문자수(KST)" 카드용).
 //
 // 흐름:
-//   1) device_id 쿠키 읽기 → 없으면 무작위 UUID 발급 + Set-Cookie(maxAge 1년, SameSite=Lax, httpOnly).
+//   1) device_id 쿠키 읽기. 발급은 미들웨어가 문서 요청에서 이미 끝냈다 — 여기서는 폴백만 한다
+//      (미들웨어를 타지 않는 경로로 들어온 극단적 경우). 이 폴백이 /api/event 에는 없다:
+//      두 라우트가 각자 발급하던 것이 바로 ID 불일치의 원인이었다.
 //   2) 로그인 세션이 있으면 user_id 동봉(연관 분석용, 카운트 기준은 어디까지나 device_id).
 //   3) page_visits에 upsert(visit_date=KST today, device_id, user_id) — (visit_date,device_id) 유니크라
 //      중복은 무해한 no-op.
@@ -16,15 +18,10 @@ import { authOptions } from '@/lib/auth/options';
 import { recordVisit } from '@/lib/db/stats';
 import { lookupSido } from '@/lib/geoip/lookup';
 import { redis, keys } from '@/lib/cache/redis';
+import { DEVICE_COOKIE, DEVICE_COOKIE_MAX_AGE, isValidDeviceId } from '@/lib/analytics/device';
+import { isBotUserAgent } from '@/lib/analytics/bot';
 
 export const runtime = 'nodejs';
-
-// device_id 쿠키 이름(클라이언트 components/VisitPing.tsx는 이 쿠키를 직접 읽지 않는다).
-const DEVICE_COOKIE = 'onek_did';
-const ONE_YEAR_SEC = 365 * 24 * 60 * 60;
-
-// UUID 형식만 신뢰(쿠키 변조/오염 시 새로 발급). 무작위 UUID 외 식별정보는 저장하지 않는다.
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // rate limit 정책: IP당 60초 윈도우에 최대 10회. 정상 사용자(앱 로드당 1회 + 클라
 // localStorage 일자 dedupe)는 절대 안 걸린다. 초과 시 page_visits 기록만 스킵.
@@ -76,9 +73,9 @@ export async function POST(req: NextRequest) {
     /* body 없음/파싱 실패는 무시(채널 없이 기록) */
   }
 
-  // 1) device_id: 쿠키에서 읽고, 없거나 형식이 깨졌으면 새로 발급.
+  // 1) device_id: 미들웨어가 심어둔 쿠키를 읽는다(정상 경로). 없을 때만 폴백 발급.
   const existing = req.cookies.get(DEVICE_COOKIE)?.value;
-  const isValid = typeof existing === 'string' && UUID_RE.test(existing);
+  const isValid = isValidDeviceId(existing);
   const deviceId = isValid ? existing : crypto.randomUUID();
 
   // 2) 로그인 세션이면 user_id 동봉(없으면 null). 세션 조회 실패는 무시(비로그인 취급).
@@ -95,7 +92,9 @@ export async function POST(req: NextRequest) {
   //    항상 '통과'. 로컬/테스트(미설정)는 기존과 100% 동일하게 정상 기록된다.
   const ip = clientIp(req);
   const count = await redis.incrWithTtl(keys.visitRate(ip), RATE_WINDOW_SEC);
-  const limited = count > RATE_LIMIT;
+  // 봇/크롤러/링크 미리보기는 방문자가 아니다 — 집계에서 뺀다(쿠키·200 응답은 그대로).
+  const bot = isBotUserAgent(req.headers.get('user-agent'));
+  const limited = count > RATE_LIMIT || bot;
 
   // 4) 한도 초과가 아니면 방문 기록(멱등 upsert). 내부에서 미설정/에러를 graceful 처리.
   //    초과 시엔 행을 쓰지 않고 조용히 통과(쿠키는 아래에서 기존대로 발급).
@@ -111,7 +110,7 @@ export async function POST(req: NextRequest) {
   if (!isValid) {
     res.cookies.set(DEVICE_COOKIE, deviceId, {
       path: '/',
-      maxAge: ONE_YEAR_SEC,
+      maxAge: DEVICE_COOKIE_MAX_AGE,
       sameSite: 'lax',
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
