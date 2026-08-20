@@ -764,7 +764,13 @@
       "toggleToSignupAction": "注册",
       "consentBeta": "登录即表示您同意<terms>服务条款</terms>、<privacy>隐私政策</privacy>。<payment>付款条款</payment>",
       "consentFull": "登录即表示您同意<terms>服务条款</terms>、<privacy>隐私政策</privacy>及<payment>付费服务条款</payment>。",
-      "contactLabel": "1:1咨询（Kakao Talk频道）"
+      "contactLabel": "1:1咨询（Kakao Talk频道）",
+      "oauthError": {
+        "AccessDenied": "登录已取消或未完成授权，请重试。",
+        "OAuthAccountNotLinked": "该邮箱已用其他方式注册，请使用首次注册时的方式登录。",
+        "Configuration": "登录设置有问题。请稍后重试，或通过下方联系方式告知我们。",
+        "default": "登录失败。请重试，或使用下方的邮箱登录。"
+      }
     },
     "forgotPassword": {
       "heading": "找回密码",

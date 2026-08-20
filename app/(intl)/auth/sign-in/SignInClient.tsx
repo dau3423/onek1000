@@ -19,6 +19,19 @@ import { track } from '@/lib/analytics';
 
 const boldTag = { b: (chunks: React.ReactNode) => <b>{chunks}</b> };
 
+/** 복귀 URL 에 소셜 로그인 성공 표식을 붙인다(상대/절대 경로 모두 안전하게 처리). */
+function withLoginMark(url: string, provider: string): string {
+  try {
+    const base = typeof window === 'undefined' ? 'https://onek1000.kr' : window.location.origin;
+    const u = new URL(url, base);
+    u.searchParams.set('signedin', provider);
+    // 같은 오리진이면 경로만 돌려준다(오픈 리다이렉트 여지를 만들지 않는다).
+    return u.origin === base ? `${u.pathname}${u.search}${u.hash}` : url;
+  } catch {
+    return url;
+  }
+}
+
 function SignInInner() {
   const t = useTranslations('auth');
   const tSignIn = useTranslations('auth.signIn');
@@ -28,6 +41,11 @@ function SignInInner() {
   const callbackUrl = params.get('callbackUrl') ?? '/';
   // 중복 로그인(다른 기기에서 새 로그인)으로 밀려나 강제 로그아웃된 경우 안내.
   const duplicateNotice = params.get('reason') === 'duplicate';
+  // 소셜 로그인 실패 코드. NextAuth 는 실패 시 이 페이지로 ?error=... 를 달아 되돌린다
+  // (pages.error 미설정 → /api/auth/error 가 여기로 리다이렉트). 예전엔 이 값을 아무도 읽지
+  // 않아서, 사용자는 아무 메시지 없는 깨끗한 로그인 화면을 다시 보고 같은 버튼을 계속 눌렀다.
+  // 실측(전 기간): 한 기기가 구글 로그인을 12회 이상 반복 시도하고 끝내 가입하지 못했다.
+  const oauthError = params.get('error');
 
   // 이메일 로그인/회원가입 폼 상태. mode로 로그인↔가입을 전환한다.
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -48,6 +66,12 @@ function SignInInner() {
     setIsIos(getPlatform() === 'ios');
     // 퍼널 최상단: 로그인 화면 도달. (방문 → 로그인화면 전환율의 기준점)
     track('signin_view');
+    // 왜 여기서 실패를 기록하나: 소셜 로그인 실패는 "가입 시도 후 이탈"로만 보여서
+    // 원인을 알 수 없었다. 코드를 남겨야 OAuthCallback(콜백 실패)인지
+    // AccessDenied(동의 거부)인지 Configuration(설정 오류)인지 구분된다.
+    if (oauthError) track('auth_error', { code: oauthError });
+    if (duplicateNotice) track('session_revoked');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const isInApp = inAppKind !== null;
@@ -79,7 +103,10 @@ function SignInInner() {
       handleOpenExternal();
       return;
     }
-    signIn(provider, { callbackUrl });
+    // 성공 여부를 알 수 있게 복귀 URL 에 표식을 붙인다. 지금까지 auth_success 는 이메일
+    // 경로에서만 기록돼, 소셜은 "성공했는데 조용한 것"과 "실패한 것"을 구분할 수 없었다.
+    // 표식은 복귀 화면이 1회 소비하고 주소창에서 지운다(forecast=1 과 같은 방식).
+    signIn(provider, { callbackUrl: withLoginMark(callbackUrl, provider) });
   }
 
   // 이메일 자격증명으로 로그인 → 성공 시 callbackUrl로 이동.
@@ -189,6 +216,11 @@ function SignInInner() {
         </div>
       )}
 
+      {oauthError && (
+        <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-[12px] leading-relaxed text-red-600 dark:bg-red-950 dark:text-red-300">
+          {tSignIn(`oauthError.${['AccessDenied', 'OAuthAccountNotLinked', 'Configuration'].includes(oauthError) ? oauthError : 'default'}`)}
+        </p>
+      )}
       {duplicateNotice && (
         <div className="mt-6 w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
           {tSignIn('duplicateNotice')}

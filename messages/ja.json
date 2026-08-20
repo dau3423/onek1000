@@ -764,7 +764,13 @@
       "toggleToSignupAction": "会員登録",
       "consentBeta": "ログインすることで<terms>利用規約</terms>、<privacy>プライバシーポリシー</privacy>に同意したものとみなされます。<payment>決済規約</payment>",
       "consentFull": "ログインすることで<terms>利用規約</terms>、<privacy>プライバシーポリシー</privacy>および<payment>有料サービス利用規約</payment>に同意したものとみなされます。",
-      "contactLabel": "1:1お問い合わせ（カカオトークチャンネル）"
+      "contactLabel": "1:1お問い合わせ（カカオトークチャンネル）",
+      "oauthError": {
+        "AccessDenied": "ログインがキャンセルされたか、同意が完了していません。もう一度お試しください。",
+        "OAuthAccountNotLinked": "このメールアドレスは別の方法で登録済みです。最初に登録した方法でログインしてください。",
+        "Configuration": "ログイン設定に問題があります。しばらくしてから再試行するか、下記のお問い合わせからご連絡ください。",
+        "default": "ログインに失敗しました。もう一度お試しいただくか、下のメールログインをご利用ください。"
+      }
     },
     "forgotPassword": {
       "heading": "パスワードをお忘れの方",

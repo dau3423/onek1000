@@ -764,7 +764,13 @@
       "toggleToSignupAction": "Sign up",
       "consentBeta": "By signing in, you agree to the <terms>Terms of Service</terms> and <privacy>Privacy Policy</privacy>. <payment>Payment Terms</payment>",
       "consentFull": "By signing in, you agree to the <terms>Terms of Service</terms>, <privacy>Privacy Policy</privacy>, and <payment>Paid Service Terms</payment>.",
-      "contactLabel": "1:1 Inquiry (KakaoTalk Channel)"
+      "contactLabel": "1:1 Inquiry (KakaoTalk Channel)",
+      "oauthError": {
+        "AccessDenied": "Sign-in was cancelled or consent was not completed. Please try again.",
+        "OAuthAccountNotLinked": "This email is already registered with a different method. Please sign in the way you first signed up.",
+        "Configuration": "There is a problem with the sign-in setup. Try again shortly, or let us know via the contact link below.",
+        "default": "Sign-in failed. Please try again or use email sign-in below."
+      }
     },
     "forgotPassword": {
       "heading": "Forgot Password",

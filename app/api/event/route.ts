@@ -32,7 +32,9 @@ const ALLOWED_EVENTS = new Set([
   'oauth_click',         // 카카오/구글 버튼 클릭(props.provider, props.inApp)
   'email_submit',        // 이메일 폼 제출(props.mode = login|signup)
   'signup_success',      // 이메일 회원가입 성공
-  'auth_success',        // 로그인 성공(props.method, props.mode)
+  'auth_success',        // 로그인 성공(props.method = email|google|kakao, props.mode)
+  'auth_error',          // 소셜 로그인 실패(props.code = NextAuth error 코드)
+  'session_revoked',     // 중복 로그인으로 강제 로그아웃되어 로그인 화면으로 밀려남
   // ── 핵심 가치 행동(성장 계기판). props에는 stationId(공개 오피넷 ID)까지만 허용 —
   //    좌표·주소·검색어 등 위치/개인정보성 값은 절대 넣지 않는다.
   'station_detail_view', // 주유소 상세 화면 열림(props.stationId) — 열릴 때마다 1건
