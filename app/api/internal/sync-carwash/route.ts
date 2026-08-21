@@ -1,5 +1,17 @@
 // Cron (주 1회 권장) — 독립 세차장 정적정보 적재
 // 원천: 행정안전부 「전국세차장표준데이터」 CSV(file.localdata.go.kr, 무인증·무료·이용허락 제한 없음).
+//
+// ⚠️ 원천 위험 (2026-08 확인): LOCALDATA 포털(www.localdata.go.kr)은 2026-04-16 종료됐고,
+//    지금 쓰는 file.localdata.go.kr 은 **그 이후 남아 있는 파일 서버**다. 오늘도 정상 응답하지만
+//    (실측 HTTP 200 / 3.6MB) 언제 사라져도 이상하지 않다. 그래서 실패 시 조용히 지나가지 않고
+//    관리자에게 카톡 알림을 보낸다 — 이 sync 는 주 1회라, 알림이 없으면 몇 주째 낡은 데이터를
+//    서빙하고 있어도 아무도 모른다.
+//
+//    후속 경로: 공공데이터포털 「행정안전부_세차장정보 조회서비스」(data.go.kr/data/15155084,
+//    무료·자동승인·이용허락 제한 없음). 다만 그 API 는 좌표를 WGS84 가 아니라
+//    **Bessel 중부원점TM(EPSG:5174)** 로 준다 — 옮기려면 좌표 변환(proj4, lib/map/katec.ts 참고)이
+//    필요하고, 변환을 잘못하면 1.6만 개 마커가 조용히 엉뚱한 자리로 간다. 실제 응답으로 검증할 수
+//    있을 때(활용신청 승인 + 키 발급) 옮길 것. 지금 CSV 가 동작하는 동안 눈감고 바꾸지 않는다.
 // Authorization: Bearer ${CRON_SECRET}. USE_MOCK / Supabase 미설정 시 skip.
 //
 // 설계 요지(sync-ev의 "실패 안전" 교훈 준수):
@@ -14,6 +26,7 @@
 
 import { NextResponse } from 'next/server';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
+import { sendAdminKakaoMemo, isAdminMemoConfigured } from '@/lib/kakao/adminMemo';
 import type { WashType } from '@/types/carwash';
 
 export const runtime = 'nodejs';
@@ -145,6 +158,23 @@ async function upsertInChunks(
   return ok;
 }
 
+/**
+ * 원천 장애를 관리자에게 알린다(best-effort).
+ * 미설정이면 조용히 skip 하고, 어떤 실패도 sync 응답을 바꾸지 않는다.
+ * "실패했는데 아무도 모르는 상태"만 막는 게 목적이다.
+ */
+async function alertSourceFailure(reason: string): Promise<void> {
+  if (!isAdminMemoConfigured()) return;
+  try {
+    await sendAdminKakaoMemo({
+      text: `[1000냥] 세차장 동기화 실패\n${reason}\n\nLOCALDATA 포털은 2026-04-16 종료됐고 지금은 잔존 파일서버를 쓰고 있습니다. 서버가 내려간 것이라면 data.go.kr 세차장 API(15155084)로 이전이 필요합니다.`,
+      linkUrl: 'https://www.data.go.kr/data/15155084/openapi.do',
+    });
+  } catch {
+    /* 알림 실패는 무시 — sync 결과에 영향 주지 않는다 */
+  }
+}
+
 export async function GET(req: Request) { return POST(req); }
 
 export async function POST(req: Request) {
@@ -177,6 +207,7 @@ export async function POST(req: Request) {
       clearTimeout(timer);
     }
     if (!res.ok) {
+      await alertSourceFailure(`CSV 다운로드 실패: HTTP ${res.status}`);
       return NextResponse.json(
         { ok: false, error: `download failed: HTTP ${res.status}`, note: 'existing table kept (no truncate)' },
         { status: 502 },
@@ -186,6 +217,7 @@ export async function POST(req: Request) {
     // 원천은 cp949 인코딩 — euc-kr 디코더가 cp949(통합 완성형)를 커버한다.
     csvText = new TextDecoder('euc-kr').decode(new Uint8Array(buf));
   } catch (e) {
+    await alertSourceFailure(`CSV 다운로드 오류: ${(e as Error).message}`);
     return NextResponse.json(
       { ok: false, error: `download error: ${(e as Error).message}`, note: 'existing table kept (no truncate)' },
       { status: 502 },
@@ -195,6 +227,7 @@ export async function POST(req: Request) {
   // 2) 파싱 + 컬럼 매핑.
   const rows = parseCsv(csvText);
   if (rows.length < 2) {
+    await alertSourceFailure('CSV 파싱 실패: 데이터 행 없음 (원천 형식 변경 의심)');
     return NextResponse.json(
       { ok: false, error: 'parse failed: no data rows', note: 'existing table kept (no truncate)' },
       { status: 502 },
@@ -221,6 +254,7 @@ export async function POST(req: Request) {
   };
   // 필수 컬럼(관리번호/사업장명/위경도) 부재면 형식 변경 의심 → 기존 유지.
   if (col.mgmtNo < 0 || col.name < 0 || col.lat < 0 || col.lng < 0) {
+    await alertSourceFailure('CSV 파싱 실패: 필수 컬럼 없음 (원천 형식 변경 의심)');
     return NextResponse.json(
       { ok: false, error: 'parse failed: required columns not found', header, note: 'existing table kept (no truncate)' },
       { status: 502 },
