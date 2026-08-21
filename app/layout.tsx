@@ -22,13 +22,33 @@ const ADSENSE_ACCOUNT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT || 'ca-pub-620653
 
 const SITE_TITLE = '1000냥 주유소 - 전국 주유소 최저가·기름값, 제일 싼 주유소 찾기';
 const SITE_DESCRIPTION =
-  '전국 주유소 실시간 기름값과 최저가를 지도로 비교하세요. 내 주변·경로 위에서 제일 싼 셀프 주유소(저렴한 주유소)를 찾고, 가격 하락 알림까지. 회원가입만 하면 모두 무료.';
+  '한국석유공사 오피넷(Opinet) 유가 데이터로 전국 주유소 기름값과 최저가를 지도에서 비교하세요. 내 주변·경로 위에서 제일 싼 셀프 주유소(저렴한 주유소)를 찾고, 가격 하락 알림까지. 회원가입만 하면 모두 무료.';
+
+// 검색 키워드. '오피넷'을 넣는 근거: 이 서비스의 유가 원천이 실제로 한국석유공사 오피넷이고
+// (OPINET_API_KEY 로 sync-opinet 이 매일 받아온다), 푸터에도 출처를 명시하고 있다.
+// 사실 관계 그대로 쓰는 것이지 오피넷을 사칭하거나 제휴를 암시하지 않는다 — 문구도
+// '오피넷 데이터 기반'으로만 쓴다.
+// 참고: 구글은 meta keywords 를 무시한 지 오래고, 네이버도 가중치가 낮다. 실제 노출은
+// 본문·제목·설명에 자연스럽게 들어간 문구가 좌우하므로 description 에도 함께 넣었다.
+const SITE_KEYWORDS = [
+  '오피넷',
+  '오피넷 최저가',
+  '오피넷 유가',
+  '주유소 최저가',
+  '실시간 기름값',
+  '내 주변 주유소',
+  '셀프 주유소',
+  '휘발유 가격',
+  '경유 가격',
+  '주유소 가격 비교',
+];
 
 export const metadata: Metadata = {
   // 상대 경로(opengraph-image 등)를 절대 URL로 변환하는 기준. OG/트위터 이미지가 절대화돼야 SNS가 인식.
   metadataBase: new URL('https://onek1000.kr'),
   title: SITE_TITLE,
   description: SITE_DESCRIPTION,
+  keywords: SITE_KEYWORDS,
   manifest: '/manifest.json',
   // 링크 공유 미리보기(카톡/페이스북 등). images는 명시하지 않아 app/opengraph-image.tsx가 자동 연결된다
   // (앱 아이콘이 og:image로 빠지지 않도록 OG 이미지는 별도 카드로 유지).
