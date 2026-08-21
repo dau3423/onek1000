@@ -4,6 +4,7 @@ import { queryRepairDetail } from '@/lib/db/repair';
 import { BackButton } from '@/components/common/BackButton';
 import { NaviButton } from '@/components/station/NaviButton';
 import { RepairTypeBadge } from '@/components/repair/RepairTypeBadge';
+import { ReviewSection } from '@/components/reviews/ReviewSection';
 import type { RepairDetail } from '@/types/repair';
 import { PinIcon, PhoneIcon, ClockIcon, BuildingIcon } from '@/components/icons';
 
@@ -66,6 +67,10 @@ export default async function RepairDetailPage({ params }: Props) {
           </p>
         )}
       </section>
+
+      {/* 리뷰 — 주유소·세차장 상세와 동일 위치(부가 정보 섹션 바로 위).
+          정비소 좌표를 넘겨 작성 전 지오펜스(근처에서만 작성) 안내/검증에 쓴다. */}
+      <ReviewSection targetType="repair" targetId={id} lat={detail.lat} lng={detail.lng} />
 
       {/* 운영 정보 — 값이 있는 항목만 노출. 하나도 없으면 안내(원천 채움률이 낮아 흔한 경우다). */}
       <section className="border-t border-gray-100 px-5 py-4">

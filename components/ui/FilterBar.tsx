@@ -133,80 +133,85 @@ export function FilterBar() {
           );
         })}
 
-        {/* 유종 드롭다운 — 주유소 버튼 아래. 휘발유/경유/고급휘발유/LPG 한 단계로 노출. */}
-        {openMenu === 'gas' && (
-          <div
-            role="menu"
-            aria-label={t('fuelMenuAria')}
-            className="absolute left-0 top-10 z-50 w-36 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
-          >
-            {FUEL_OPTIONS.map((p) => {
-              const active = isGas && product === p;
-              return (
-                <button
-                  key={p}
-                  role="menuitemradio"
-                  aria-checked={active}
-                  onClick={() => {
-                    setProduct(p);
-                    setOpenMenu(null);
-                  }}
-                  className={clsx(
-                    'flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs font-semibold transition',
-                    active
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
-                  )}
-                >
-                  {productLabel(p)}
-                  {active && (
-                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.4}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />
-                    </svg>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* 세차장 유형 드롭다운 — 세차장 버튼 아래(2행을 없앤 대신 여기로 들어옴). */}
-        {openMenu === 'carwash' && (
-          <div
-            role="menu"
-            aria-label={t('carwashMenuAria')}
-            className="absolute right-0 top-10 z-50 w-32 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
-          >
-            {CARWASH_TYPE_OPTIONS.map((opt) => {
-              const active = carwashType === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  role="menuitemradio"
-                  aria-checked={active}
-                  onClick={() => {
-                    setCarwashType(opt.value);
-                    setOpenMenu(null);
-                  }}
-                  className={clsx(
-                    'flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs font-semibold transition',
-                    active
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
-                  )}
-                >
-                  {tCarwashFilter(opt.labelKey)}
-                  {active && (
-                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.4}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />
-                    </svg>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
       </div>
+
+      {/* 드롭다운 메뉴는 레이어 그룹 "밖"에 둔다 — 그룹에 overflow-x-auto(가로 스크롤)가
+          걸려 있어서, 안에 두면 absolute 메뉴가 그 스크롤 컨테이너에 잘려 아예 안 보인다
+          (overflow-x:auto 는 overflow-y 도 auto 로 계산되므로 아래로 펼쳐지는 메뉴가 잘린다).
+          위치 기준은 필터바(relative)다. */}
+      {/* 유종 드롭다운 — 주유소 버튼 아래. 휘발유/경유/고급휘발유/LPG 한 단계로 노출. */}
+      {openMenu === 'gas' && (
+        <div
+          role="menu"
+          aria-label={t('fuelMenuAria')}
+          className="absolute left-3 top-[46px] z-50 w-36 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+        >
+          {FUEL_OPTIONS.map((p) => {
+            const active = isGas && product === p;
+            return (
+              <button
+                key={p}
+                role="menuitemradio"
+                aria-checked={active}
+                onClick={() => {
+                  setProduct(p);
+                  setOpenMenu(null);
+                }}
+                className={clsx(
+                  'flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs font-semibold transition',
+                  active
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
+                )}
+              >
+                {productLabel(p)}
+                {active && (
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.4}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 세차장 유형 드롭다운 — 세차장 버튼 아래(2행을 없앤 대신 여기로 들어옴). */}
+      {openMenu === 'carwash' && (
+        <div
+          role="menu"
+          aria-label={t('carwashMenuAria')}
+          className="absolute right-3 top-[46px] z-50 w-32 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+        >
+          {CARWASH_TYPE_OPTIONS.map((opt) => {
+            const active = carwashType === opt.value;
+            return (
+              <button
+                key={opt.value}
+                role="menuitemradio"
+                aria-checked={active}
+                onClick={() => {
+                  setCarwashType(opt.value);
+                  setOpenMenu(null);
+                }}
+                className={clsx(
+                  'flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs font-semibold transition',
+                  active
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
+                )}
+              >
+                {tCarwashFilter(opt.labelKey)}
+                {active && (
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.4}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* 주유소 레이어 부가 필터 — 브랜드 + 세차 가능(둘 다 BrandFilter 드롭다운 안). 우측 끝에 고정. */}
       {isGas && (

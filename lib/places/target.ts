@@ -38,10 +38,21 @@ export async function resolvePlaceTarget(
     if (!data) return miss;
     return { exists: true, lat: num(data.lat), lng: num(data.lng) };
   }
+  if (type === 'carwash') {
+    const { data } = await sb
+      .from('carwash_places')
+      .select('lat, lng')
+      .eq('mgmt_no', id)
+      .maybeSingle();
+    if (!data) return miss;
+    return { exists: true, lat: num(data.lat), lng: num(data.lng) };
+  }
+  // repair — 0042 미적용 환경에서는 조회가 에러이고 data 가 없으므로 자연히 miss 가 된다
+  // (리뷰 작성이 막힐 뿐, 다른 장소 리뷰나 지도는 영향받지 않는다).
   const { data } = await sb
-    .from('carwash_places')
+    .from('repair_shops')
     .select('lat, lng')
-    .eq('mgmt_no', id)
+    .eq('shop_key', id)
     .maybeSingle();
   if (!data) return miss;
   return { exists: true, lat: num(data.lat), lng: num(data.lng) };

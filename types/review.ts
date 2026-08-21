@@ -1,9 +1,9 @@
 // 1000냥 주유소 - 리뷰 타입
 
 /** 리뷰를 달 수 있는 장소 종류. DB target_type 값과 1:1. */
-export type PlaceType = 'gas' | 'ev' | 'carwash';
+export type PlaceType = 'gas' | 'ev' | 'carwash' | 'repair';
 
-export const PLACE_TYPES: readonly PlaceType[] = ['gas', 'ev', 'carwash'] as const;
+export const PLACE_TYPES: readonly PlaceType[] = ['gas', 'ev', 'carwash', 'repair'] as const;
 
 export function isPlaceType(v: string | undefined | null): v is PlaceType {
   return !!v && (PLACE_TYPES as readonly string[]).includes(v);
