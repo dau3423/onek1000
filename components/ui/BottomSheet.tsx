@@ -1,5 +1,6 @@
 'use client';
 
+import type { MapLayer } from '@/stores/map';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -12,8 +13,11 @@ import { priceTier, priceTierThresholds, distanceMeters } from '@/lib/map/geo';
 import type { EvStationMarker } from '@/types/ev';
 import { rankEvStations, type EvStationRanked, type EvSortOrigin } from '@/lib/ev/sort';
 import type { CarwashMarker } from '@/types/carwash';
+import type { RepairMarker } from '@/types/repair';
+import { REPAIR_TYPE_COLOR } from '@/types/repair';
 import { WASH_TYPE_COLOR } from '@/types/carwash';
 import { CarwashTypeBadge } from '@/components/carwash/CarwashTypeBadge';
+import { RepairTypeBadge } from '@/components/repair/RepairTypeBadge';
 import { CrownIcon, ChevronRightIcon, BoltFilledIcon, DropletIcon } from '@/components/icons';
 
 type Tab = 'area' | 'nearby';
@@ -65,7 +69,7 @@ interface Props {
 
   // === 전기차 충전소(EV) 레이어 ===
   /** 현재 지도 레이어. 'ev'면 충전소, 'carwash'면 세차장 목록을 표시한다. 기본 'gas'. */
-  layer?: 'gas' | 'ev' | 'carwash';
+  layer?: MapLayer;
   /** 화면 영역 내 충전소 마커 목록(layer='ev'일 때 사용). */
   evStations?: EvStationMarker[];
   /**
@@ -81,15 +85,21 @@ interface Props {
   // === 독립 세차장(carwash) 레이어 ===
   /** 화면 영역 내 세차장 마커 목록(layer='carwash'일 때 사용, 유형 필터 적용 후 집합). */
   carwashPlaces?: CarwashMarker[];
+  /** 정비소 목록(layer='repair'). */
+  repairShops?: RepairMarker[];
   /**
    * 세차장 거리 계산/정렬 기준 좌표(내 위치 우선, 없으면 화면 중심). null이면 거리 미표시.
    * 세차장엔 가격이 없으므로 정렬은 거리순(좌표 있을 때)만 적용한다.
    */
   carwashOrigin?: { lat: number; lng: number } | null;
+  /** 정비소 거리 계산 기준 좌표(내 위치 → 지도 중심 폴백). */
+  repairOrigin?: { lat: number; lng: number } | null;
   /** 세차장 선택 콜백(상세 이동). */
   onSelectCarwash?: (p: CarwashMarker) => void;
+  onSelectRepair?: (p: RepairMarker) => void;
   /** 세차장 길안내 콜백. */
   onNavigateCarwash?: (p: CarwashMarker) => void;
+  onNavigateRepair?: (p: RepairMarker) => void;
 }
 
 const NEARBY_LIMIT = 10;
@@ -98,8 +108,14 @@ const AREA_LIMIT = 30;
 const EV_LIMIT = 50;
 // 세차장 레이어 목록 상한(EV와 동일 취지).
 const CARWASH_LIMIT = 50;
+const REPAIR_LIMIT = 50;
 
 /** 세차장 목록 1행 표시용(거리 계산 결과 동봉). */
+interface RepairRanked {
+  shop: RepairMarker;
+  distance: number | null;
+}
+
 interface CarwashRanked {
   place: CarwashMarker;
   distance: number | null;
@@ -124,9 +140,13 @@ export function BottomSheet({
   onSelectEv,
   onNavigateEv,
   carwashPlaces = [],
+  repairShops = [],
   carwashOrigin = null,
+  repairOrigin = null,
   onSelectCarwash,
+  onSelectRepair,
   onNavigateCarwash,
+  onNavigateRepair,
 }: Props) {
   const t = useTranslations('map');
   const brandLabel = useBrandLabel();
@@ -153,6 +173,7 @@ export function BottomSheet({
 
   const isEv = layer === 'ev';
   const isCarwash = layer === 'carwash';
+  const isRepair = layer === 'repair';
 
   const activeTab: Tab = nearbyEnabled ? tab : 'area';
 
@@ -192,10 +213,23 @@ export function BottomSheet({
         .slice(0, CARWASH_LIMIT)
     : [];
 
+  // === 정비소 레이어: 정비소 목록(거리순). 가격 개념이 없어 가격 컬럼/정렬은 노출하지 않는다. ===
+  const repairRanked: RepairRanked[] = isRepair
+    ? repairShops
+        .map((p) => ({
+          shop: p,
+          distance: repairOrigin ? distanceMeters(repairOrigin.lat, repairOrigin.lng, p.lat, p.lng) : null,
+        }))
+        .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
+        .slice(0, REPAIR_LIMIT)
+    : [];
+
   const title = isEv
     ? t('bottomSheet.titleEvArea', { count: evRanked.length })
     : isCarwash
     ? t('bottomSheet.titleCarwashArea', { count: carwashRanked.length })
+    : isRepair
+    ? t('bottomSheet.titleRepairArea', { count: repairRanked.length })
     : carwashOnly
       ? activeTab === 'nearby'
         ? t('bottomSheet.titleCarwashOnlyNearby', { radius: radiusKm })
@@ -225,7 +259,7 @@ export function BottomSheet({
       </button>
 
       {/* 탭: 주유소 레이어 + 내 위치 권한 동의 후에만 '내 주변' 노출. EV/세차장 레이어는 탭 없음(단일 목록). */}
-      {!isEv && !isCarwash && nearbyEnabled && (
+      {!isEv && !isCarwash && !isRepair && nearbyEnabled && (
         <div className="flex gap-1 px-5 pb-3.5">
           <TabButton active={activeTab === 'area'} onClick={() => setTab('area')}>
             {t('bottomSheet.tabArea')}
@@ -274,6 +308,28 @@ export function BottomSheet({
                   index={i}
                   onSelect={onSelectCarwash}
                   onNavigate={onNavigateCarwash}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : isRepair ? (
+        /* 정비소 레이어: 정비소 목록(거리순). 가격 컬럼/정렬 없음 — 이름+유형 뱃지+거리+주소만. */
+        <div className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
+          {repairRanked.length === 0 ? (
+            <p className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+              {t('bottomSheet.emptyRepair')}
+            </p>
+          ) : (
+            <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+              {repairRanked.map((r, i) => (
+                <RepairRow
+                  key={r.shop.shopKey}
+                  shop={r.shop}
+                  distance={r.distance}
+                  index={i}
+                  onSelect={onSelectRepair}
+                  onNavigate={onNavigateRepair}
                 />
               ))}
             </ul>
@@ -500,6 +556,63 @@ function CarwashRow({
             onClick={() => onNavigate(place)}
             aria-label={t('bottomSheet.navigateAria', { name: place.name })}
             // CarwashRow는 원래 "길안내" 단독 타이틀 — common과 동일 텍스트
+            title={tCommon('navigate')}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
+          >
+            <Image src="/icons/icon_transparent.png" alt="" width={36} height={36} className="block" />
+          </button>
+        )}
+      </div>
+    </li>
+  );
+}
+
+/** 정비소 목록 행 — CarwashRow 와 동형(가격 없음, 이름+유형 뱃지+거리+주소). */
+function RepairRow({
+  shop,
+  distance,
+  index,
+  onSelect,
+  onNavigate,
+}: {
+  shop: RepairMarker;
+  distance: number | null;
+  index: number;
+  onSelect?: (p: RepairMarker) => void;
+  onNavigate?: (p: RepairMarker) => void;
+}) {
+  const t = useTranslations('map');
+  const tCommon = useTranslations('common');
+  const address = shop.roadAddr ?? shop.jibunAddr ?? null;
+  const distanceText = distance != null
+    ? distance < 1000 ? `${Math.round(distance)}m` : `${(distance / 1000).toFixed(1)}km`
+    : null;
+  return (
+    <li>
+      <div className="flex w-full items-center gap-3 px-5 py-3">
+        <button
+          onClick={() => onSelect?.(shop)}
+          aria-label={t('bottomSheet.detailAria', { name: shop.name })}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          <span className="w-5 text-center text-xs font-bold text-gray-500 dark:text-gray-400">{index + 1}</span>
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: REPAIR_TYPE_COLOR[shop.shopType] }} />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span className="truncate text-sm font-semibold text-gray-900 dark:text-gray-50">{shop.name}</span>
+              <RepairTypeBadge type={shop.shopType} />
+            </div>
+            <div className="truncate text-xs text-gray-500 dark:text-gray-400">
+              {distanceText ? `${distanceText}${address ? ' · ' : ''}` : ''}
+              {address ?? (distanceText ? '' : t('bottomSheet.addressUnknown'))}
+            </div>
+          </div>
+          <ChevronRightIcon className="h-4 w-4 shrink-0 text-gray-300 dark:text-gray-600" />
+        </button>
+        {onNavigate && (
+          <button
+            onClick={() => onNavigate(shop)}
+            aria-label={t('bottomSheet.navigateAria', { name: shop.name })}
             title={tCommon('navigate')}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
           >

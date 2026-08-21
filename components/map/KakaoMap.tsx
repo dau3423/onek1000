@@ -1,5 +1,6 @@
 'use client';
 
+import type { MapLayer } from '@/stores/map';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { loadKakao } from './loadKakao';
@@ -9,8 +10,10 @@ import { priceTier, priceTierThresholds } from '@/lib/map/geo';
 import { TIER_FACE, faceMarkerSvg, numberMarkerSvg, skullMarkerSvg } from '@/lib/map/markerFace';
 import type { EvStationMarker } from '@/types/ev';
 import { buildEvMarkerContent } from '@/lib/map/evMarker';
+import type { RepairMarker } from '@/types/repair';
 import type { CarwashMarker } from '@/types/carwash';
 import { buildCarwashMarkerContent } from '@/lib/map/carwashMarker';
+import { buildRepairMarkerContent } from '@/lib/map/repairMarker';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
 import { SPARKLE_SVG_STRING } from '@/components/icons';
 
@@ -235,7 +238,7 @@ interface Props {
   /** 전국 고속도로(EXP) 주유소 목록(화면 영역 무관, 가격 포함). expOnly일 때만 사용. */
   expStations?: StationWithPrice[];
   /** 지도 레이어. 'gas'=주유소, 'ev'=충전소, 'carwash'=독립 세차장. 기본 'gas'(주유소). */
-  layer?: 'gas' | 'ev' | 'carwash';
+  layer?: MapLayer;
   /** 충전소 마커 목록(layer='ev'일 때만 렌더). */
   evStations?: EvStationMarker[];
   /** 충전소 마커 클릭 콜백(layer='ev'). */
@@ -244,6 +247,10 @@ interface Props {
   carwashPlaces?: CarwashMarker[];
   /** 세차장 마커 클릭 콜백(layer='carwash'). */
   onCarwashMarkerClick?: (p: CarwashMarker) => void;
+  /** 정비소 마커 목록(layer='repair'일 때만 렌더). 유형 필터는 부모에서 적용해 전달. */
+  repairShops?: RepairMarker[];
+  /** 정비소 마커 클릭 콜백(layer='repair'). */
+  onRepairMarkerClick?: (s: RepairMarker) => void;
   /**
    * 경로별 최저가 계획. 설정되면 출발→도착 직선 Polyline + 출발/도착 핀 +
    * 경로 최저가 주유소 마커를 지도에 그리고, 출발~도착이 모두 보이도록 fit한다.
@@ -289,6 +296,8 @@ export function KakaoMap({
   evStations,
   onEvMarkerClick,
   carwashPlaces,
+  repairShops,
+  onRepairMarkerClick,
   onCarwashMarkerClick,
   routePlan,
   onRouteStationClick,
@@ -319,6 +328,9 @@ export function KakaoMap({
   const carwashOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
   const onCarwashMarkerClickRef = useRef(onCarwashMarkerClick);
   useEffect(() => { onCarwashMarkerClickRef.current = onCarwashMarkerClick; }, [onCarwashMarkerClick]);
+  const repairOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
+  const onRepairMarkerClickRef = useRef(onRepairMarkerClick);
+  useEffect(() => { onRepairMarkerClickRef.current = onRepairMarkerClick; }, [onRepairMarkerClick]);
   // 경로(직선) Polyline — 경로 모드일 때만 그린다(독립 관리, 해제 시 제거).
   const routeLineRef = useRef<kakao.maps.Polyline | null>(null);
   // 경로 오버레이(출발/도착 핀 + 경로 최저가 주유소 마커) — Polyline과 함께 관리.
@@ -823,6 +835,38 @@ export function KakaoMap({
       carwashOverlaysRef.current.push(overlay);
     }
   }, [ready, layer, carwashPlaces, mapLevel, t]);
+
+  // 자동차 정비소 마커 — layer='repair'일 때만 렌더(다른 레이어 마커와 독립 오버레이).
+  // 정비소 1곳=1마커. 색=유형(종합/소형/전문/원동기/미확인), 라벨=줌인(level≤6) 시 유형.
+  // 유형 필터는 부모(app/page)에서 repairShops 에 적용해 전달하므로 여기선 그대로 그린다.
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    const map = mapRef.current;
+
+    repairOverlaysRef.current.forEach((o) => o.setMap(null));
+    repairOverlaysRef.current = [];
+
+    if (layer !== 'repair') return;
+
+    const showLabel = map.getLevel() <= 6; // 세차장·EV와 동일 기준
+    for (const p of repairShops ?? []) {
+      const label = t(`repairMarkerLabel.${p.shopType}`);
+      const content = buildRepairMarkerContent(p, showLabel, label);
+      content.addEventListener('click', () => onRepairMarkerClickRef.current?.(p));
+      // 유형 확정 핀을 미확인(회색) 위에 그려 겹칠 때 우선 보이게 한다.
+      const z = 2 + (p.shopType !== 'unknown' ? 1 : 0);
+      const overlay = new window.kakao.maps.CustomOverlay({
+        position: new window.kakao.maps.LatLng(p.lat, p.lng),
+        content,
+        // 꼬리 있는 핀 → 콘텐츠 아래 끝이 좌표(3541182 규칙).
+        yAnchor: 1,
+        clickable: true,
+        zIndex: z,
+      });
+      overlay.setMap(map);
+      repairOverlaysRef.current.push(overlay);
+    }
+  }, [ready, layer, repairShops, mapLevel, t]);
 
   // 회색 점(비하이라이트 주유소) 오버레이 — 일정 줌 이상 확대(level ≤ GRAY_DOT_MAX_LEVEL)일 때만.
   // allStations(화면 내 전체 주유소) 중, 이미 강조/일반 마커로 그려진 id를 제외한 나머지를

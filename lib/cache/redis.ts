@@ -78,6 +78,7 @@ export const keys = {
   evBbox: (q: string) => `ev:bbox:${q}`,
   // 세차장 bbox(지도 영역) 조회 — 좌표 격자만. 유형 필터는 클라이언트에서 적용하므로 캐시 차원에 없음.
   carwashBbox: (q: string) => `carwash:bbox:${q}`,
+  repairBbox: (q: string) => `repair:bbox:${q}`,
   // 화면 영역 내 전체 주유소(회색 점) — 가격/유종 무관, 좌표만. 줌(z)+격자로 분리.
   stationsInBbox: (z: number, q: string) => `allstn:z${z}:${q}`,
   // 지역 가격 추세(④ 타이밍 배너) — 유종+격자+반경. 추세는 1일 단위 변화라 TTL 길게(1h).

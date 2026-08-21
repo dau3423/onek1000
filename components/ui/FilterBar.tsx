@@ -7,7 +7,7 @@ import { type ProductCode } from '@/types/station';
 import type { CarwashTypeFilter } from '@/types/carwash';
 import { useProductLabel } from '@/lib/i18n/labels';
 import { BrandFilter } from './BrandFilter';
-import { BoltIcon, CarwashIcon, FuelIcon } from '@/components/icons';
+import { BoltIcon, CarwashIcon, WrenchIcon, FuelIcon } from '@/components/icons';
 import clsx from 'clsx';
 
 // 주유소 드롭다운에 나열할 유종. 기존엔 '휘발유▾' 드롭다운(일반/고급)과 경유·LPG 칩이 따로
@@ -15,10 +15,11 @@ import clsx from 'clsx';
 const FUEL_OPTIONS: ProductCode[] = ['B027', 'D047', 'B034', 'C004'];
 
 // 레이어 전환 — 주유소/EV/세차장. '주유소'는 드롭다운 트리거를 겸한다(유종 선택).
-const LAYER_OPTIONS: { value: MapLayer; labelKey: 'layerGas' | 'layerEv' | 'layerCarwash'; Icon: ComponentType<{ className?: string }> }[] = [
+const LAYER_OPTIONS: { value: MapLayer; labelKey: 'layerGas' | 'layerEv' | 'layerCarwash' | 'layerRepair'; Icon: ComponentType<{ className?: string }> }[] = [
   { value: 'gas', labelKey: 'layerGas', Icon: FuelIcon },
   { value: 'ev', labelKey: 'layerEv', Icon: BoltIcon },
   { value: 'carwash', labelKey: 'layerCarwash', Icon: CarwashIcon },
+  { value: 'repair', labelKey: 'layerRepair', Icon: WrenchIcon },
 ];
 
 // 세차장 레이어 유형(FR-3). 'all'=미확인 포함 전체(기본).
@@ -83,7 +84,11 @@ export function FilterBar() {
       <div
         role="group"
         aria-label={t('layerGroupAria')}
-        className="relative z-20 flex shrink-0 items-center gap-0.5 rounded-full bg-gray-100 p-0.5 dark:bg-gray-800"
+        // 레이어가 4개가 되면서 360·375px 에서 폭이 모자란다. shrink-0 을 유지하면 오른쪽
+        // '브랜드' 버튼이 화면 밖으로 밀려나 **누를 수 없게** 된다(가로 스크롤이 없어서).
+        // 그래서 이 그룹만 줄어들 수 있게 하고 내부를 가로 스크롤시킨다 — 라벨은 그대로 두고
+        // 브랜드는 항상 화면에 남는다. 드롭다운 메뉴는 이 그룹 밖(필터바 직속)이라 잘리지 않는다.
+        className="scrollbar-none relative z-20 flex min-w-0 items-center gap-0.5 overflow-x-auto rounded-full bg-gray-100 p-0.5 dark:bg-gray-800"
       >
         {LAYER_OPTIONS.map(({ value, labelKey, Icon }) => {
           const active = layer === value;
@@ -108,7 +113,7 @@ export function FilterBar() {
               aria-label={`${t('layerAria', { label })}${active && value === 'gas' ? `, ${productLabel(product)}` : ''}`}
               onClick={() => onLayerClick(value)}
               className={clsx(
-                'flex h-8 items-center gap-1 rounded-full px-2.5 text-xs font-semibold transition',
+                'flex h-8 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-semibold transition',
                 active
                   ? 'bg-primary text-white shadow-sm'
                   : 'text-gray-600 hover:bg-gray-200/70 dark:text-gray-300 dark:hover:bg-gray-700',

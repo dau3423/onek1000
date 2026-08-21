@@ -118,7 +118,8 @@
       "layerCarwash": "洗车场",
       "layerAria": "{label}地图",
       "fuelMenuAria": "油品",
-      "carwashMenuAria": "洗车场类型"
+      "carwashMenuAria": "洗车场类型",
+      "layerRepair": "维修厂"
     },
     "carwashFilter": {
       "all": "全部",
@@ -204,7 +205,9 @@
       "kakaoNaviTitle": "Kakao Navi 导航",
       "evOperatorUnknown": "运营机构未知",
       "waiting": "等待",
-      "addressUnknown": "地址未知"
+      "addressUnknown": "地址未知",
+      "titleRepairArea": "该区域维修厂 {count} 家",
+      "emptyRepair": "此区域没有可显示的维修厂。请移动地图试试。"
     },
     "kakaoMap": {
       "errorTitle": "地图加载失败。",
@@ -244,7 +247,14 @@
       "auto": "自动洗车",
       "unknown": "洗车场"
     },
-    "evMarkerLabel": "{available}/{total}个{fast, select, true { · 快充} other {}}"
+    "evMarkerLabel": "{available}/{total}个{fast, select, true { · 快充} other {}}",
+    "repairMarkerLabel": {
+      "general": "综合维修",
+      "small": "小型维修",
+      "specialty": "汽车维修店",
+      "engine": "发动机维修",
+      "unknown": "维修厂"
+    }
   },
   "station": {
     "self": "自助",
@@ -951,5 +961,24 @@
     "ecommerceNumberLabel": "通信销售业申报号",
     "phoneLabel": "联系电话",
     "emailLabel": "联系邮箱"
+  },
+  "repair": {
+    "typeLabel": {
+      "general": "汽车综合维修业（1级）",
+      "small": "小型汽车维修业（2级）",
+      "specialty": "汽车专业维修业（维修店）",
+      "engine": "发动机专业维修业",
+      "unknown": "维修厂"
+    },
+    "operatingInfoTitle": "营业信息",
+    "noOperatingInfo": "暂无营业时间信息。前往前请先致电确认。",
+    "callButton": "拨打电话",
+    "hoursRange": "{open} ~ {close}",
+    "hoursOpenOnly": "{open} 开始营业",
+    "dataSource": "维修厂信息来源：公共数据门户 全国汽车维修企业标准数据",
+    "baseDate": " · 基准日 {date}",
+    "publicDataDisclaimer": "基于公共数据，可能与实际情况不同（可能已歇业或信息变更）。每半年更新一次，近期变更可能尚未反映。",
+    "institution": "管理机构 {name}",
+    "noTel": "没有登记的电话号码"
   }
 }

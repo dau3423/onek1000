@@ -118,7 +118,8 @@
       "layerCarwash": "洗車場",
       "layerAria": "{label}マップ",
       "fuelMenuAria": "油種",
-      "carwashMenuAria": "洗車場の種類"
+      "carwashMenuAria": "洗車場の種類",
+      "layerRepair": "整備工場"
     },
     "carwashFilter": {
       "all": "すべて",
@@ -204,7 +205,9 @@
       "kakaoNaviTitle": "カカオナビ経路案内",
       "evOperatorUnknown": "運営機関不明",
       "waiting": "待機",
-      "addressUnknown": "住所不明"
+      "addressUnknown": "住所不明",
+      "titleRepairArea": "このエリアの整備工場 {count}件",
+      "emptyRepair": "このエリアに表示できる整備工場がありません。地図を移動してみてください。"
     },
     "kakaoMap": {
       "errorTitle": "地図を読み込めませんでした。",
@@ -244,7 +247,14 @@
       "auto": "自動洗車",
       "unknown": "洗車場"
     },
-    "evMarkerLabel": "{available}/{total}基{fast, select, true { · 急速} other {}}"
+    "evMarkerLabel": "{available}/{total}基{fast, select, true { · 急速} other {}}",
+    "repairMarkerLabel": {
+      "general": "総合整備",
+      "small": "小型整備",
+      "specialty": "カーセンター",
+      "engine": "原動機整備",
+      "unknown": "整備工場"
+    }
   },
   "station": {
     "self": "セルフ",
@@ -951,5 +961,24 @@
     "ecommerceNumberLabel": "通信販売業申告番号",
     "phoneLabel": "代表電話番号",
     "emailLabel": "代表メールアドレス"
+  },
+  "repair": {
+    "typeLabel": {
+      "general": "自動車総合整備業（1級）",
+      "small": "小型自動車整備業（2級）",
+      "specialty": "自動車専門整備業（カーセンター）",
+      "engine": "原動機専門整備業",
+      "unknown": "整備工場"
+    },
+    "operatingInfoTitle": "営業情報",
+    "noOperatingInfo": "営業時間の情報がまだありません。訪問前にお電話でご確認ください。",
+    "callButton": "電話をかける",
+    "hoursRange": "{open} ~ {close}",
+    "hoursOpenOnly": "{open} 営業開始",
+    "dataSource": "整備工場情報の提供：公共データポータル 全国自動車整備業者標準データ",
+    "baseDate": " · 基準日 {date}",
+    "publicDataDisclaimer": "公共データに基づくため実際と異なる場合があります（廃業・情報変更の可能性）。更新が半年ごとのため、最近の変更は反映が遅れることがあります。",
+    "institution": "管理機関 {name}",
+    "noTel": "登録された電話番号がありません"
   }
 }

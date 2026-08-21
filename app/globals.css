@@ -234,3 +234,13 @@ body {
   .route-blink--focus::after,
   .route-onmarker-blink--focus::after { display: block; opacity: .7; transform: scale(1.4); }
 }
+
+/* 가로 스크롤 컨테이너의 스크롤바 숨김 — 필터바 레이어 그룹처럼 "밀어서 보는" 좁은 띠에서
+   스크롤바가 보이면 높이가 흔들리고 지저분하다. 스크롤 자체는 그대로 동작한다. */
+.scrollbar-none {
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* 구 Edge */
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;                  /* Chrome / Safari */
+}

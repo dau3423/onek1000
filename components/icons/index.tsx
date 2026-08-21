@@ -509,6 +509,16 @@ export function SparkleIcon({ className }: IconProps) {
   );
 }
 
+// 정비소 레이어 칩 아이콘 — 세차장(CarwashIcon: 차+분사선)과 형태가 확실히 달라야 한다.
+// 렌치(스패너) 한 자루로 "고친다"를 나타낸다.
+export function WrenchIcon({ className }: IconProps) {
+  return (
+    <Stroke className={className}>
+      <path d="M14.7 6.3a3.9 3.9 0 0 0 5.1 5.1l-8.6 8.6a2.1 2.1 0 0 1-3-3l8.6-8.6a3.9 3.9 0 0 0-5.1-5.1l3 3-1.6 1.6-3-3a3.9 3.9 0 0 1 4.6-1.5" />
+    </Stroke>
+  );
+}
+
 // 비로그인 잠금 표시(LoginBlurGate) — 자물쇠. 잠긴 콘텐츠 위 오버레이 버튼에서만 쓴다.
 export function LockIcon({ className }: IconProps) {
   return (

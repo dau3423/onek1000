@@ -118,7 +118,8 @@
       "layerCarwash": "Car wash",
       "layerAria": "{label} map",
       "fuelMenuAria": "Fuel type",
-      "carwashMenuAria": "Car wash type"
+      "carwashMenuAria": "Car wash type",
+      "layerRepair": "Repair"
     },
     "carwashFilter": {
       "all": "All",
@@ -204,7 +205,9 @@
       "kakaoNaviTitle": "KakaoNavi directions",
       "evOperatorUnknown": "Operator unknown",
       "waiting": "Waiting",
-      "addressUnknown": "Address unknown"
+      "addressUnknown": "Address unknown",
+      "titleRepairArea": "{count, plural, one {# repair shop} other {# repair shops}} in this area",
+      "emptyRepair": "No repair shops in this area. Try moving the map."
     },
     "kakaoMap": {
       "errorTitle": "Couldn't load the map.",
@@ -244,7 +247,14 @@
       "auto": "Auto wash",
       "unknown": "Car wash"
     },
-    "evMarkerLabel": "{available}/{total}{fast, select, true { · Fast} other {}}"
+    "evMarkerLabel": "{available}/{total}{fast, select, true { · Fast} other {}}",
+    "repairMarkerLabel": {
+      "general": "Full service",
+      "small": "Small vehicle",
+      "specialty": "Auto shop",
+      "engine": "Engine",
+      "unknown": "Repair shop"
+    }
   },
   "station": {
     "self": "Self-service",
@@ -951,5 +961,24 @@
     "ecommerceNumberLabel": "E-Commerce Registration No.",
     "phoneLabel": "Phone",
     "emailLabel": "Email"
+  },
+  "repair": {
+    "typeLabel": {
+      "general": "Full-service repair (Class 1)",
+      "small": "Small-vehicle repair (Class 2)",
+      "specialty": "Specialised repair (auto shop)",
+      "engine": "Engine repair",
+      "unknown": "Repair shop"
+    },
+    "operatingInfoTitle": "Opening hours",
+    "noOperatingInfo": "No opening hours on record yet. Please call ahead before visiting.",
+    "callButton": "Call",
+    "hoursRange": "{open} – {close}",
+    "hoursOpenOnly": "Opens at {open}",
+    "dataSource": "Repair shop data: National Auto Repair Shop Standard Data (data.go.kr)",
+    "baseDate": " · as of {date}",
+    "publicDataDisclaimer": "Based on public data, so details may differ from reality (shops may close or change). It is updated twice a year, so recent changes may not appear yet.",
+    "institution": "Managed by {name}",
+    "noTel": "No phone number on record"
   }
 }

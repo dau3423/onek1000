@@ -39,6 +39,7 @@ import { GRAY_DOTS_ENABLED } from '@/lib/flags';
 import { RouteIcon, ChevronRightIcon, CloseIcon, LocationOffIcon, LoaderIcon, FullscreenIcon, FullscreenExitIcon, FuelIcon, CarwashIcon } from '@/components/icons';
 import type { BboxResponse, RadiusResponse, StationWithPrice, NationalTop10Item, NationalTop10Response, StationPoint, StationsInBboxResponse, RoutePlan, ProductCode } from '@/types/station';
 import type { EvBboxResponse, EvStationMarker } from '@/types/ev';
+import type { RepairMarker, RepairBboxResponse } from '@/types/repair';
 import type { CarwashBboxResponse, CarwashMarker } from '@/types/carwash';
 
 // 지도 로딩 플레이스홀더 — next/dynamic의 loading은 React 트리 안에서 렌더되므로 훅 사용 가능.
@@ -190,7 +191,9 @@ export default function HomePage() {
 
   // 독립 세차장(layer='carwash') — 지도 영역 내 세차장 마커. 우리 DB(/api/carwash/bbox)만 조회.
   const [carwashPlaces, setCarwashPlaces] = useState<CarwashMarker[]>([]);
+  const [repairShops, setRepairShops] = useState<RepairMarker[]>([]);
   const carwashAbort = useRef<AbortController | null>(null);
+  const repairAbort = useRef<AbortController | null>(null);
   // 첫 응답 수신 여부(빈 상태 배너를 첫 로딩 중에 깜빡이지 않게 하기 위함).
   const [carwashLoaded, setCarwashLoaded] = useState(false);
   // 세차장 마커 클릭 시 요약 팝업 대상(모바일·PC 공통 — 상세 페이지 없음).
@@ -531,6 +534,27 @@ export default function HomePage() {
       });
   }
 
+  // 정비소 마커 조회 — layer='repair'일 때만 호출. 우리 DB(/api/repair/bbox)만 조회.
+  function fetchRepairShops(b: { swLat: number; swLng: number; neLat: number; neLng: number }) {
+    if (repairAbort.current) repairAbort.current.abort();
+    repairAbort.current = new AbortController();
+    const params = new URLSearchParams({
+      swLat: String(b.swLat), swLng: String(b.swLng),
+      neLat: String(b.neLat), neLng: String(b.neLng),
+    });
+    fetch(`/api/repair/bbox?${params}`, { signal: repairAbort.current.signal })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`repair bbox ${r.status}`);
+        return (await r.json()) as RepairBboxResponse;
+      })
+      .then((data) => {
+        setRepairShops(Array.isArray(data?.shops) ? data.shops : []);
+      })
+      .catch((e) => {
+        if (e.name !== 'AbortError') console.error('repair bbox fetch fail', e);
+      });
+  }
+
   // 레이어 전환 시 현재 화면 영역으로 즉시 재조회.
   // - ev: 충전소 조회. carwash: 세차장 조회. gas: 기존 주유소 조회(일관성 위해 트리거).
   useEffect(() => {
@@ -538,6 +562,7 @@ export default function HomePage() {
     if (!b) return;
     if (layer === 'ev') { fetchEvStations(b); setAllStations([]); }
     else if (layer === 'carwash') { setCarwashLoaded(false); fetchCarwashPlaces(b); setAllStations([]); }
+    else if (layer === 'repair') { fetchRepairShops(b); setAllStations([]); }
     else { fetchStations(b); fetchAllStations(b); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layer]);
@@ -1026,6 +1051,8 @@ export default function HomePage() {
             else router.push(`/ev/${encodeURIComponent(s.statId)}`);
           }}
           carwashPlaces={visibleCarwash}
+          repairShops={repairShops}
+          onRepairMarkerClick={(p) => router.push(`/repair/${encodeURIComponent(p.shopKey)}`)}
           onCarwashMarkerClick={(p) => setCarwashPopup(p)}
           routePlan={layer === 'gas' ? routePlan : null}
           onRouteStationClick={handleMarkerClick}
@@ -1041,6 +1068,7 @@ export default function HomePage() {
             // 활성 레이어에 맞는 데이터만 조회(불필요 호출/캐시 오염 방지).
             if (layer === 'ev') fetchEvStations(b);
             else if (layer === 'carwash') fetchCarwashPlaces(b);
+            else if (layer === 'repair') fetchRepairShops(b);
             else { fetchStations(b); fetchAllStations(b); }
           }}
           onViewChange={(v) => {
@@ -1256,6 +1284,9 @@ export default function HomePage() {
             )
           }
           carwashPlaces={visibleCarwash}
+          repairShops={repairShops}
+          repairOrigin={myLocation ?? mapCenter}
+          onSelectRepair={(p) => router.push(`/repair/${encodeURIComponent(p.shopKey)}`)}
           carwashOrigin={carwashOrigin}
           onSelectCarwash={(p) => router.push(`/carwash/${encodeURIComponent(p.mgmtNo)}`)}
           onNavigateCarwash={(p) =>

@@ -105,8 +105,8 @@ function writeRoutePlan(v: RoutePlan | null) {
   }
 }
 
-/** 지도 레이어 — 'gas'=주유소(기존 기본), 'ev'=전기차 충전소, 'carwash'=독립 세차장. */
-export type MapLayer = 'gas' | 'ev' | 'carwash';
+/** 지도 레이어 — 'gas'=주유소(기존 기본), 'ev'=전기차 충전소, 'carwash'=독립 세차장, 'repair'=자동차 정비소. */
+export type MapLayer = 'gas' | 'ev' | 'carwash' | 'repair';
 
 interface MapState {
   /** 현재 지도 레이어(주유소/충전소 토글). */

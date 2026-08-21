@@ -118,7 +118,8 @@
       "layerCarwash": "세차장",
       "layerAria": "{label} 지도",
       "fuelMenuAria": "유종",
-      "carwashMenuAria": "세차장 유형"
+      "carwashMenuAria": "세차장 유형",
+      "layerRepair": "정비소"
     },
     "carwashFilter": {
       "all": "전체",
@@ -204,7 +205,9 @@
       "kakaoNaviTitle": "카카오내비 길안내",
       "evOperatorUnknown": "운영기관 미상",
       "waiting": "대기",
-      "addressUnknown": "주소 미상"
+      "addressUnknown": "주소 미상",
+      "titleRepairArea": "이 지역 정비소 {count}곳",
+      "emptyRepair": "이 영역에 표시할 정비소가 없어요. 지도를 이동해보세요."
     },
     "kakaoMap": {
       "errorTitle": "지도를 불러오지 못했습니다.",
@@ -244,7 +247,14 @@
       "auto": "자동세차",
       "unknown": "세차장"
     },
-    "evMarkerLabel": "{available}/{total}대{fast, select, true { · 급속} other {}}"
+    "evMarkerLabel": "{available}/{total}대{fast, select, true { · 급속} other {}}",
+    "repairMarkerLabel": {
+      "general": "종합정비",
+      "small": "소형정비",
+      "specialty": "카센터",
+      "engine": "원동기정비",
+      "unknown": "정비소"
+    }
   },
   "station": {
     "self": "셀프",
@@ -951,5 +961,24 @@
     "ecommerceNumberLabel": "통신판매업 신고번호",
     "phoneLabel": "대표전화번호",
     "emailLabel": "대표이메일"
+  },
+  "repair": {
+    "typeLabel": {
+      "general": "자동차종합정비업(1급)",
+      "small": "소형자동차정비업(2급)",
+      "specialty": "자동차전문정비업(카센터)",
+      "engine": "원동기전문정비업",
+      "unknown": "정비소"
+    },
+    "operatingInfoTitle": "운영 정보",
+    "noOperatingInfo": "운영시간 정보가 아직 없어요. 방문 전 전화로 확인해 주세요.",
+    "callButton": "전화걸기",
+    "hoursRange": "{open} ~ {close}",
+    "hoursOpenOnly": "{open} 영업 시작",
+    "dataSource": "정비소 정보 제공: 공공데이터포털 전국자동차정비업체표준데이터",
+    "baseDate": " · 기준일 {date}",
+    "publicDataDisclaimer": "공공데이터 기준이라 실제와 다를 수 있어요(폐업·정보 변경 가능). 갱신 주기가 반기라 최근 변경은 반영이 늦을 수 있어요.",
+    "institution": "관리기관 {name}",
+    "noTel": "등록된 전화번호가 없어요"
   }
 }
