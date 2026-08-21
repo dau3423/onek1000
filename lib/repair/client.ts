@@ -48,7 +48,17 @@ export interface RepairApiItem {
   institutionNm?: string;          // 관리기관명
   institutionPhoneNumber?: string; // 관리기관전화번호
   referenceDate?: string;          // 데이터기준일자
-  instt_code?: string;             // 기관코드
+  insttCode?: string;              // 기관코드 (실측 필드명)
+  instt_code?: string;             // 문서 표기 — 실제 응답엔 없지만 폴백으로 남긴다
+  insttNm?: string;                // 기관명(실측에 존재, institutionNm 과 별개)
+}
+
+interface EnvelopeInner {
+  header?: { resultCode?: string; resultMsg?: string };
+  body?: unknown;
+}
+interface Envelope extends EnvelopeInner {
+  response?: EnvelopeInner;
 }
 
 export interface RepairPage {
@@ -112,12 +122,16 @@ export async function fetchRepairPage(pageNo: number): Promise<RepairPage> {
       throw new Error(`JSON 이 아닌 응답(XML 에러 추정): ${text.slice(0, 200)}`);
     }
 
-    const json = JSON.parse(text) as { response?: { body?: unknown; header?: { resultCode?: string; resultMsg?: string } } };
-    const header = json.response?.header;
+    // 봉투 형태가 API 마다 다르다. 이 API 는 실측 결과 **response 래퍼가 없는** {header, body} 다
+    // (문서/다른 data.go.kr API 는 {response:{header,body}}). 둘 다 받아들이지 않으면
+    // body 가 undefined 가 되어 조용히 0건이 되고, sync 는 "완주"로 판단해 정상 종료해 버린다.
+    const json = JSON.parse(text) as Envelope;
+    const env: EnvelopeInner = json.response ?? json;
+    const header = env.header;
     if (header?.resultCode && header.resultCode !== '00') {
       throw new Error(`API 오류 ${header.resultCode}: ${header.resultMsg ?? ''}`);
     }
-    const body = json.response?.body;
+    const body = env.body;
     return { items: extractItems(body), totalCount: extractTotal(body) };
   } finally {
     clearTimeout(timer);

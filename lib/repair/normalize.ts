@@ -73,7 +73,7 @@ export function toDate(v: string | undefined | null): string | null {
  */
 export function makeShopKey(item: RepairApiItem): string {
   const parts = [
-    nullify(item.instt_code) ?? '',
+    nullify(item.insttCode) ?? nullify(item.instt_code) ?? '',
     nullify(item.inspofcNm) ?? '',
     nullify(item.rdnmadr) ?? nullify(item.lnmadr) ?? '',
   ];
