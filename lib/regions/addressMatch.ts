@@ -39,6 +39,19 @@ const SIDO_ALIASES: Record<SidoCode, string[]> = {
   '19': ['세종특별자치시', '세종시', '세종'],
 };
 
+/**
+ * 통합 시도 표기 — 한 표기 아래에 두 시도의 시군구가 섞여 온다.
+ *
+ * 광주광역시 + 전라남도가 '전남광주통합특별시'로 통합되면서, EV 충전소 원천(data.go.kr)의
+ * 주소가 전부 그 표기로 바뀌었다. SIDO_ALIASES 만으로는 앞의 '전남'만 잡혀 전남 시군구에서만
+ * 찾게 되고, '전남광주통합특별시 북구 …' 같은 광주 주소가 전부 null 이 된다.
+ * 두 시도의 시군구 이름은 겹치지 않아(광주는 동/서/남/북/광산구, 전남은 전부 시·군)
+ * 후보 목록을 차례로 훑어도 오매칭이 없다.
+ */
+const MERGED_SIDO_ALIASES: { alias: string; codes: SidoCode[] }[] = [
+  { alias: '전남광주통합특별시', codes: ['16', '07'] },
+];
+
 /** 별칭을 길이 내림차순으로 펼쳐 둔다 — '서울특별시'가 '서울'보다 먼저 매칭되게. */
 const SIDO_LOOKUP: { alias: string; code: SidoCode }[] = (
   Object.entries(SIDO_ALIASES) as [SidoCode, string[]][]
@@ -55,17 +68,31 @@ for (const sg of SIGUNGU) {
 }
 for (const list of BY_SIDO.values()) list.sort((a, b) => b.name.length - a.name.length);
 
-/** 주소에서 시도 코드를 찾는다. 못 찾으면 null. */
-export function sidoFromAddress(addr: string | null | undefined): SidoCode | null {
+/**
+ * 주소 첫머리 표기 → 후보 시도 코드 목록. 보통 1개, 통합 표기('전남광주통합특별시')만 2개.
+ * 못 찾으면 빈 배열.
+ */
+function sidoCandidatesFromAddress(addr: string | null | undefined): SidoCode[] {
   const s = (addr ?? '').trim();
-  if (!s) return null;
+  if (!s) return [];
   // 시도 표기는 주소 맨 앞에 온다. 앞 12자만 봐서 본문 중간의 지명에 낚이지 않게 한다
   // (예: '경기도 안산시 … 서울대로' 의 '서울').
   const head = s.slice(0, 12);
-  for (const { alias, code } of SIDO_LOOKUP) {
-    if (head.startsWith(alias)) return code;
+  for (const { alias, codes } of MERGED_SIDO_ALIASES) {
+    if (head.startsWith(alias)) return codes;
   }
-  return null;
+  for (const { alias, code } of SIDO_LOOKUP) {
+    if (head.startsWith(alias)) return [code];
+  }
+  return [];
+}
+
+/**
+ * 주소에서 시도 코드를 찾는다. 못 찾으면 null.
+ * 통합 표기는 대표 시도(광주)를 돌려준다 — 정밀한 판정은 sigunguCodeFromAddress 가 한다.
+ */
+export function sidoFromAddress(addr: string | null | undefined): SidoCode | null {
+  return sidoCandidatesFromAddress(addr)[0] ?? null;
 }
 
 /**
@@ -75,14 +102,14 @@ export function sidoFromAddress(addr: string | null | undefined): SidoCode | nul
 export function sigunguCodeFromAddress(addr: string | null | undefined): string | null {
   const s = (addr ?? '').trim();
   if (!s) return null;
-  const sido = sidoFromAddress(s);
-  if (!sido) return null;
-  const candidates = BY_SIDO.get(sido);
-  if (!candidates) return null;
   // 시도 표기 뒤쪽에서만 찾는다 — 시도명이 시군구명과 겹치는 경우를 피한다.
   const rest = s.slice(0, 40);
-  for (const sg of candidates) {
-    if (rest.includes(sg.name)) return sg.code;
+  for (const sido of sidoCandidatesFromAddress(s)) {
+    const candidates = BY_SIDO.get(sido);
+    if (!candidates) continue;
+    for (const sg of candidates) {
+      if (rest.includes(sg.name)) return sg.code;
+    }
   }
   return null;
 }
