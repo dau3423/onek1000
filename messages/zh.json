@@ -119,7 +119,8 @@
       "layerAria": "{label}地图",
       "fuelMenuAria": "油品",
       "carwashMenuAria": "洗车场类型",
-      "layerRepair": "维修厂"
+      "layerRepair": "维修厂",
+      "repairMenuAria": "选择维修厂品牌"
     },
     "carwashFilter": {
       "all": "全部",
@@ -979,6 +980,19 @@
     "baseDate": " · 基准日 {date}",
     "publicDataDisclaimer": "基于公共数据，可能与实际情况不同（可能已歇业或信息变更）。每半年更新一次，近期变更可能尚未反映。",
     "institution": "管理机构 {name}",
-    "noTel": "没有登记的电话号码"
+    "noTel": "没有登记的电话号码",
+    "brandLabel": {
+      "all": "全部",
+      "autoq": "起亚 AutoQ",
+      "bluehands": "现代 Bluehands",
+      "speedmate": "SK SpeedMate",
+      "renault": "雷诺韩国",
+      "autooasis": "Auto Oasis",
+      "kgm": "双龙 · KGM",
+      "chevrolet": "雪佛兰 · GM",
+      "carpos": "Carpos",
+      "imported": "进口车",
+      "none": "独立维修厂"
+    }
   }
 }

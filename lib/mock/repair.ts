@@ -11,32 +11,32 @@ const now = () => new Date().toISOString();
 
 const SEED: Omit<RepairMarker, 'syncedAt'>[] = [
   {
-    shopKey: 'RP-MOCK-0001', name: '강남종합자동차정비', shopType: 'general',
+    shopKey: 'RP-MOCK-0001', name: '강남종합자동차정비', shopType: 'general', brand: null,
     roadAddr: '서울 강남구 논현로 508', jibunAddr: '서울 강남구 역삼동 707',
     tel: '02-555-1234', openTime: '09:00', closeTime: '18:00',
     lat: 37.5045, lng: 127.0250, dataBaseDate: '2026-02-28',
   },
   {
-    shopKey: 'RP-MOCK-0002', name: '삼성카센터', shopType: 'specialty',
+    shopKey: 'RP-MOCK-0002', name: '기아오토큐 삼성점', shopType: 'specialty', brand: 'autoq',
     roadAddr: '서울 강남구 테헤란로 152', jibunAddr: '서울 강남구 역삼동 737',
     // 전화번호·영업시간 없음 — 원천에서 흔한 경우(채움률 51%/38%)
     tel: null, openTime: null, closeTime: null,
     lat: 37.5000, lng: 127.0364, dataBaseDate: '2026-02-28',
   },
   {
-    shopKey: 'RP-MOCK-0003', name: '한신소형자동차정비', shopType: 'small',
+    shopKey: 'RP-MOCK-0003', name: '블루핸즈 서초점', shopType: 'small', brand: 'bluehands',
     roadAddr: '서울 서초구 반포대로 58', jibunAddr: '서울 서초구 서초동 1305',
     tel: '02-777-8888', openTime: '08:30', closeTime: '19:00',
     lat: 37.4934, lng: 127.0141, dataBaseDate: '2025-08-31',
   },
   {
-    shopKey: 'RP-MOCK-0004', name: '대영원동기정비', shopType: 'engine',
+    shopKey: 'RP-MOCK-0004', name: '대영원동기정비', shopType: 'engine', brand: null,
     roadAddr: '서울 송파구 백제고분로 271', jibunAddr: null,
     tel: null, openTime: '09:00', closeTime: '18:00',
     lat: 37.5045, lng: 127.1120, dataBaseDate: '2025-08-31',
   },
   {
-    shopKey: 'RP-MOCK-0005', name: '우리모터스', shopType: 'unknown',
+    shopKey: 'RP-MOCK-0005', name: '스피드메이트 홍대점', shopType: 'unknown', brand: 'speedmate',
     roadAddr: '서울 마포구 양화로 45', jibunAddr: '서울 마포구 서교동 375',
     tel: '02-333-2222', openTime: null, closeTime: null,
     lat: 37.5533, lng: 126.9180, dataBaseDate: '2026-02-28',

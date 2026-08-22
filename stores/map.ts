@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { ProductCode, BrandCode, RoutePlan } from '@/types/station';
 import type { CarwashTypeFilter } from '@/types/carwash';
+import type { RepairBrandFilter } from '@/types/repair';
 
 /** 마지막으로 보던 지도 시점(중심 좌표 + 카카오 level). 상세보기 왕복 시 복원에 사용. */
 export interface MapView {
@@ -145,6 +146,10 @@ interface MapState {
   carwashType: CarwashTypeFilter;
   setCarwashType: (t: CarwashTypeFilter) => void;
 
+  /** 정비소 레이어(layer==='repair') 브랜드 필터. 'all'=전체(기본), 'none'=무소속만. */
+  repairBrand: RepairBrandFilter;
+  setRepairBrand: (b: RepairBrandFilter) => void;
+
   selectedStationId: string | null;
   selectStation: (id: string | null) => void;
 
@@ -190,6 +195,9 @@ export const useMapStore = create<MapState>((set) => ({
 
   carwashType: 'all',
   setCarwashType: (t) => set({ carwashType: t }),
+
+  repairBrand: 'all',
+  setRepairBrand: (b) => set({ repairBrand: b }),
 
   selectedStationId: null,
   selectStation: (id) => set({ selectedStationId: id }),

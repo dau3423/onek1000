@@ -2,7 +2,8 @@
 // 순수 함수만 둔다 — 네트워크·DB 를 모르므로 단독으로 검증할 수 있다.
 
 import { createHash } from 'node:crypto';
-import type { RepairShopType } from '@/types/repair';
+import type { RepairBrand, RepairShopType } from '@/types/repair';
+import { detectBrand } from './brand';
 import type { RepairApiItem } from './client';
 
 /** 한반도 bbox 가드(좌표 이상치 드랍) — sync-carwash 와 동일 기준. */
@@ -84,6 +85,8 @@ export interface RepairDbRow {
   shop_key: string;
   name: string;
   shop_type: RepairShopType;
+  /** 업체명에서 추론한 체인·공식망. null = 무소속(다수). */
+  brand: RepairBrand | null;
   road_addr: string | null;
   jibun_addr: string | null;
   tel: string | null;
@@ -130,6 +133,7 @@ export function normalizeItems(items: RepairApiItem[]): { rows: RepairDbRow[]; s
       shop_key: key,
       name,
       shop_type: toShopType(item.inspofcType),
+      brand: detectBrand(name),
       road_addr: nullify(item.rdnmadr),
       jibun_addr: nullify(item.lnmadr),
       tel: nullify(item.phoneNumber),

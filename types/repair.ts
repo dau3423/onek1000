@@ -30,11 +30,50 @@ export const REPAIR_TYPE_COLOR: Record<RepairShopType, string> = {
   unknown: '#9CA3AF',
 };
 
+
+/**
+ * 정비소 브랜드(체인·공식 서비스망). 원천에 브랜드 필드가 없어 업체명에서 추론한다
+ * (lib/repair/brand.ts). null = 브랜드 없는 동네 카센터 — 전체의 약 94%로 이게 다수다.
+ */
+export type RepairBrand =
+  | 'autoq'      // 기아 오토큐
+  | 'bluehands'  // 현대 블루핸즈
+  | 'speedmate'  // SK 스피드메이트
+  | 'renault'    // 르노코리아
+  | 'autooasis'  // 현대오일뱅크 오토오아시스
+  | 'kgm'        // 쌍용 · KG모빌리티
+  | 'chevrolet'  // 쉐보레 · GM
+  | 'carpos'     // 카포스
+  | 'imported';  // 수입차(개별 건수가 적어 묶음)
+
+/** 브랜드 필터 값. 'all'=전체(기본), 'none'=브랜드 없는 무소속만. */
+export type RepairBrandFilter = 'all' | 'none' | RepairBrand;
+
+/**
+ * 드롭다운 표시 순서. 오토큐·블루핸즈를 맨 앞에 두고 굵게 강조한다 —
+ * 실사용 빈도가 가장 높은 두 곳이라 목록을 훑지 않고 바로 집을 수 있어야 한다.
+ */
+export const REPAIR_BRAND_ORDER: { value: RepairBrandFilter; emphasis?: boolean }[] = [
+  { value: 'all' },
+  { value: 'autoq', emphasis: true },
+  { value: 'bluehands', emphasis: true },
+  { value: 'speedmate' },
+  { value: 'renault' },
+  { value: 'autooasis' },
+  { value: 'kgm' },
+  { value: 'chevrolet' },
+  { value: 'carpos' },
+  { value: 'imported' },
+  { value: 'none' },
+];
+
 /** 지도 마커 1개 = 정비소(shop_key) 단위. rpc_repair_by_bbox 반환에 대응. */
 export interface RepairMarker {
   shopKey: string;
   name: string;
   shopType: RepairShopType;
+  /** 체인·공식 서비스망. null = 무소속(다수). */
+  brand?: RepairBrand | null;
   roadAddr: string | null;
   jibunAddr: string | null;
   /** 전화번호 — 원천 채움률이 약 51% 라 절반은 null 이다. UI 는 없는 경우를 기본으로 다룬다. */

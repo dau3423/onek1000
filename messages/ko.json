@@ -119,7 +119,8 @@
       "layerAria": "{label} 지도",
       "fuelMenuAria": "유종",
       "carwashMenuAria": "세차장 유형",
-      "layerRepair": "정비소"
+      "layerRepair": "정비소",
+      "repairMenuAria": "정비소 브랜드 선택"
     },
     "carwashFilter": {
       "all": "전체",
@@ -979,6 +980,19 @@
     "baseDate": " · 기준일 {date}",
     "publicDataDisclaimer": "공공데이터 기준이라 실제와 다를 수 있어요(폐업·정보 변경 가능). 갱신 주기가 반기라 최근 변경은 반영이 늦을 수 있어요.",
     "institution": "관리기관 {name}",
-    "noTel": "등록된 전화번호가 없어요"
+    "noTel": "등록된 전화번호가 없어요",
+    "brandLabel": {
+      "all": "전체",
+      "autoq": "기아 오토큐",
+      "bluehands": "현대 블루핸즈",
+      "speedmate": "SK 스피드메이트",
+      "renault": "르노코리아",
+      "autooasis": "오토오아시스",
+      "kgm": "쌍용 · KG모빌리티",
+      "chevrolet": "쉐보레 · GM",
+      "carpos": "카포스",
+      "imported": "수입차",
+      "none": "기타(무소속)"
+    }
   }
 }

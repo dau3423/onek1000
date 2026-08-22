@@ -119,7 +119,8 @@
       "layerAria": "{label}マップ",
       "fuelMenuAria": "油種",
       "carwashMenuAria": "洗車場の種類",
-      "layerRepair": "整備工場"
+      "layerRepair": "整備工場",
+      "repairMenuAria": "整備工場ブランドを選択"
     },
     "carwashFilter": {
       "all": "すべて",
@@ -979,6 +980,19 @@
     "baseDate": " · 基準日 {date}",
     "publicDataDisclaimer": "公共データに基づくため実際と異なる場合があります（廃業・情報変更の可能性）。更新が半年ごとのため、最近の変更は反映が遅れることがあります。",
     "institution": "管理機関 {name}",
-    "noTel": "登録された電話番号がありません"
+    "noTel": "登録された電話番号がありません",
+    "brandLabel": {
+      "all": "すべて",
+      "autoq": "起亜 オートQ",
+      "bluehands": "現代 ブルーハンズ",
+      "speedmate": "SK スピードメイト",
+      "renault": "ルノーコリア",
+      "autooasis": "オートオアシス",
+      "kgm": "双竜 · KGM",
+      "chevrolet": "シボレー · GM",
+      "carpos": "カポス",
+      "imported": "輸入車",
+      "none": "独立整備工場"
+    }
   }
 }

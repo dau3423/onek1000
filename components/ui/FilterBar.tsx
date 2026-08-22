@@ -8,6 +8,7 @@ import type { CarwashTypeFilter } from '@/types/carwash';
 import { useProductLabel } from '@/lib/i18n/labels';
 import { BrandFilter } from './BrandFilter';
 import { BoltIcon, CarwashIcon, WrenchIcon, FuelIcon } from '@/components/icons';
+import { REPAIR_BRAND_ORDER } from '@/types/repair';
 import clsx from 'clsx';
 
 // 주유소 드롭다운에 나열할 유종. 기존엔 '휘발유▾' 드롭다운(일반/고급)과 경유·LPG 칩이 따로
@@ -33,15 +34,19 @@ const CARWASH_TYPE_OPTIONS: { value: CarwashTypeFilter; labelKey: 'all' | 'self'
 export function FilterBar() {
   const t = useTranslations('map.filterBar');
   const tCarwashFilter = useTranslations('map.carwashFilter');
+  const tRepairBrand = useTranslations('repair.brandLabel');
   const productLabel = useProductLabel();
   // 세차 가능(carwashOnly)은 BrandFilter 드롭다운으로 옮겨 여기선 다루지 않는다.
-  const { product, setProduct, layer, setLayer, carwashType, setCarwashType } = useMapStore();
+  const { product, setProduct, layer, setLayer, carwashType, setCarwashType, repairBrand, setRepairBrand } = useMapStore();
   // 열려 있는 드롭다운('gas'=유종 | 'carwash'=세차장 유형 | null)
-  const [openMenu, setOpenMenu] = useState<null | 'gas' | 'carwash'>(null);
+  /** 하위 선택지를 가진 레이어만 메뉴를 연다(EV 는 없음). */
+  type MenuKey = 'gas' | 'carwash' | 'repair';
+  const [openMenu, setOpenMenu] = useState<null | MenuKey>(null);
   const barRef = useRef<HTMLDivElement>(null);
 
   const isGas = layer === 'gas';
   const isCarwash = layer === 'carwash';
+  const isRepair = layer === 'repair';
 
   // 레이어 버튼 클릭 — 다른 레이어면 전환, 이미 그 레이어면 드롭다운 토글.
   // '주유소' 복귀 시 유종은 유지한다(setProduct 호출 안 함 — B027로 강제 되돌리지 않는다).
@@ -49,11 +54,11 @@ export function FilterBar() {
     if (layer !== value) {
       setLayer(value);
       // 하위 선택지가 있는 레이어는 전환과 동시에 열어 준다(주유소=유종, 세차장=유형).
-      setOpenMenu(value === 'gas' ? 'gas' : value === 'carwash' ? 'carwash' : null);
+      setOpenMenu(value === 'gas' || value === 'carwash' || value === 'repair' ? value : null);
       return;
     }
     if (value === 'ev') return; // EV는 하위 선택지 없음
-    setOpenMenu((v) => (v === value ? null : (value as 'gas' | 'carwash')));
+    setOpenMenu((v) => (v === value ? null : (value as MenuKey)));
   };
 
   // 바깥 클릭 / ESC로 닫기
@@ -94,14 +99,16 @@ export function FilterBar() {
           const active = layer === value;
           const label = t(labelKey);
           // 하위 선택지가 있는 레이어(주유소/세차장)만 ▾ 를 달고 메뉴를 연다.
-          const hasMenu = value === 'gas' || value === 'carwash';
+          const hasMenu = value === 'gas' || value === 'carwash' || value === 'repair';
           // 활성 상태에선 현재 하위 선택을 노출한다(드롭다운을 열어보지 않아도 보이게).
           // 주유소는 '주유소 · 휘발유' 대신 유종만 노출한다 — 연료 아이콘 + 활성색이 이미
           // 주유소 레이어임을 말해 주므로 레이어명은 중복이고, 폭도 그만큼 줄어든다.
           const sub =
             active && value === 'carwash' && carwashType !== 'all'
               ? tCarwashFilter(CARWASH_TYPE_OPTIONS.find((o) => o.value === carwashType)!.labelKey)
-              : null;
+              : active && value === 'repair' && repairBrand !== 'all'
+                ? tRepairBrand(repairBrand)
+                : null;
           const text = active && value === 'gas' ? productLabel(product) : label;
           return (
             <button
@@ -202,6 +209,45 @@ export function FilterBar() {
                 )}
               >
                 {tCarwashFilter(opt.labelKey)}
+                {active && (
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.4}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 정비소 브랜드 드롭다운 — 오토큐·블루핸즈를 맨 위에 굵게(가장 많이 쓰는 두 곳).
+          목록이 11개라 다른 메뉴보다 길어, 최대 높이를 두고 넘치면 세로 스크롤한다. */}
+      {openMenu === 'repair' && (
+        <div
+          role="menu"
+          aria-label={t('repairMenuAria')}
+          className="scrollbar-none absolute right-3 top-[46px] z-50 max-h-[60vh] w-40 overflow-y-auto rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+        >
+          {REPAIR_BRAND_ORDER.map(({ value, emphasis }) => {
+            const active = repairBrand === value;
+            return (
+              <button
+                key={value}
+                role="menuitemradio"
+                aria-checked={active}
+                onClick={() => {
+                  setRepairBrand(value);
+                  setOpenMenu(null);
+                }}
+                className={clsx(
+                  'flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs transition',
+                  emphasis ? 'font-extrabold' : 'font-semibold',
+                  active
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
+                )}
+              >
+                {tRepairBrand(value)}
                 {active && (
                   <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.4}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />

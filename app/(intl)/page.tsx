@@ -108,7 +108,7 @@ export default function HomePage() {
   const t = useTranslations('map');
   const router = useRouter();
   const { data: session, status: authStatus } = useSession();
-  const { product, brands, carwashOnly, setCarwashOnly, carwashType, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, setRoutePlan, clearRoutePlan, setProduct } = useMapStore();
+  const { product, brands, carwashOnly, setCarwashOnly, carwashType, repairBrand, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, setRoutePlan, clearRoutePlan, setProduct } = useMapStore();
 
   // 회원 전용 동작 가드 — 길찾기/길안내 시작·따라가기는 로그인 회원만 사용(FR-5 기반 UX 정책).
   // 비로그인(unauthenticated)이면 기존 인증 유도 패턴(next-auth signIn, 현재 화면으로 복귀)을
@@ -326,6 +326,19 @@ export default function HomePage() {
   const visibleCarwash = useMemo(
     () => (carwashType === 'all' ? carwashPlaces : carwashPlaces.filter((p) => p.washType === carwashType)),
     [carwashPlaces, carwashType],
+  );
+
+  // 정비소 브랜드 필터 — 'all'=전체, 'none'=브랜드 없는 무소속만, 그 외=해당 브랜드만.
+  // 마커와 목록이 같은 배열을 쓰도록 여기서 한 번만 거른다(둘이 어긋나면 "지도엔 있는데
+  // 목록엔 없는" 상태가 된다).
+  const visibleRepair = useMemo(
+    () =>
+      repairBrand === 'all'
+        ? repairShops
+        : repairBrand === 'none'
+          ? repairShops.filter((p) => !p.brand)
+          : repairShops.filter((p) => p.brand === repairBrand),
+    [repairShops, repairBrand],
   );
 
   // bbox 변경 시 stations 조회
@@ -1051,7 +1064,7 @@ export default function HomePage() {
             else router.push(`/ev/${encodeURIComponent(s.statId)}`);
           }}
           carwashPlaces={visibleCarwash}
-          repairShops={repairShops}
+          repairShops={visibleRepair}
           onRepairMarkerClick={(p) => router.push(`/repair/${encodeURIComponent(p.shopKey)}`)}
           onCarwashMarkerClick={(p) => setCarwashPopup(p)}
           routePlan={layer === 'gas' ? routePlan : null}
@@ -1284,7 +1297,7 @@ export default function HomePage() {
             )
           }
           carwashPlaces={visibleCarwash}
-          repairShops={repairShops}
+          repairShops={visibleRepair}
           repairOrigin={myLocation ?? mapCenter}
           onSelectRepair={(p) => router.push(`/repair/${encodeURIComponent(p.shopKey)}`)}
           carwashOrigin={carwashOrigin}
