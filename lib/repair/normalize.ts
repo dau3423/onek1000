@@ -4,6 +4,7 @@
 import { createHash } from 'node:crypto';
 import type { RepairBrand, RepairShopType } from '@/types/repair';
 import { detectBrand } from './brand';
+import { sigunguCodeFromAddress } from '@/lib/regions/addressMatch';
 import type { RepairApiItem } from './client';
 
 /** 한반도 bbox 가드(좌표 이상치 드랍) — sync-carwash 와 동일 기준. */
@@ -99,6 +100,8 @@ export interface RepairDbRow {
   geom: string;
   institution: string | null;
   data_base_date: string | null;
+  /** 주소에서 계산한 시군구 코드(SEO 지역 랜딩용). 매칭 실패 시 null — 정상이다. */
+  sigungu_code: string | null;
   /** 이번 sync 실행 시각. **반드시 upsert 에 실어야 한다** — 빠지면 conflict-update 시
    *  예전 값이 남고, 뒤이은 stale 정리가 "오래된 행"으로 보고 전부 지운다(실제로 겪었다). */
   synced_at: string;
@@ -149,6 +152,8 @@ export function normalizeItems(items: RepairApiItem[], syncedAt: string): { rows
       geom: `SRID=4326;POINT(${lng} ${lat})`,
       institution: nullify(item.institutionNm),
       data_base_date: toDate(item.referenceDate),
+      // 도로명 우선, 없으면 지번(도로명 채움률 98.8% / 지번 75.4%).
+      sigungu_code: sigunguCodeFromAddress(nullify(item.rdnmadr) ?? nullify(item.lnmadr)),
       synced_at: syncedAt,
     });
   }

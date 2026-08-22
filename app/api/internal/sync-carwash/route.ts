@@ -27,6 +27,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { sendAdminKakaoMemo, isAdminMemoConfigured } from '@/lib/kakao/adminMemo';
+import { sigunguCodeFromAddress } from '@/lib/regions/addressMatch';
 import type { WashType } from '@/types/carwash';
 
 export const runtime = 'nodejs';
@@ -67,6 +68,8 @@ interface CarwashDbRow {
   geom: string;
   biz_type_raw: string | null;
   data_base_date: string | null;
+  /** 주소에서 계산한 시군구 코드(SEO 지역 랜딩용). 매칭 실패 시 null — 정상이다. */
+  sigungu_code: string | null;
   synced_at: string;
 }
 
@@ -319,6 +322,7 @@ export async function POST(req: Request) {
       geom: `SRID=4326;POINT(${lng} ${lat})`,
       biz_type_raw: bizType,
       data_base_date: toDate(at(r, col.baseDate)),
+      sigungu_code: sigunguCodeFromAddress(at(r, col.roadAddr) ?? at(r, col.jibunAddr)),
       synced_at: now,
     });
   }

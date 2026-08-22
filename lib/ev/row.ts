@@ -1,6 +1,7 @@
 // ev_chargers 테이블 1행 매핑 — sync(전국 배치)와 상세 라이브 갱신이 공유한다.
 // getChargerInfo item → ev_chargers 행. 매핑 규칙을 한 곳에 모아 두 경로의 일관성을 보장한다.
 import { evNorm, evYn, evDateToIso, type EvChargerInfoItem } from './client';
+import { sigunguCodeFromAddress } from '@/lib/regions/addressMatch';
 
 export interface EvRow {
   stat_id: string;
@@ -8,6 +9,8 @@ export interface EvRow {
   stat_nm: string;
   addr: string | null;
   addr_detail: string | null;
+  /** 주소에서 계산한 시군구 코드(SEO 지역 랜딩용). 매칭 실패 시 null — 정상이다. */
+  sigungu_code: string | null;
   lat: number;
   lng: number;
   geom: string;
@@ -50,6 +53,7 @@ export function toRow(it: EvChargerInfoItem, now: string): EvRow | null {
     stat_nm: evNorm(it.statNm) ?? statId,
     addr: evNorm(it.addr),
     addr_detail: evNorm(it.addrDetail),
+    sigungu_code: sigunguCodeFromAddress(evNorm(it.addr)),
     lat,
     lng,
     geom: `SRID=4326;POINT(${lng} ${lat})`,
