@@ -178,6 +178,17 @@
         "priceLabelAmber": "（价格标签<amber>琥珀色</amber>）",
         "nearbyTop10Main": "排名徽章 = 附近10公里最低价 TOP 10",
         "priceLabelBlue": "（价格标签<blue>蓝色</blue>）"
+      },
+      "titleRepair": "维修厂标记说明",
+      "repair": {
+        "sectionTitle": "品牌 = 标记颜色和图标",
+        "branded": "<b>品牌色</b> = AutoQ、Bluehands 等连锁及官方服务网点（标记略大）",
+        "tire": "<b>深色圆环</b> = 轮胎专门店",
+        "inspection": "<b>绿色对勾</b> = 汽车检验所",
+        "independent": "<b>棕色扳手</b> = 无品牌的社区维修厂（约占 87%）",
+        "filterHint": "点击维修厂按钮的 ▾ 可只看某个品牌。",
+        "zoomHint": "缩小地图只显示品牌网点，放大后社区维修厂会逐渐出现。",
+        "disclaimer": "基于公共数据，可能与实际歇业情况不同。来源：公共数据门户 全国汽车维修企业标准数据"
       }
     },
     "bottomSheet": {

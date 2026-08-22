@@ -178,6 +178,17 @@
         "priceLabelAmber": " (가격 라벨<amber> 앰버</amber>)",
         "nearbyTop10Main": "순위 배지 = 내 주변 10km 최저가 TOP 10",
         "priceLabelBlue": " (가격 라벨<blue> 블루</blue>)"
+      },
+      "titleRepair": "정비소 마커 안내",
+      "repair": {
+        "sectionTitle": "브랜드 = 핀 색·아이콘",
+        "branded": "<b>브랜드 색</b> = 오토큐·블루핸즈 등 체인·공식 서비스망 (핀이 조금 더 큼)",
+        "tire": "<b>먹색 도넛</b> = 타이어 전문점",
+        "inspection": "<b>초록 체크</b> = 자동차검사소",
+        "independent": "<b>갈색 스패너</b> = 브랜드 없는 동네 정비소 (전체의 약 87%)",
+        "filterHint": "정비소 버튼의 ▾ 에서 브랜드만 골라 볼 수 있어요.",
+        "zoomHint": "지도를 축소하면 브랜드 지점만 남고, 확대할수록 동네 정비소가 채워져요.",
+        "disclaimer": "공공데이터 기준이라 폐업·정보가 다를 수 있어요. 출처: 공공데이터포털 전국자동차정비업체표준데이터"
       }
     },
     "bottomSheet": {

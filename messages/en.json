@@ -178,6 +178,17 @@
         "priceLabelAmber": " (price label<amber> amber</amber>)",
         "nearbyTop10Main": "Rank badge = Nearby (10km) Top 10 lowest prices",
         "priceLabelBlue": " (price label<blue> blue</blue>)"
+      },
+      "titleRepair": "Repair shop markers",
+      "repair": {
+        "sectionTitle": "Brand = pin colour and icon",
+        "branded": "<b>Brand colours</b> = chains and official networks such as AutoQ or Bluehands (slightly larger pins)",
+        "tire": "<b>Dark donut</b> = tyre specialists",
+        "inspection": "<b>Green tick</b> = vehicle inspection centres",
+        "independent": "<b>Brown spanner</b> = independent local garages (about 87% of all)",
+        "filterHint": "Use the ▾ on the Repair button to show a single brand.",
+        "zoomHint": "Zoom out and only brand branches remain; zoom in and local garages fill in.",
+        "disclaimer": "Based on public data, so closures and details may differ. Source: National Auto Repair Shop Standard Data (data.go.kr)"
       }
     },
     "bottomSheet": {

@@ -11,6 +11,7 @@ import { useBrandLabel } from '@/lib/i18n/labels';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
 import { CrownIcon } from '@/components/icons';
 import { WASH_TYPE_COLOR, type WashType } from '@/types/carwash';
+import { REPAIR_BRAND_COLOR, REPAIR_TYPE_COLOR, type RepairBrand } from '@/types/repair';
 
 // EV 마커 색(단일 출처는 lib/map/evMarker.ts — 범례는 시각 일관성을 위해 동일 값을 사용).
 const EV_AVAILABLE_COLOR = '#16A34A'; // 초록 — 사용가능
@@ -226,6 +227,51 @@ function CarwashPinChip({ type }: { type: WashType }) {
 }
 
 /**
+ * 정비소 핀 칩 — 지도 마커(lib/map/repairMarker.ts)와 같은 물방울 핀 + 같은 색·글리프.
+ * brand 를 주면 브랜드 색·이니셜, 없으면 무소속(갈색 렌치)로 그린다.
+ * 범례와 지도가 다르게 보이면 범례가 오히려 혼란을 준다 — 값의 출처를 같은 상수로 묶어둔다.
+ */
+function RepairPinChip({ brand }: { brand?: RepairBrand }) {
+  const color = brand ? REPAIR_BRAND_COLOR[brand] : REPAIR_TYPE_COLOR.specialty;
+  const INITIAL: Record<RepairBrand, string> = {
+    autoq: 'Q', bluehands: 'H', speedmate: 'SK', renault: 'R', autooasis: 'OA',
+    kgm: 'KG', chevrolet: 'GM', carpos: 'CP', gongim: 'GN', tire: '', inspection: '',
+    imported: 'IM',
+  };
+  const glyph = (() => {
+    if (!brand) {
+      // 무소속 = 스패너(마커의 specialty 글리프와 같은 모양)
+      return <path d="M4.6 6.1 6 7.5l-.8.8-1.4-1.4a2 2 0 0 0 2.6 2.6l4.1 4.1a1.1 1.1 0 1 0 1.5-1.5L7.9 8a2 2 0 0 0-2.1-2.6z" fill="#fff" />;
+    }
+    if (brand === 'tire') {
+      return (
+        <g>
+          <circle cx="7" cy="9" r="3.4" fill="none" stroke="#fff" strokeWidth="1.2" />
+          <circle cx="7" cy="9" r="1.2" fill="#fff" />
+        </g>
+      );
+    }
+    if (brand === 'inspection') {
+      return <path d="M4.6 9.2 6.4 11 9.9 7" fill="none" stroke="#fff" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />;
+    }
+    const txt = INITIAL[brand];
+    return (
+      <text x="7" y="9.4" textAnchor="middle" fontSize={txt.length > 1 ? '4.2' : '5.6'} fontWeight="800" fill="#fff">
+        {txt}
+      </text>
+    );
+  })();
+  return (
+    <svg viewBox="0 -3 17 24" className="h-[21px] w-[14px] shrink-0" style={{ display: 'block' }}>
+      <path d="M7 20 C1 14 0.5 11 0.5 9 a6.5 6.5 0 1 1 13 0 C13.5 11 13 14 7 20 Z" fill={color} />
+      <circle cx="7" cy="9" r="5" fill="#fff" />
+      <circle cx="7" cy="9" r="4.1" fill={color} />
+      {glyph}
+    </svg>
+  );
+}
+
+/**
  * 지도 마커 색상/표식 의미 안내 팝오버.
  * FilterBar 우측 info 버튼에서 띄운다. ESC/바깥클릭으로 닫힌다.
  * 레이어(주유소/충전소)에 따라 안내 내용을 전환한다(useMapStore.layer).
@@ -267,7 +313,13 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
       >
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
-            {layer === 'carwash' ? t('titleCarwash') : layer === 'ev' ? t('titleEv') : t('titleGas')}
+            {layer === 'carwash'
+              ? t('titleCarwash')
+              : layer === 'ev'
+                ? t('titleEv')
+                : layer === 'repair'
+                  ? t('titleRepair')
+                  : t('titleGas')}
           </p>
           <button
             onClick={onClose}
@@ -281,7 +333,46 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
         </div>
 
         <div className="mt-3 space-y-3 text-xs text-gray-700 dark:text-gray-300">
-          {layer === 'carwash' ? (
+          {layer === 'repair' ? (
+          <>
+          <section>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{t('repair.sectionTitle')}</p>
+            <div className="mt-1.5 space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <RepairPinChip brand="autoq" />
+                <RepairPinChip brand="bluehands" />
+                <span>{t.rich('repair.branded', boldTag)}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <RepairPinChip brand="tire" />
+                <span>{t.rich('repair.tire', boldTag)}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <RepairPinChip brand="inspection" />
+                <span>{t.rich('repair.inspection', boldTag)}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <RepairPinChip />
+                <span>{t.rich('repair.independent', boldTag)}</span>
+              </div>
+            </div>
+            <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">{t('repair.filterHint')}</p>
+            <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">{t('repair.zoomHint')}</p>
+          </section>
+
+          <section>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{t('myLocationTitle')}</p>
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <Dot color={MY_COLOR} ring="#ffffff" />
+              <span>{t('myLocationDot')}</span>
+            </div>
+          </section>
+
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+            {t('repair.disclaimer')}
+          </p>
+          </>
+          ) : layer === 'carwash' ? (
           <>
           <section>
             <p className="font-semibold text-gray-900 dark:text-gray-100">{t('carwash.sectionTitle')}</p>
