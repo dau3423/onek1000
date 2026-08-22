@@ -1022,5 +1022,46 @@
       "imported": "수입차",
       "none": "기타(무소속)"
     }
+  },
+  "correction": {
+    "photoLabel": "사진 첨부 (선택, 최대 {max}장)",
+    "photoMaxError": "사진은 최대 {max}장까지 첨부할 수 있어요.",
+    "photoTooLarge": "{name} 파일이 너무 커요 (최대 5MB).",
+    "uploadFailed": "사진 업로드에 실패했어요. 잠시 후 다시 시도해 주세요.",
+    "deletePhotoAria": "사진 삭제",
+    "addPhoto": "사진 추가",
+    "uploading": "올리는 중…",
+    "submit": "제보하기",
+    "submitting": "보내는 중…",
+    "loginRequired": "제보하려면 로그인이 필요해요.",
+    "login": "로그인",
+    "done": "제보가 접수됐어요. 감사합니다!",
+    "doneHint": "관리자 확인 후 반영돼요. 확인 전까지는 화면에 표시되지 않아요.",
+    "failed": "제보에 실패했어요. 잠시 후 다시 시도해 주세요.",
+    "duplicate": "이미 접수된 제보가 있어요. 확인 후 반영해 드릴게요.",
+    "unavailable": "지금은 제보를 받을 수 없어요. 잠시 후 다시 시도해 주세요.",
+    "repair": {
+      "action": "정보가 달라요",
+      "title": "정비소 브랜드 제보",
+      "hint": "실제 간판 기준으로 골라주세요. 공공데이터에는 사업자 상호만 있어 간판과 다를 수 있어요.",
+      "currentLabel": "현재 표시",
+      "selectLabel": "실제 브랜드",
+      "placeholder": "선택해 주세요",
+      "none": "브랜드 없음 (동네 정비소)",
+      "photoHint": "간판이 보이는 사진을 넣어주시면 더 빨리 확인할 수 있어요."
+    },
+    "fuel": {
+      "action": "가격이 달라요",
+      "title": "유가 제보",
+      "hint": "주유소 가격판에 적힌 실제 가격을 알려주세요.",
+      "productLabel": "유종",
+      "priceLabel": "실제 가격 (원)",
+      "pricePlaceholder": "예: 1750",
+      "priceRange": "{min}원 ~ {max}원 사이로 입력해 주세요.",
+      "photoHint": "가격판 사진을 넣어주시면 더 빨리 확인할 수 있어요.",
+      "reportBadge": "{date} 제보",
+      "prompt": "가격이 실제와 다르면 알려주세요.",
+      "disclaimer": "제보가는 사용자가 알려준 값이라 실제와 다를 수 있어요."
+    }
   }
 }

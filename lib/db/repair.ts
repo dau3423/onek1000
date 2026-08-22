@@ -3,6 +3,7 @@ import { getSupabase, isSupabaseConfigured } from './supabase';
 import type { Bbox } from '@/lib/map/geo';
 import type { RepairBrand, RepairBrandFilter, RepairDetail, RepairMarker, RepairShopType } from '@/types/repair';
 import { getMockRepairByBbox, getMockRepairDetail } from '@/lib/mock/repair';
+import { getApprovedRepairBrand } from './corrections';
 
 interface BboxRpcRow {
   shop_key: string;
@@ -100,5 +101,15 @@ export async function queryRepairDetail(shopKey: string): Promise<RepairDetail |
     return null;
   }
   const r = data as DetailRow;
-  return { ...rpcRowToMarker(r), institution: r.institution, area: r.area };
+  const marker = rpcRowToMarker(r);
+
+  // 승인된 사용자 제보가 있으면 그것이 이긴다.
+  // repair_shops.brand 를 직접 고치지 않는 이유: sync-repair 가 반기마다 업체명에서 brand 를
+  // 다시 계산해 덮어쓴다. 지도(rpc_repair_by_bbox)도 SQL 안에서 같은 뷰를 조인하므로
+  // 지도와 상세가 항상 같은 브랜드를 보여준다.
+  // 보정 조회가 실패해도 상세는 원본 브랜드로 정상 렌더된다(0049 미적용 환경 포함).
+  const override = await getApprovedRepairBrand(shopKey).catch(() => null);
+  const brand = override === null ? marker.brand : override === 'none' ? null : override;
+
+  return { ...marker, brand, institution: r.institution, area: r.area };
 }

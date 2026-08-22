@@ -206,6 +206,11 @@ const TOOLS: { href: string; title: string; desc: string }[] = [
     title: '리뷰 신고 관리',
     desc: '신고된 리뷰 대기열 확인 + 숨김/기각 처리(자동 숨김 없음, 사람이 직접 판단).',
   },
+  {
+    href: '/admin/corrections',
+    title: '제보 검수',
+    desc: '정비소 브랜드·주유소 유가 제보 승인/반려(승인 즉시 반영, 첨부 사진으로 확인).',
+  },
 ];
 
 export default async function AdminPage() {

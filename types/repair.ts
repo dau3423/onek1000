@@ -94,6 +94,17 @@ export const REPAIR_BRAND_COLOR_DARK: Record<RepairBrand, string> = {
   imported: '#788FBF',
 };
 
+/**
+ * 알려진 브랜드 코드 목록 — REPAIR_BRAND_COLOR 의 키에서 파생한다.
+ * 별도 배열로 손으로 적으면 브랜드를 추가할 때 한쪽만 고치는 사고가 난다.
+ */
+export const REPAIR_BRANDS = Object.keys(REPAIR_BRAND_COLOR) as RepairBrand[];
+
+/** 외부 입력(제보 payload 등)이 알려진 브랜드인지 검증한다. */
+export function isRepairBrand(v: unknown): v is RepairBrand {
+  return typeof v === 'string' && (REPAIR_BRANDS as string[]).includes(v);
+}
+
 /** 브랜드 필터 값. 'all'=전체(기본), 'none'=브랜드 없는 무소속만. */
 export type RepairBrandFilter = 'all' | 'none' | RepairBrand;
 

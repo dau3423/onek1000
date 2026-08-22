@@ -7,6 +7,7 @@ import { RepairTypeBadge } from '@/components/repair/RepairTypeBadge';
 import { RepairBrandBadge } from '@/components/repair/RepairBrandBadge';
 import { ReviewSection } from '@/components/reviews/ReviewSection';
 import type { RepairDetail } from '@/types/repair';
+import { CorrectionButton } from '@/components/corrections/CorrectionButton';
 import { PinIcon, PhoneIcon, ClockIcon, BuildingIcon } from '@/components/icons';
 
 interface Props { params: { id: string } }
@@ -55,7 +56,18 @@ export default async function RepairDetailPage({ params }: Props) {
           <RepairTypeBadge type={detail.shopType} size="md" forceLight />
         </div>
         {/* 공식 분류명 — 뱃지는 짧은 말(카센터)을 쓰므로, 원천의 정확한 업종명은 여기 남긴다. */}
-        <p className="mt-1.5 text-[11px] text-gray-400">{tType(detail.shopType)}</p>
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          <p className="min-w-0 truncate text-[11px] text-gray-400">{tType(detail.shopType)}</p>
+          {/* 브랜드 제보 — 공공데이터에는 사업자 상호만 있어(예: '효원카') 실제 간판(공임나라)을
+              알 방법이 없다. 지도 API 로 간판명을 긁어 저장하는 건 카카오·네이버 약관이 금지한다.
+              사용자 제보가 유일한 합법 경로다. */}
+          <CorrectionButton
+            kind="repair_brand"
+            targetId={id}
+            currentBrand={detail.brand ?? null}
+            callbackUrl={`/repair/${encodeURIComponent(id)}`}
+          />
+        </div>
         {address && (
           <p className="mt-3 flex items-start gap-1.5 text-sm text-gray-600">
             <PinIcon className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />

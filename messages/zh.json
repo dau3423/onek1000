@@ -1022,5 +1022,46 @@
       "imported": "进口车",
       "none": "独立维修厂"
     }
+  },
+  "correction": {
+    "photoLabel": "附上照片（选填，最多 {max} 张）",
+    "photoMaxError": "最多可附上 {max} 张照片。",
+    "photoTooLarge": "{name} 文件过大（最大 5MB）。",
+    "uploadFailed": "照片上传失败，请稍后再试。",
+    "deletePhotoAria": "删除照片",
+    "addPhoto": "添加照片",
+    "uploading": "上传中…",
+    "submit": "提交反馈",
+    "submitting": "发送中…",
+    "loginRequired": "提交反馈需要先登录。",
+    "login": "登录",
+    "done": "已收到您的反馈，谢谢！",
+    "doneHint": "经管理员确认后才会生效，确认前不会显示在页面上。",
+    "failed": "提交失败，请稍后再试。",
+    "duplicate": "您已有一条待确认的反馈，我们会尽快处理。",
+    "unavailable": "当前无法提交反馈，请稍后再试。",
+    "repair": {
+      "action": "信息有误",
+      "title": "反馈汽修店品牌",
+      "hint": "请按实际招牌选择。公共数据只有工商登记名称，常与招牌不同。",
+      "currentLabel": "当前显示",
+      "selectLabel": "实际品牌",
+      "placeholder": "请选择",
+      "none": "无品牌（独立汽修店）",
+      "photoHint": "附上能看到招牌的照片，可以更快确认。"
+    },
+    "fuel": {
+      "action": "价格有误",
+      "title": "反馈油价",
+      "hint": "请告诉我们加油站价格牌上的实际价格。",
+      "productLabel": "油品",
+      "priceLabel": "实际价格（韩元）",
+      "pricePlaceholder": "例如：1750",
+      "priceRange": "请输入 {min} 至 {max} 韩元之间的价格。",
+      "photoHint": "附上价格牌照片，可以更快确认。",
+      "reportBadge": "{date} 反馈",
+      "prompt": "如果价格与实际不符，请告诉我们。",
+      "disclaimer": "反馈价格由用户提供，可能与实际价格不同。"
+    }
   }
 }

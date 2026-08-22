@@ -1022,5 +1022,46 @@
       "imported": "Imported brands",
       "none": "Independent"
     }
+  },
+  "correction": {
+    "photoLabel": "Attach photos (optional, up to {max})",
+    "photoMaxError": "You can attach up to {max} photos.",
+    "photoTooLarge": "{name} is too large (max 5MB).",
+    "uploadFailed": "Photo upload failed. Please try again in a moment.",
+    "deletePhotoAria": "Remove photo",
+    "addPhoto": "Add photo",
+    "uploading": "Uploading…",
+    "submit": "Submit report",
+    "submitting": "Sending…",
+    "loginRequired": "Please sign in to submit a report.",
+    "login": "Sign in",
+    "done": "Your report has been received. Thank you!",
+    "doneHint": "It will be applied after an admin review, and stays hidden until then.",
+    "failed": "Could not submit the report. Please try again in a moment.",
+    "duplicate": "You already have a report pending for this. We will review it soon.",
+    "unavailable": "Reports are unavailable right now. Please try again in a moment.",
+    "repair": {
+      "action": "Something looks wrong",
+      "title": "Report repair shop brand",
+      "hint": "Pick what the actual sign says. Public data only has the registered business name, which often differs.",
+      "currentLabel": "Currently shown",
+      "selectLabel": "Actual brand",
+      "placeholder": "Please select",
+      "none": "No brand (independent shop)",
+      "photoHint": "A photo showing the sign helps us verify it faster."
+    },
+    "fuel": {
+      "action": "Price looks wrong",
+      "title": "Report fuel price",
+      "hint": "Tell us the price shown on the station price board.",
+      "productLabel": "Fuel type",
+      "priceLabel": "Actual price (KRW)",
+      "pricePlaceholder": "e.g. 1750",
+      "priceRange": "Enter a price between {min} and {max} KRW.",
+      "photoHint": "A photo of the price board helps us verify it faster.",
+      "reportBadge": "Reported {date}",
+      "prompt": "Let us know if the price differs from the board.",
+      "disclaimer": "Reported prices come from users and may differ from the actual price."
+    }
   }
 }

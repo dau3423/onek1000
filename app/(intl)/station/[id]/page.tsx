@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { queryStationDetailWithPriceFallback } from '@/lib/db/queries';
+import { getActiveFuelReports } from '@/lib/db/corrections';
 import { BackButton } from '@/components/common/BackButton';
 import { BRAND_COLOR, type ProductCode, type StationDetail } from '@/types/station';
 import { InterstitialAd } from '@/components/ads/InterstitialAd';
@@ -13,6 +14,7 @@ import { FuelLogSelectedButton } from '@/components/station/FuelLogSelectedButto
 import { MyFuelLogsSection } from '@/components/station/MyFuelLogsSection';
 import { StationViewTracker } from '@/components/station/StationViewTracker';
 import { PinIcon, PhoneIcon } from '@/components/icons';
+import { CorrectionButton } from '@/components/corrections/CorrectionButton';
 
 interface Props { params: { id: string } }
 
@@ -41,6 +43,16 @@ export default async function StationDetailPage({ params }: Props) {
   const t = await getTranslations('station');
   const tLabels = await getTranslations('labels');
   const tCommon = await getTranslations('common');
+  const tCorrection = await getTranslations('correction');
+
+  // 승인된 유가 제보 — 오피넷 기준일보다 최신인 것만 뷰가 돌려준다(신선도 판정은 서버 뷰 담당).
+  // 오피넷이 더 새 가격을 받으면 자동으로 사라지므로 여기서 날짜를 다시 따질 필요가 없다.
+  // 0049 미적용/장애 시엔 빈 배열 → 가격 섹션은 공식 가격만으로 정상 렌더된다.
+  // 조회 실패로 가격 섹션 전체가 죽지 않도록 감싼다(상세 조회와 같은 방어).
+  const fuelReports = await getActiveFuelReports(detail.id).catch(() => []);
+  const reportByProduct = new Map(fuelReports.map((r) => [r.product, r]));
+  // 제보 가능한 유종 = 공식 가격이 있는 유종. 없는 유종은 제보해도 표시 경로가 없다(뷰가 join 한다).
+  const reportableProducts = PRODUCT_ORDER.filter((p) => detail.prices[p]);
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col bg-white">
@@ -90,23 +102,52 @@ export default async function StationDetailPage({ params }: Props) {
         <ul className="divide-y divide-gray-100">
           {PRODUCT_ORDER.map((p) => {
             const v = detail.prices[p];
+            const report = reportByProduct.get(p);
             return (
-              <li key={p} className="flex items-center justify-between py-2.5">
-                <span className="text-sm text-gray-700">{tLabels(`product.${p}`)}</span>
-                {v ? (
-                  <span className="text-base font-extrabold text-gray-900">
-                    ₩{v.price.toLocaleString()}
-                    <span className="ml-1 text-[10px] font-normal text-gray-400">
-                      {v.tradeDate}
+              <li key={p} className="py-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">{tLabels(`product.${p}`)}</span>
+                  {v ? (
+                    <span className="text-base font-extrabold text-gray-900">
+                      ₩{v.price.toLocaleString()}
+                      <span className="ml-1 text-[10px] font-normal text-gray-400">
+                        {v.tradeDate}
+                      </span>
                     </span>
-                  </span>
-                ) : (
-                  <span className="text-xs text-gray-400">{t('page.noPriceInfo')}</span>
+                  ) : (
+                    <span className="text-xs text-gray-400">{t('page.noPriceInfo')}</span>
+                  )}
+                </div>
+                {/* 사용자 제보가(승인·최신인 경우만). 공식 가격을 **대체하지 않고** 나란히 둔다 —
+                    제보는 검증된 실측이 아니라 참고값이고, 틀리면 사용자가 헛걸음한다. */}
+                {report && (
+                  <div className="mt-1 flex items-center justify-end gap-1.5 text-[11px]">
+                    <span className="rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-700">
+                      {tCorrection('fuel.reportBadge', { date: report.reportedAt.slice(0, 10) })}
+                    </span>
+                    <span className="font-bold text-amber-700">
+                      ₩{report.reportedPrice.toLocaleString()}
+                    </span>
+                  </div>
                 )}
               </li>
             );
           })}
         </ul>
+        {/* 제보 진입점 — 공식 가격이 있는 유종에 한해 노출(없으면 제보해도 표시 경로가 없다). */}
+        {reportableProducts.length > 0 && (
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <p className="min-w-0 text-[11px] leading-relaxed text-gray-400">
+              {fuelReports.length > 0 ? tCorrection('fuel.disclaimer') : tCorrection('fuel.prompt')}
+            </p>
+            <CorrectionButton
+              kind="fuel_price"
+              targetId={detail.id}
+              products={reportableProducts}
+              callbackUrl={`/station/${encodeURIComponent(detail.id)}`}
+            />
+          </div>
+        )}
       </section>
 
       {/* 내 주유 기록 — 로그인 사용자의 이 주유소 기록(없으면/비로그인은 자동 숨김) */}
