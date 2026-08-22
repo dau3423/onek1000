@@ -99,6 +99,9 @@ export interface RepairDbRow {
   geom: string;
   institution: string | null;
   data_base_date: string | null;
+  /** 이번 sync 실행 시각. **반드시 upsert 에 실어야 한다** — 빠지면 conflict-update 시
+   *  예전 값이 남고, 뒤이은 stale 정리가 "오래된 행"으로 보고 전부 지운다(실제로 겪었다). */
+  synced_at: string;
 }
 
 export interface NormalizeStats {
@@ -110,7 +113,7 @@ export interface NormalizeStats {
  * 원문 배열 → DB 행 배열. 버려진 행은 사유별로 센다(조용한 유실 방지).
  * 같은 shop_key 가 여러 번 나오면 마지막 값이 이긴다(upsert 안전).
  */
-export function normalizeItems(items: RepairApiItem[]): { rows: RepairDbRow[]; stats: NormalizeStats } {
+export function normalizeItems(items: RepairApiItem[], syncedAt: string): { rows: RepairDbRow[]; stats: NormalizeStats } {
   const stats: NormalizeStats = { total: items.length, dropped: { notOperating: 0, noName: 0, badCoord: 0 } };
   const byKey = new Map<string, RepairDbRow>();
 
@@ -146,6 +149,7 @@ export function normalizeItems(items: RepairApiItem[]): { rows: RepairDbRow[]; s
       geom: `SRID=4326;POINT(${lng} ${lat})`,
       institution: nullify(item.institutionNm),
       data_base_date: toDate(item.referenceDate),
+      synced_at: syncedAt,
     });
   }
 

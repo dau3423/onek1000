@@ -26,6 +26,10 @@ const UPSERT_CHUNK = 1000;
 /** 완주 판정에 쓰는 최소 기대 행수. 이보다 적으면 원천 이상으로 보고 정리를 건너뛴다. */
 const MIN_EXPECTED_ROWS = 10_000;
 
+/** 정리 안전판 — 삭제 대상이 이번 수집분의 이 비율을 넘으면 지우지 않는다.
+ *  원천이 반기 갱신이라 한 번에 20% 넘게 사라질 일이 없다. */
+const CLEANUP_MAX_RATIO = 0.2;
+
 async function upsertInChunks(
   sb: ReturnType<typeof getSupabase>,
   rows: RepairDbRow[],
@@ -94,7 +98,7 @@ export async function POST(req: Request) {
       if (items.length === 0) { complete = true; break; }
 
       fetched += items.length;
-      const { rows, stats } = normalizeItems(items);
+      const { rows, stats } = normalizeItems(items, startedAt);
       dropped.notOperating += stats.dropped.notOperating;
       dropped.noName += stats.dropped.noName;
       dropped.badCoord += stats.dropped.badCoord;
@@ -128,13 +132,29 @@ export async function POST(req: Request) {
   } else if (upserted < MIN_EXPECTED_ROWS) {
     cleanupSkipped = `수집 행수(${upserted})가 기대치(${MIN_EXPECTED_ROWS}) 미만 — 원천 이상 의심`;
   } else {
-    const { data, error } = await sb
+    // 지우기 전에 "몇 개나 지워질지" 먼저 센다.
+    // 정상이라면 이번에 못 본 소수(폐업·상호변경)만 남아야 한다. 그 수가 방금 upsert 한 행수에
+    // 육박하면 synced_at 이 갱신되지 않았다는 뜻이므로(과거에 실제로 그 버그로 테이블을 통째로
+    // 비운 적이 있다) 지우지 않고 멈춘다.
+    const { count: staleCount, error: countErr } = await sb
       .from('repair_shops')
-      .delete()
-      .lt('synced_at', startedAt)
-      .select('shop_key');
-    if (error) cleanupSkipped = `정리 실패: ${error.message}`;
-    else deleted = data?.length ?? 0;
+      .select('shop_key', { count: 'exact', head: true })
+      .lt('synced_at', startedAt);
+
+    if (countErr) {
+      cleanupSkipped = `정리 전 카운트 실패: ${countErr.message}`;
+    } else if ((staleCount ?? 0) > upserted * CLEANUP_MAX_RATIO) {
+      cleanupSkipped = `정리 중단 — 삭제 대상(${staleCount})이 이번 수집(${upserted})의 `
+        + `${CLEANUP_MAX_RATIO * 100}% 를 넘는다. synced_at 갱신 누락 의심.`;
+    } else {
+      const { data, error } = await sb
+        .from('repair_shops')
+        .delete()
+        .lt('synced_at', startedAt)
+        .select('shop_key');
+      if (error) cleanupSkipped = `정리 실패: ${error.message}`;
+      else deleted = data?.length ?? 0;
+    }
   }
 
   return NextResponse.json({
