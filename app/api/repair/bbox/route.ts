@@ -41,10 +41,16 @@ export async function GET(req: Request) {
     ? (rawBrand as RepairBrandFilter)
     : 'all';
 
-  // 줌 레벨별 상한 — 값이 없거나 범위를 벗어나면 기본(최대)으로 되돌린다.
-  const rawLimit = Number(url.searchParams.get('limit'));
-  const limit = Number.isFinite(rawLimit)
-    ? Math.min(Math.max(Math.trunc(rawLimit), REPAIR_LIMIT_MIN), REPAIR_LIMIT)
+  // 줌 레벨별 상한 — 값이 없거나 숫자가 아니면 기본(최대)으로 되돌린다.
+  //
+  // ⚠️ Number(null) 은 0 이고 0 은 유한한 수다. get() 결과를 그대로 Number() 에 넣으면
+  //    "파라미터 없음"이 0 으로 읽혀 최소값(10)까지 눌린다 — 실제로 그렇게 배포돼
+  //    limit 없이 부른 응답이 150 건이 아니라 10 건만 왔다. 빈 문자열도 같다.
+  //    그래서 값의 유무를 먼저 판정하고, 그다음에만 숫자로 본다.
+  const rawLimit = url.searchParams.get('limit');
+  const parsedLimit = rawLimit != null && rawLimit.trim() !== '' ? Number(rawLimit) : NaN;
+  const limit = Number.isFinite(parsedLimit)
+    ? Math.min(Math.max(Math.trunc(parsedLimit), REPAIR_LIMIT_MIN), REPAIR_LIMIT)
     : REPAIR_LIMIT;
 
   const cx = (swLat + neLat) / 2;
