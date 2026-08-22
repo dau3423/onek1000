@@ -292,6 +292,8 @@ env:
     secret: MAXMIND_LICENSE_KEY
   - variable: KMA_API_KEY
     secret: KMA_API_KEY
+  - variable: DATA_GO_KR_API_KEY
+    secret: DATA_GO_KR_API_KEY
   # - variable: NEXT_PUBLIC_ADSENSE_BANNER_SLOT
   #   value: "1234567890"
   #   availability:
