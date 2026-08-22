@@ -5,13 +5,19 @@
 import { NextResponse } from 'next/server';
 import { queryRepairByBbox } from '@/lib/db/repair';
 import { redis, keys, geoQuantize } from '@/lib/cache/redis';
-import type { RepairBboxResponse } from '@/types/repair';
+import type { RepairBboxResponse, RepairBrandFilter } from '@/types/repair';
 
 export const revalidate = 600;
 
 // 화면당 정비소 마커 상한. 전국 3.7만개로 세차장(1.6만)보다 조밀해 같은 값이면 도심에서
 // 마커가 뭉개진다 — 세차장(200)보다 낮게 잡아 렌더 비용과 가독성을 지킨다.
 const REPAIR_LIMIT = 150;
+
+/** 허용 brand 값 — types/repair.ts 의 RepairBrandFilter 와 1:1. */
+const BRAND_VALUES = [
+  'all', 'none', 'autoq', 'bluehands', 'speedmate', 'renault',
+  'autooasis', 'kgm', 'chevrolet', 'carpos', 'imported',
+] as const;
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -24,9 +30,16 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'invalid bbox' }, { status: 400 });
   }
 
+  // 브랜드 필터 — 화이트리스트 검증(주소창으로 아무 값이나 들어올 수 있다).
+  const rawBrand = url.searchParams.get('brand') ?? 'all';
+  const brand: RepairBrandFilter = (BRAND_VALUES as readonly string[]).includes(rawBrand)
+    ? (rawBrand as RepairBrandFilter)
+    : 'all';
+
   const cx = (swLat + neLat) / 2;
   const cy = (swLng + neLng) / 2;
-  const cacheKey = keys.repairBbox(geoQuantize(cx, cy, 2));
+  // 캐시키에 브랜드를 넣지 않으면 필터 결과가 전체 결과 자리에 캐시된다(그 반대도).
+  const cacheKey = keys.repairBbox(`${geoQuantize(cx, cy, 2)}:${brand}`);
 
   const cached = await redis.getJson<RepairBboxResponse>(cacheKey);
   if (cached) {
@@ -36,7 +49,7 @@ export async function GET(req: Request) {
   }
 
   // 미마이그레이션/0건/mock 어떤 경우에도 500 없이 200+배열(빈 배열 포함) 반환.
-  const shops = await queryRepairByBbox({ swLat, swLng, neLat, neLng }, REPAIR_LIMIT);
+  const shops = await queryRepairByBbox({ swLat, swLng, neLat, neLng }, REPAIR_LIMIT, brand);
 
   const body: RepairBboxResponse = {
     shops,

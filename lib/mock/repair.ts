@@ -3,7 +3,7 @@
 // 원천 데이터의 특성을 그대로 반영한다 — 전화번호 채움률 약 51%, 영업시간 약 38% 라
 // 일부러 비어 있는 항목을 섞어 "없는 경우" UI 를 mock 에서도 보게 한다.
 
-import type { RepairDetail, RepairMarker } from '@/types/repair';
+import type { RepairBrandFilter, RepairDetail, RepairMarker } from '@/types/repair';
 import type { Bbox } from '@/lib/map/geo';
 import { inBbox } from '@/lib/map/geo';
 
@@ -43,9 +43,15 @@ const SEED: Omit<RepairMarker, 'syncedAt'>[] = [
   },
 ];
 
-export function getMockRepairByBbox(bbox: Bbox, limit: number): RepairMarker[] {
+export function getMockRepairByBbox(
+  bbox: Bbox,
+  limit: number,
+  brand: RepairBrandFilter = 'all',
+): RepairMarker[] {
   return SEED
     .filter((s) => inBbox(s.lat, s.lng, bbox))
+    // 실 DB(RPC)와 같은 규칙 — 'all'=전체, 'none'=무소속만, 그 외=해당 브랜드만.
+    .filter((s) => (brand === 'all' ? true : brand === 'none' ? !s.brand : s.brand === brand))
     .slice(0, limit)
     .map((s) => ({ ...s, syncedAt: now() }));
 }

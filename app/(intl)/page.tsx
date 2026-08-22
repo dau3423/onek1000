@@ -194,6 +194,9 @@ export default function HomePage() {
   const [repairShops, setRepairShops] = useState<RepairMarker[]>([]);
   const carwashAbort = useRef<AbortController | null>(null);
   const repairAbort = useRef<AbortController | null>(null);
+  // fetchRepairShops 가 지도 idle 콜백의 옛 클로저에서 불릴 수 있어, 브랜드는 ref 로 최신값을 본다
+  // (유종 productRef 와 같은 이유).
+  const repairBrandRef = useRef<typeof repairBrand>('all');
   // 첫 응답 수신 여부(빈 상태 배너를 첫 로딩 중에 깜빡이지 않게 하기 위함).
   const [carwashLoaded, setCarwashLoaded] = useState(false);
   // 세차장 마커 클릭 시 요약 팝업 대상(모바일·PC 공통 — 상세 페이지 없음).
@@ -328,18 +331,10 @@ export default function HomePage() {
     [carwashPlaces, carwashType],
   );
 
-  // 정비소 브랜드 필터 — 'all'=전체, 'none'=브랜드 없는 무소속만, 그 외=해당 브랜드만.
-  // 마커와 목록이 같은 배열을 쓰도록 여기서 한 번만 거른다(둘이 어긋나면 "지도엔 있는데
-  // 목록엔 없는" 상태가 된다).
-  const visibleRepair = useMemo(
-    () =>
-      repairBrand === 'all'
-        ? repairShops
-        : repairBrand === 'none'
-          ? repairShops.filter((p) => !p.brand)
-          : repairShops.filter((p) => p.brand === repairBrand),
-    [repairShops, repairBrand],
-  );
+  // 브랜드 필터는 **서버(/api/repair/bbox)** 가 건다. 여기서 다시 거르지 않는다 —
+  // bbox 상한(150)이 필터보다 먼저 걸리면 소수 브랜드가 통째로 잘리기 때문이다
+  // (블루핸즈는 전국 74곳이라 강남 임의 150건에 0~1건만 섞였다).
+  const visibleRepair = repairShops;
 
   // bbox 변경 시 stations 조회
   useEffect(() => {
@@ -554,6 +549,7 @@ export default function HomePage() {
     const params = new URLSearchParams({
       swLat: String(b.swLat), swLng: String(b.swLng),
       neLat: String(b.neLat), neLng: String(b.neLng),
+      brand: repairBrandRef.current,
     });
     fetch(`/api/repair/bbox?${params}`, { signal: repairAbort.current.signal })
       .then(async (r) => {
@@ -567,6 +563,15 @@ export default function HomePage() {
         if (e.name !== 'AbortError') console.error('repair bbox fetch fail', e);
       });
   }
+
+  // 브랜드 필터가 바뀌면 서버 조회를 다시 한다(클라이언트 재필터가 아니라서 필수).
+  useEffect(() => {
+    repairBrandRef.current = repairBrand;
+    if (layer !== 'repair') return;
+    const b = lastBoundsRef.current;
+    if (b) fetchRepairShops(b);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repairBrand, layer]);
 
   // 레이어 전환 시 현재 화면 영역으로 즉시 재조회.
   // - ev: 충전소 조회. carwash: 세차장 조회. gas: 기존 주유소 조회(일관성 위해 트리거).

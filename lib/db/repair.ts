@@ -1,7 +1,7 @@
 // 자동차 정비소 도메인 쿼리 — Supabase 미설정 시 mock 폴백 (lib/db/carwash.ts와 동일 패턴).
 import { getSupabase, isSupabaseConfigured } from './supabase';
 import type { Bbox } from '@/lib/map/geo';
-import type { RepairBrand, RepairDetail, RepairMarker, RepairShopType } from '@/types/repair';
+import type { RepairBrand, RepairBrandFilter, RepairDetail, RepairMarker, RepairShopType } from '@/types/repair';
 import { getMockRepairByBbox, getMockRepairDetail } from '@/lib/mock/repair';
 
 interface BboxRpcRow {
@@ -54,15 +54,22 @@ function rpcRowToMarker(r: BboxRpcRow): RepairMarker {
  * - NEXT_PUBLIC_USE_MOCK=true 또는 Supabase 미설정(mock 모드)이면 mock 반환.
  * - 마이그레이션 미적용/데이터 0건이면 빈 배열 반환(500 없이) — 0042 적용 전에 배포돼도 안전하다.
  */
-export async function queryRepairByBbox(bbox: Bbox, limit: number): Promise<RepairMarker[]> {
+export async function queryRepairByBbox(
+  bbox: Bbox,
+  limit: number,
+  brand: RepairBrandFilter = 'all',
+): Promise<RepairMarker[]> {
   if (process.env.NEXT_PUBLIC_USE_MOCK === 'true' || !isSupabaseConfigured()) {
-    return getMockRepairByBbox(bbox, limit);
+    return getMockRepairByBbox(bbox, limit, brand);
   }
   const sb = getSupabase();
+  // 브랜드 필터는 반드시 서버에서 건다 — limit(150) 이 필터보다 먼저 걸리면
+  // 소수 브랜드(블루핸즈 전국 74곳)가 통째로 잘려 "필터를 켰는데 아무것도 없는" 화면이 된다.
   const { data, error } = await sb.rpc('rpc_repair_by_bbox', {
     p_sw_lng: bbox.swLng, p_sw_lat: bbox.swLat,
     p_ne_lng: bbox.neLng, p_ne_lat: bbox.neLat,
     p_limit: limit,
+    p_brand: brand === 'all' ? null : brand,
   });
   if (error) {
     // 미마이그레이션(테이블/RPC 없음, PGRST202 등)에도 레이어가 크래시하지 않도록 빈 배열로 폴백.
