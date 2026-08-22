@@ -126,6 +126,24 @@ export default async function DistrictPage({ params }: { params: { region: strin
         </div>
       </section>
 
+      {/* 같은 시군구의 다른 업종 — /regions 트리에서 정비소·세차장·충전소 랜딩으로 가는 유일한
+          내부 링크다. 이게 없으면 그 630여 페이지가 사이트맵에만 있는 고아가 된다
+          (예전에 /regions 자체가 그래서 색인이 안 됐다). */}
+      <section className="mt-10">
+        <h2 className="text-sm font-bold text-gray-700">{sg.name} 다른 정보</h2>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {([['repair', '정비소'], ['carwash', '세차장'], ['ev', '전기차 충전소']] as const).map(([layer, label]) => (
+            <Link
+              key={layer}
+              href={`/regions/${region.slug}/${sg.code}/${layer}`}
+              className="rounded-lg border border-gray-200 px-3 py-1.5 text-[13px] text-gray-600 hover:bg-gray-50"
+            >
+              {sg.name} {label}
+            </Link>
+          ))}
+        </div>
+      </section>
+
       {siblings.length > 0 && (
         <section className="mt-10">
           <h2 className="text-sm font-bold text-gray-700">{region.name} 다른 지역</h2>

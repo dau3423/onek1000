@@ -49,5 +49,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }));
 
-  return [...dailyPages, ...staticPages, ...regionPages, ...districtPages];
+  // 시군구 × 업종 랜딩(정비소·세차장·전기차 충전소).
+  // 가격이 아니라 시설 목록이라 매일 바뀌지 않는다 — 원천 갱신 주기가 반기(정비소·세차장)
+  // 또는 일 단위(EV)다. 그래서 lastModified 를 붙이지 않는다. 매일 "방금 수정됨"으로
+  // 거짓 신고하면 구글이 이 사이트의 lastModified 신호 전체를 신뢰하지 않게 된다
+  // (위 약관·가격정책을 생략한 것과 같은 이유).
+  //
+  // 데이터가 0곳인 시군구도 여기엔 들어간다 — 사이트맵은 정적으로 만들어야 하고(DB 조회를 넣으면
+  // 매 요청마다 수십만 행을 훑는다), 그런 URL 은 페이지가 생성되지 않아 404 가 되는 게 아니라
+  // ISR 로 렌더되며 "정보가 없어요" 안내를 보여준다. 얇지만 깨지지는 않는다.
+  const placeLayerPages: MetadataRoute.Sitemap = SIGUNGU.flatMap((s) =>
+    (['repair', 'carwash', 'ev'] as const).map((layer) => ({
+      url: `${SITE}/regions/${SIDO_SLUG[s.sido]}/${s.code}/${layer}`,
+      changeFrequency: 'monthly' as const,
+      priority: 0.6,
+    })),
+  );
+
+  return [...dailyPages, ...staticPages, ...regionPages, ...districtPages, ...placeLayerPages];
 }
