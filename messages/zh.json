@@ -219,8 +219,7 @@
       "waiting": "等待",
       "addressUnknown": "地址未知",
       "titleRepairArea": "该区域维修厂 {count} 家",
-      "emptyRepair": "此区域没有可显示的维修厂。请移动地图试试。",
-      "callAria": "致电 {name}"
+      "emptyRepair": "此区域没有可显示的维修厂。请移动地图试试。"
     },
     "kakaoMap": {
       "errorTitle": "地图加载失败。",
@@ -357,7 +356,7 @@
     "navi": {
       "confirmDialogAria": "确认开始导航",
       "whichApp": "要用哪个应用导航？",
-      "confirmTitle": "要开始导航到这{kind, select, carwash {家洗车场} other {家加油站}}吗？",
+      "confirmTitle": "要开始导航到这{kind, select, carwash {家洗车场} repair {维修厂} other {家加油站}}吗？",
       "appHint": "您选择的应用下次会自动使用。如果没有该应用，将跳转至商店或网页引导。",
       "startFromOrigin": "将从您当前位置使用{provider}开始导航到这{kind, select, carwash {家洗车场} other {家加油站}}。",
       "startFromProvider": "将在{provider}中开始导航到这{kind, select, carwash {家洗车场} other {家加油站}}。",

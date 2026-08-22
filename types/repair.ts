@@ -71,6 +71,29 @@ export const REPAIR_BRAND_COLOR: Record<RepairBrand, string> = {
   imported: '#111827',   // 검정
 };
 
+
+/**
+ * 다크 테마용 브랜드 색. 라이트 색을 그대로 쓰면 어두운 배경에서 안 보인다 —
+ * 실측 결과 12개 중 8개가 대비 3:1 미만이었다(타이어 1.42:1, 수입차 1.21:1).
+ * 색상(hue)은 유지하고 명도만 올려 같은 브랜드로 읽히게 했고, 다크 배경(#1F2937) 기준
+ * **전 색상 4.5:1 이상**을 확인했다.
+ * 지도 마커는 라이트 지도 위에 그려지므로 여기 값을 쓰지 않는다 — 목록·뱃지 전용이다.
+ */
+export const REPAIR_BRAND_COLOR_DARK: Record<RepairBrand, string> = {
+  autoq: '#E36A78',
+  bluehands: '#3B91F5',
+  speedmate: '#E8692C',
+  renault: '#E3A40C',
+  autooasis: '#0C9CDD',
+  kgm: '#23A487',
+  chevrolet: '#87929B',
+  carpos: '#A378EC',
+  gongim: '#129BBC',
+  tire: '#8391A8',
+  inspection: '#23A554',
+  imported: '#788FBF',
+};
+
 /** 브랜드 필터 값. 'all'=전체(기본), 'none'=브랜드 없는 무소속만. */
 export type RepairBrandFilter = 'all' | 'none' | RepairBrand;
 

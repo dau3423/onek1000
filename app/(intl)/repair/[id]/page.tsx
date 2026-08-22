@@ -18,6 +18,7 @@ export const dynamic = 'force-dynamic';
 export default async function RepairDetailPage({ params }: Props) {
   const t = await getTranslations('repair');
   const tCommon = await getTranslations('common');
+  const tType = await getTranslations('repair.typeLabel');
   // id = repair_shops PK(shop_key, 32자 hex 합성키). Next가 이미 디코딩해 넘겨준다.
   const id = (params.id ?? '').trim();
   if (!id || id.length > 200) notFound();
@@ -50,9 +51,11 @@ export default async function RepairDetailPage({ params }: Props) {
 
       <section className="px-5 py-4">
         <div className="flex flex-wrap items-center gap-1.5">
-          {detail.brand && <RepairBrandBadge brand={detail.brand} size="md" />}
+          {detail.brand && <RepairBrandBadge brand={detail.brand} size="md" forceLight />}
           <RepairTypeBadge type={detail.shopType} size="md" forceLight />
         </div>
+        {/* 공식 분류명 — 뱃지는 짧은 말(카센터)을 쓰므로, 원천의 정확한 업종명은 여기 남긴다. */}
+        <p className="mt-1.5 text-[11px] text-gray-400">{tType(detail.shopType)}</p>
         {address && (
           <p className="mt-3 flex items-start gap-1.5 text-sm text-gray-600">
             <PinIcon className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />

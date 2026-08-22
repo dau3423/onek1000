@@ -19,7 +19,7 @@ import { WASH_TYPE_COLOR } from '@/types/carwash';
 import { CarwashTypeBadge } from '@/components/carwash/CarwashTypeBadge';
 import { RepairTypeBadge } from '@/components/repair/RepairTypeBadge';
 import { RepairBrandBadge } from '@/components/repair/RepairBrandBadge';
-import { CrownIcon, ChevronRightIcon, BoltFilledIcon, DropletIcon, PhoneIcon } from '@/components/icons';
+import { CrownIcon, ChevronRightIcon, BoltFilledIcon, DropletIcon } from '@/components/icons';
 
 type Tab = 'area' | 'nearby';
 
@@ -617,19 +617,6 @@ function RepairRow({
           </div>
           <ChevronRightIcon className="h-4 w-4 shrink-0 text-gray-300 dark:text-gray-600" />
         </button>
-        {/* 전화걸기 — 번호가 있을 때만(원천 채움률 55%). 주유소 상세의 전화 CTA 와 같은 동작을
-            목록에서 바로 할 수 있게 둔다. 정비소는 "전화로 먼저 물어보는" 이용 패턴이 흔하다. */}
-        {shop.tel && (
-          <a
-            href={`tel:${shop.tel}`}
-            onClick={(e) => e.stopPropagation()}
-            aria-label={t('bottomSheet.callAria', { name: shop.name })}
-            title={shop.tel}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-600 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-          >
-            <PhoneIcon className="h-4 w-4" />
-          </a>
-        )}
         {onNavigate && (
           <button
             onClick={() => onNavigate(shop)}

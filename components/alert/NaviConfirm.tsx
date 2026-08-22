@@ -19,8 +19,8 @@ interface Props {
   station: StationWithPrice;
   /** 출발지(현재 위치). 있으면 출발→도착 경로로 길안내가 시작된다. */
   origin?: NaviOrigin | null;
-  /** 대상 종류. 'carwash'면 세차장 문구로 바꾸고 브랜드·가격 줄을 숨긴다(기본 'gas'). */
-  kind?: 'gas' | 'carwash';
+  /** 대상 종류. 'gas' 외에는 가격·브랜드 개념이 없어 그 줄을 숨기고 문구를 바꾼다(기본 'gas'). */
+  kind?: 'gas' | 'carwash' | 'repair';
   onClose: () => void;
 }
 
@@ -28,7 +28,7 @@ interface Props {
  * "이 주유소로 길안내를 시작할까요?" 확인 모달.
  * 저장된 선호 앱이 있으면 원버튼으로 그 앱을 실행하고(+ "다른 앱으로" 전환),
  * 없으면 앱 목록에서 고르게 한다. 선택한 앱은 다음을 위해 기억한다.
- * 세차장(kind='carwash')은 가격이 없으므로 브랜드·가격 표기를 숨기고 명칭을 바꾼다(정직 표기).
+ * 세차장·정비소(kind='carwash'|'repair')는 가격이 없으므로 브랜드·가격 표기를 숨기고 명칭을 바꾼다(정직 표기).
  */
 export function NaviConfirm({ station, origin, kind = 'gas', onClose }: Props) {
   const t = useTranslations('station.navi');
@@ -81,7 +81,7 @@ export function NaviConfirm({ station, origin, kind = 'gas', onClose }: Props) {
         </p>
         <div className="mt-3 rounded-xl bg-gray-50 px-4 py-3 dark:bg-gray-800">
           <div className="text-sm font-semibold text-gray-900 dark:text-gray-50">{station.name}</div>
-          {kind === 'carwash' ? (
+          {kind !== 'gas' ? (
             distanceText && (
               <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{distanceText}</div>
             )

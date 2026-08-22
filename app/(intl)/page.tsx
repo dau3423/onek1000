@@ -276,7 +276,7 @@ export default function HomePage() {
   // 길안내 확인 모달 대상
   const [naviTarget, setNaviTarget] = useState<StationWithPrice | null>(null);
   // 길안내 확인 모달의 대상 종류. 세차장은 가격이 없어 문구·표기를 분기한다(기본 gas).
-  const [naviKind, setNaviKind] = useState<'gas' | 'carwash'>('gas');
+  const [naviKind, setNaviKind] = useState<'gas' | 'carwash' | 'repair'>('gas');
 
   // 주유소 체류 감지 팝업 대상(감지된 주유소). 저장/닫기 시 null.
   const [dwellStation, setDwellStation] = useState<DwellStation | null>(null);
@@ -1335,6 +1335,18 @@ export default function HomePage() {
           repairShops={visibleRepair}
           repairOrigin={myLocation ?? mapCenter}
           onSelectRepair={(p) => router.push(`/repair/${encodeURIComponent(p.shopKey)}`)}
+          onNavigateRepair={(p) =>
+            requireAuth(() => {
+              // 정비소도 가격이 없다 — NaviConfirm 이 브랜드·가격 줄을 숨기도록 kind='repair'.
+              // price/product/tradeDate 는 StationWithPrice 형태를 맞추기 위한 더미(화면 노출 없음).
+              setNaviKind('repair');
+              setNaviTarget({
+                id: p.shopKey, name: p.name, brand: 'ETC', isSelf: false,
+                sido: '01', address: p.roadAddr ?? p.jibunAddr ?? '',
+                lat: p.lat, lng: p.lng, product, price: 0, tradeDate: '',
+              });
+            })
+          }
           carwashOrigin={carwashOrigin}
           onSelectCarwash={(p) => router.push(`/carwash/${encodeURIComponent(p.mgmtNo)}`)}
           onNavigateCarwash={(p) =>

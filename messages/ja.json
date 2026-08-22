@@ -219,8 +219,7 @@
       "waiting": "待機",
       "addressUnknown": "住所不明",
       "titleRepairArea": "このエリアの整備工場 {count}件",
-      "emptyRepair": "このエリアに表示できる整備工場がありません。地図を移動してみてください。",
-      "callAria": "{name} に電話"
+      "emptyRepair": "このエリアに表示できる整備工場がありません。地図を移動してみてください。"
     },
     "kakaoMap": {
       "errorTitle": "地図を読み込めませんでした。",
@@ -357,7 +356,7 @@
     "navi": {
       "confirmDialogAria": "ナビ開始の確認",
       "whichApp": "どのアプリで経路案内しますか？",
-      "confirmTitle": "この{kind, select, carwash {洗車場} other {給油所}}への経路案内を開始しますか？",
+      "confirmTitle": "この{kind, select, carwash {洗車場} repair {整備工場} other {給油所}}への経路案内を開始しますか？",
       "appHint": "選択したアプリは次回から自動的に使用されます。アプリがない場合はストア／ウェブ案内に接続されます。",
       "startFromOrigin": "現在地からこの{kind, select, carwash {洗車場} other {給油所}}まで、{provider}で経路案内を開始します。",
       "startFromProvider": "{provider}でこの{kind, select, carwash {洗車場} other {給油所}}への経路案内を開始します。",

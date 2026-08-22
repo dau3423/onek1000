@@ -244,3 +244,22 @@ body {
 .scrollbar-none::-webkit-scrollbar {
   display: none;                  /* Chrome / Safari */
 }
+
+/* 정비소 브랜드 칩 — 브랜드 색을 쓰되 테마에 따라 다른 값을 고른다.
+   인라인 style 로는 dark: 변형이 불가해, 컴포넌트가 --bc(라이트)/--bcd(다크)를 넘기고
+   여기서 고른다. 다크 색은 라이트 색을 그대로 쓰면 대비가 1.2~2.5:1 로 무너지기 때문에
+   따로 계산해 둔 값이다(전 색상 4.5:1 이상 확인). */
+.brand-chip {
+  color: var(--bc);
+  border-color: color-mix(in srgb, var(--bc) 40%, transparent);
+  background: color-mix(in srgb, var(--bc) 8%, transparent);
+}
+/* 이 프로젝트는 tailwind.config 에 darkMode 설정이 없어 기본값 'media' 를 쓴다.
+   즉 .dark 클래스는 어디에도 붙지 않는다 — 반드시 미디어 쿼리로 걸어야 한다. */
+@media (prefers-color-scheme: dark) {
+  .brand-chip {
+    color: var(--bcd);
+    border-color: color-mix(in srgb, var(--bcd) 45%, transparent);
+    background: color-mix(in srgb, var(--bcd) 12%, transparent);
+  }
+}

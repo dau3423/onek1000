@@ -61,7 +61,10 @@ export function RepairTypeBadge({
   size?: 'sm' | 'md';
   forceLight?: boolean;
 }) {
-  const t = useTranslations('repair.typeLabel');
+  // 지도 마커와 같은 짧은 라벨을 쓴다 — 목록·마커·뱃지가 같은 말을 해야 하고,
+  // '자동차전문정비업(카센터)' 같은 공식 분류명은 좁은 행에서 이름을 밀어낸다.
+  // 긴 공식 분류는 상세 페이지가 별도 캡션으로 보여준다(정보가 사라지지 않게).
+  const t = useTranslations('map.repairMarkerLabel');
   return (
     <span
       className={clsx(

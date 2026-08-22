@@ -219,8 +219,7 @@
       "waiting": "Waiting",
       "addressUnknown": "Address unknown",
       "titleRepairArea": "{count, plural, one {# repair shop} other {# repair shops}} in this area",
-      "emptyRepair": "No repair shops in this area. Try moving the map.",
-      "callAria": "Call {name}"
+      "emptyRepair": "No repair shops in this area. Try moving the map."
     },
     "kakaoMap": {
       "errorTitle": "Couldn't load the map.",
@@ -357,7 +356,7 @@
     "navi": {
       "confirmDialogAria": "Confirm start navigation",
       "whichApp": "Which app would you like to navigate with?",
-      "confirmTitle": "Start navigating to this {kind, select, carwash {car wash} other {station}}?",
+      "confirmTitle": "Start navigating to this {kind, select, carwash {car wash} repair {the repair shop} other {station}}?",
       "appHint": "The app you choose will be used automatically next time. If you don't have the app, you'll be redirected to the store or web.",
       "startFromOrigin": "Navigation from your current location to this {kind, select, carwash {car wash} other {station}} will start with {provider}.",
       "startFromProvider": "Navigation to this {kind, select, carwash {car wash} other {station}} will start in {provider}.",

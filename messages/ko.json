@@ -219,8 +219,7 @@
       "waiting": "대기",
       "addressUnknown": "주소 미상",
       "titleRepairArea": "이 지역 정비소 {count}곳",
-      "emptyRepair": "이 영역에 표시할 정비소가 없어요. 지도를 이동해보세요.",
-      "callAria": "{name} 전화걸기"
+      "emptyRepair": "이 영역에 표시할 정비소가 없어요. 지도를 이동해보세요."
     },
     "kakaoMap": {
       "errorTitle": "지도를 불러오지 못했습니다.",
@@ -357,7 +356,7 @@
     "navi": {
       "confirmDialogAria": "길안내 시작 확인",
       "whichApp": "어떤 앱으로 길안내할까요?",
-      "confirmTitle": "이 {kind, select, carwash {세차장으로} other {주유소로}} 길안내를 시작할까요?",
+      "confirmTitle": "이 {kind, select, carwash {세차장으로} repair {정비소로} other {주유소로}} 길안내를 시작할까요?",
       "appHint": "선택한 앱은 다음에 자동으로 사용돼요. 앱이 없으면 스토어/웹 안내로 연결됩니다.",
       "startFromOrigin": "현재 위치에서 이 {kind, select, carwash {세차장} other {주유소}}까지 {provider} 길안내가 시작됩니다.",
       "startFromProvider": "{provider}에서 이 {kind, select, carwash {세차장으로} other {주유소로}} 길안내가 시작됩니다.",

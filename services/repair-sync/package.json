@@ -1,0 +1,10 @@
+{
+  "name": "repair-sync",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "서울(asia-northeast3) Cloud Run 전용 자동차 정비소 sync 서비스. data.go.kr 이 해외 IP를 차단해 싱가포르(App Hosting)에서는 fetch failed 가 나므로, 서울 리전에서 수집 + Supabase upsert 를 수행한다.",
+  "engines": { "node": "22" },
+  "scripts": { "start": "node server.js" },
+  "dependencies": { "@supabase/supabase-js": "2.45.1" }
+}
