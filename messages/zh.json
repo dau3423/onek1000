@@ -266,6 +266,9 @@
       "kgm": "KGM",
       "chevrolet": "雪佛兰",
       "carpos": "Carpos",
+      "gongim": "工费之国",
+      "tire": "轮胎",
+      "inspection": "检验所",
       "imported": "进口车"
     }
   },
@@ -1003,6 +1006,9 @@
       "kgm": "双龙 · KGM",
       "chevrolet": "雪佛兰 · GM",
       "carpos": "Carpos",
+      "gongim": "工费之国",
+      "tire": "轮胎专门店",
+      "inspection": "汽车检验所",
       "imported": "进口车",
       "none": "独立维修厂"
     }

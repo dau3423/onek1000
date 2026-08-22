@@ -266,6 +266,9 @@
       "kgm": "KG·쌍용",
       "chevrolet": "쉐보레",
       "carpos": "카포스",
+      "gongim": "공임나라",
+      "tire": "타이어",
+      "inspection": "검사소",
       "imported": "수입차"
     }
   },
@@ -1003,6 +1006,9 @@
       "kgm": "쌍용 · KG모빌리티",
       "chevrolet": "쉐보레 · GM",
       "carpos": "카포스",
+      "gongim": "공임나라",
+      "tire": "타이어 전문",
+      "inspection": "자동차검사소",
       "imported": "수입차",
       "none": "기타(무소속)"
     }

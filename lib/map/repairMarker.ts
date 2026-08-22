@@ -27,6 +27,9 @@ function brandGlyphSvg(brand: RepairBrand): string {
     case 'kgm': return txt('KG', 10);
     case 'chevrolet': return txt('GM', 10);
     case 'carpos': return txt('CP', 10);
+    case 'gongim': return txt('GN', 10);
+    case 'tire': return '<circle cx="12" cy="12" r="8.5" fill="none" stroke="#fff" stroke-width="3"/><circle cx="12" cy="12" r="3" fill="#fff"/>';  // 타이어 = 도넛
+    case 'inspection': return '<path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>';  // 검사 = 합격 체크
     case 'imported': return txt('IM', 10);
   }
 }

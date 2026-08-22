@@ -44,6 +44,9 @@ export type RepairBrand =
   | 'kgm'        // 쌍용 · KG모빌리티
   | 'chevrolet'  // 쉐보레 · GM
   | 'carpos'     // 카포스
+  | 'gongim'     // 공임나라
+  | 'tire'       // 타이어 전문(체인 + 동네 타이어점)
+  | 'inspection' // 자동차검사(지정정비사업자)
   | 'imported';  // 수입차(개별 건수가 적어 묶음)
 
 
@@ -62,6 +65,9 @@ export const REPAIR_BRAND_COLOR: Record<RepairBrand, string> = {
   kgm: '#0F5C4B',        // 진초록
   chevrolet: '#5B6770',  // 그레이블루
   carpos: '#7C3AED',     // 보라
+  gongim: '#0891B2',     // 청록
+  tire: '#374151',       // 타이어 먹색
+  inspection: '#15803D',  // 검사 초록(합격 도장 연상)
   imported: '#111827',   // 검정
 };
 
@@ -82,6 +88,9 @@ export const REPAIR_BRAND_ORDER: { value: RepairBrandFilter; emphasis?: boolean 
   { value: 'kgm' },
   { value: 'chevrolet' },
   { value: 'carpos' },
+  { value: 'gongim' },
+  { value: 'tire' },
+  { value: 'inspection' },
   { value: 'imported' },
   { value: 'none' },
 ];

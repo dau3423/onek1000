@@ -266,6 +266,9 @@
       "kgm": "KGM",
       "chevrolet": "シボレー",
       "carpos": "カポス",
+      "gongim": "コンイムナラ",
+      "tire": "タイヤ",
+      "inspection": "検査所",
       "imported": "輸入車"
     }
   },
@@ -1003,6 +1006,9 @@
       "kgm": "双竜 · KGM",
       "chevrolet": "シボレー · GM",
       "carpos": "カポス",
+      "gongim": "コンイムナラ",
+      "tire": "タイヤ専門店",
+      "inspection": "自動車検査所",
       "imported": "輸入車",
       "none": "独立整備工場"
     }

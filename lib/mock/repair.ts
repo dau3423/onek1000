@@ -41,6 +41,24 @@ const SEED: Omit<RepairMarker, 'syncedAt'>[] = [
     tel: '02-333-2222', openTime: null, closeTime: null,
     lat: 37.5533, lng: 126.9180, dataBaseDate: '2026-02-28',
   },
+  {
+    shopKey: 'RP-MOCK-0006', name: '공임나라 강동점', shopType: 'specialty', brand: 'gongim',
+    roadAddr: '서울 강동구 천호대로 1077', jibunAddr: null,
+    tel: '02-444-5555', openTime: '09:00', closeTime: '19:00',
+    lat: 37.5385, lng: 127.1250, dataBaseDate: '2026-02-28',
+  },
+  {
+    shopKey: 'RP-MOCK-0007', name: '티스테이션 잠실점', shopType: 'specialty', brand: 'tire',
+    roadAddr: '서울 송파구 올림픽로 240', jibunAddr: null,
+    tel: null, openTime: null, closeTime: null,
+    lat: 37.5115, lng: 127.0980, dataBaseDate: '2026-02-28',
+  },
+  {
+    shopKey: 'RP-MOCK-0008', name: '한빛자동차검사소', shopType: 'general', brand: 'inspection',
+    roadAddr: '서울 구로구 경인로 445', jibunAddr: null,
+    tel: '02-888-9999', openTime: '09:00', closeTime: '18:00',
+    lat: 37.4980, lng: 126.8790, dataBaseDate: '2025-08-31',
+  },
 ];
 
 export function getMockRepairByBbox(

@@ -104,6 +104,21 @@ function routeIdentityKey(plan: RoutePlan): string {
   ].join('|');
 }
 
+/**
+ * 정비소 표시 개수를 지도 축척에 맞춘다. 카카오 level 은 **작을수록 확대**다.
+ *  level ≥ 10 (전국~광역)  → 40개  : 브랜드 지점만 남는다(서버가 브랜드 우선으로 정렬).
+ *  level 7~9  (시도)       → 80개  : 브랜드 + 종합정비(1급)
+ *  level ≤ 6  (시군구~동네) → 150개 : 사실상 전부(기존 동작)
+ *
+ * 왜 개수로 조절하나: 정비소는 가격 같은 순위 근거가 없어 "상위"를 만들 수 없다. 대신
+ * 축소할수록 적게 받아, 정렬 앞쪽(=이름을 알아볼 수 있는 브랜드 지점)만 남게 한다.
+ */
+function repairLimitForLevel(level: number): number {
+  if (level >= 10) return 40;
+  if (level >= 7) return 80;
+  return 150;
+}
+
 export default function HomePage() {
   const t = useTranslations('map');
   const router = useRouter();
@@ -197,6 +212,8 @@ export default function HomePage() {
   // fetchRepairShops 가 지도 idle 콜백의 옛 클로저에서 불릴 수 있어, 브랜드는 ref 로 최신값을 본다
   // (유종 productRef 와 같은 이유).
   const repairBrandRef = useRef<typeof repairBrand>('all');
+  // 현재 지도 축척(카카오 level — 작을수록 확대). 정비소 표시 개수를 여기에 맞춰 줄인다.
+  const mapLevelRef = useRef<number>(4);
   // 첫 응답 수신 여부(빈 상태 배너를 첫 로딩 중에 깜빡이지 않게 하기 위함).
   const [carwashLoaded, setCarwashLoaded] = useState(false);
   // 세차장 마커 클릭 시 요약 팝업 대상(모바일·PC 공통 — 상세 페이지 없음).
@@ -550,6 +567,9 @@ export default function HomePage() {
       swLat: String(b.swLat), swLng: String(b.swLng),
       neLat: String(b.neLat), neLng: String(b.neLng),
       brand: repairBrandRef.current,
+      // 축소할수록 적게 — 서버가 '브랜드 우선'으로 정렬하므로 적게 받을수록
+      // 이름을 알아볼 수 있는 곳만 남는다(무작위 150개가 전국에 흩뿌려지는 것 방지).
+      limit: String(repairLimitForLevel(mapLevelRef.current)),
     });
     fetch(`/api/repair/bbox?${params}`, { signal: repairAbort.current.signal })
       .then(async (r) => {
@@ -1091,6 +1111,16 @@ export default function HomePage() {
           }}
           onViewChange={(v) => {
             setLastView(v);
+            // 축척이 바뀌면 정비소 표시 개수가 달라진다 → 레이어가 켜져 있으면 재조회.
+            if (typeof v.level === 'number' && v.level !== mapLevelRef.current) {
+              const prev = mapLevelRef.current;
+              mapLevelRef.current = v.level;
+              if (layer === 'repair'
+                && repairLimitForLevel(prev) !== repairLimitForLevel(v.level)
+                && lastBoundsRef.current) {
+                fetchRepairShops(lastBoundsRef.current);
+              }
+            }
             // ④ 추세 배너 폴백 좌표 — 지도 중심을 추적(GPS 좌표가 없을 때 사용).
             setMapCenter({ lat: v.lat, lng: v.lng });
           }}

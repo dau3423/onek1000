@@ -48,6 +48,22 @@ const RULES: { brand: RepairBrand; keywords: string[] }[] = [
   { brand: 'speedmate', keywords: ['스피드메이트', 'speedmate'] },
   { brand: 'autooasis', keywords: ['오토오아시스'] },
   { brand: 'carpos', keywords: ['카포스'] },
+  { brand: 'gongim', keywords: ['공임나라'] },
+  // ── 타이어 전문 ──
+  // 체인(티스테이션·타이어프로 등)과 동네 타이어점을 하나로 묶는다. 상호에 '타이어'가 들어간
+  // 곳은 사실상 전부 타이어를 취급하므로 넓게 잡아도 오탐이 아니다("타이어 갈 곳"을 찾는 용도).
+  // 단 위 완성차/정유사 규칙이 먼저 걸리므로 '금호타이어 서비스' 류가 여기로 새지 않는다.
+  {
+    brand: 'tire',
+    keywords: [
+      '타이어', 'tire', '티스테이션', 'tstation', '넥센', '미쉐린', 'michelin',
+      '브리지스톤', 'bridgestone', '던롭', 'dunlop', '피렐리', 'pirelli',
+    ],
+  },
+  // ── 자동차검사(지정정비사업자) ──
+  // ⚠️ '지정정비' 는 쓰지 않는다 — 실데이터의 '지정정비' 57건은 대부분
+  //    '르노삼성자동차 지정정비코너' 로 검사소가 아니라 르노 서비스망이다(위에서 이미 잡힌다).
+  { brand: 'inspection', keywords: ['검사소', '자동차검사', '종합검사', '검사정비'] },
 ];
 
 /**

@@ -20,7 +20,7 @@ interface BboxRpcRow {
   synced_at: string | null;
 }
 
-const BRANDS = new Set<string>(['autoq','bluehands','speedmate','renault','autooasis','kgm','chevrolet','carpos','imported']);
+const BRANDS = new Set<string>(['autoq','bluehands','speedmate','renault','autooasis','kgm','chevrolet','carpos','gongim','tire','inspection','imported']);
 /** 저장값이 알려진 브랜드가 아니면 null(무소속)로 본다 — 모르는 값을 그대로 흘리지 않는다. */
 function normalizeBrand(v: string | null): RepairBrand | null {
   return v && BRANDS.has(v) ? (v as RepairBrand) : null;

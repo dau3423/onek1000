@@ -266,6 +266,9 @@
       "kgm": "KGM",
       "chevrolet": "Chevrolet",
       "carpos": "Carpos",
+      "gongim": "Gongimnara",
+      "tire": "Tyres",
+      "inspection": "Inspection",
       "imported": "Imported"
     }
   },
@@ -1003,6 +1006,9 @@
       "kgm": "SsangYong · KGM",
       "chevrolet": "Chevrolet · GM",
       "carpos": "Carpos",
+      "gongim": "Gongimnara",
+      "tire": "Tyre specialists",
+      "inspection": "Vehicle inspection",
       "imported": "Imported brands",
       "none": "Independent"
     }
