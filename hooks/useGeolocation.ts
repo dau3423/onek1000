@@ -64,10 +64,29 @@ export function useGeolocation(enabled: boolean): GeoState & {
           }
         }
         lastCoordRef.current = { lat: latitude, lng: longitude };
-        setState({
-          coords: { lat: latitude, lng: longitude, accuracy, heading },
-          error: null,
-          status: 'granted',
+        // 값이 실제로 달라졌을 때만 새 상태를 만든다.
+        // watchPosition 은 좌표가 그대로여도 주기적으로 재발화하는데, 매번 새 객체로 setState 하면
+        // 훅을 쓰는 화면(홈=지도) 전체가 초당 1회 리렌더된다. 지도는 그 리렌더마다 재조정 비용을
+        // 내고, 예전에는 마커 오버레이까지 통째로 다시 그렸다(KakaoMap 의 onMarkerClickRef 주석 참고).
+        // 좌표가 같으면 화면에 바뀔 게 없으므로 직전 상태를 그대로 돌려 리렌더 자체를 막는다.
+        setState((prev) => {
+          const c = prev.coords;
+          if (
+            prev.status === 'granted' &&
+            prev.error === null &&
+            c &&
+            c.lat === latitude &&
+            c.lng === longitude &&
+            c.accuracy === accuracy &&
+            c.heading === heading
+          ) {
+            return prev;
+          }
+          return {
+            coords: { lat: latitude, lng: longitude, accuracy, heading },
+            error: null,
+            status: 'granted',
+          };
         });
       },
       (err) => setState((s) => ({

@@ -345,6 +345,14 @@ export function KakaoMap({
   const routeOnMarkerElsRef = useRef<HTMLElement[]>([]);
   const onRouteStationClickRef = useRef(onRouteStationClick);
   useEffect(() => { onRouteStationClickRef.current = onRouteStationClick; }, [onRouteStationClick]);
+  // ⚠️ 마커 effect 의존성에 onMarkerClick 을 **절대 넣지 않는다** — 반드시 이 ref 로만 읽는다.
+  // 호출부(app/(intl)/page.tsx)는 이 콜백을 매 렌더 새로 만든다. 의존성에 넣으면 홈이 리렌더될
+  // 때마다 마커 effect 5개가 전부 재실행되어 화면의 CustomOverlay 가 통째로 파괴/재생성된다.
+  // 실측(2026-08-23, 4배 CPU 스로틀): 위치 추적이 켜진 채 사용자가 아무것도 하지 않는 10초 동안
+  //   - 오버레이 재생성 59개/초 (화면 마커 수와 무관한 고정 비용)
+  //   - 메인 스레드 890ms 점유(9%) — GPS 갱신이 없을 때는 1ms
+  // GPS watchPosition 이 초당 1회 발화하므로, 초당 89ms 짜리 멈춤이 영구히 반복됐다.
+  // 계측 하네스는 scratchpad/measure5.mjs(재생성 수)·measure7.mjs(메인스레드) 참고.
   const onMarkerClickRef = useRef(onMarkerClick);
   useEffect(() => { onMarkerClickRef.current = onMarkerClick; }, [onMarkerClick]);
   const myOverlayRef = useRef<kakao.maps.CustomOverlay | null>(null);
@@ -607,7 +615,7 @@ export function KakaoMap({
           ${face}
         </div>`;
 
-      content.addEventListener('click', () => onMarkerClick?.(s));
+      content.addEventListener('click', () => onMarkerClickRef.current?.(s));
 
       const overlay = new window.kakao.maps.CustomOverlay({
         position: new window.kakao.maps.LatLng(s.lat, s.lng),
@@ -621,7 +629,7 @@ export function KakaoMap({
       overlay.setMap(map);
       overlaysRef.current.push(overlay);
     }
-  }, [ready, stations, top10Rank, nearbyRank, tierThresholds, onMarkerClick, mapLevel, activeTab, areaListRank, layer, expOnly]);
+  }, [ready, stations, top10Rank, nearbyRank, tierThresholds, mapLevel, activeTab, areaListRank, layer, expOnly]);
 
   // 전국 최저가 TOP10 핀 오버레이 — bbox stations 포함 여부와 무관하게 항상 렌더.
   // 위치/가격/순위는 모두 nationalTop10 항목 값을 사용한다(bbox의 비동기 타이밍 불일치 차단).
@@ -683,7 +691,7 @@ export function KakaoMap({
 
       // 클릭 시 상세 이동(onMarkerClick과 동일 동작). top10 항목으로 최소 StationWithPrice 합성.
       // 호출부는 s.id만 사용하므로 위치/가격/순위 출처는 top10 값으로 일관.
-      content.addEventListener('click', () => onMarkerClick?.(top10ToStation(t)));
+      content.addEventListener('click', () => onMarkerClickRef.current?.(top10ToStation(t)));
 
       const overlay = new window.kakao.maps.CustomOverlay({
         position: new window.kakao.maps.LatLng(t.lat, t.lng),
@@ -698,7 +706,7 @@ export function KakaoMap({
     }
     // top10ToStation은 product/렌더마다 새로 생성되므로 product를 직접 의존성에 둔다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, nationalTop10, product, tierThresholds, onMarkerClick, mapLevel, layer, expOnly]);
+  }, [ready, nationalTop10, product, tierThresholds, mapLevel, layer, expOnly]);
 
   // 내 주변(10km) TOP10 핀/배지 오버레이 — 전국 메달/일반 마커와 독립적으로 항상 렌더.
   // 위치/가격/순위는 nearbyTop10(이미 가격순) 기준. 전국 메달과 겹치는 id는 nearbyRank에서 제외됨.
@@ -753,7 +761,7 @@ export function KakaoMap({
         </div>`
         : badge;
 
-      content.addEventListener('click', () => onMarkerClick?.(s));
+      content.addEventListener('click', () => onMarkerClickRef.current?.(s));
 
       const overlay = new window.kakao.maps.CustomOverlay({
         position: new window.kakao.maps.LatLng(s.lat, s.lng),
@@ -766,7 +774,7 @@ export function KakaoMap({
       overlay.setMap(map);
       nearOverlaysRef.current.push(overlay);
     }
-  }, [ready, nearbyTop10, nearbyRank, nearbyListRank, tierThresholds, onMarkerClick, mapLevel, layer, expOnly]);
+  }, [ready, nearbyTop10, nearbyRank, nearbyListRank, tierThresholds, mapLevel, layer, expOnly]);
 
   // 전기차 충전소 마커 — layer='ev'일 때만 렌더(주유소 마커와 독립 오버레이).
   // 충전소(statId) 단위 1마커. 색=사용가능 충전기 유무, 라벨=사용가능/전체 + 급속 여부.
@@ -901,7 +909,7 @@ export function KakaoMap({
       content.className = 'cursor-pointer select-none';
       // 진회색 원 + 해골(skull) 아이콘(가격/브랜드색/라벨 없음). 순위권 표정 마커보다 조금 작게 깔린다.
       content.innerHTML = skullMarkerSvg(24);
-      content.addEventListener('click', () => onMarkerClick?.(pointToStation(p)));
+      content.addEventListener('click', () => onMarkerClickRef.current?.(pointToStation(p)));
 
       const overlay = new window.kakao.maps.CustomOverlay({
         position: new window.kakao.maps.LatLng(p.lat, p.lng),
@@ -916,7 +924,7 @@ export function KakaoMap({
     }
     // pointToStation은 product/렌더마다 새로 생성되므로 product를 직접 의존성에 둔다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, allStations, stations, top10Rank, nearbyRank, routeStationIds, mapLevel, layer, product, onMarkerClick, expOnly]);
+  }, [ready, allStations, stations, top10Rank, nearbyRank, routeStationIds, mapLevel, layer, product, expOnly]);
 
   // === "고속도로 휴게소만" 필터 전용 EXP 마커 ===
   // expOnly일 때, 전국 고속도로 주유소(expStations)를 화면 줌/패닝과 무관하게 항상 전부 그린다
@@ -980,7 +988,7 @@ export function KakaoMap({
         <div style="position:relative;display:flex;justify-content:center">
           ${face}
         </div>`;
-      content.addEventListener('click', () => onMarkerClick?.(s));
+      content.addEventListener('click', () => onMarkerClickRef.current?.(s));
       const overlay = new window.kakao.maps.CustomOverlay({
         position: new window.kakao.maps.LatLng(s.lat, s.lng),
         // 꼬리 없는 원형 마커 → 원의 '중심'이 좌표.
@@ -991,7 +999,7 @@ export function KakaoMap({
       overlay.setMap(map);
       expOverlaysRef.current.push(overlay);
     }
-  }, [ready, expOnly, expStations, mapLevel, layer, onMarkerClick]);
+  }, [ready, expOnly, expStations, mapLevel, layer]);
 
   // 경로별 최저가 오버레이 — routePlan이 있으면 출발→도착 직선 Polyline +
   // 출발/도착 핀 + 경로 최저가 주유소 마커를 그리고, 출발~도착이 모두 보이도록 fit한다.

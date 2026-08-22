@@ -675,12 +675,19 @@ export default function HomePage() {
   // 내 주변(10km) 최저가 TOP10 — 지도에 별도 마커로 표시.
   // radius 응답은 이미 가격 오름차순으로 정렬되어 오므로 상위 N건을 그대로 사용한다.
   // (좌표가 없으면 빈 배열 → 마커 미표시)
+  // ⚠️ 의존성에 geo.coords **객체**를 넣지 않는다 — 좌표 유무만 쓰므로 boolean 으로 좁힌다.
+  // watchPosition 은 초당 1회 새 좌표 객체를 만든다. 객체를 의존성에 두면 이 배열이 매초 새로
+  // 만들어지고, 그 파급이 KakaoMap 안의 tierThresholds·nearbyRank 까지 번져 **마커 effect 전부**가
+  // 재실행된다(= 화면의 모든 오버레이 재생성). 실측으로 확인한 연쇄다.
+  //   geo.coords → nearbyTop10 → (visibleNearbyTop10) → tierThresholds / nearbyRank → 마커 effect 5개
+  // 이 목록 자체는 radiusStations 만으로 결정되고, 좌표는 "있는지 없는지"만 판단에 쓴다.
+  const hasCoords = geo.coords != null;
   const nearbyTop10 = useMemo<StationWithPrice[]>(() => {
-    if (!geo.coords) return [];
+    if (!hasCoords) return [];
     return [...radiusStations]
       .sort((a, b) => a.price - b.price)
       .slice(0, NEARBY_TOP_N);
-  }, [radiusStations, geo.coords]);
+  }, [radiusStations, hasCoords]);
 
   // 브랜드 필터(회원 전용, 빈 배열=전체) + 셀프 필터(off=전체) — 지도 마커 표시 집합에 일관 적용.
   // 알람/하단 시트 등 '내 주변 데이터' 본연의 동작에는 영향을 주지 않고, 마커 노출만 좁힌다.
