@@ -4,6 +4,7 @@ import { queryRepairDetail } from '@/lib/db/repair';
 import { BackButton } from '@/components/common/BackButton';
 import { NaviButton } from '@/components/station/NaviButton';
 import { RepairTypeBadge } from '@/components/repair/RepairTypeBadge';
+import { RepairBrandBadge } from '@/components/repair/RepairBrandBadge';
 import { ReviewSection } from '@/components/reviews/ReviewSection';
 import type { RepairDetail } from '@/types/repair';
 import { PinIcon, PhoneIcon, ClockIcon, BuildingIcon } from '@/components/icons';
@@ -48,7 +49,10 @@ export default async function RepairDetailPage({ params }: Props) {
       </header>
 
       <section className="px-5 py-4">
-        <RepairTypeBadge type={detail.shopType} size="md" forceLight />
+        <div className="flex flex-wrap items-center gap-1.5">
+          {detail.brand && <RepairBrandBadge brand={detail.brand} size="md" />}
+          <RepairTypeBadge type={detail.shopType} size="md" forceLight />
+        </div>
         {address && (
           <p className="mt-3 flex items-start gap-1.5 text-sm text-gray-600">
             <PinIcon className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />

@@ -208,7 +208,8 @@
       "waiting": "Waiting",
       "addressUnknown": "Address unknown",
       "titleRepairArea": "{count, plural, one {# repair shop} other {# repair shops}} in this area",
-      "emptyRepair": "No repair shops in this area. Try moving the map."
+      "emptyRepair": "No repair shops in this area. Try moving the map.",
+      "callAria": "Call {name}"
     },
     "kakaoMap": {
       "errorTitle": "Couldn't load the map.",
@@ -255,6 +256,17 @@
       "specialty": "Auto shop",
       "engine": "Engine",
       "unknown": "Repair shop"
+    },
+    "repairBrandMarkerLabel": {
+      "autoq": "AutoQ",
+      "bluehands": "Bluehands",
+      "speedmate": "SpeedMate",
+      "renault": "Renault",
+      "autooasis": "Auto Oasis",
+      "kgm": "KGM",
+      "chevrolet": "Chevrolet",
+      "carpos": "Carpos",
+      "imported": "Imported"
     }
   },
   "station": {

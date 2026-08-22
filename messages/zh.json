@@ -208,7 +208,8 @@
       "waiting": "等待",
       "addressUnknown": "地址未知",
       "titleRepairArea": "该区域维修厂 {count} 家",
-      "emptyRepair": "此区域没有可显示的维修厂。请移动地图试试。"
+      "emptyRepair": "此区域没有可显示的维修厂。请移动地图试试。",
+      "callAria": "致电 {name}"
     },
     "kakaoMap": {
       "errorTitle": "地图加载失败。",
@@ -255,6 +256,17 @@
       "specialty": "汽车维修店",
       "engine": "发动机维修",
       "unknown": "维修厂"
+    },
+    "repairBrandMarkerLabel": {
+      "autoq": "AutoQ",
+      "bluehands": "Bluehands",
+      "speedmate": "SpeedMate",
+      "renault": "雷诺",
+      "autooasis": "Auto Oasis",
+      "kgm": "KGM",
+      "chevrolet": "雪佛兰",
+      "carpos": "Carpos",
+      "imported": "进口车"
     }
   },
   "station": {

@@ -46,6 +46,25 @@ export type RepairBrand =
   | 'carpos'     // 카포스
   | 'imported';  // 수입차(개별 건수가 적어 묶음)
 
+
+/**
+ * 브랜드별 마커 색. 같은 레이어 안에서 서로 구별되는 것이 목적이라
+ * 각 사의 상징색을 쓰되, 인접 색끼리 붙지 않게 골랐다.
+ * null(무소속)은 아래 REPAIR_TYPE_COLOR 를 그대로 쓴다 — 94%가 여기라 기존 갈색 톤을 유지해야
+ * "브랜드 있는 곳"이 도드라진다.
+ */
+export const REPAIR_BRAND_COLOR: Record<RepairBrand, string> = {
+  autoq: '#C21B2E',      // 기아 진홍
+  bluehands: '#002C5F',  // 현대 네이비
+  speedmate: '#F26522',  // SK 주황
+  renault: '#EFA900',    // 르노 골드옐로우
+  autooasis: '#00A0E9',  // 현대오일뱅크 하늘
+  kgm: '#0F5C4B',        // 진초록
+  chevrolet: '#5B6770',  // 그레이블루
+  carpos: '#7C3AED',     // 보라
+  imported: '#111827',   // 검정
+};
+
 /** 브랜드 필터 값. 'all'=전체(기본), 'none'=브랜드 없는 무소속만. */
 export type RepairBrandFilter = 'all' | 'none' | RepairBrand;
 

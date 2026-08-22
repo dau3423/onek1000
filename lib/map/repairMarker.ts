@@ -3,12 +3,33 @@
 // 정비소는 갈색~적갈 계열 + 스패너/렌치 글리프. 세차장의 '기어'(자동세차)와 혼동되지 않도록
 // 정비소는 기어를 쓰지 않고 스패너 계열로만 표현한다.
 
-import type { RepairMarker, RepairShopType } from '@/types/repair';
-import { REPAIR_TYPE_COLOR } from '@/types/repair';
+import type { RepairBrand, RepairMarker, RepairShopType } from '@/types/repair';
+import { REPAIR_BRAND_COLOR, REPAIR_TYPE_COLOR } from '@/types/repair';
 
 // 줌인(level ≤ 6) 라벨 텍스트는 여기 두지 않는다 — 이 모듈은 React 컴포넌트가 아니라
 // useTranslations 를 쓸 수 없다. messages/{locale}.json 의 map.repairMarkerLabel.<type> 을
 // 소비처(KakaoMap)가 번역해 label 인자로 넘긴다(carwashMarker.ts 와 같은 방식).
+
+/**
+ * 브랜드별 흰색 글리프. 브랜드가 있으면 유형 글리프 대신 이걸 쓴다 —
+ * 같은 '카센터(specialty)' 라도 오토큐와 무소속은 한눈에 달라야 한다는 요구에서 나왔다.
+ * 로고를 쓰지 않는다(상표권). 각 사를 떠올리게 하는 짧은 이니셜/심볼로만 구분한다.
+ */
+function brandGlyphSvg(brand: RepairBrand): string {
+  const txt = (t: string, size = 11) =>
+    `<text x="12" y="12.5" text-anchor="middle" dominant-baseline="central" font-size="${size}" font-weight="800" fill="#fff" font-family="system-ui,-apple-system,sans-serif">${t}</text>`;
+  switch (brand) {
+    case 'autoq': return txt('Q', 14);
+    case 'bluehands': return txt('H', 14);
+    case 'speedmate': return txt('SK', 10);
+    case 'renault': return txt('R', 14);
+    case 'autooasis': return txt('OA', 10);
+    case 'kgm': return txt('KG', 10);
+    case 'chevrolet': return txt('GM', 10);
+    case 'carpos': return txt('CP', 10);
+    case 'imported': return txt('IM', 10);
+  }
+}
 
 /** 유형별 흰색 글리프(0 0 24 24 좌표계). 머리 원 안에 스케일해 얹는다. */
 function glyphSvg(type: RepairShopType): string {
@@ -30,14 +51,15 @@ function glyphSvg(type: RepairShopType): string {
 }
 
 /** 정비소 마커 핀 SVG(물방울 핀 + 유형 글리프). size=핀 전체 높이(px). */
-function repairPinSvg(size: number, color: string, type: RepairShopType): string {
+function repairPinSvg(size: number, color: string, type: RepairShopType, brand: RepairBrand | null): string {
   const w = Math.round(size * 0.74);
   const headR = w * 0.5;
   const dropPath = `M${headR} ${size} C${headR * 0.15} ${size * 0.62} 0 ${headR * 1.25} 0 ${headR} a${headR} ${headR} 0 1 1 ${w} 0 C${w} ${headR * 1.25} ${headR * 1.85} ${size * 0.62} ${headR} ${size} Z`;
   const gw = headR * 0.95;
   const gx = headR - gw / 2;
   const gy = headR - gw / 2;
-  const glyph = `<g transform="translate(${gx} ${gy}) scale(${gw / 24})">${glyphSvg(type)}</g>`;
+  const inner = brand ? brandGlyphSvg(brand) : glyphSvg(type);
+  const glyph = `<g transform="translate(${gx} ${gy}) scale(${gw / 24})">${inner}</g>`;
   return `<svg width="${w}" height="${size}" viewBox="0 0 ${w} ${size}" style="display:block;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))">
     <path d="${dropPath}" fill="${color}"/>
     <circle cx="${headR}" cy="${headR}" r="${headR * 0.80}" fill="#ffffff"/>
@@ -56,15 +78,20 @@ function repairPinSvg(size: number, color: string, type: RepairShopType): string
  */
 export function buildRepairMarkerContent(shop: RepairMarker, showLabel: boolean, label: string): HTMLDivElement {
   const type = shop.shopType;
-  const color = REPAIR_TYPE_COLOR[type];
-  const size = showLabel ? 30 : 34;
-  const pin = repairPinSvg(size, color, type);
+  const brand = shop.brand ?? null;
+  // 브랜드가 있으면 브랜드 색, 없으면(94%) 기존 유형 갈색 톤.
+  // 이렇게 해야 소수인 브랜드 지점이 무소속 무리 속에서 도드라진다.
+  const color = brand ? REPAIR_BRAND_COLOR[brand] : REPAIR_TYPE_COLOR[type];
+  // 브랜드 지점은 조금 크게 그려 한 번 더 눈에 띄게 한다.
+  const size = (showLabel ? 30 : 34) + (brand ? 4 : 0);
+  const pin = repairPinSvg(size, color, type, brand);
 
   const content = document.createElement('div');
   content.className = 'cursor-pointer select-none';
   content.style.position = 'relative';
   // 미확인(회색)은 아래로, 유형 확정 핀을 위로 올려 겹칠 때 우선 보이게 한다.
-  content.style.zIndex = type === 'unknown' ? '1' : '2';
+  // 브랜드 지점 > 유형 확정 > 미확인 순으로 겹칠 때 위에 오게 한다.
+  content.style.zIndex = brand ? '3' : type === 'unknown' ? '1' : '2';
 
   content.innerHTML = showLabel
     ? `

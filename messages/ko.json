@@ -208,7 +208,8 @@
       "waiting": "대기",
       "addressUnknown": "주소 미상",
       "titleRepairArea": "이 지역 정비소 {count}곳",
-      "emptyRepair": "이 영역에 표시할 정비소가 없어요. 지도를 이동해보세요."
+      "emptyRepair": "이 영역에 표시할 정비소가 없어요. 지도를 이동해보세요.",
+      "callAria": "{name} 전화걸기"
     },
     "kakaoMap": {
       "errorTitle": "지도를 불러오지 못했습니다.",
@@ -255,6 +256,17 @@
       "specialty": "카센터",
       "engine": "원동기정비",
       "unknown": "정비소"
+    },
+    "repairBrandMarkerLabel": {
+      "autoq": "오토큐",
+      "bluehands": "블루핸즈",
+      "speedmate": "스피드메이트",
+      "renault": "르노",
+      "autooasis": "오토오아시스",
+      "kgm": "KG·쌍용",
+      "chevrolet": "쉐보레",
+      "carpos": "카포스",
+      "imported": "수입차"
     }
   },
   "station": {

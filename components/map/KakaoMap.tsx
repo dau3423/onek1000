@@ -850,11 +850,13 @@ export function KakaoMap({
 
     const showLabel = map.getLevel() <= 6; // 세차장·EV와 동일 기준
     for (const p of repairShops ?? []) {
-      const label = t(`repairMarkerLabel.${p.shopType}`);
+      // 라벨은 브랜드명 우선 — '정비소'가 화면을 뒤덮으면 구분이 안 된다는 요구에서 나왔다.
+      // 브랜드가 없으면(무소속) 기존 유형 라벨(카센터/종합정비 등)을 그대로 쓴다.
+      const label = p.brand ? t(`repairBrandMarkerLabel.${p.brand}`) : t(`repairMarkerLabel.${p.shopType}`);
       const content = buildRepairMarkerContent(p, showLabel, label);
       content.addEventListener('click', () => onRepairMarkerClickRef.current?.(p));
       // 유형 확정 핀을 미확인(회색) 위에 그려 겹칠 때 우선 보이게 한다.
-      const z = 2 + (p.shopType !== 'unknown' ? 1 : 0);
+      const z = p.brand ? 4 : 2 + (p.shopType !== 'unknown' ? 1 : 0);
       const overlay = new window.kakao.maps.CustomOverlay({
         position: new window.kakao.maps.LatLng(p.lat, p.lng),
         content,

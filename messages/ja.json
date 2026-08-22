@@ -208,7 +208,8 @@
       "waiting": "待機",
       "addressUnknown": "住所不明",
       "titleRepairArea": "このエリアの整備工場 {count}件",
-      "emptyRepair": "このエリアに表示できる整備工場がありません。地図を移動してみてください。"
+      "emptyRepair": "このエリアに表示できる整備工場がありません。地図を移動してみてください。",
+      "callAria": "{name} に電話"
     },
     "kakaoMap": {
       "errorTitle": "地図を読み込めませんでした。",
@@ -255,6 +256,17 @@
       "specialty": "カーセンター",
       "engine": "原動機整備",
       "unknown": "整備工場"
+    },
+    "repairBrandMarkerLabel": {
+      "autoq": "オートQ",
+      "bluehands": "ブルーハンズ",
+      "speedmate": "スピードメイト",
+      "renault": "ルノー",
+      "autooasis": "オートオアシス",
+      "kgm": "KGM",
+      "chevrolet": "シボレー",
+      "carpos": "カポス",
+      "imported": "輸入車"
     }
   },
   "station": {
