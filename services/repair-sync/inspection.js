@@ -90,6 +90,7 @@ export async function runInspectionSync({ dryRun = false, maxPages = MAX_PAGES }
     normalize,
     key: env.key,
     maxPages: Math.min(Math.max(1, maxPages), MAX_PAGES),
+    hardMax: MAX_PAGES,
     minExpectedRows: MIN_EXPECTED_ROWS,
     dryRun,
   });

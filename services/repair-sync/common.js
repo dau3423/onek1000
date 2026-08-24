@@ -165,10 +165,13 @@ export async function fetchStandardPage(endpoint, pageNo, key) {
  */
 export async function runSync(sb, {
   endpoint, table, conflictKey, normalize, key,
-  maxPages, minExpectedRows, dryRun = false,
+  maxPages, hardMax, minExpectedRows, dryRun = false,
 }) {
   const startedAt = new Date().toISOString();
-  const pageCap = Math.min(Math.max(1, maxPages), maxPages);
+  // maxPages = 이번 호출의 상한(사용자가 줄일 수 있다), hardMax = 이 API 의 절대 상한.
+  // 둘을 구분해야 '일부러 줄인 것'과 '상한을 다 써도 못 끝낸 것'을 가를 수 있다.
+  const pageCap = Math.max(1, maxPages);
+  hardMax = hardMax ?? maxPages;
   let fetched = 0, upserted = 0, pages = 0, totalCount = 0;
   const stats = {};
   let complete = false, failure = null;
@@ -204,7 +207,12 @@ export async function runSync(sb, {
       }
       if (items.length < PAGE_SIZE) { complete = true; break; }
     }
-    if (!complete && pages >= pageCap) failure = `MAX_PAGES(${maxPages}) 도달 — 원천 행수가 예상보다 많다`;
+    // ⚠️ maxPages 로 **일부러 줄여 부른 경우는 실패가 아니다**(dryRun 점검이 대표적).
+    //    상한까지 다 쓰고도 안 끝났을 때만 실패로 본다. 안 그러면 ?maxPages=1 점검이 항상
+    //    HTTP 500 을 돌려주고, 스케줄러가 이를 장애로 오해해 재시도한다.
+    if (!complete && pages >= pageCap && pageCap >= hardMax) {
+      failure = `MAX_PAGES(${hardMax}) 도달 — 원천 행수가 예상보다 많다`;
+    }
   } catch (e) {
     failure = e instanceof Error ? e.message : String(e);
   }
