@@ -28,8 +28,12 @@ function normalizeBrand(v: string | null): RepairBrand | null {
 }
 
 /** 저장값이 정의된 유형을 벗어나면 unknown 으로 보정(정직 표기). */
+const SHOP_TYPES = new Set<string>(['general', 'small', 'specialty', 'engine', 'inspection']);
 function normalizeShopType(v: string | null): RepairShopType {
-  return v === 'general' || v === 'small' || v === 'specialty' || v === 'engine' ? v : 'unknown';
+  // 'inspection' 은 정비업체 코드가 아니라 bbox RPC 가 검사소를 union 하며 붙이는 값이다(0050).
+  // 이 목록에서 빠뜨리면 검사소가 조용히 unknown('정비소')으로 떨어져 유형 뱃지·라벨이 틀린다
+  // — 실제로 그렇게 배포돼 운영 응답에서 shopType='unknown' 으로 관측됐다.
+  return v && SHOP_TYPES.has(v) ? (v as RepairShopType) : 'unknown';
 }
 
 function rpcRowToMarker(r: BboxRpcRow): RepairMarker {
