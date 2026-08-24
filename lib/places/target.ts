@@ -47,6 +47,16 @@ export async function resolvePlaceTarget(
     if (!data) return miss;
     return { exists: true, lat: num(data.lat), lng: num(data.lng) };
   }
+  if (type === 'rental') {
+    // 0050 미적용 환경에서는 조회가 에러이고 data 가 없어 자연히 miss 가 된다.
+    const { data } = await sb
+      .from('rental_cars')
+      .select('lat, lng')
+      .eq('place_key', id)
+      .maybeSingle();
+    if (!data) return miss;
+    return { exists: true, lat: num(data.lat), lng: num(data.lng) };
+  }
   // repair — 0042 미적용 환경에서는 조회가 에러이고 data 가 없으므로 자연히 miss 가 된다
   // (리뷰 작성이 막힐 뿐, 다른 장소 리뷰나 지도는 영향받지 않는다).
   const { data } = await sb
@@ -54,8 +64,18 @@ export async function resolvePlaceTarget(
     .select('lat, lng')
     .eq('shop_key', id)
     .maybeSingle();
-  if (!data) return miss;
-  return { exists: true, lat: num(data.lat), lng: num(data.lng) };
+  if (data) return { exists: true, lat: num(data.lat), lng: num(data.lng) };
+
+  // 검사소(0050)는 별도 테이블이지만 지도·상세에서는 정비소 레이어에 합쳐 다룬다
+  // (링크도 /repair/[key]). 리뷰도 같은 target_type='repair' 로 받아야 하므로 여기서 폴백한다.
+  // 이 폴백이 없으면 검사소 상세에서 리뷰를 쓸 때만 '장소 없음'으로 실패한다.
+  const { data: insp } = await sb
+    .from('inspection_stations')
+    .select('lat, lng')
+    .eq('place_key', id)
+    .maybeSingle();
+  if (!insp) return miss;
+  return { exists: true, lat: num(insp.lat), lng: num(insp.lng) };
 }
 
 function num(v: unknown): number | null {

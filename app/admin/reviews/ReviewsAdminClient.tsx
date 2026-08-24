@@ -9,6 +9,7 @@ const PLACE_LABEL: Record<PlaceType, string> = {
   ev: '전기차 충전소',
   carwash: '세차장',
   repair: '정비소',
+  rental: '렌터카',
 };
 
 const REASON_LABEL: Record<ReportReason, string> = {

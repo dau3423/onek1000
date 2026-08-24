@@ -14,6 +14,8 @@ import type { EvStationMarker } from '@/types/ev';
 import { rankEvStations, type EvStationRanked, type EvSortOrigin } from '@/lib/ev/sort';
 import type { CarwashMarker } from '@/types/carwash';
 import type { RepairMarker } from '@/types/repair';
+import type { RentalMarker } from '@/types/rental';
+import { primaryFee, RENTAL_COLOR, RENTAL_EV_COLOR } from '@/types/rental';
 import { REPAIR_BRAND_COLOR, REPAIR_TYPE_COLOR } from '@/types/repair';
 import { WASH_TYPE_COLOR } from '@/types/carwash';
 import { CarwashTypeBadge } from '@/components/carwash/CarwashTypeBadge';
@@ -88,6 +90,8 @@ interface Props {
   carwashPlaces?: CarwashMarker[];
   /** 정비소 목록(layer='repair'). */
   repairShops?: RepairMarker[];
+  /** 렌터카 목록(layer='rental'). */
+  rentalPlaces?: RentalMarker[];
   /**
    * 세차장 거리 계산/정렬 기준 좌표(내 위치 우선, 없으면 화면 중심). null이면 거리 미표시.
    * 세차장엔 가격이 없으므로 정렬은 거리순(좌표 있을 때)만 적용한다.
@@ -95,12 +99,15 @@ interface Props {
   carwashOrigin?: { lat: number; lng: number } | null;
   /** 정비소 거리 계산 기준 좌표(내 위치 → 지도 중심 폴백). */
   repairOrigin?: { lat: number; lng: number } | null;
+  rentalOrigin?: { lat: number; lng: number } | null;
   /** 세차장 선택 콜백(상세 이동). */
   onSelectCarwash?: (p: CarwashMarker) => void;
   onSelectRepair?: (p: RepairMarker) => void;
+  onSelectRental?: (p: RentalMarker) => void;
   /** 세차장 길안내 콜백. */
   onNavigateCarwash?: (p: CarwashMarker) => void;
   onNavigateRepair?: (p: RepairMarker) => void;
+  onNavigateRental?: (p: RentalMarker) => void;
 }
 
 const NEARBY_LIMIT = 10;
@@ -110,8 +117,14 @@ const EV_LIMIT = 50;
 // 세차장 레이어 목록 상한(EV와 동일 취지).
 const CARWASH_LIMIT = 50;
 const REPAIR_LIMIT = 50;
+const RENTAL_LIMIT = 50;
 
 /** 세차장 목록 1행 표시용(거리 계산 결과 동봉). */
+interface RentalRanked {
+  place: RentalMarker;
+  distance: number | null;
+}
+
 interface RepairRanked {
   shop: RepairMarker;
   distance: number | null;
@@ -142,12 +155,16 @@ export function BottomSheet({
   onNavigateEv,
   carwashPlaces = [],
   repairShops = [],
+  rentalPlaces = [],
   carwashOrigin = null,
   repairOrigin = null,
+  rentalOrigin = null,
   onSelectCarwash,
   onSelectRepair,
+  onSelectRental,
   onNavigateCarwash,
   onNavigateRepair,
+  onNavigateRental,
 }: Props) {
   const t = useTranslations('map');
   const brandLabel = useBrandLabel();
@@ -175,6 +192,7 @@ export function BottomSheet({
   const isEv = layer === 'ev';
   const isCarwash = layer === 'carwash';
   const isRepair = layer === 'repair';
+  const isRental = layer === 'rental';
 
   const activeTab: Tab = nearbyEnabled ? tab : 'area';
 
@@ -225,7 +243,20 @@ export function BottomSheet({
         .slice(0, REPAIR_LIMIT)
     : [];
 
-  const title = isEv
+  // === 렌터카 레이어: 업체 목록(거리순). 요금은 있으면 함께 보여준다(가격 비교가 이 앱의 정체성). ===
+  const rentalRanked: RentalRanked[] = isRental
+    ? rentalPlaces
+        .map((p) => ({
+          place: p,
+          distance: rentalOrigin ? distanceMeters(rentalOrigin.lat, rentalOrigin.lng, p.lat, p.lng) : null,
+        }))
+        .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
+        .slice(0, RENTAL_LIMIT)
+    : [];
+
+  const title = isRental
+    ? t('bottomSheet.titleRentalArea', { count: rentalRanked.length })
+    : isEv
     ? t('bottomSheet.titleEvArea', { count: evRanked.length })
     : isCarwash
     ? t('bottomSheet.titleCarwashArea', { count: carwashRanked.length })
@@ -260,7 +291,7 @@ export function BottomSheet({
       </button>
 
       {/* 탭: 주유소 레이어 + 내 위치 권한 동의 후에만 '내 주변' 노출. EV/세차장 레이어는 탭 없음(단일 목록). */}
-      {!isEv && !isCarwash && !isRepair && nearbyEnabled && (
+      {!isEv && !isCarwash && !isRepair && !isRental && nearbyEnabled && (
         <div className="flex gap-1 px-5 pb-3.5">
           <TabButton active={activeTab === 'area'} onClick={() => setTab('area')}>
             {t('bottomSheet.tabArea')}
@@ -331,6 +362,28 @@ export function BottomSheet({
                   index={i}
                   onSelect={onSelectRepair}
                   onNavigate={onNavigateRepair}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : isRental ? (
+        /* 렌터카 레이어: 업체 목록(거리순). 요금이 있으면 우측에 대표 요금을 보여준다. */
+        <div className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
+          {rentalRanked.length === 0 ? (
+            <p className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+              {t('bottomSheet.emptyRental')}
+            </p>
+          ) : (
+            <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+              {rentalRanked.map((r, i) => (
+                <RentalRow
+                  key={r.place.placeKey}
+                  place={r.place}
+                  distance={r.distance}
+                  index={i}
+                  onSelect={onSelectRental}
+                  onNavigate={onNavigateRental}
                 />
               ))}
             </ul>
@@ -569,6 +622,80 @@ function CarwashRow({
 }
 
 /** 정비소 목록 행 — CarwashRow 와 동형(가격 없음, 이름+유형 뱃지+거리+주소). */
+function RentalRow({
+  place,
+  distance,
+  index,
+  onSelect,
+  onNavigate,
+}: {
+  place: RentalMarker;
+  distance: number | null;
+  index: number;
+  onSelect?: (p: RentalMarker) => void;
+  onNavigate?: (p: RentalMarker) => void;
+}) {
+  const t = useTranslations('map');
+  const tCommon = useTranslations('common');
+  const tClass = useTranslations('map.rentalCarClass');
+  const address = place.roadAddr ?? place.jibunAddr ?? null;
+  const distanceText = distance != null
+    ? distance < 1000 ? `${Math.round(distance)}m` : `${(distance / 1000).toFixed(1)}km`
+    : null;
+  // 대표 요금 = 가장 저렴한 차종. 없으면 요금 칸 자체를 그리지 않는다(빈 말/0원 금지).
+  const fee = primaryFee(place.fees);
+  return (
+    <li>
+      <div className="flex w-full items-center gap-3 px-5 py-3">
+        <button
+          onClick={() => onSelect?.(place)}
+          aria-label={t('bottomSheet.detailAria', { name: place.name })}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          <span className="w-5 text-center text-xs font-bold text-gray-500 dark:text-gray-400">{index + 1}</span>
+          <span
+            className="h-2.5 w-2.5 shrink-0 rounded-full"
+            style={{ background: place.evCars > 0 ? RENTAL_EV_COLOR : RENTAL_COLOR }}
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span className="truncate text-sm font-semibold text-gray-900 dark:text-gray-50">{place.name}</span>
+              {place.evCars > 0 && (
+                <span className="shrink-0 rounded-full border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-[10px] font-bold leading-none text-violet-700 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300">
+                  {t('rentalFilter.ev')}
+                </span>
+              )}
+            </div>
+            <div className="truncate text-xs text-gray-500 dark:text-gray-400">
+              {distanceText ? `${distanceText}${address ? ' · ' : ''}` : ''}
+              {address ?? (distanceText ? '' : t('bottomSheet.addressUnknown'))}
+            </div>
+          </div>
+          {fee && (
+            <span className="shrink-0 text-right">
+              <span className="block text-sm font-extrabold text-gray-900 dark:text-gray-50">
+                ₩{fee.price.toLocaleString()}
+              </span>
+              <span className="block text-[10px] text-gray-400 dark:text-gray-500">{tClass(fee.carClass)}</span>
+            </span>
+          )}
+          <ChevronRightIcon className="h-4 w-4 shrink-0 text-gray-300 dark:text-gray-600" />
+        </button>
+        {onNavigate && (
+          <button
+            onClick={() => onNavigate(place)}
+            aria-label={t('bottomSheet.navigateAria', { name: place.name })}
+            title={tCommon('navigate')}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
+          >
+            <Image src="/icons/icon_transparent.png" alt="" width={36} height={36} className="block" />
+          </button>
+        )}
+      </div>
+    </li>
+  );
+}
+
 function RepairRow({
   shop,
   distance,

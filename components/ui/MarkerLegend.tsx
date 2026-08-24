@@ -12,6 +12,7 @@ import { GRAY_DOTS_ENABLED } from '@/lib/flags';
 import { CrownIcon } from '@/components/icons';
 import { WASH_TYPE_COLOR, type WashType } from '@/types/carwash';
 import { REPAIR_BRAND_COLOR, REPAIR_TYPE_COLOR, type RepairBrand } from '@/types/repair';
+import { RENTAL_COLOR, RENTAL_EV_COLOR } from '@/types/rental';
 
 // EV 마커 색(단일 출처는 lib/map/evMarker.ts — 범례는 시각 일관성을 위해 동일 값을 사용).
 const EV_AVAILABLE_COLOR = '#16A34A'; // 초록 — 사용가능
@@ -182,6 +183,29 @@ function EvPinChip({ color, hasFast }: { color: string; hasFast?: boolean }) {
   );
 }
 
+/** 렌터카 마커 칩 — 물방울 핀(teal/violet) + 흰색 글리프. 실제 지도 마커(rentalMarker.ts)와 색·형태 일치. */
+function RentalPinChip({ hasEv }: { hasEv?: boolean }) {
+  const color = hasEv ? RENTAL_EV_COLOR : RENTAL_COLOR;
+  return (
+    <svg viewBox="0 -3 17 24" className="h-[21px] w-[14px] shrink-0" style={{ display: 'block' }}>
+      <path d="M7 20 C1 14 0.5 11 0.5 9 a6.5 6.5 0 1 1 13 0 C13.5 11 13 14 7 20 Z" fill={color} />
+      <circle cx="7" cy="9" r="5" fill="#fff" />
+      <circle cx="7" cy="9" r="4.1" fill={color} />
+      {hasEv ? (
+        // 전기차 보유 = 번개
+        <path d="M7.6 5.5 L4.4 9.6 L6.8 9.6 L6.1 12.5 L9.6 8 L7.1 8 Z" fill="#fff" />
+      ) : (
+        // 기본 = 열쇠(작은 칩이라 마커의 열쇠를 단순화했다)
+        <g fill="#fff">
+          <circle cx="8.6" cy="7.2" r="1.9" />
+          <rect x="4.2" y="8.6" width="4.6" height="1.5" rx="0.7" transform="rotate(45 6.5 9.4)" />
+          <rect x="5.0" y="10.6" width="1.9" height="1.3" rx="0.6" />
+        </g>
+      )}
+    </svg>
+  );
+}
+
 /**
  * 세차장 마커 칩 — 물방울 핀(유형별 색) + 흰색 유형 글리프. 실제 지도 마커(carwashMarker.ts)와
  * 색·형태 일치(셀프=물방울 / 손세차=스펀지 / 자동=기어 / 미확인=?).
@@ -319,7 +343,9 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
                 ? t('titleEv')
                 : layer === 'repair'
                   ? t('titleRepair')
-                  : t('titleGas')}
+                  : layer === 'rental'
+                    ? t('titleRental')
+                    : t('titleGas')}
           </p>
           <button
             onClick={onClose}
@@ -333,7 +359,37 @@ export function MarkerLegend({ onClose, cardClassName }: Props) {
         </div>
 
         <div className="mt-3 space-y-3 text-xs text-gray-700 dark:text-gray-300">
-          {layer === 'repair' ? (
+          {layer === 'rental' ? (
+          <>
+          <section>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{t('rental.sectionTitle')}</p>
+            <div className="mt-1.5 space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <RentalPinChip />
+                <span>{t.rich('rental.basic', boldTag)}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <RentalPinChip hasEv />
+                <span>{t.rich('rental.ev', boldTag)}</span>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{t('rental.feeTitle')}</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">{t.rich('rental.feeHint', boldTag)}</p>
+          </section>
+
+          <section>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{t('rental.filterTitle')}</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">{t('rental.filterHint')}</p>
+          </section>
+
+          <p className="border-t border-gray-100 pt-2 text-[11px] leading-relaxed text-gray-400 dark:border-gray-700 dark:text-gray-500">
+            {t('rental.disclaimer')}
+          </p>
+          </>
+          ) : layer === 'repair' ? (
           <>
           <section>
             <p className="font-semibold text-gray-900 dark:text-gray-100">{t('repair.sectionTitle')}</p>

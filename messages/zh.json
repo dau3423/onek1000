@@ -120,7 +120,9 @@
       "fuelMenuAria": "油品",
       "carwashMenuAria": "洗车场类型",
       "layerRepair": "维修厂",
-      "repairMenuAria": "选择维修厂品牌"
+      "repairMenuAria": "选择维修厂品牌",
+      "layerRental": "租车",
+      "rentalMenuAria": "租车筛选"
     },
     "carwashFilter": {
       "all": "全部",
@@ -189,6 +191,17 @@
         "filterHint": "点击维修厂按钮的 ▾ 可只看某个品牌。",
         "zoomHint": "缩小地图只显示品牌网点，放大后社区维修厂会逐渐出现。",
         "disclaimer": "基于公共数据，可能与实际歇业情况不同。来源：公共数据门户 全国汽车维修企业标准数据"
+      },
+      "titleRental": "租车地图看法",
+      "rental": {
+        "sectionTitle": "图钉颜色 = 是否有电动车",
+        "basic": "<b>青绿钥匙</b> = 租车公司",
+        "ev": "<b>紫色闪电</b> = 拥有电动车的公司（图钉稍大）",
+        "feeTitle": "地图标签 = 租车价格",
+        "feeHint": "放大后图钉上方会显示<b>最便宜车型的价格</b>。未登记价格的公司则显示名称。",
+        "filterTitle": "只看电动车",
+        "filterHint": "点击租车按钮的 ▾ 可只筛选拥有电动车的公司。",
+        "disclaimer": "基于公共数据，可能已停业或调价。预订前请向商家确认。来源：公共数据门户 全国租车企业信息标准数据"
       }
     },
     "bottomSheet": {
@@ -219,7 +232,9 @@
       "waiting": "等待",
       "addressUnknown": "地址未知",
       "titleRepairArea": "该区域维修厂 {count} 家",
-      "emptyRepair": "此区域没有可显示的维修厂。请移动地图试试。"
+      "emptyRepair": "此区域没有可显示的维修厂。请移动地图试试。",
+      "titleRentalArea": "该区域租车 {count}家",
+      "emptyRental": "该区域没有可显示的租车公司，请移动地图试试。"
     },
     "kakaoMap": {
       "errorTitle": "地图加载失败。",
@@ -265,7 +280,8 @@
       "small": "小型维修",
       "specialty": "汽车维修店",
       "engine": "发动机维修",
-      "unknown": "维修厂"
+      "unknown": "维修厂",
+      "inspection": "检测站"
     },
     "repairBrandMarkerLabel": {
       "autoq": "AutoQ",
@@ -280,7 +296,21 @@
       "tire": "轮胎",
       "inspection": "检验所",
       "imported": "进口车"
-    }
+    },
+    "rentalFilter": {
+      "all": "全部",
+      "ev": "电动车"
+    },
+    "rentalCarClass": {
+      "light": "微型车",
+      "small": "小型车",
+      "medium": "中型车",
+      "large": "大型车",
+      "van": "商务车",
+      "leisure": "RV",
+      "imported": "进口车"
+    },
+    "rentalMarkerLabel": "{carClass} {price}韩元"
   },
   "station": {
     "self": "自助",
@@ -356,10 +386,10 @@
     "navi": {
       "confirmDialogAria": "确认开始导航",
       "whichApp": "要用哪个应用导航？",
-      "confirmTitle": "要开始导航到这{kind, select, carwash {家洗车场} repair {维修厂} other {家加油站}}吗？",
+      "confirmTitle": "要开始导航到这家{kind, select, carwash {洗车场} repair {汽修店} rental {租车公司} other {加油站}}吗？",
       "appHint": "您选择的应用下次会自动使用。如果没有该应用，将跳转至商店或网页引导。",
-      "startFromOrigin": "将从您当前位置使用{provider}开始导航到这{kind, select, carwash {家洗车场} other {家加油站}}。",
-      "startFromProvider": "将在{provider}中开始导航到这{kind, select, carwash {家洗车场} other {家加油站}}。",
+      "startFromOrigin": "将从当前位置开始使用 {provider} 导航到这家{kind, select, carwash {洗车场} repair {汽修店} rental {租车公司} other {加油站}}。",
+      "startFromProvider": "将在 {provider} 中开始导航到这家{kind, select, carwash {洗车场} repair {汽修店} rental {租车公司} other {加油站}}。",
       "webFallbackHint": "如果没有该应用，将打开网页/商店引导。",
       "starting": "启动中…",
       "startNavigation": "开始导航",
@@ -994,7 +1024,8 @@
       "small": "小型汽车维修业（2级）",
       "specialty": "汽车专业维修业（维修店）",
       "engine": "发动机专业维修业",
-      "unknown": "维修厂"
+      "unknown": "维修厂",
+      "inspection": "汽车检测站"
     },
     "operatingInfoTitle": "营业信息",
     "noOperatingInfo": "暂无营业时间信息。前往前请先致电确认。",
@@ -1063,5 +1094,26 @@
       "prompt": "如果价格与实际不符，请告诉我们。",
       "disclaimer": "反馈价格由用户提供，可能与实际价格不同。"
     }
+  },
+  "rental": {
+    "evBadge": "电动车 {count}辆",
+    "totalCars": "保有 {count}辆",
+    "feeTitle": "各车型价格",
+    "noFee": "暂无登记的价格信息，前往前请先致电确认。",
+    "feeDisclaimer": "这是公共数据登记的价格，可能与实际租金不同。预订前请向商家确认。",
+    "feeDisclaimerWithDate": "这是截至 {date} 公共数据登记的价格，可能与实际租金不同。预订前请向商家确认。",
+    "operatingInfoTitle": "运营信息",
+    "noOperatingInfo": "暂无营业时间信息，前往前请先致电确认。",
+    "hours": {
+      "weekday": "工作日 {open} ~ {close}",
+      "weekend": "周末 {open} ~ {close}",
+      "holiday": "节假日 {open} ~ {close}"
+    },
+    "holiday": "休息 {value}",
+    "noTel": "暂无登记的电话号码",
+    "callButton": "拨打电话",
+    "dataSource": "租车信息提供：公共数据门户 全国租车企业信息标准数据",
+    "baseDate": " · 基准日 {date}",
+    "publicDataDisclaimer": "基于公共数据，可能与实际情况不同（可能已停业或调价）。更新周期为半年，近期变更可能反映较慢。"
   }
 }

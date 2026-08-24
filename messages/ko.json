@@ -120,7 +120,9 @@
       "fuelMenuAria": "유종",
       "carwashMenuAria": "세차장 유형",
       "layerRepair": "정비소",
-      "repairMenuAria": "정비소 브랜드 선택"
+      "repairMenuAria": "정비소 브랜드 선택",
+      "layerRental": "렌터카",
+      "rentalMenuAria": "렌터카 필터"
     },
     "carwashFilter": {
       "all": "전체",
@@ -189,6 +191,17 @@
         "filterHint": "정비소 버튼의 ▾ 에서 브랜드만 골라 볼 수 있어요.",
         "zoomHint": "지도를 축소하면 브랜드 지점만 남고, 확대할수록 동네 정비소가 채워져요.",
         "disclaimer": "공공데이터 기준이라 폐업·정보가 다를 수 있어요. 출처: 공공데이터포털 전국자동차정비업체표준데이터"
+      },
+      "titleRental": "렌터카 지도 보는 법",
+      "rental": {
+        "sectionTitle": "핀 색 = 전기차 보유 여부",
+        "basic": "<b>청록 열쇠</b> = 렌터카 업체",
+        "ev": "<b>보라 번개</b> = 전기차를 보유한 업체 (핀이 조금 더 큼)",
+        "feeTitle": "지도 라벨 = 대여 요금",
+        "feeHint": "확대하면 <b>가장 저렴한 차종의 요금</b>이 핀 위에 떠요. 요금이 등록되지 않은 곳은 업체명이 떠요.",
+        "filterTitle": "전기차만 보기",
+        "filterHint": "렌터카 버튼의 ▾ 에서 전기차 보유 업체만 골라 볼 수 있어요.",
+        "disclaimer": "공공데이터 기준이라 폐업·요금이 다를 수 있어요. 예약 전 업체에 확인해 주세요. 출처: 공공데이터포털 전국렌터카업체정보표준데이터"
       }
     },
     "bottomSheet": {
@@ -219,7 +232,9 @@
       "waiting": "대기",
       "addressUnknown": "주소 미상",
       "titleRepairArea": "이 지역 정비소 {count}곳",
-      "emptyRepair": "이 영역에 표시할 정비소가 없어요. 지도를 이동해보세요."
+      "emptyRepair": "이 영역에 표시할 정비소가 없어요. 지도를 이동해보세요.",
+      "titleRentalArea": "이 지역 렌터카 {count}곳",
+      "emptyRental": "이 영역에 표시할 렌터카 업체가 없어요. 지도를 이동해보세요."
     },
     "kakaoMap": {
       "errorTitle": "지도를 불러오지 못했습니다.",
@@ -265,7 +280,8 @@
       "small": "소형정비",
       "specialty": "카센터",
       "engine": "원동기정비",
-      "unknown": "정비소"
+      "unknown": "정비소",
+      "inspection": "검사소"
     },
     "repairBrandMarkerLabel": {
       "autoq": "오토큐",
@@ -280,7 +296,21 @@
       "tire": "타이어",
       "inspection": "검사소",
       "imported": "수입차"
-    }
+    },
+    "rentalFilter": {
+      "all": "전체",
+      "ev": "전기차"
+    },
+    "rentalCarClass": {
+      "light": "경차",
+      "small": "소형",
+      "medium": "중형",
+      "large": "대형",
+      "van": "승합",
+      "leisure": "RV",
+      "imported": "수입차"
+    },
+    "rentalMarkerLabel": "{carClass} {price}원"
   },
   "station": {
     "self": "셀프",
@@ -356,10 +386,10 @@
     "navi": {
       "confirmDialogAria": "길안내 시작 확인",
       "whichApp": "어떤 앱으로 길안내할까요?",
-      "confirmTitle": "이 {kind, select, carwash {세차장으로} repair {정비소로} other {주유소로}} 길안내를 시작할까요?",
+      "confirmTitle": "이 {kind, select, carwash {세차장으로} repair {정비소로} rental {렌터카 업체로} other {주유소로}} 길안내를 시작할까요?",
       "appHint": "선택한 앱은 다음에 자동으로 사용돼요. 앱이 없으면 스토어/웹 안내로 연결됩니다.",
-      "startFromOrigin": "현재 위치에서 이 {kind, select, carwash {세차장} other {주유소}}까지 {provider} 길안내가 시작됩니다.",
-      "startFromProvider": "{provider}에서 이 {kind, select, carwash {세차장으로} other {주유소로}} 길안내가 시작됩니다.",
+      "startFromOrigin": "현재 위치에서 이 {kind, select, carwash {세차장} repair {정비소} rental {렌터카 업체} other {주유소}}까지 {provider} 길안내가 시작됩니다.",
+      "startFromProvider": "{provider}에서 이 {kind, select, carwash {세차장으로} repair {정비소로} rental {렌터카 업체로} other {주유소로}} 길안내가 시작됩니다.",
       "webFallbackHint": "앱이 없으면 웹/스토어 안내로 열립니다.",
       "starting": "실행 중…",
       "startNavigation": "길안내 시작",
@@ -994,7 +1024,8 @@
       "small": "소형자동차정비업(2급)",
       "specialty": "자동차전문정비업(카센터)",
       "engine": "원동기전문정비업",
-      "unknown": "정비소"
+      "unknown": "정비소",
+      "inspection": "자동차검사소"
     },
     "operatingInfoTitle": "운영 정보",
     "noOperatingInfo": "운영시간 정보가 아직 없어요. 방문 전 전화로 확인해 주세요.",
@@ -1063,5 +1094,26 @@
       "prompt": "가격이 실제와 다르면 알려주세요.",
       "disclaimer": "제보가는 사용자가 알려준 값이라 실제와 다를 수 있어요."
     }
+  },
+  "rental": {
+    "evBadge": "전기차 {count}대",
+    "totalCars": "보유 {count}대",
+    "feeTitle": "차종별 요금",
+    "noFee": "등록된 요금 정보가 없어요. 방문 전 전화로 확인해 주세요.",
+    "feeDisclaimer": "공공데이터 등록 요금이라 실제 대여료와 다를 수 있어요. 예약 전 업체에 확인해 주세요.",
+    "feeDisclaimerWithDate": "{date} 기준 공공데이터 등록 요금이라 실제 대여료와 다를 수 있어요. 예약 전 업체에 확인해 주세요.",
+    "operatingInfoTitle": "운영 정보",
+    "noOperatingInfo": "운영시간 정보가 아직 없어요. 방문 전 전화로 확인해 주세요.",
+    "hours": {
+      "weekday": "평일 {open} ~ {close}",
+      "weekend": "주말 {open} ~ {close}",
+      "holiday": "공휴일 {open} ~ {close}"
+    },
+    "holiday": "휴무 {value}",
+    "noTel": "등록된 전화번호가 없어요",
+    "callButton": "전화걸기",
+    "dataSource": "렌터카 정보 제공: 공공데이터포털 전국렌터카업체정보표준데이터",
+    "baseDate": " · 기준일 {date}",
+    "publicDataDisclaimer": "공공데이터 기준이라 실제와 다를 수 있어요(폐업·요금 변경 가능). 갱신 주기가 반기라 최근 변경은 반영이 늦을 수 있어요."
   }
 }

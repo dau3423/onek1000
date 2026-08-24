@@ -85,7 +85,50 @@ interface DetailRow extends BboxRpcRow {
   area: string | null;
 }
 
-/** 정비소 단건 상세. 없으면 null(상세 페이지가 404 처리). */
+/**
+ * 검사소 단건 → 정비소 상세 모양으로 변환.
+ *
+ * 지도에서 검사소는 정비소 레이어에 합쳐 보이고 마커 클릭도 /repair/[key] 로 간다(0050 RPC).
+ * 그런데 검사소는 별도 테이블이라, 상세 조회가 repair_shops 만 보면 **누르면 404** 가 난다.
+ * 그래서 정비소에서 못 찾으면 여기로 폴백한다.
+ */
+async function queryInspectionAsRepair(placeKey: string): Promise<RepairDetail | null> {
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('inspection_stations')
+    .select('place_key,name,office_type,road_addr,jibun_addr,tel,open_time,close_time,lat,lng,data_base_date,synced_at,lane_count')
+    .eq('place_key', placeKey)
+    .maybeSingle();
+  if (error || !data) return null;
+  const r = data as unknown as {
+    place_key: string; name: string; office_type: string | null;
+    road_addr: string | null; jibun_addr: string | null; tel: string | null;
+    open_time: string | null; close_time: string | null;
+    lat: number; lng: number; data_base_date: string | null; synced_at: string | null;
+    lane_count: number | null;
+  };
+  return {
+    shopKey: r.place_key,
+    name: r.name,
+    shopType: 'inspection',
+    brand: 'inspection',
+    roadAddr: r.road_addr,
+    jibunAddr: r.jibun_addr,
+    tel: r.tel,
+    openTime: r.open_time,
+    closeTime: r.close_time,
+    lat: r.lat,
+    lng: r.lng,
+    dataBaseDate: r.data_base_date,
+    syncedAt: r.synced_at,
+    // 검사소에는 관리기관·면적 대신 검사진로수가 규모 지표다. 상세의 '면적' 칸을 재활용하지 않고
+    // 비워 둔다 — 다른 단위를 같은 칸에 넣으면 잘못된 정보가 된다.
+    institution: r.office_type,
+    area: null,
+  };
+}
+
+/** 정비소 단건 상세. 정비소에 없으면 검사소에서 찾는다. 둘 다 없으면 null(상세 페이지가 404 처리). */
 export async function queryRepairDetail(shopKey: string): Promise<RepairDetail | null> {
   if (process.env.NEXT_PUBLIC_USE_MOCK === 'true' || !isSupabaseConfigured()) {
     return getMockRepairDetail(shopKey);
@@ -98,7 +141,8 @@ export async function queryRepairDetail(shopKey: string): Promise<RepairDetail |
     .maybeSingle();
   if (error || !data) {
     if (error) console.warn('repair detail query fail:', error.message);
-    return null;
+    // 정비소에 없으면 검사소일 수 있다(지도에서 같은 레이어로 합쳐 보이므로 링크도 /repair 다).
+    return queryInspectionAsRepair(shopKey).catch(() => null);
   }
   const r = data as DetailRow;
   const marker = rpcRowToMarker(r);

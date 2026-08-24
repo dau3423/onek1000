@@ -120,7 +120,9 @@
       "fuelMenuAria": "Fuel type",
       "carwashMenuAria": "Car wash type",
       "layerRepair": "Repair",
-      "repairMenuAria": "Choose repair shop brand"
+      "repairMenuAria": "Choose repair shop brand",
+      "layerRental": "Rental",
+      "rentalMenuAria": "Rental car filter"
     },
     "carwashFilter": {
       "all": "All",
@@ -189,6 +191,17 @@
         "filterHint": "Use the ▾ on the Repair button to show a single brand.",
         "zoomHint": "Zoom out and only brand branches remain; zoom in and local garages fill in.",
         "disclaimer": "Based on public data, so closures and details may differ. Source: National Auto Repair Shop Standard Data (data.go.kr)"
+      },
+      "titleRental": "Reading the rental map",
+      "rental": {
+        "sectionTitle": "Pin color = EV availability",
+        "basic": "<b>Teal key</b> = rental company",
+        "ev": "<b>Violet bolt</b> = company with EVs (slightly larger pin)",
+        "feeTitle": "Map label = rental rate",
+        "feeHint": "Zoom in and the <b>rate for the cheapest car class</b> appears above the pin. Companies without a filed rate show their name instead.",
+        "filterTitle": "Show EVs only",
+        "filterHint": "Use the ▾ on the Rental button to show only companies with EVs.",
+        "disclaimer": "Based on public data, so closures and rates may differ. Please confirm with the company before booking. Source: Korea Public Data Portal, National Rental Car Company Standard Data"
       }
     },
     "bottomSheet": {
@@ -219,7 +232,9 @@
       "waiting": "Waiting",
       "addressUnknown": "Address unknown",
       "titleRepairArea": "{count, plural, one {# repair shop} other {# repair shops}} in this area",
-      "emptyRepair": "No repair shops in this area. Try moving the map."
+      "emptyRepair": "No repair shops in this area. Try moving the map.",
+      "titleRentalArea": "{count} rental companies here",
+      "emptyRental": "No rental companies in this area. Try moving the map."
     },
     "kakaoMap": {
       "errorTitle": "Couldn't load the map.",
@@ -265,7 +280,8 @@
       "small": "Small vehicle",
       "specialty": "Auto shop",
       "engine": "Engine",
-      "unknown": "Repair shop"
+      "unknown": "Repair shop",
+      "inspection": "Inspection"
     },
     "repairBrandMarkerLabel": {
       "autoq": "AutoQ",
@@ -280,7 +296,21 @@
       "tire": "Tyres",
       "inspection": "Inspection",
       "imported": "Imported"
-    }
+    },
+    "rentalFilter": {
+      "all": "All",
+      "ev": "EV"
+    },
+    "rentalCarClass": {
+      "light": "Light",
+      "small": "Compact",
+      "medium": "Midsize",
+      "large": "Full-size",
+      "van": "Van",
+      "leisure": "RV",
+      "imported": "Imported"
+    },
+    "rentalMarkerLabel": "{carClass} ₩{price}"
   },
   "station": {
     "self": "Self-service",
@@ -356,10 +386,10 @@
     "navi": {
       "confirmDialogAria": "Confirm start navigation",
       "whichApp": "Which app would you like to navigate with?",
-      "confirmTitle": "Start navigating to this {kind, select, carwash {car wash} repair {the repair shop} other {station}}?",
+      "confirmTitle": "Start directions to this {kind, select, carwash {car wash} repair {repair shop} rental {rental company} other {gas station}}?",
       "appHint": "The app you choose will be used automatically next time. If you don't have the app, you'll be redirected to the store or web.",
-      "startFromOrigin": "Navigation from your current location to this {kind, select, carwash {car wash} other {station}} will start with {provider}.",
-      "startFromProvider": "Navigation to this {kind, select, carwash {car wash} other {station}} will start in {provider}.",
+      "startFromOrigin": "{provider} directions will start from your current location to this {kind, select, carwash {car wash} repair {repair shop} rental {rental company} other {gas station}}.",
+      "startFromProvider": "Directions to this {kind, select, carwash {car wash} repair {repair shop} rental {rental company} other {gas station}} will start in {provider}.",
       "webFallbackHint": "If you don't have the app, it will open web/store guidance instead.",
       "starting": "Starting…",
       "startNavigation": "Start navigation",
@@ -994,7 +1024,8 @@
       "small": "Small-vehicle repair (Class 2)",
       "specialty": "Specialised repair (auto shop)",
       "engine": "Engine repair",
-      "unknown": "Repair shop"
+      "unknown": "Repair shop",
+      "inspection": "Vehicle inspection station"
     },
     "operatingInfoTitle": "Opening hours",
     "noOperatingInfo": "No opening hours on record yet. Please call ahead before visiting.",
@@ -1063,5 +1094,26 @@
       "prompt": "Let us know if the price differs from the board.",
       "disclaimer": "Reported prices come from users and may differ from the actual price."
     }
+  },
+  "rental": {
+    "evBadge": "{count} EVs",
+    "totalCars": "{count} cars",
+    "feeTitle": "Rates by car class",
+    "noFee": "No rate information registered. Please call before visiting.",
+    "feeDisclaimer": "These are rates filed as public data and may differ from the actual rental price. Please confirm with the company before booking.",
+    "feeDisclaimerWithDate": "Rates filed as public data as of {date}; they may differ from the actual rental price. Please confirm with the company before booking.",
+    "operatingInfoTitle": "Operating info",
+    "noOperatingInfo": "No opening hours yet. Please call before visiting.",
+    "hours": {
+      "weekday": "Weekdays {open} – {close}",
+      "weekend": "Weekends {open} – {close}",
+      "holiday": "Holidays {open} – {close}"
+    },
+    "holiday": "Closed: {value}",
+    "noTel": "No phone number registered",
+    "callButton": "Call",
+    "dataSource": "Rental car data: Korea Public Data Portal, National Rental Car Company Standard Data",
+    "baseDate": " · as of {date}",
+    "publicDataDisclaimer": "Based on public data, so it may differ from reality (closures, rate changes). Updated twice a year, so recent changes may lag."
   }
 }

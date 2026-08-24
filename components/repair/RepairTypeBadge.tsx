@@ -24,6 +24,13 @@ const TYPE_GLYPH: Record<RepairShopType, React.ReactNode> = {
       <rect x="7.4" y="16" width="9.2" height="4.4" rx="1.4" />
     </>
   ),
+  // 검사소는 렌치가 아니라 체크 도장 — 수리가 아니라 '합격 판정'이라는 성격을 나타낸다.
+  inspection: (
+    <>
+      <path d="M12 2.6 4.4 5.8v5.6c0 4.4 3.2 8.4 7.6 9.8 4.4-1.4 7.6-5.4 7.6-9.8V5.8L12 2.6z" opacity="0.25" />
+      <path d="M10.7 15.6 7.2 12.1l1.5-1.5 2 2 4.6-4.6 1.5 1.5-6.1 6.1z" />
+    </>
+  ),
   unknown: (
     <text x="12" y="12.5" textAnchor="middle" dominantBaseline="central" fontSize="15" fontWeight="800">?</text>
   ),
@@ -36,6 +43,8 @@ const BADGE_LIGHT: Record<RepairShopType, string> = {
   small: 'bg-orange-50 text-orange-800 border-orange-200',
   specialty: 'bg-yellow-50 text-yellow-800 border-yellow-200',
   engine: 'bg-stone-100 text-stone-700 border-stone-300',
+  // 검사소만 초록 — 정비(수리) 계열 갈색톤에서 떼어내 목적이 다름을 색으로도 보인다.
+  inspection: 'bg-green-50 text-green-800 border-green-200',
   unknown: 'bg-gray-100 text-gray-600 border-gray-200',
 };
 
@@ -44,6 +53,7 @@ const BADGE_DARK: Record<RepairShopType, string> = {
   small: 'dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800',
   specialty: 'dark:bg-yellow-950 dark:text-yellow-300 dark:border-yellow-800',
   engine: 'dark:bg-stone-800 dark:text-stone-300 dark:border-stone-600',
+  inspection: 'dark:bg-green-950 dark:text-green-300 dark:border-green-800',
   unknown: 'dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700',
 };
 

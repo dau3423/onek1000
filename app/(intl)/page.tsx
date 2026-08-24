@@ -40,6 +40,7 @@ import { RouteIcon, ChevronRightIcon, CloseIcon, LocationOffIcon, LoaderIcon, Fu
 import type { BboxResponse, RadiusResponse, StationWithPrice, NationalTop10Item, NationalTop10Response, StationPoint, StationsInBboxResponse, RoutePlan, ProductCode } from '@/types/station';
 import type { EvBboxResponse, EvStationMarker } from '@/types/ev';
 import type { RepairMarker, RepairBboxResponse } from '@/types/repair';
+import type { RentalMarker, RentalBboxResponse } from '@/types/rental';
 import type { CarwashBboxResponse, CarwashMarker } from '@/types/carwash';
 
 // 지도 로딩 플레이스홀더 — next/dynamic의 loading은 React 트리 안에서 렌더되므로 훅 사용 가능.
@@ -123,7 +124,7 @@ export default function HomePage() {
   const t = useTranslations('map');
   const router = useRouter();
   const { data: session, status: authStatus } = useSession();
-  const { product, brands, carwashOnly, setCarwashOnly, carwashType, repairBrand, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, setRoutePlan, clearRoutePlan, setProduct } = useMapStore();
+  const { product, brands, carwashOnly, setCarwashOnly, carwashType, repairBrand, rentalFilter, alertDismissed, dismissAlert, resetAlert, setLastView, layer, routePlan, setRoutePlan, clearRoutePlan, setProduct } = useMapStore();
 
   // 회원 전용 동작 가드 — 길찾기/길안내 시작·따라가기는 로그인 회원만 사용(FR-5 기반 UX 정책).
   // 비로그인(unauthenticated)이면 기존 인증 유도 패턴(next-auth signIn, 현재 화면으로 복귀)을
@@ -207,11 +208,14 @@ export default function HomePage() {
   // 독립 세차장(layer='carwash') — 지도 영역 내 세차장 마커. 우리 DB(/api/carwash/bbox)만 조회.
   const [carwashPlaces, setCarwashPlaces] = useState<CarwashMarker[]>([]);
   const [repairShops, setRepairShops] = useState<RepairMarker[]>([]);
+  const [rentalPlaces, setRentalPlaces] = useState<RentalMarker[]>([]);
   const carwashAbort = useRef<AbortController | null>(null);
   const repairAbort = useRef<AbortController | null>(null);
+  const rentalAbort = useRef<AbortController | null>(null);
   // fetchRepairShops 가 지도 idle 콜백의 옛 클로저에서 불릴 수 있어, 브랜드는 ref 로 최신값을 본다
   // (유종 productRef 와 같은 이유).
   const repairBrandRef = useRef<typeof repairBrand>('all');
+  const rentalFilterRef = useRef<typeof rentalFilter>('all');
   // 현재 지도 축척(카카오 level — 작을수록 확대). 정비소 표시 개수를 여기에 맞춰 줄인다.
   const mapLevelRef = useRef<number>(4);
   // 첫 응답 수신 여부(빈 상태 배너를 첫 로딩 중에 깜빡이지 않게 하기 위함).
@@ -276,7 +280,7 @@ export default function HomePage() {
   // 길안내 확인 모달 대상
   const [naviTarget, setNaviTarget] = useState<StationWithPrice | null>(null);
   // 길안내 확인 모달의 대상 종류. 세차장은 가격이 없어 문구·표기를 분기한다(기본 gas).
-  const [naviKind, setNaviKind] = useState<'gas' | 'carwash' | 'repair'>('gas');
+  const [naviKind, setNaviKind] = useState<'gas' | 'carwash' | 'repair' | 'rental'>('gas');
 
   // 주유소 체류 감지 팝업 대상(감지된 주유소). 저장/닫기 시 null.
   const [dwellStation, setDwellStation] = useState<DwellStation | null>(null);
@@ -584,6 +588,39 @@ export default function HomePage() {
       });
   }
 
+  // 렌터카 마커 조회 — layer='rental'일 때만 호출. 우리 DB(/api/rental/bbox)만 조회.
+  function fetchRentalPlaces(b: { swLat: number; swLng: number; neLat: number; neLng: number }) {
+    if (rentalAbort.current) rentalAbort.current.abort();
+    rentalAbort.current = new AbortController();
+    const params = new URLSearchParams({
+      swLat: String(b.swLat), swLng: String(b.swLng),
+      neLat: String(b.neLat), neLng: String(b.neLng),
+      // 전기차 필터는 반드시 서버에서 건다 — limit 이 필터보다 먼저 걸리면 소수인 전기차
+      // 보유 업체가 통째로 잘려 "필터를 켰는데 아무것도 없는" 화면이 된다(정비소에서 겪은 문제).
+      filter: rentalFilterRef.current,
+    });
+    fetch(`/api/rental/bbox?${params}`, { signal: rentalAbort.current.signal })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`rental bbox ${r.status}`);
+        return (await r.json()) as RentalBboxResponse;
+      })
+      .then((data) => {
+        setRentalPlaces(Array.isArray(data?.places) ? data.places : []);
+      })
+      .catch((e) => {
+        if (e.name !== 'AbortError') console.error('rental bbox fetch fail', e);
+      });
+  }
+
+  // 렌터카 필터가 바뀌면 서버 조회를 다시 한다(서버 필터라 클라이언트 재필터로는 안 된다).
+  useEffect(() => {
+    rentalFilterRef.current = rentalFilter;
+    if (layer !== 'rental') return;
+    const b = lastBoundsRef.current;
+    if (b) fetchRentalPlaces(b);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rentalFilter, layer]);
+
   // 브랜드 필터가 바뀌면 서버 조회를 다시 한다(클라이언트 재필터가 아니라서 필수).
   useEffect(() => {
     repairBrandRef.current = repairBrand;
@@ -601,6 +638,7 @@ export default function HomePage() {
     if (layer === 'ev') { fetchEvStations(b); setAllStations([]); }
     else if (layer === 'carwash') { setCarwashLoaded(false); fetchCarwashPlaces(b); setAllStations([]); }
     else if (layer === 'repair') { fetchRepairShops(b); setAllStations([]); }
+    else if (layer === 'rental') { fetchRentalPlaces(b); setAllStations([]); }
     else { fetchStations(b); fetchAllStations(b); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layer]);
@@ -1098,6 +1136,8 @@ export default function HomePage() {
           carwashPlaces={visibleCarwash}
           repairShops={visibleRepair}
           onRepairMarkerClick={(p) => router.push(`/repair/${encodeURIComponent(p.shopKey)}`)}
+          rentalPlaces={rentalPlaces}
+          onRentalMarkerClick={(p) => router.push(`/rental/${encodeURIComponent(p.placeKey)}`)}
           onCarwashMarkerClick={(p) => setCarwashPopup(p)}
           routePlan={layer === 'gas' ? routePlan : null}
           onRouteStationClick={handleMarkerClick}
@@ -1114,6 +1154,7 @@ export default function HomePage() {
             if (layer === 'ev') fetchEvStations(b);
             else if (layer === 'carwash') fetchCarwashPlaces(b);
             else if (layer === 'repair') fetchRepairShops(b);
+            else if (layer === 'rental') fetchRentalPlaces(b);
             else { fetchStations(b); fetchAllStations(b); }
           }}
           onViewChange={(v) => {
@@ -1349,6 +1390,21 @@ export default function HomePage() {
               setNaviKind('repair');
               setNaviTarget({
                 id: p.shopKey, name: p.name, brand: 'ETC', isSelf: false,
+                sido: '01', address: p.roadAddr ?? p.jibunAddr ?? '',
+                lat: p.lat, lng: p.lng, product, price: 0, tradeDate: '',
+              });
+            })
+          }
+          rentalPlaces={rentalPlaces}
+          rentalOrigin={myLocation ?? mapCenter}
+          onSelectRental={(p) => router.push(`/rental/${encodeURIComponent(p.placeKey)}`)}
+          onNavigateRental={(p) =>
+            requireAuth(() => {
+              // 렌터카도 '지금 이 자리 가격'이 없다 — NaviConfirm 이 브랜드·가격 줄을 숨기도록 kind='rental'.
+              // price/product/tradeDate 는 StationWithPrice 형태를 맞추기 위한 더미(화면 노출 없음).
+              setNaviKind('rental');
+              setNaviTarget({
+                id: p.placeKey, name: p.name, brand: 'ETC', isSelf: false,
                 sido: '01', address: p.roadAddr ?? p.jibunAddr ?? '',
                 lat: p.lat, lng: p.lng, product, price: 0, tradeDate: '',
               });

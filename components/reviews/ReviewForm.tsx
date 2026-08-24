@@ -23,6 +23,7 @@ const PLACE_DETAIL_PATH: Record<PlaceType, string> = {
   ev: '/ev',
   carwash: '/carwash',
   repair: '/repair',
+  rental: '/rental',
 };
 
 interface Props {

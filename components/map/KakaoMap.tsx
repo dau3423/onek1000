@@ -14,6 +14,9 @@ import type { RepairMarker } from '@/types/repair';
 import type { CarwashMarker } from '@/types/carwash';
 import { buildCarwashMarkerContent } from '@/lib/map/carwashMarker';
 import { buildRepairMarkerContent } from '@/lib/map/repairMarker';
+import type { RentalMarker } from '@/types/rental';
+import { buildRentalMarkerContent } from '@/lib/map/rentalMarker';
+import { primaryFee } from '@/types/rental';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
 import { SPARKLE_SVG_STRING } from '@/components/icons';
 
@@ -251,6 +254,11 @@ interface Props {
   repairShops?: RepairMarker[];
   /** 정비소 마커 클릭 콜백(layer='repair'). */
   onRepairMarkerClick?: (s: RepairMarker) => void;
+
+  /** 렌터카 마커 목록(layer='rental' 일 때만 그린다). */
+  rentalPlaces?: RentalMarker[];
+  /** 렌터카 마커 클릭 콜백 — 상세로 이동. */
+  onRentalMarkerClick?: (p: RentalMarker) => void;
   /**
    * 경로별 최저가 계획. 설정되면 출발→도착 직선 Polyline + 출발/도착 핀 +
    * 경로 최저가 주유소 마커를 지도에 그리고, 출발~도착이 모두 보이도록 fit한다.
@@ -298,6 +306,8 @@ export function KakaoMap({
   carwashPlaces,
   repairShops,
   onRepairMarkerClick,
+  rentalPlaces,
+  onRentalMarkerClick,
   onCarwashMarkerClick,
   routePlan,
   onRouteStationClick,
@@ -331,6 +341,9 @@ export function KakaoMap({
   const repairOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
   const onRepairMarkerClickRef = useRef(onRepairMarkerClick);
   useEffect(() => { onRepairMarkerClickRef.current = onRepairMarkerClick; }, [onRepairMarkerClick]);
+  const rentalOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
+  const onRentalMarkerClickRef = useRef(onRentalMarkerClick);
+  useEffect(() => { onRentalMarkerClickRef.current = onRentalMarkerClick; }, [onRentalMarkerClick]);
   // 경로(직선) Polyline — 경로 모드일 때만 그린다(독립 관리, 해제 시 제거).
   const routeLineRef = useRef<kakao.maps.Polyline | null>(null);
   // 경로 오버레이(출발/도착 핀 + 경로 최저가 주유소 마커) — Polyline과 함께 관리.
@@ -877,6 +890,43 @@ export function KakaoMap({
       repairOverlaysRef.current.push(overlay);
     }
   }, [ready, layer, repairShops, mapLevel, t]);
+
+  // 렌터카 마커 — layer='rental'일 때만 렌더(다른 레이어 마커와 독립 오버레이).
+  // 업체 1곳=1마커. 색=전기차 보유 여부(teal/violet), 라벨=줌인(level≤6) 시 대표 요금.
+  // 전기차 필터는 서버(RPC)에서 걸어 rentalPlaces 에 이미 반영돼 있으므로 여기선 그대로 그린다.
+  useEffect(() => {
+    if (!ready || !mapRef.current) return;
+    const map = mapRef.current;
+
+    rentalOverlaysRef.current.forEach((o) => o.setMap(null));
+    rentalOverlaysRef.current = [];
+
+    if (layer !== 'rental') return;
+
+    const showLabel = map.getLevel() <= 6;   // 다른 레이어와 동일 기준
+    for (const p of rentalPlaces ?? []) {
+      // 라벨은 대표 요금(가장 저렴한 차종) — 이 앱은 가격 비교가 정체성이라 요금이 가장 쓸모 있다.
+      // 요금이 없는 업체(원천 미기재가 흔하다)는 업체명을 쓴다. '요금 없음' 같은 빈 말은 쓰지 않는다.
+      const fee = primaryFee(p.fees);
+      const label = fee
+        ? t('rentalMarkerLabel', { price: fee.price.toLocaleString(), carClass: t(`rentalCarClass.${fee.carClass}`) })
+        : p.name;
+      const content = buildRentalMarkerContent(p, showLabel, label);
+      content.addEventListener('click', () => onRentalMarkerClickRef.current?.(p));
+      // 전기차 보유 업체를 위로 — 소수라 겹칠 때 가려지면 필터 없이는 못 찾는다.
+      const z = p.evCars > 0 ? 4 : 2;
+      const overlay = new window.kakao.maps.CustomOverlay({
+        position: new window.kakao.maps.LatLng(p.lat, p.lng),
+        content,
+        // 꼬리 있는 핀 → 콘텐츠 아래 끝이 좌표(3541182 규칙). transform 금지.
+        yAnchor: 1,
+        clickable: true,
+        zIndex: z,
+      });
+      overlay.setMap(map);
+      rentalOverlaysRef.current.push(overlay);
+    }
+  }, [ready, layer, rentalPlaces, mapLevel, t]);
 
   // 회색 점(비하이라이트 주유소) 오버레이 — 일정 줌 이상 확대(level ≤ GRAY_DOT_MAX_LEVEL)일 때만.
   // allStations(화면 내 전체 주유소) 중, 이미 강조/일반 마커로 그려진 id를 제외한 나머지를

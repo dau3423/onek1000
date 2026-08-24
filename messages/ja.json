@@ -120,7 +120,9 @@
       "fuelMenuAria": "油種",
       "carwashMenuAria": "洗車場の種類",
       "layerRepair": "整備工場",
-      "repairMenuAria": "整備工場ブランドを選択"
+      "repairMenuAria": "整備工場ブランドを選択",
+      "layerRental": "レンタカー",
+      "rentalMenuAria": "レンタカーの絞り込み"
     },
     "carwashFilter": {
       "all": "すべて",
@@ -189,6 +191,17 @@
         "filterHint": "整備工場ボタンの ▾ から特定のブランドだけ表示できます。",
         "zoomHint": "地図を縮小するとブランド拠点だけが残り、拡大すると地域の整備工場が増えます。",
         "disclaimer": "公共データに基づくため廃業・情報が異なる場合があります。出典：公共データポータル 全国自動車整備業者標準データ"
+      },
+      "titleRental": "レンタカー地図の見方",
+      "rental": {
+        "sectionTitle": "ピンの色 = EV保有の有無",
+        "basic": "<b>青緑の鍵</b> = レンタカー業者",
+        "ev": "<b>紫の稲妻</b> = EVを保有する業者（ピンが少し大きい）",
+        "feeTitle": "地図のラベル = レンタル料金",
+        "feeHint": "拡大すると<b>最も安い車種の料金</b>がピンの上に表示されます。料金が登録されていない場合は業者名が表示されます。",
+        "filterTitle": "EVのみ表示",
+        "filterHint": "レンタカーボタンの ▾ からEV保有業者だけを選んで見られます。",
+        "disclaimer": "公共データ基準のため廃業・料金が異なる場合があります。予約前に業者へご確認ください。出典: 公共データポータル 全国レンタカー業体情報標準データ"
       }
     },
     "bottomSheet": {
@@ -219,7 +232,9 @@
       "waiting": "待機",
       "addressUnknown": "住所不明",
       "titleRepairArea": "このエリアの整備工場 {count}件",
-      "emptyRepair": "このエリアに表示できる整備工場がありません。地図を移動してみてください。"
+      "emptyRepair": "このエリアに表示できる整備工場がありません。地図を移動してみてください。",
+      "titleRentalArea": "この地域のレンタカー {count}件",
+      "emptyRental": "この範囲に表示するレンタカー業者がありません。地図を動かしてみてください。"
     },
     "kakaoMap": {
       "errorTitle": "地図を読み込めませんでした。",
@@ -265,7 +280,8 @@
       "small": "小型整備",
       "specialty": "カーセンター",
       "engine": "原動機整備",
-      "unknown": "整備工場"
+      "unknown": "整備工場",
+      "inspection": "検査場"
     },
     "repairBrandMarkerLabel": {
       "autoq": "オートQ",
@@ -280,7 +296,21 @@
       "tire": "タイヤ",
       "inspection": "検査所",
       "imported": "輸入車"
-    }
+    },
+    "rentalFilter": {
+      "all": "すべて",
+      "ev": "EV"
+    },
+    "rentalCarClass": {
+      "light": "軽自動車",
+      "small": "小型",
+      "medium": "中型",
+      "large": "大型",
+      "van": "バン",
+      "leisure": "RV",
+      "imported": "輸入車"
+    },
+    "rentalMarkerLabel": "{carClass} {price}ウォン"
   },
   "station": {
     "self": "セルフ",
@@ -356,10 +386,10 @@
     "navi": {
       "confirmDialogAria": "ナビ開始の確認",
       "whichApp": "どのアプリで経路案内しますか？",
-      "confirmTitle": "この{kind, select, carwash {洗車場} repair {整備工場} other {給油所}}への経路案内を開始しますか？",
+      "confirmTitle": "この{kind, select, carwash {洗車場} repair {整備工場} rental {レンタカー店} other {ガソリンスタンド}}への経路案内を開始しますか?",
       "appHint": "選択したアプリは次回から自動的に使用されます。アプリがない場合はストア／ウェブ案内に接続されます。",
-      "startFromOrigin": "現在地からこの{kind, select, carwash {洗車場} other {給油所}}まで、{provider}で経路案内を開始します。",
-      "startFromProvider": "{provider}でこの{kind, select, carwash {洗車場} other {給油所}}への経路案内を開始します。",
+      "startFromOrigin": "現在地からこの{kind, select, carwash {洗車場} repair {整備工場} rental {レンタカー店} other {ガソリンスタンド}}まで{provider}の経路案内が始まります。",
+      "startFromProvider": "{provider}でこの{kind, select, carwash {洗車場} repair {整備工場} rental {レンタカー店} other {ガソリンスタンド}}への経路案内が始まります。",
       "webFallbackHint": "アプリがない場合はウェブ／ストア案内が開きます。",
       "starting": "起動中…",
       "startNavigation": "経路案内開始",
@@ -994,7 +1024,8 @@
       "small": "小型自動車整備業（2級）",
       "specialty": "自動車専門整備業（カーセンター）",
       "engine": "原動機専門整備業",
-      "unknown": "整備工場"
+      "unknown": "整備工場",
+      "inspection": "自動車検査場"
     },
     "operatingInfoTitle": "営業情報",
     "noOperatingInfo": "営業時間の情報がまだありません。訪問前にお電話でご確認ください。",
@@ -1063,5 +1094,26 @@
       "prompt": "価格が実際と違う場合はお知らせください。",
       "disclaimer": "報告価格は利用者から寄せられた値のため、実際と異なる場合があります。"
     }
+  },
+  "rental": {
+    "evBadge": "EV {count}台",
+    "totalCars": "保有 {count}台",
+    "feeTitle": "車種別料金",
+    "noFee": "登録された料金情報がありません。訪問前にお電話でご確認ください。",
+    "feeDisclaimer": "公共データに登録された料金のため、実際のレンタル料金と異なる場合があります。予約前に業者へご確認ください。",
+    "feeDisclaimerWithDate": "{date}時点で公共データに登録された料金のため、実際のレンタル料金と異なる場合があります。予約前に業者へご確認ください。",
+    "operatingInfoTitle": "営業情報",
+    "noOperatingInfo": "営業時間の情報がまだありません。訪問前にお電話でご確認ください。",
+    "hours": {
+      "weekday": "平日 {open} ~ {close}",
+      "weekend": "週末 {open} ~ {close}",
+      "holiday": "祝日 {open} ~ {close}"
+    },
+    "holiday": "休業 {value}",
+    "noTel": "登録された電話番号がありません",
+    "callButton": "電話をかける",
+    "dataSource": "レンタカー情報提供: 公共データポータル 全国レンタカー業体情報標準データ",
+    "baseDate": " · 基準日 {date}",
+    "publicDataDisclaimer": "公共データ基準のため実際と異なる場合があります（廃業・料金変更の可能性）。更新周期が半期のため、最近の変更は反映が遅れることがあります。"
   }
 }

@@ -7,21 +7,35 @@ import { type ProductCode } from '@/types/station';
 import type { CarwashTypeFilter } from '@/types/carwash';
 import { useProductLabel } from '@/lib/i18n/labels';
 import { BrandFilter } from './BrandFilter';
-import { BoltIcon, CarwashIcon, WrenchIcon, FuelIcon } from '@/components/icons';
+import { BoltIcon, CarwashIcon, WrenchIcon, FuelIcon, CarIcon } from '@/components/icons';
 import { REPAIR_BRAND_ORDER } from '@/types/repair';
+import type { RentalFilter } from '@/types/rental';
 import clsx from 'clsx';
 
 // 주유소 드롭다운에 나열할 유종. 기존엔 '휘발유▾' 드롭다운(일반/고급)과 경유·LPG 칩이 따로
 // 있어 유종 선택이 두 군데로 갈렸다. 이제 주유소 버튼 하나가 드롭다운을 열고 여기서 전부 고른다.
 const FUEL_OPTIONS: ProductCode[] = ['B027', 'D047', 'B034', 'C004'];
 
-// 레이어 전환 — 주유소/EV/세차장. '주유소'는 드롭다운 트리거를 겸한다(유종 선택).
-const LAYER_OPTIONS: { value: MapLayer; labelKey: 'layerGas' | 'layerEv' | 'layerCarwash' | 'layerRepair'; Icon: ComponentType<{ className?: string }> }[] = [
+// 레이어 전환 — 주유소/EV/세차장/정비소/렌터카. 하위 선택지가 있는 레이어는 드롭다운 트리거를 겸한다.
+type LayerLabelKey = 'layerGas' | 'layerEv' | 'layerCarwash' | 'layerRepair' | 'layerRental';
+const LAYER_OPTIONS: { value: MapLayer; labelKey: LayerLabelKey; Icon: ComponentType<{ className?: string }> }[] = [
   { value: 'gas', labelKey: 'layerGas', Icon: FuelIcon },
   { value: 'ev', labelKey: 'layerEv', Icon: BoltIcon },
   { value: 'carwash', labelKey: 'layerCarwash', Icon: CarwashIcon },
   { value: 'repair', labelKey: 'layerRepair', Icon: WrenchIcon },
+  { value: 'rental', labelKey: 'layerRental', Icon: CarIcon },
 ];
+
+// 렌터카 레이어 필터. 'ev'=전기차 보유 업체만(원천에 전기승용/전기승합 보유대수가 있어 정확히 갈린다).
+const RENTAL_FILTER_OPTIONS: { value: RentalFilter; labelKey: 'all' | 'ev' }[] = [
+  { value: 'all', labelKey: 'all' },
+  { value: 'ev', labelKey: 'ev' },
+];
+
+/** 하위 선택지(드롭다운)를 가진 레이어. EV 만 없다.
+ *  같은 판정이 세 군데(전환 시 자동 열기 / ▾ 표시 / 토글)에 쓰여 한 곳으로 모았다 —
+ *  레이어를 추가할 때 한 군데만 고쳐 놓고 나머지를 빠뜨리는 사고를 막는다. */
+const HAS_MENU = new Set<MapLayer>(['gas', 'carwash', 'repair', 'rental']);
 
 // 세차장 레이어 유형(FR-3). 'all'=미확인 포함 전체(기본).
 const CARWASH_TYPE_OPTIONS: { value: CarwashTypeFilter; labelKey: 'all' | 'self' | 'hand' | 'auto' }[] = [
@@ -35,12 +49,13 @@ export function FilterBar() {
   const t = useTranslations('map.filterBar');
   const tCarwashFilter = useTranslations('map.carwashFilter');
   const tRepairBrand = useTranslations('repair.brandLabel');
+  const tRentalFilter = useTranslations('map.rentalFilter');
   const productLabel = useProductLabel();
   // 세차 가능(carwashOnly)은 BrandFilter 드롭다운으로 옮겨 여기선 다루지 않는다.
-  const { product, setProduct, layer, setLayer, carwashType, setCarwashType, repairBrand, setRepairBrand } = useMapStore();
+  const { product, setProduct, layer, setLayer, carwashType, setCarwashType, repairBrand, setRepairBrand, rentalFilter, setRentalFilter } = useMapStore();
   // 열려 있는 드롭다운('gas'=유종 | 'carwash'=세차장 유형 | null)
   /** 하위 선택지를 가진 레이어만 메뉴를 연다(EV 는 없음). */
-  type MenuKey = 'gas' | 'carwash' | 'repair';
+  type MenuKey = 'gas' | 'carwash' | 'repair' | 'rental';
   const [openMenu, setOpenMenu] = useState<null | MenuKey>(null);
   const barRef = useRef<HTMLDivElement>(null);
 
@@ -54,7 +69,7 @@ export function FilterBar() {
     if (layer !== value) {
       setLayer(value);
       // 하위 선택지가 있는 레이어는 전환과 동시에 열어 준다(주유소=유종, 세차장=유형).
-      setOpenMenu(value === 'gas' || value === 'carwash' || value === 'repair' ? value : null);
+      setOpenMenu(HAS_MENU.has(value) ? (value as MenuKey) : null);
       return;
     }
     if (value === 'ev') return; // EV는 하위 선택지 없음
@@ -99,7 +114,7 @@ export function FilterBar() {
           const active = layer === value;
           const label = t(labelKey);
           // 하위 선택지가 있는 레이어(주유소/세차장)만 ▾ 를 달고 메뉴를 연다.
-          const hasMenu = value === 'gas' || value === 'carwash' || value === 'repair';
+          const hasMenu = HAS_MENU.has(value);
           // 활성 상태에선 현재 하위 선택을 노출한다(드롭다운을 열어보지 않아도 보이게).
           // 주유소는 '주유소 · 휘발유' 대신 유종만 노출한다 — 연료 아이콘 + 활성색이 이미
           // 주유소 레이어임을 말해 주므로 레이어명은 중복이고, 폭도 그만큼 줄어든다.
@@ -108,7 +123,9 @@ export function FilterBar() {
               ? tCarwashFilter(CARWASH_TYPE_OPTIONS.find((o) => o.value === carwashType)!.labelKey)
               : active && value === 'repair' && repairBrand !== 'all'
                 ? tRepairBrand(repairBrand)
-                : null;
+                : active && value === 'rental' && rentalFilter !== 'all'
+                  ? tRentalFilter(rentalFilter)
+                  : null;
           const text = active && value === 'gas' ? productLabel(product) : label;
           return (
             <button
@@ -248,6 +265,43 @@ export function FilterBar() {
                 )}
               >
                 {tRepairBrand(value)}
+                {active && (
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.4}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 렌터카 필터 드롭다운 — 전체 / 전기차 보유. 항목이 둘뿐이라 폭을 좁게 잡는다. */}
+      {openMenu === 'rental' && (
+        <div
+          role="menu"
+          aria-label={t('rentalMenuAria')}
+          className="absolute right-3 top-[46px] z-50 w-36 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+        >
+          {RENTAL_FILTER_OPTIONS.map((opt) => {
+            const active = rentalFilter === opt.value;
+            return (
+              <button
+                key={opt.value}
+                role="menuitemradio"
+                aria-checked={active}
+                onClick={() => {
+                  setRentalFilter(opt.value);
+                  setOpenMenu(null);
+                }}
+                className={clsx(
+                  'flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs font-semibold transition',
+                  active
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
+                )}
+              >
+                {tRentalFilter(opt.labelKey)}
                 {active && (
                   <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.4}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />

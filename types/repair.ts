@@ -7,12 +7,14 @@
  *  small     = 소형자동차정비업(2급)   — 소형차 중심
  *  specialty = 자동차전문정비업(3급)   — 이른바 '카센터'. 실데이터의 약 79%
  *  engine    = 원동기전문정비업
+ *  inspection= 자동차검사소 — 정비업체 표준데이터가 아니라 **검사소 표준데이터**에서 온다
+ *              (0050). 지도에서는 정비소 레이어에 합쳐 보여주므로 유형에 함께 둔다.
  *  unknown   = 코드 미상/기타
  *
  * ⚠️ 원천 코드에 zero-padding 이 섞여 있다(지자체마다 '1' 과 '01' 을 혼용).
  *    정규화 시 반드시 앞 0을 제거하고 비교한다 — 안 하면 조용히 unknown 으로 떨어진다.
  */
-export type RepairShopType = 'general' | 'small' | 'specialty' | 'engine' | 'unknown';
+export type RepairShopType = 'general' | 'small' | 'specialty' | 'engine' | 'inspection' | 'unknown';
 
 /** 유형 필터 값. 'all'=전체(기본). */
 export type RepairTypeFilter = 'all' | RepairShopType;
@@ -27,6 +29,9 @@ export const REPAIR_TYPE_COLOR: Record<RepairShopType, string> = {
   small: '#C2410C',
   specialty: '#92400E',
   engine: '#78350F',
+  // 검사소는 갈색 계열에서 빼 초록으로 둔다 — 정비(수리)와 검사는 목적이 달라
+  // 지도에서 한눈에 갈라져야 한다. 브랜드 색(REPAIR_BRAND_COLOR.inspection)과 같은 값이다.
+  inspection: '#15803D',
   unknown: '#9CA3AF',
 };
 
@@ -46,7 +51,7 @@ export type RepairBrand =
   | 'carpos'     // 카포스
   | 'gongim'     // 공임나라
   | 'tire'       // 타이어 전문(체인 + 동네 타이어점)
-  | 'inspection' // 자동차검사(지정정비사업자)
+  | 'inspection' // 자동차검사소 — 업체명 추론이 아니라 검사소 표준데이터에서 온다(0050)
   | 'imported';  // 수입차(개별 건수가 적어 묶음)
 
 

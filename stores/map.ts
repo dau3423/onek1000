@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { ProductCode, BrandCode, RoutePlan } from '@/types/station';
 import type { CarwashTypeFilter } from '@/types/carwash';
 import type { RepairBrandFilter } from '@/types/repair';
+import type { RentalFilter } from '@/types/rental';
 
 /** 마지막으로 보던 지도 시점(중심 좌표 + 카카오 level). 상세보기 왕복 시 복원에 사용. */
 export interface MapView {
@@ -106,8 +107,9 @@ function writeRoutePlan(v: RoutePlan | null) {
   }
 }
 
-/** 지도 레이어 — 'gas'=주유소(기존 기본), 'ev'=전기차 충전소, 'carwash'=독립 세차장, 'repair'=자동차 정비소. */
-export type MapLayer = 'gas' | 'ev' | 'carwash' | 'repair';
+/** 지도 레이어 — 'gas'=주유소(기존 기본), 'ev'=전기차 충전소, 'carwash'=독립 세차장,
+ *  'repair'=자동차 정비소(검사소 포함), 'rental'=렌터카. */
+export type MapLayer = 'gas' | 'ev' | 'carwash' | 'repair' | 'rental';
 
 interface MapState {
   /** 현재 지도 레이어(주유소/충전소 토글). */
@@ -149,6 +151,14 @@ interface MapState {
   /** 정비소 레이어(layer==='repair') 브랜드 필터. 'all'=전체(기본), 'none'=무소속만. */
   repairBrand: RepairBrandFilter;
   setRepairBrand: (b: RepairBrandFilter) => void;
+
+  /**
+   * 렌터카 레이어(layer==='rental') 필터. 'all'=전체(기본), 'ev'=전기차 보유 업체만.
+   * 요금대 필터는 두지 않는다 — 원천에 요금이 비어 있는 업체가 흔해서, 요금으로 거르면
+   * '요금 미기재'라는 이유만으로 멀쩡한 업체가 지도에서 사라진다.
+   */
+  rentalFilter: RentalFilter;
+  setRentalFilter: (f: RentalFilter) => void;
 
   selectedStationId: string | null;
   selectStation: (id: string | null) => void;
@@ -198,6 +208,9 @@ export const useMapStore = create<MapState>((set) => ({
 
   repairBrand: 'all',
   setRepairBrand: (b) => set({ repairBrand: b }),
+
+  rentalFilter: 'all',
+  setRentalFilter: (f) => set({ rentalFilter: f }),
 
   selectedStationId: null,
   selectStation: (id) => set({ selectedStationId: id }),
