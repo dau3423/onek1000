@@ -86,7 +86,12 @@ const BRAND_RULES = [
   { brand: 'carpos', keywords: ['카포스'] },
   { brand: 'gongim', keywords: ['공임나라'] },
   { brand: 'tire', keywords: ['타이어', 'tire', '티스테이션', 'tstation', '넥센', '미쉐린', 'michelin', '브리지스톤', 'bridgestone', '던롭', 'dunlop', '피렐리', 'pirelli'] },
-  { brand: 'inspection', keywords: ['검사소', '자동차검사', '종합검사', '검사정비'] },
+  // ── 자동차검사소 규칙은 **의도적으로 없다** ──
+  // 예전에는 업체명에 '검사'가 들어갔는지로 판별했는데, 실측 3.4만 곳 중 121곳만 잡혔다.
+  // '○○모터스' 같은 지정정비사업자는 간판에 '검사'가 없어 이름만으로는 판별이 불가능하다.
+  // 지금은 검사소 표준데이터(inspection.js → inspection_stations)를 직접 적재하고
+  // 지도 RPC 가 brand='inspection' 으로 합쳐 내보낸다.
+  // 여기서 다시 추론하면 **같은 업체가 두 번 그려진다** — 웹앱의 lib/repair/brand.ts 와 짝을 이룬다.
 ];
 function detectBrand(name) {
   if (!name) return null;
