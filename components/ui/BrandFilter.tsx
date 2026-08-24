@@ -59,7 +59,8 @@ export function BrandFilter() {
         aria-expanded={open}
         title={t('title')}
         className={clsx(
-          'flex h-7 shrink-0 items-center gap-1 rounded-full border px-2.5 text-xs font-semibold transition',
+          // 높이는 필터바 레이어 버튼(h-9)과 맞춘다 — 나란히 놓이는데 h-7 이면 눈에 띄게 어긋난다.
+          'flex h-9 shrink-0 items-center gap-1 rounded-full border px-2.5 text-xs font-semibold transition',
           // 브랜드 선택 또는 세차 가능 중 하나라도 켜져 있으면 활성 표시(접힌 상태에서도 필터가 걸린 걸 알 수 있게).
           count > 0 || carwashOnly
             ? 'border-primary bg-primary text-white'

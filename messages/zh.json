@@ -122,7 +122,9 @@
       "layerRepair": "维修厂",
       "repairMenuAria": "选择维修厂品牌",
       "layerRental": "租车",
-      "rentalMenuAria": "租车筛选"
+      "rentalMenuAria": "租车筛选",
+      "moreLayersAria": "查看其他地图图层",
+      "newLayerBadge": "新图层"
     },
     "carwashFilter": {
       "all": "全部",

@@ -113,7 +113,7 @@
     },
     "filterBar": {
       "layerGroupAria": "地図レイヤー",
-      "layerGas": "ガソリンスタンド",
+      "layerGas": "給油所",
       "layerEv": "EV",
       "layerCarwash": "洗車場",
       "layerAria": "{label}マップ",
@@ -122,7 +122,9 @@
       "layerRepair": "整備工場",
       "repairMenuAria": "整備工場ブランドを選択",
       "layerRental": "レンタカー",
-      "rentalMenuAria": "レンタカーの絞り込み"
+      "rentalMenuAria": "レンタカーの絞り込み",
+      "moreLayersAria": "他の地図レイヤーを表示",
+      "newLayerBadge": "新しいレイヤー"
     },
     "carwashFilter": {
       "all": "すべて",

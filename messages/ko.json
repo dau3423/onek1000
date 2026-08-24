@@ -122,7 +122,9 @@
       "layerRepair": "정비소",
       "repairMenuAria": "정비소 브랜드 선택",
       "layerRental": "렌터카",
-      "rentalMenuAria": "렌터카 필터"
+      "rentalMenuAria": "렌터카 필터",
+      "moreLayersAria": "다른 지도 레이어 보기",
+      "newLayerBadge": "새 레이어"
     },
     "carwashFilter": {
       "all": "전체",

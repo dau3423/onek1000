@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type ComponentType } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react';
 import { useTranslations } from 'next-intl';
 import { useMapStore, type MapLayer } from '@/stores/map';
 import { type ProductCode } from '@/types/station';
@@ -10,6 +10,7 @@ import { BrandFilter } from './BrandFilter';
 import { BoltIcon, CarwashIcon, WrenchIcon, FuelIcon, CarIcon } from '@/components/icons';
 import { REPAIR_BRAND_ORDER } from '@/types/repair';
 import type { RentalFilter } from '@/types/rental';
+import { track } from '@/lib/analytics';
 import clsx from 'clsx';
 
 // 주유소 드롭다운에 나열할 유종. 기존엔 '휘발유▾' 드롭다운(일반/고급)과 경유·LPG 칩이 따로
@@ -37,6 +38,74 @@ const RENTAL_FILTER_OPTIONS: { value: RentalFilter; labelKey: 'all' | 'ev' }[] =
  *  레이어를 추가할 때 한 군데만 고쳐 놓고 나머지를 빠뜨리는 사고를 막는다. */
 const HAS_MENU = new Set<MapLayer>(['gas', 'carwash', 'repair', 'rental']);
 
+/**
+ * 슬롯별 표시 브레이크포인트 — 좁은 화면에서 뒤쪽 슬롯을 감추고 '+N' 으로 넘긴다.
+ *
+ * 폭을 **측정하지 않고 CSS 로 결정**한다. ResizeObserver 로 재면 SSR 첫 페인트에서 깜빡이고
+ * 테스트도 어렵다. JS 는 "어떤 레이어가 몇 번 슬롯인가"만 정하고(활성 기준), 실제 노출은
+ * 여기 박힌 클래스가 화면 폭으로 판단한다.
+ *
+ * 실측 근거(2026-08-24, 프로덕션): 레이어 5개 내용폭 406px 인데 가시폭은 390px 기기에서 307px,
+ * 430px 기기에서도 347px 이라 **어떤 폰에서도 5개가 다 들어가지 않는다**. 여백·폰트를 줄여도
+ * 334px 로 여전히 넘친다 — 그래서 '조금 줄이기'가 아니라 오버플로 구조로 바꿨다.
+ */
+const SLOT_VISIBILITY = [
+  'flex',                        // 0 — 항상
+  'flex',                        // 1 — 항상(활성은 반드시 0 또는 1 에 온다)
+  'hidden min-[390px]:flex',     // 2
+  'hidden min-[460px]:flex',     // 3
+  'hidden min-[560px]:flex',     // 4
+];
+
+/**
+ * 표시 순서를 정한다 — **활성 레이어는 반드시 앞 두 슬롯 안에** 들어온다.
+ *
+ * 최소 노출 슬롯이 2개(320px)이므로, 활성이 3번째 이후로 밀리면 좁은 화면에서 "선택했는데
+ * 화면에서 사라지는" 상태가 된다. 그래서 활성과 '활성 아닌 것 중 우선순위 1위' 를 먼저 두고,
+ * 그 둘은 원래 순서대로 정렬한다(순서가 뒤집히면 위치 기억이 깨진다).
+ * 나머지는 원래 우선순위 그대로 뒤에 붙는다.
+ */
+function orderLayers(active: MapLayer): typeof LAYER_OPTIONS {
+  const activeItem = LAYER_OPTIONS.find((o) => o.value === active);
+  if (!activeItem) return LAYER_OPTIONS;
+  const rest = LAYER_OPTIONS.filter((o) => o.value !== active);
+  const companion = rest[0];
+  const head = [activeItem, companion]
+    .filter(Boolean)
+    .sort((a, b) => LAYER_OPTIONS.indexOf(a) - LAYER_OPTIONS.indexOf(b));
+  return [...head, ...rest.filter((o) => o !== companion)];
+}
+
+/** 본 적 있는 레이어 집합(localStorage) — '+N' 에 NEW 점을 띄울지 판정한다. */
+const SEEN_LAYERS_KEY = 'onek_seen_layers';
+
+function readSeenLayers(): Set<string> {
+  try {
+    const raw = localStorage.getItem(SEEN_LAYERS_KEY);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();   // localStorage 불가 환경 — NEW 점만 안 뜨고 나머지는 정상 동작
+  }
+}
+
+function writeSeenLayers(s: Set<string>): void {
+  try {
+    localStorage.setItem(SEEN_LAYERS_KEY, JSON.stringify([...s]));
+  } catch {
+    /* 저장 실패는 무시 */
+  }
+}
+
+/** 메뉴 폭(px) — 트리거 아래 정렬 시 오른쪽 클램프 계산에 쓴다. 아래 각 메뉴의 w-* 와 맞춘다. */
+const MENU_WIDTH: Record<MapLayer | 'more', number> = {
+  gas: 144,       // w-36
+  carwash: 128,   // w-32
+  repair: 160,    // w-40
+  rental: 144,    // w-36
+  ev: 0,          // 메뉴 없음
+  more: 208,      // w-52
+};
+
 // 세차장 레이어 유형(FR-3). 'all'=미확인 포함 전체(기본).
 const CARWASH_TYPE_OPTIONS: { value: CarwashTypeFilter; labelKey: 'all' | 'self' | 'hand' | 'auto' }[] = [
   { value: 'all', labelKey: 'all' },
@@ -55,24 +124,69 @@ export function FilterBar() {
   const { product, setProduct, layer, setLayer, carwashType, setCarwashType, repairBrand, setRepairBrand, rentalFilter, setRentalFilter } = useMapStore();
   // 열려 있는 드롭다운('gas'=유종 | 'carwash'=세차장 유형 | null)
   /** 하위 선택지를 가진 레이어만 메뉴를 연다(EV 는 없음). */
-  type MenuKey = 'gas' | 'carwash' | 'repair' | 'rental';
+  type MenuKey = 'gas' | 'carwash' | 'repair' | 'rental' | 'more';
   const [openMenu, setOpenMenu] = useState<null | MenuKey>(null);
   const barRef = useRef<HTMLDivElement>(null);
+  /** 열린 메뉴를 트리거 버튼 아래에 맞추기 위한 x 좌표(px, 필터바 기준). */
+  const [menuLeft, setMenuLeft] = useState(12);
 
   const isGas = layer === 'gas';
   const isCarwash = layer === 'carwash';
   const isRepair = layer === 'repair';
 
+  // 표시 순서 — 활성이 항상 앞 두 슬롯에 오도록 재배치한다(위 orderLayers 주석 참고).
+  const ordered = orderLayers(layer);
+
+  // 아직 열어보지 않은 레이어가 있으면 '+N' 에 NEW 점을 띄운다.
+  // 마운트 후에만 읽는다 — localStorage 는 서버에 없어서 SSR 결과와 어긋나면 hydration 이 깨진다.
+  const [hasUnseen, setHasUnseen] = useState(false);
+  useEffect(() => {
+    const seen = readSeenLayers();
+    setHasUnseen(LAYER_OPTIONS.some((o) => !seen.has(o.value)));
+  }, []);
+
+  /** '+N' 메뉴를 열면 전체 레이어를 본 것으로 기록한다(그 메뉴가 전부를 나열하므로). */
+  const markAllSeen = () => {
+    writeSeenLayers(new Set(LAYER_OPTIONS.map((o) => o.value)));
+    setHasUnseen(false);
+  };
+
+  /** 트리거 버튼 기준으로 메뉴 x 좌표를 잡는다. 메뉴는 그룹 밖에 있어 스스로 정렬하지 못한다. */
+  const anchorMenu = (el: HTMLElement | null, menuWidth: number) => {
+    const bar = barRef.current;
+    if (!el || !bar) return;
+    const left = el.getBoundingClientRect().left - bar.getBoundingClientRect().left;
+    // 오른쪽으로 넘치지 않게 클램프. 좌우 12px 는 필터바의 px-3 여백과 맞춘다.
+    setMenuLeft(Math.max(12, Math.min(left, bar.clientWidth - menuWidth - 12)));
+  };
+
+  // 레이어가 바뀌면 슬롯이 재배치되므로(orderLayers) 열린 메뉴의 앵커를 **렌더 후** 다시 잡는다.
+  // useLayoutEffect 인 이유: 페인트 전에 위치를 확정해야 메뉴가 옛 자리에 한 프레임 그려졌다가
+  // 튀는 것을 막는다. '+N' 메뉴는 자기 버튼이 안 움직이므로 제외한다.
+  useLayoutEffect(() => {
+    if (!openMenu || openMenu === 'more') return;
+    const bar = barRef.current;
+    if (!bar) return;
+    const btn = bar.querySelector<HTMLElement>('[role="group"] [aria-pressed="true"]');
+    if (btn) anchorMenu(btn, MENU_WIDTH[layer]);
+    // anchorMenu 는 렌더마다 새로 만들어지지만 barRef 만 읽어 안정적이다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layer, openMenu]);
+
   // 레이어 버튼 클릭 — 다른 레이어면 전환, 이미 그 레이어면 드롭다운 토글.
   // '주유소' 복귀 시 유종은 유지한다(setProduct 호출 안 함 — B027로 강제 되돌리지 않는다).
-  const onLayerClick = (value: MapLayer) => {
+  const onLayerClick = (value: MapLayer, el?: HTMLElement | null) => {
     if (layer !== value) {
       setLayer(value);
       // 하위 선택지가 있는 레이어는 전환과 동시에 열어 준다(주유소=유종, 세차장=유형).
+      // 앵커는 여기서 잡지 않는다 — 전환되면 슬롯이 재배치돼(orderLayers) 이 버튼이 다른
+      // 자리로 옮겨가므로 지금 좌표는 곧 틀린 값이 된다(실측: 세차장에서 55px 어긋났다).
+      // 렌더가 끝난 뒤 아래 useLayoutEffect 가 활성 버튼 기준으로 다시 잡는다.
       setOpenMenu(HAS_MENU.has(value) ? (value as MenuKey) : null);
       return;
     }
     if (value === 'ev') return; // EV는 하위 선택지 없음
+    anchorMenu(el ?? null, MENU_WIDTH[value]);
     setOpenMenu((v) => (v === value ? null : (value as MenuKey)));
   };
 
@@ -96,7 +210,7 @@ export function FilterBar() {
   return (
     <div
       ref={barRef}
-      className="relative flex items-center gap-1.5 border-b border-gray-100 bg-white px-3 py-1.5 dark:border-gray-800 dark:bg-gray-900"
+      className="relative flex items-center gap-1.5 border-b border-gray-100 bg-white px-3 py-2 dark:border-gray-800 dark:bg-gray-900"
     >
       {/* 레이어 전환 세그먼트 — 내용폭(flex-1 없음)이라 넓은 화면에서 늘어나지 않는다. */}
       {/* radio 롤은 쓰지 않는다 — 주유소/세차장 버튼이 메뉴 트리거를 겸해(aria-haspopup)
@@ -104,20 +218,22 @@ export function FilterBar() {
       <div
         role="group"
         aria-label={t('layerGroupAria')}
-        // 레이어가 4개가 되면서 360·375px 에서 폭이 모자란다. shrink-0 을 유지하면 오른쪽
-        // '브랜드' 버튼이 화면 밖으로 밀려나 **누를 수 없게** 된다(가로 스크롤이 없어서).
-        // 그래서 이 그룹만 줄어들 수 있게 하고 내부를 가로 스크롤시킨다 — 라벨은 그대로 두고
-        // 브랜드는 항상 화면에 남는다. 드롭다운 메뉴는 이 그룹 밖(필터바 직속)이라 잘리지 않는다.
-        className="scrollbar-none relative z-20 flex min-w-0 items-center gap-0.5 overflow-x-auto rounded-full bg-gray-100 p-0.5 dark:bg-gray-800"
+        // 레이어가 5개가 되면서 **어떤 폰 폭에서도** 전부 들어가지 않는다(실측: 내용 406px vs
+        // 430px 기기 가시폭 347px). 예전에는 가로 스크롤로 넘겼는데, 세그먼트 트랙은
+        // "여기 있는 게 전부"라고 약속하는 컴포넌트라 오른쪽 모서리가 화면 밖에 있으면
+        // 잘림 단서가 없어 **렌더링 버그로 읽힌다**(실제 사용자 지적). 게다가 활성 항목이
+        // 잘리는 경우까지 생겼다.
+        // → 지금은 뒤쪽 슬롯을 감추고 '+N' 으로 넘긴다(SLOT_VISIBILITY). overflow-x-auto 는
+        //   안전망으로만 남긴다 — 평상시엔 발동하지 않는다.
+        className="scrollbar-none relative z-20 flex min-w-0 shrink items-center gap-0.5 overflow-x-auto rounded-full bg-gray-100 p-0.5 dark:bg-gray-800"
       >
-        {LAYER_OPTIONS.map(({ value, labelKey, Icon }) => {
+        {ordered.map(({ value, labelKey, Icon }, slot) => {
           const active = layer === value;
           const label = t(labelKey);
-          // 하위 선택지가 있는 레이어(주유소/세차장)만 ▾ 를 달고 메뉴를 연다.
           const hasMenu = HAS_MENU.has(value);
           // 활성 상태에선 현재 하위 선택을 노출한다(드롭다운을 열어보지 않아도 보이게).
-          // 주유소는 '주유소 · 휘발유' 대신 유종만 노출한다 — 연료 아이콘 + 활성색이 이미
-          // 주유소 레이어임을 말해 주므로 레이어명은 중복이고, 폭도 그만큼 줄어든다.
+          // 레이어명 대신 **하위값만** 쓴다 — 아이콘 + 활성색이 이미 어떤 레이어인지 말하므로
+          // '정비소 · 블루핸즈'(142px)는 중복이고, '블루핸즈'(91px)면 충분하다.
           const sub =
             active && value === 'carwash' && carwashType !== 'all'
               ? tCarwashFilter(CARWASH_TYPE_OPTIONS.find((o) => o.value === carwashType)!.labelKey)
@@ -125,30 +241,34 @@ export function FilterBar() {
                 ? tRepairBrand(repairBrand)
                 : active && value === 'rental' && rentalFilter !== 'all'
                   ? tRentalFilter(rentalFilter)
-                  : null;
-          const text = active && value === 'gas' ? productLabel(product) : label;
+                  : active && value === 'gas'
+                    ? productLabel(product)
+                    : null;
           return (
             <button
               key={value}
               aria-pressed={active}
               aria-haspopup={hasMenu ? 'menu' : undefined}
               aria-expanded={hasMenu ? openMenu === value : undefined}
-              // 화면에서 '주유소'를 뺀 만큼 스크린리더에는 레이어명을 유지한다(예: "주유소 지도, 휘발유").
-              aria-label={`${t('layerAria', { label })}${active && value === 'gas' ? `, ${productLabel(product)}` : ''}`}
-              onClick={() => onLayerClick(value)}
+              // 화면에서 레이어명을 뺀 만큼 스크린리더에는 유지한다(예: "정비소 지도, 블루핸즈").
+              aria-label={`${t('layerAria', { label })}${sub ? `, ${sub}` : ''}`}
+              onClick={(e) => onLayerClick(value, e.currentTarget)}
               className={clsx(
-                'flex h-8 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-semibold transition',
+                // h-9 + 바의 py-2 로 실효 히트 영역 44px 를 확보한다(기존 h-8/py-1.5 보다 큼).
+                'h-9 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-semibold transition',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                'focus-visible:ring-offset-1 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-offset-gray-800',
+                SLOT_VISIBILITY[slot] ?? 'hidden',
                 active
                   ? 'bg-primary text-white shadow-sm'
                   : 'text-gray-600 hover:bg-gray-200/70 dark:text-gray-300 dark:hover:bg-gray-700',
               )}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" />
-              {/* 레이어 라벨은 폭에 관계없이 항상 노출한다 — 390px 실측에서 3개 다 켜도
-                  우측 '브랜드'가 잘리지 않는다(넘치는 건 '세차 가능' 쪽 스크롤 컨테이너가 흡수). */}
-              <span>{text}</span>
-              {sub && <span className="font-medium opacity-80">· {sub}</span>}
-              {hasMenu && (
+              <span>{sub ?? label}</span>
+              {/* ▾ 는 **활성 버튼에만** 단다. 비활성에 붙이면 "메뉴가 열린다"고 말하지만 실제
+                  첫 탭은 레이어 전환이라 거짓 신호이고, 버튼당 14px 씩 폭만 먹는다. */}
+              {hasMenu && active && (
                 <svg viewBox="0 0 24 24" className="h-3 w-3 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.4}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
                 </svg>
@@ -157,18 +277,56 @@ export function FilterBar() {
           );
         })}
 
+        {/* 넘친 레이어 개수를 **숫자로 명시**한다. 잘린 픽셀은 아무것도 약속하지 않지만
+            '+2' 는 "2개 더 있다"를 학습 없이 읽히게 한다 — 새 레이어 발견성의 핵심.
+            560px 이상에서는 5개가 다 보이므로 이 버튼 자체를 숨긴다. */}
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={openMenu === 'more'}
+          aria-label={t('moreLayersAria')}
+          onClick={(e) => {
+            anchorMenu(e.currentTarget, MENU_WIDTH.more);
+            setOpenMenu((v) => (v === 'more' ? null : 'more'));
+            markAllSeen();
+            track('layer_more_open');
+          }}
+          className={clsx(
+            'flex h-9 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-bold tabular-nums transition',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+            'focus-visible:ring-offset-1 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-offset-gray-800',
+            'text-gray-600 hover:bg-gray-200/70 dark:text-gray-300 dark:hover:bg-gray-700',
+            'min-[560px]:hidden',
+          )}
+        >
+          {/* 숨겨진 개수는 화면 폭마다 다르다. aria-label 에는 숫자를 넣지 않아
+              반응형 불일치(스크린리더가 틀린 수를 읽는 것)를 원천 차단한다. */}
+          <span aria-hidden className="min-[390px]:hidden">+3</span>
+          <span aria-hidden className="hidden min-[390px]:inline min-[460px]:hidden">+2</span>
+          <span aria-hidden className="hidden min-[460px]:inline">+1</span>
+          {hasUnseen && (
+            <>
+              {/* 색만으로 의미를 전달하지 않는다 — sr-only 텍스트를 반드시 병기한다. */}
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500 dark:bg-rose-400" aria-hidden />
+              <span className="sr-only">{t('newLayerBadge')}</span>
+            </>
+          )}
+        </button>
       </div>
 
-      {/* 드롭다운 메뉴는 레이어 그룹 "밖"에 둔다 — 그룹에 overflow-x-auto(가로 스크롤)가
-          걸려 있어서, 안에 두면 absolute 메뉴가 그 스크롤 컨테이너에 잘려 아예 안 보인다
+      {/* 드롭다운 메뉴는 레이어 그룹 "밖"에 둔다 — 그룹에 overflow-x-auto 가 걸려 있어서,
+          안에 두면 absolute 메뉴가 그 스크롤 컨테이너에 잘려 아예 안 보인다
           (overflow-x:auto 는 overflow-y 도 auto 로 계산되므로 아래로 펼쳐지는 메뉴가 잘린다).
-          위치 기준은 필터바(relative)다. */}
+          대신 그룹 밖이라 스스로 트리거를 따라가지 못하므로, 클릭 시 잰 x 좌표(menuLeft)를
+          넘겨 버튼 아래에 맞춘다 — 예전에는 left-3/right-3 고정이라 가운데 있는 세차장을 눌러도
+          메뉴가 화면 오른쪽 끝에서 열렸다. 위치 기준은 필터바(relative)다. */}
       {/* 유종 드롭다운 — 주유소 버튼 아래. 휘발유/경유/고급휘발유/LPG 한 단계로 노출. */}
       {openMenu === 'gas' && (
         <div
           role="menu"
           aria-label={t('fuelMenuAria')}
-          className="absolute left-3 top-[46px] z-50 w-36 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+          style={{ left: menuLeft }}
+          className="absolute top-[50px] z-50 w-36 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
         >
           {FUEL_OPTIONS.map((p) => {
             const active = isGas && product === p;
@@ -205,7 +363,8 @@ export function FilterBar() {
         <div
           role="menu"
           aria-label={t('carwashMenuAria')}
-          className="absolute right-3 top-[46px] z-50 w-32 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+          style={{ left: menuLeft }}
+          className="absolute top-[50px] z-50 w-32 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
         >
           {CARWASH_TYPE_OPTIONS.map((opt) => {
             const active = carwashType === opt.value;
@@ -243,7 +402,8 @@ export function FilterBar() {
         <div
           role="menu"
           aria-label={t('repairMenuAria')}
-          className="scrollbar-none absolute right-3 top-[46px] z-50 max-h-[60vh] w-40 overflow-y-auto rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+          style={{ left: menuLeft }}
+          className="scrollbar-none absolute top-[50px] z-50 max-h-[60vh] w-40 overflow-y-auto rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
         >
           {REPAIR_BRAND_ORDER.map(({ value, emphasis }) => {
             const active = repairBrand === value;
@@ -281,7 +441,8 @@ export function FilterBar() {
         <div
           role="menu"
           aria-label={t('rentalMenuAria')}
-          className="absolute right-3 top-[46px] z-50 w-36 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+          style={{ left: menuLeft }}
+          className="absolute top-[50px] z-50 w-36 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
         >
           {RENTAL_FILTER_OPTIONS.map((opt) => {
             const active = rentalFilter === opt.value;
@@ -304,6 +465,68 @@ export function FilterBar() {
                 {tRentalFilter(opt.labelKey)}
                 {active && (
                   <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.4}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* '+N' 메뉴 — **숨겨진 것만이 아니라 전체 레이어**를 나열한다.
+          그래야 이 메뉴가 "앱이 제공하는 지도 전체 목록"이 되고, 한 번 열어본 사용자는
+          렌터카를 포함한 전부를 알게 된다(새 레이어 발견성이 이 화면의 목적).
+          목록은 LAYER_OPTIONS 를 그대로 순회한다 — 레이어를 추가할 때 여기를 따로 고칠 일이 없다. */}
+      {openMenu === 'more' && (
+        <div
+          role="menu"
+          aria-label={t('moreLayersAria')}
+          style={{ left: menuLeft }}
+          className="absolute top-[50px] z-50 w-52 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+        >
+          {LAYER_OPTIONS.map(({ value, labelKey, Icon }) => {
+            const active = layer === value;
+            // 현재 하위 선택을 보조 텍스트로 함께 보여준다 — 어떤 상태인지 열어보지 않아도 알 수 있다.
+            const sub =
+              value === 'gas'
+                ? productLabel(product)
+                : value === 'carwash' && carwashType !== 'all'
+                  ? tCarwashFilter(CARWASH_TYPE_OPTIONS.find((o) => o.value === carwashType)!.labelKey)
+                  : value === 'repair' && repairBrand !== 'all'
+                    ? tRepairBrand(repairBrand)
+                    : value === 'rental' && rentalFilter !== 'all'
+                      ? tRentalFilter(rentalFilter)
+                      : null;
+            return (
+              <button
+                key={value}
+                role="menuitemradio"
+                aria-checked={active}
+                onClick={() => {
+                  // 기존 onLayerClick 과 같은 흐름을 타되, 메뉴 위치는 '+N' 기준을 유지한다.
+                  if (layer !== value) {
+                    setLayer(value);
+                    track('layer_select_from_more', { layer: value });
+                    setOpenMenu(HAS_MENU.has(value) ? (value as MenuKey) : null);
+                  } else {
+                    setOpenMenu(null);
+                  }
+                }}
+                className={clsx(
+                  'flex w-full items-center gap-2 rounded-lg px-2.5 py-2.5 text-left text-xs font-semibold transition',
+                  active
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="min-w-0 flex-1 truncate">{t(labelKey)}</span>
+                {sub && (
+                  <span className="shrink-0 text-[11px] font-medium text-gray-400 dark:text-gray-500">{sub}</span>
+                )}
+                {active && (
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.4}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />
                   </svg>
                 )}

@@ -113,16 +113,18 @@
     },
     "filterBar": {
       "layerGroupAria": "Map layer",
-      "layerGas": "Gas Stations",
+      "layerGas": "Gas",
       "layerEv": "EV",
-      "layerCarwash": "Car wash",
+      "layerCarwash": "Wash",
       "layerAria": "{label} map",
       "fuelMenuAria": "Fuel type",
       "carwashMenuAria": "Car wash type",
       "layerRepair": "Repair",
       "repairMenuAria": "Choose repair shop brand",
       "layerRental": "Rental",
-      "rentalMenuAria": "Rental car filter"
+      "rentalMenuAria": "Rental car filter",
+      "moreLayersAria": "Show other map layers",
+      "newLayerBadge": "New layer"
     },
     "carwashFilter": {
       "all": "All",
