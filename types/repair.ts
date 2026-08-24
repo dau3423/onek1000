@@ -148,6 +148,12 @@ export interface RepairMarker {
   /** 운영 시작/종료 시각 — 채움률 약 38%. */
   openTime?: string | null;
   closeTime?: string | null;
+  /**
+   * 쪼갤 수 없는 운영시간 원문. 검사소(0050)가 이 형태다 —
+   * '평일 09:00~18:00 · 토요일 09:00~13:00' 처럼 구간이 둘 이상이라 두 칸에 담기지 않는다.
+   * 이 값이 있으면 openTime/closeTime 대신 이걸 그대로 보여준다.
+   */
+  hoursText?: string | null;
   lat: number;
   lng: number;
   /** 데이터기준일자(YYYY-MM-DD, 있을 때만) — 노후 행 참고용. */
@@ -163,8 +169,23 @@ export interface RepairBboxResponse {
   ttlSec: number;
 }
 
+/**
+ * 검사소가 수행 가능한 검사 종류.
+ * 정기검사는 실측 821곳 중 99.9% 가 가능해 변별력이 없으므로 목록에 넣지 않는다.
+ * 나머지는 실제로 갈린다 — 튜닝 21%, 신규 32%, 수리 29%, 배출가스 73%, 택시미터 71%.
+ */
+export type InspectionCapability = 'new' | 'tuning' | 'temporary' | 'repair' | 'emission' | 'taximeter';
+
+export const INSPECTION_CAPABILITIES: readonly InspectionCapability[] = [
+  'tuning', 'new', 'temporary', 'repair', 'emission', 'taximeter',
+] as const;
+
 /** 정비소 상세(단건) — 마커 필드 + 관리기관/면적(상세에서만 노출). */
 export interface RepairDetail extends RepairMarker {
   institution?: string | null;
   area?: string | null;
+  /** 검사소일 때만 — 가능한 검사 종류(정기 제외). */
+  inspectionCaps?: InspectionCapability[];
+  /** 검사소일 때만 — 검사진로수(규모 지표). */
+  laneCount?: number | null;
 }

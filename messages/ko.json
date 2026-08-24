@@ -310,7 +310,8 @@
       "leisure": "RV",
       "imported": "수입차"
     },
-    "rentalMarkerLabel": "{carClass} {price}원"
+    "rentalMarkerLabel": "{carClass} {price}원",
+    "rentalCarCountLabel": "{count}대"
   },
   "station": {
     "self": "셀프",
@@ -1052,7 +1053,16 @@
       "inspection": "자동차검사소",
       "imported": "수입차",
       "none": "기타(무소속)"
-    }
+    },
+    "inspectionCap": {
+      "tuning": "튜닝검사",
+      "new": "신규검사",
+      "temporary": "임시검사",
+      "repair": "수리검사",
+      "emission": "배출가스정밀",
+      "taximeter": "택시미터검정"
+    },
+    "laneCount": "검사진로 {count}개"
   },
   "correction": {
     "photoLabel": "사진 첨부 (선택, 최대 {max}장)",

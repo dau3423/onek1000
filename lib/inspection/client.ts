@@ -49,7 +49,11 @@ export interface InspectionApiItem {
   phoneNumber?: string;            // 관리기관전화번호 ← 표시 금지
   institutionNm?: string;          // 관리기관명
   referenceDate?: string;          // 데이터기준일자
-  instt_code?: string;             // 제공기관코드
+  // ⚠️ 문서에는 instt_code 로 적혀 있으나 **실제 응답은 insttCode** 다(실측 확인).
+  //    정비소 API 에서도 같은 함정이 있었다. 둘 다 선언해 어느 쪽이 와도 받는다.
+  insttCode?: string;              // 제공기관코드(실측 필드명)
+  instt_code?: string;             // 문서 표기 — 폴백
+  insttNm?: string;                // 제공기관명(실측에 존재)
 }
 
 export function fetchInspectionPage(pageNo: number): Promise<StandardPage<InspectionApiItem>> {

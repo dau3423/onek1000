@@ -905,8 +905,13 @@ export function KakaoMap({
 
     const showLabel = map.getLevel() <= 6;   // 다른 레이어와 동일 기준
     for (const p of rentalPlaces ?? []) {
-      // 라벨은 대표 요금(가장 저렴한 차종) — 이 앱은 가격 비교가 정체성이라 요금이 가장 쓸모 있다.
-      // 요금이 없는 업체(원천 미기재가 흔하다)는 업체명을 쓴다. '요금 없음' 같은 빈 말은 쓰지 않는다.
+      // 라벨: 요금이 있으면 요금, 없으면 업체명.
+      //
+      // 요금 채움률은 실측 9.3%(2,147곳 전수)라 대부분 업체명이 뜬다. 채움률 100% 인
+      // 보유 대수를 대신 쓰려 했지만 **그 값을 신뢰할 수 없다**: 원천이 (사업장 × 차고지)
+      // 단위로 행을 주는데 같은 사업장의 행들이 서로 다른 보유대수를 갖는다
+      // (예: 제트카㈜ 10행 = 174/242/172…). 총계인지 차고지별 배치인지 원천 문서로 확정할 수
+      // 없어, 불확실한 숫자를 지도에 크게 띄우는 대신 정확한 업체명을 쓴다.
       const fee = primaryFee(p.fees);
       const label = fee
         ? t('rentalMarkerLabel', { price: fee.price.toLocaleString(), carClass: t(`rentalCarClass.${fee.carClass}`) })

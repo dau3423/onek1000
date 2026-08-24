@@ -107,7 +107,7 @@ export function normalizeRentalItems(
     if ((evSedan ?? 0) + (evVan ?? 0) > 0) stats.withEv++;
 
     const key = makeRentalKey(item);
-    byKey.set(key, {
+    const row = {
       place_key: key,
       name,
       biz_kind: nullify(item.bplcType),
@@ -137,7 +137,36 @@ export function normalizeRentalItems(
       data_base_date: toDate(item.referenceDate),
       synced_at: syncedAt,
       // 대표자명(rprsntvNm)은 의도적으로 적재하지 않는다 — 개인정보이고 표시 용도가 없다.
-    });
+    };
+
+    // ── 같은 사업장의 여러 차고지 행 병합 ──
+    // 원천은 (사업장 × 차고지) 단위로 행을 준다. 실측 2,147행 중 141행이 이 중복이고,
+    // 좌표는 같고 차고지 주소만 다르다(예: 제트카㈜ 10행). 지도에는 사업장 1곳이 되어야 하므로
+    // 키(이름+주소)로 합친다.
+    //
+    // 보유 대수는 **합산하지 않고 최댓값**을 쓴다. 필드명은 '자동차총보유대수'인데 행마다 값이
+    // 달라(174/242/172…) 총계인지 차고지별 배치인지 원천 문서로 확정할 수 없다. 합산은 과대
+    // 표시 위험이 있어, 총계라는 필드명을 믿고 가장 큰 값을 택한다.
+    // 요금·연락처처럼 비어 있기 쉬운 값은 먼저 채워진 값을 지키고 빈 자리만 메운다.
+    const prev = byKey.get(key);
+    if (prev) {
+      const maxOf = (a: number | null, b: number | null): number | null => (a == null ? b : b == null ? a : Math.max(a, b));
+      prev.total_cars = maxOf(prev.total_cars, row.total_cars);
+      prev.sedan_cars = maxOf(prev.sedan_cars, row.sedan_cars);
+      prev.van_cars = maxOf(prev.van_cars, row.van_cars);
+      prev.ev_sedan_cars = maxOf(prev.ev_sedan_cars, row.ev_sedan_cars);
+      prev.ev_van_cars = maxOf(prev.ev_van_cars, row.ev_van_cars);
+      for (const k of ['tel', 'homepage', 'holiday', 'biz_kind',
+                       'wd_open', 'wd_close', 'we_open', 'we_close', 'hd_open', 'hd_close',
+                       'fee_light', 'fee_small', 'fee_medium', 'fee_large',
+                       'fee_van', 'fee_leisure', 'fee_imported']) {
+        const P = prev as unknown as Record<string, unknown>;
+        const R = row as unknown as Record<string, unknown>;
+        if (P[k] == null && R[k] != null) P[k] = R[k];
+      }
+    } else {
+      byKey.set(key, row);
+    }
   }
 
   return { rows: [...byKey.values()], stats };

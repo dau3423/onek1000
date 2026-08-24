@@ -310,7 +310,8 @@
       "leisure": "RV",
       "imported": "Imported"
     },
-    "rentalMarkerLabel": "{carClass} ₩{price}"
+    "rentalMarkerLabel": "{carClass} ₩{price}",
+    "rentalCarCountLabel": "{count} cars"
   },
   "station": {
     "self": "Self-service",
@@ -1052,7 +1053,16 @@
       "inspection": "Vehicle inspection",
       "imported": "Imported brands",
       "none": "Independent"
-    }
+    },
+    "inspectionCap": {
+      "tuning": "Tuning",
+      "new": "New vehicle",
+      "temporary": "Temporary",
+      "repair": "Repair",
+      "emission": "Emissions",
+      "taximeter": "Taxi meter"
+    },
+    "laneCount": "{count} inspection lanes"
   },
   "correction": {
     "photoLabel": "Attach photos (optional, up to {max})",

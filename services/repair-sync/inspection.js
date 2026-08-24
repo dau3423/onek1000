@@ -12,19 +12,18 @@ import {
 
 const ENDPOINT = 'tn_pubr_public_car_inspofc_api';
 const MAX_PAGES = 20;
-const MIN_EXPECTED_ROWS = 300;
+/** 실측(2026-08-24 전수): 821행 → 818곳. 절반 아래면 정리 건너뜀. */
+const MIN_EXPECTED_ROWS = 400;
 
 /**
- * 운영시간 문자열 → 시작/종료 분리. 원천이 자유 형식이라 실패할 수 있다.
- * 실패하면 원문을 open 에 보존한다 — 어설프게 쪼갠 값을 단정해 보여주는 것보다 정직하다.
+ * 운영시간은 **파싱하지 않고 원문을 보존한다**.
+ * 실측(821건 전수): 40%가 '평일 09:00~18:00+토요일 09:00~13:00' 처럼 구간이 둘 이상이라
+ * 시작/종료로 쪼개면 토요일 정보가 사라진다. '+' 만 읽기 좋게 바꾼다.
  */
-function splitOperTime(raw) {
+function normalizeOperTime(raw) {
   const s = nullify(raw);
-  if (!s) return { open: null, close: null };
-  const m = s.match(/(\d{1,2}):?(\d{2})\s*[~\-–]\s*(\d{1,2}):?(\d{2})/);
-  if (!m) return { open: s, close: null };
-  const pad = (h, mm) => `${String(h).padStart(2, '0')}:${mm}`;
-  return { open: pad(m[1], m[2]), close: pad(m[3], m[4]) };
+  if (!s) return null;
+  return s.replace(/\s*\+\s*/g, ' · ');
 }
 
 /**
@@ -57,7 +56,6 @@ function normalize(items, syncedAt) {
     if (Object.values(caps).some((v) => v !== null)) stats.withCapability++;
 
     const addr = nullify(it.rdnmadr) ?? nullify(it.lnmadr);
-    const { open, close } = splitOperTime(it.operTime);
     const key = hashKey([name, addr ?? '']);
     byKey.set(key, {
       place_key: key,
@@ -66,8 +64,7 @@ function normalize(items, syncedAt) {
       road_addr: nullify(it.rdnmadr),
       jibun_addr: nullify(it.lnmadr),
       tel: nullify(it.inspofcPhoneNumber),
-      open_time: open,
-      close_time: close,
+      oper_time: normalizeOperTime(it.operTime),
       lane_count: toInt(it.inspofcCo),
       staff_count: toInt(it.inspofcHnfCo),
       ...caps,

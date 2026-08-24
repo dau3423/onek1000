@@ -19,9 +19,10 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-/** 정리를 허용하는 최소 수집 행수. 전국 렌터카 등록업체는 1,300개소 규모(2024 통계)라
- *  그보다 한참 낮게 잡아 원천 이상만 걸러낸다. */
-const MIN_EXPECTED_ROWS = 300;
+/** 정리를 허용하는 최소 수집 행수.
+ *  실측(2026-08-24 전수): 원천 2,147행 → 차고지 중복 병합 후 2,006곳.
+ *  절반 아래로 떨어지면 원천 이상으로 보고 정리를 건너뛴다. */
+const MIN_EXPECTED_ROWS = 1_000;
 
 export async function GET(req: Request) { return POST(req); }
 

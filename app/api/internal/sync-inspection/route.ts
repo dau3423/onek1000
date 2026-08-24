@@ -18,8 +18,9 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-/** 정리를 허용하는 최소 수집 행수. 전국 검사소는 천 단위 규모라 낮게 잡아 원천 이상만 거른다. */
-const MIN_EXPECTED_ROWS = 300;
+/** 정리를 허용하는 최소 수집 행수.
+ *  실측(2026-08-24 전수): 821행 → 818곳. 절반 아래면 원천 이상으로 보고 정리를 건너뛴다. */
+const MIN_EXPECTED_ROWS = 400;
 
 export async function GET(req: Request) { return POST(req); }
 

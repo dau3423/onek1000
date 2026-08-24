@@ -310,7 +310,8 @@
       "leisure": "RV",
       "imported": "輸入車"
     },
-    "rentalMarkerLabel": "{carClass} {price}ウォン"
+    "rentalMarkerLabel": "{carClass} {price}ウォン",
+    "rentalCarCountLabel": "{count}台"
   },
   "station": {
     "self": "セルフ",
@@ -1052,7 +1053,16 @@
       "inspection": "自動車検査所",
       "imported": "輸入車",
       "none": "独立整備工場"
-    }
+    },
+    "inspectionCap": {
+      "tuning": "チューニング検査",
+      "new": "新規検査",
+      "temporary": "臨時検査",
+      "repair": "修理検査",
+      "emission": "排出ガス精密",
+      "taximeter": "タクシーメーター検定"
+    },
+    "laneCount": "検査レーン {count}本"
   },
   "correction": {
     "photoLabel": "写真の添付（任意、最大{max}枚）",

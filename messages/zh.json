@@ -310,7 +310,8 @@
       "leisure": "RV",
       "imported": "进口车"
     },
-    "rentalMarkerLabel": "{carClass} {price}韩元"
+    "rentalMarkerLabel": "{carClass} {price}韩元",
+    "rentalCarCountLabel": "{count}辆"
   },
   "station": {
     "self": "自助",
@@ -1052,7 +1053,16 @@
       "inspection": "汽车检验所",
       "imported": "进口车",
       "none": "独立维修厂"
-    }
+    },
+    "inspectionCap": {
+      "tuning": "改装检测",
+      "new": "新车检测",
+      "temporary": "临时检测",
+      "repair": "维修检测",
+      "emission": "尾气精密",
+      "taximeter": "出租车计价器检定"
+    },
+    "laneCount": "检测车道 {count}条"
   },
   "correction": {
     "photoLabel": "附上照片（选填，最多 {max} 张）",

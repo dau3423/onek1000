@@ -8,7 +8,7 @@ import { RepairBrandBadge } from '@/components/repair/RepairBrandBadge';
 import { ReviewSection } from '@/components/reviews/ReviewSection';
 import type { RepairDetail } from '@/types/repair';
 import { CorrectionButton } from '@/components/corrections/CorrectionButton';
-import { PinIcon, PhoneIcon, ClockIcon, BuildingIcon } from '@/components/icons';
+import { PinIcon, PhoneIcon, ClockIcon, BuildingIcon, CheckCircleIcon } from '@/components/icons';
 
 interface Props { params: { id: string } }
 
@@ -20,6 +20,7 @@ export default async function RepairDetailPage({ params }: Props) {
   const t = await getTranslations('repair');
   const tCommon = await getTranslations('common');
   const tType = await getTranslations('repair.typeLabel');
+  const tCap = await getTranslations('repair.inspectionCap');
   // id = repair_shops PK(shop_key, 32자 hex 합성키). Next가 이미 디코딩해 넘겨준다.
   const id = (params.id ?? '').trim();
   if (!id || id.length > 200) notFound();
@@ -36,11 +37,17 @@ export default async function RepairDetailPage({ params }: Props) {
   const address = detail.roadAddr ?? detail.jibunAddr ?? null;
   const tel = detail.tel ?? null;
   // 원천 채움률이 낮다(전화 51%, 영업시간 38%) — 없는 경우가 기본이라고 보고 그린다.
-  const hours = detail.openTime
-    ? detail.closeTime
-      ? t('hoursRange', { open: detail.openTime, close: detail.closeTime })
-      : t('hoursOpenOnly', { open: detail.openTime })
-    : null;
+  // 검사소는 운영시간이 '평일 09:00~18:00 · 토요일 09:00~13:00' 같은 원문 한 덩어리다
+  // (구간이 둘 이상인 경우가 40% — 쪼개면 토요일이 사라진다). 있으면 그대로 보여준다.
+  const hours = detail.hoursText
+    ? detail.hoursText
+    : detail.openTime
+      ? detail.closeTime
+        ? t('hoursRange', { open: detail.openTime, close: detail.closeTime })
+        : t('hoursOpenOnly', { open: detail.openTime })
+      : null;
+  // 검사소일 때만 — 가능한 검사 종류(정기는 99.9%라 변별력이 없어 제외돼 온다).
+  const caps = detail.inspectionCaps ?? [];
 
   // 주유소/EV/세차장 상세와 동일하게 라이트 전용(OS 다크모드여도 화이트로 통일).
   return (
@@ -94,9 +101,28 @@ export default async function RepairDetailPage({ params }: Props) {
       {/* 운영 정보 — 값이 있는 항목만 노출. 하나도 없으면 안내(원천 채움률이 낮아 흔한 경우다). */}
       <section className="border-t border-gray-100 px-5 py-4">
         <h2 className="mb-3 text-sm font-bold text-gray-800">{t('operatingInfoTitle')}</h2>
-        {hours || detail.institution ? (
+        {hours || detail.institution || caps.length > 0 ? (
           <div className="space-y-2">
             {hours && <InfoRow icon={<ClockIcon className="h-4 w-4" />}>{hours}</InfoRow>}
+            {caps.length > 0 && (
+              <InfoRow icon={<CheckCircleIcon className="h-4 w-4" />}>
+                <span className="flex flex-wrap gap-1">
+                  {caps.map((c) => (
+                    <span
+                      key={c}
+                      className="rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-800"
+                    >
+                      {tCap(c)}
+                    </span>
+                  ))}
+                </span>
+              </InfoRow>
+            )}
+            {typeof detail.laneCount === 'number' && detail.laneCount > 0 && (
+              <InfoRow icon={<BuildingIcon className="h-4 w-4" />}>
+                {t('laneCount', { count: detail.laneCount })}
+              </InfoRow>
+            )}
             {detail.institution && (
               <InfoRow icon={<BuildingIcon className="h-4 w-4" />}>
                 {t('institution', { name: detail.institution })}

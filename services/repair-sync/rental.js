@@ -10,8 +10,8 @@ import {
 
 const ENDPOINT = 'tn_pubr_public_car_rental_api';
 const MAX_PAGES = 40;
-/** 전국 렌터카 등록업체는 1,300개소 규모(2024 통계) — 그보다 한참 낮게 잡아 원천 이상만 거른다. */
-const MIN_EXPECTED_ROWS = 300;
+/** 실측(2026-08-24 전수): 원천 2,147행 → 차고지 중복 병합 후 2,006곳. 절반 아래면 정리 건너뜀. */
+const MIN_EXPECTED_ROWS = 1_000;
 
 /**
  * 원문 → rental_cars 행.
@@ -50,7 +50,7 @@ function normalize(items, syncedAt) {
 
     const addr = nullify(it.rdnmadr) ?? nullify(it.lnmadr);
     const key = hashKey([name, addr ?? '']);
-    byKey.set(key, {
+    const row = {
       place_key: key,
       name,
       biz_kind: nullify(it.bplcType),
@@ -79,7 +79,34 @@ function normalize(items, syncedAt) {
       // ⚠️ synced_at 은 반드시 행에 실어야 한다 — 빠지면 conflict-update 시 옛 값이 남고
       //    뒤이은 stale 정리가 전부 지운다(정비소에서 실제로 겪은 사고).
       synced_at: syncedAt,
-    });
+    };
+
+    // ── 같은 사업장의 여러 차고지 행 병합 ──
+    // 원천은 (사업장 × 차고지) 단위로 행을 준다. 실측 2,147행 중 141행이 이 중복이고,
+    // 좌표는 같고 차고지 주소만 다르다(예: 제트카㈜ 10행). 지도에는 사업장 1곳이 되어야 하므로
+    // 키(이름+주소)로 합친다.
+    //
+    // 보유 대수는 **합산하지 않고 최댓값**을 쓴다. 필드명은 '자동차총보유대수'인데 행마다 값이
+    // 달라(174/242/172…) 총계인지 차고지별 배치인지 원천 문서로 확정할 수 없다. 합산은 과대
+    // 표시 위험이 있어, 총계라는 필드명을 믿고 가장 큰 값을 택한다.
+    // 요금·연락처처럼 비어 있기 쉬운 값은 먼저 채워진 값을 지키고 빈 자리만 메운다.
+    const prev = byKey.get(key);
+    if (prev) {
+      const maxOf = (a, b) => (a == null ? b : b == null ? a : Math.max(a, b));
+      prev.total_cars = maxOf(prev.total_cars, row.total_cars);
+      prev.sedan_cars = maxOf(prev.sedan_cars, row.sedan_cars);
+      prev.van_cars = maxOf(prev.van_cars, row.van_cars);
+      prev.ev_sedan_cars = maxOf(prev.ev_sedan_cars, row.ev_sedan_cars);
+      prev.ev_van_cars = maxOf(prev.ev_van_cars, row.ev_van_cars);
+      for (const k of ['tel', 'homepage', 'holiday', 'biz_kind',
+                       'wd_open', 'wd_close', 'we_open', 'we_close', 'hd_open', 'hd_close',
+                       'fee_light', 'fee_small', 'fee_medium', 'fee_large',
+                       'fee_van', 'fee_leisure', 'fee_imported']) {
+        if (prev[k] == null && row[k] != null) prev[k] = row[k];
+      }
+    } else {
+      byKey.set(key, row);
+    }
   }
   return { rows: [...byKey.values()], stats };
 }

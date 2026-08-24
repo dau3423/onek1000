@@ -129,8 +129,11 @@ create table if not exists inspection_stations (
   road_addr      text,
   jibun_addr     text,
   tel            text,
-  open_time      text,
-  close_time     text,
+  -- 운영시간은 **원문 그대로** 둔다. 파싱하지 않는다.
+  -- 실측(821건): 40%(330건)가 '평일 09:00~18:00+토요일 09:00~13:00' 처럼 구간이 둘 이상이라,
+  -- 시작/종료 두 칸으로 쪼개면 토요일 정보가 통째로 사라진다. 채움률은 100% 라 손실이 크다.
+  -- 원문에는 '평일(09:00~18:00)' 같은 변형도 있어 안전한 파싱 규칙을 만들 수 없다.
+  oper_time      text,
   lane_count     integer,                     -- 검사진로수(규모 지표 — 정렬에 쓴다)
   staff_count    integer,                     -- 검사기술인력수
   -- 검사 종류별 가능 여부. 사용자가 실제로 궁금해하는 값이다(정기검사만 되는지, 튜닝검사도 되는지).
@@ -217,7 +220,9 @@ returns table (
     select
       i.place_key as shop_key, i.name, 'inspection' as shop_type,
       'inspection' as eff_brand,
-      i.road_addr, i.jibun_addr, i.tel, i.open_time, i.close_time,
+      -- 검사소 운영시간은 한 덩어리 원문이라 open/close 두 칸에 담기지 않는다.
+      -- 마커에는 시간이 필요 없으므로 null 로 내보내고, 상세에서 원문을 그대로 보여준다.
+      i.road_addr, i.jibun_addr, i.tel, null::text as open_time, null::text as close_time,
       i.lat, i.lng, i.data_base_date, i.synced_at,
       coalesce(i.lane_count, 0)::numeric as size_rank,   -- 검사진로수가 규모 지표
       1 as src_order

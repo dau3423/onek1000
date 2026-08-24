@@ -16,18 +16,18 @@ export function makeInspectionKey(item: InspectionApiItem): string {
 }
 
 /**
- * 운영시간 문자열 → 시작/종료 분리.
- * 원천이 '09:00~18:00', '09:00-18:00', '0900~1800' 등 자유 형식이라 파싱이 실패할 수 있다.
- * 실패하면 **둘 다 null 로 두고 원문을 버리지 않는다**(open_time 에 원문을 넣는다) —
- * 어설프게 쪼갠 값을 화면에 '09:00 영업 시작'처럼 단정해 보여주는 것보다, 원문 그대로가 정직하다.
+ * 운영시간은 **파싱하지 않고 원문을 보존한다**.
+ *
+ * 실측(821건 전수): 40%(330건)가 '평일 09:00~18:00+토요일 09:00~13:00' 처럼 구간이 둘 이상이다.
+ * 시작/종료 두 칸으로 쪼개면 첫 구간만 남고 토요일 정보가 사라진다 — 채움률 100% 인 필드라 손실이 크다.
+ * '평일(09:00~18:00)' 같은 변형도 있어 안전한 규칙을 만들 수 없다.
+ *
+ * 다만 '+' 구분자는 화면에서 읽기 나빠 가운뎃점으로만 바꾼다(내용은 그대로).
  */
-export function splitOperTime(raw: string | undefined | null): { open: string | null; close: string | null } {
+export function normalizeOperTime(raw: string | undefined | null): string | null {
   const s = nullify(raw);
-  if (!s) return { open: null, close: null };
-  const m = s.match(/(\d{1,2}):?(\d{2})\s*[~\-–]\s*(\d{1,2}):?(\d{2})/);
-  if (!m) return { open: s, close: null };   // 파싱 실패 → 원문을 open 에 보존
-  const pad = (h: string, mm: string) => `${h.padStart(2, '0')}:${mm}`;
-  return { open: pad(m[1], m[2]), close: pad(m[3], m[4]) };
+  if (!s) return null;
+  return s.replace(/\s*\+\s*/g, ' · ');
 }
 
 export interface InspectionDbRow {
@@ -37,8 +37,8 @@ export interface InspectionDbRow {
   road_addr: string | null;
   jibun_addr: string | null;
   tel: string | null;
-  open_time: string | null;
-  close_time: string | null;
+  /** 운영시간 원문(파싱하지 않음 — 위 normalizeOperTime 주석 참고). */
+  oper_time: string | null;
   lane_count: number | null;
   staff_count: number | null;
   can_new: boolean | null;
@@ -94,7 +94,6 @@ export function normalizeInspectionItems(
     };
     if (Object.values(caps).some((v) => v !== null)) stats.withCapability++;
 
-    const { open, close } = splitOperTime(item.operTime);
     const key = makeInspectionKey(item);
     byKey.set(key, {
       place_key: key,
@@ -104,8 +103,7 @@ export function normalizeInspectionItems(
       jibun_addr: nullify(item.lnmadr),
       // ⚠️ inspofcPhoneNumber 가 검사소 번호다. phoneNumber 는 관리기관(관청) 번호라 쓰면 안 된다.
       tel: nullify(item.inspofcPhoneNumber),
-      open_time: open,
-      close_time: close,
+      oper_time: normalizeOperTime(item.operTime),
       lane_count: toInt(item.inspofcCo),
       staff_count: toInt(item.inspofcHnfCo),
       ...caps,

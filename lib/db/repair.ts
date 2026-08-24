@@ -1,7 +1,7 @@
 // 자동차 정비소 도메인 쿼리 — Supabase 미설정 시 mock 폴백 (lib/db/carwash.ts와 동일 패턴).
 import { getSupabase, isSupabaseConfigured } from './supabase';
 import type { Bbox } from '@/lib/map/geo';
-import type { RepairBrand, RepairBrandFilter, RepairDetail, RepairMarker, RepairShopType } from '@/types/repair';
+import type { InspectionCapability, RepairBrand, RepairBrandFilter, RepairDetail, RepairMarker, RepairShopType } from '@/types/repair';
 import { getMockRepairByBbox, getMockRepairDetail } from '@/lib/mock/repair';
 import { getApprovedRepairBrand } from './corrections';
 
@@ -96,17 +96,29 @@ async function queryInspectionAsRepair(placeKey: string): Promise<RepairDetail |
   const sb = getSupabase();
   const { data, error } = await sb
     .from('inspection_stations')
-    .select('place_key,name,office_type,road_addr,jibun_addr,tel,open_time,close_time,lat,lng,data_base_date,synced_at,lane_count')
+    .select('place_key,name,office_type,road_addr,jibun_addr,tel,oper_time,lat,lng,data_base_date,synced_at,lane_count,can_new,can_regular,can_tuning,can_temporary,can_repair,can_emission,can_taximeter')
     .eq('place_key', placeKey)
     .maybeSingle();
   if (error || !data) return null;
   const r = data as unknown as {
     place_key: string; name: string; office_type: string | null;
     road_addr: string | null; jibun_addr: string | null; tel: string | null;
-    open_time: string | null; close_time: string | null;
+    oper_time: string | null;
     lat: number; lng: number; data_base_date: string | null; synced_at: string | null;
     lane_count: number | null;
+    can_new: boolean | null; can_regular: boolean | null; can_tuning: boolean | null;
+    can_temporary: boolean | null; can_repair: boolean | null;
+    can_emission: boolean | null; can_taximeter: boolean | null;
   };
+  // 가능한 검사 종류 — 값이 있는 정보를 화면에서 버리지 않는다.
+  // 정기검사는 99.9% 가 가능해(실측 821건) 변별력이 없으므로 목록에서 뺀다.
+  const caps: InspectionCapability[] = [];
+  if (r.can_tuning) caps.push('tuning');
+  if (r.can_new) caps.push('new');
+  if (r.can_temporary) caps.push('temporary');
+  if (r.can_repair) caps.push('repair');
+  if (r.can_emission) caps.push('emission');
+  if (r.can_taximeter) caps.push('taximeter');
   return {
     shopKey: r.place_key,
     name: r.name,
@@ -115,8 +127,8 @@ async function queryInspectionAsRepair(placeKey: string): Promise<RepairDetail |
     roadAddr: r.road_addr,
     jibunAddr: r.jibun_addr,
     tel: r.tel,
-    openTime: r.open_time,
-    closeTime: r.close_time,
+    // 검사소 운영시간은 구간이 둘 이상인 원문이라 쪼개지 않는다(0050 주석).
+    hoursText: r.oper_time,
     lat: r.lat,
     lng: r.lng,
     dataBaseDate: r.data_base_date,
@@ -125,6 +137,8 @@ async function queryInspectionAsRepair(placeKey: string): Promise<RepairDetail |
     // 비워 둔다 — 다른 단위를 같은 칸에 넣으면 잘못된 정보가 된다.
     institution: r.office_type,
     area: null,
+    inspectionCaps: caps,
+    laneCount: r.lane_count,
   };
 }
 
