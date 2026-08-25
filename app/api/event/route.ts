@@ -42,6 +42,10 @@ const ALLOWED_EVENTS = new Set([
   // auth_success 는 URL 표식만 보고 찍혀 세션 유효성을 확인하지 않았다 — 그래서 재로그인
   // 반복(한 기기 성공 4회/로그인화면 32회)이 성공으로 집계되고 있었다.
   'auth_session_missing',
+  // 지역 랜딩(/regions/**) → 지도 CTA 클릭(props.from = header|sido|district|layer|index).
+  // 네이버 검색 유입(28일 509명, 전체의 14%)이 닿는 곳이 지역 페이지라, 그 사람들이
+  // 실제로 지도까지 오는지 재기 위한 값이다.
+  'region_map_cta',
   // ── 핵심 가치 행동(성장 계기판). props에는 stationId(공개 오피넷 ID)까지만 허용 —
   //    좌표·주소·검색어 등 위치/개인정보성 값은 절대 넣지 않는다.
   'station_detail_view', // 주유소 상세 화면 열림(props.stationId) — 열릴 때마다 1건

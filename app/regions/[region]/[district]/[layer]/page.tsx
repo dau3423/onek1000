@@ -9,6 +9,7 @@
 // 색인에 도움이 되지 않고, 앞서 /regions 에서 겪은 "발견됨 - 색인 생성 안 됨"을 다시 부른다.
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { MapCta } from '@/components/regions/MapCta';
 import { notFound } from 'next/navigation';
 
 import { regionBySlug, sigunguByCode, sigungusBySido, SIDO_SLUG } from '@/lib/regions';
@@ -151,7 +152,7 @@ export default async function RegionLayerPage({ params }: { params: Params }) {
   };
 
   return (
-    <main className="mx-auto max-w-2xl px-5 py-8">
+    <main>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <nav className="text-[12px] text-gray-400">
@@ -166,6 +167,18 @@ export default async function RegionLayerPage({ params }: { params: Params }) {
 
       <h1 className="mt-2 text-2xl font-bold text-gray-900">{copy.h1(place)}</h1>
       <p className="mt-2 text-sm leading-relaxed text-gray-600">{copy.intro(place)}</p>
+
+      {/* 지도 유도 — 목록보다 **앞**에 둔다. 검색으로 들어온 사람은 목록을 다 훑지 않고,
+          예전에는 CTA 가 목록(최대 60행) 뒤에 있어 스크롤해야만 보였다. */}
+      <MapCta
+        place={sg.name}
+        from="layer"
+        title={copy.ctaTitle(sg.name)}
+        body={copy.ctaBody}
+        count={items.length}
+        countNoun={copy.noun}
+        ctaLabel="지도에서 보기"
+      />
 
       {items.length > 0 ? (
         <section className="mt-6">
@@ -185,15 +198,15 @@ export default async function RegionLayerPage({ params }: { params: Params }) {
         </p>
       )}
 
-      <section className="mt-10 rounded-2xl border border-orange-200 bg-orange-50 p-5">
-        <h2 className="text-base font-bold text-orange-900">{copy.ctaTitle(sg.name)}</h2>
-        <p className="mt-1 text-[13px] leading-relaxed text-orange-800">{copy.ctaBody}</p>
-        <div className="mt-3 flex gap-2">
-          <Link href="/" className="rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-orange-600">
-            지도에서 보기
-          </Link>
-          <Link href={`/regions/${region.slug}/${sg.code}`} className="rounded-xl border border-orange-300 bg-white px-4 py-2.5 text-sm font-semibold text-orange-700 hover:bg-orange-100">
+      {/* 하단은 내부 링크 역할만 — 지도 유도 문구는 위 MapCta 로 옮겼다(같은 말을 두 번 하지 않는다). */}
+      <section className="mt-10 rounded-2xl border border-gray-200 bg-gray-50 p-5">
+        <h2 className="text-sm font-bold text-gray-800">{sg.name}의 다른 정보</h2>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Link href={`/regions/${region.slug}/${sg.code}`} className="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100">
             {sg.name} 최저가 주유소
+          </Link>
+          <Link href="/" className="rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100">
+            지도로 이동
           </Link>
         </div>
       </section>

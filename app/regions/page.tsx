@@ -51,7 +51,7 @@ export default function RegionsIndexPage() {
   };
 
   return (
-    <main className="mx-auto max-w-2xl px-5 py-8">
+    <main>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
       <h1 className="text-2xl font-bold text-gray-900">전국 주유소 최저가·기름값 정보</h1>

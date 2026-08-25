@@ -25,6 +25,10 @@ const EXCLUDE = [
   'components/billing/SessionRefresher.tsx',
   // app/layout.tsx(루트 레이아웃, (intl) 밖)에 전역 마운트된다 — provider 밖.
   'components/referral/ReferralClaim.tsx',
+  // app/regions/**((intl) 밖, SEO 지역 랜딩)에서만 쓰인다. 그 트리는 한국어 전용이고
+  // next-intl provider 도 없어 useTranslations 를 쓸 수 없다(같은 이유로 앱 헤더도 재사용 못 한다).
+  'components/regions/MapCta.tsx',
+  'components/regions/RegionMapLink.tsx',
 ];
 const HANGUL = /[가-힣]/;
 

@@ -4,6 +4,7 @@
 // - 데이터 조회 실패는 빈 표/안내로 graceful 처리(빌드/렌더가 깨지지 않게).
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { MapCta } from '@/components/regions/MapCta';
 import { notFound } from 'next/navigation';
 
 import { REGIONS, regionBySlug, sigungusBySido } from '@/lib/regions';
@@ -88,7 +89,7 @@ export default async function RegionPage({ params }: { params: { region: string 
   };
 
   return (
-    <main className="mx-auto max-w-2xl px-5 py-8">
+    <main>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <nav className="text-[12px] text-gray-400">
@@ -102,6 +103,9 @@ export default async function RegionPage({ params }: { params: { region: string 
         {date} 기준, <b>{region.name}</b> 지역에서 가장 싸게 주유할 수 있는 주유소를 휘발유·경유별로 정리했습니다.
         가격은 한국석유공사 <b>오피넷</b> 기준이며 실시간으로 변동될 수 있습니다.
       </p>
+
+      {/* 지도 유도 — 가격표보다 앞. 검색 유입자는 표를 다 읽지 않는다. */}
+      <MapCta place={region.name} lowest={sections[0]?.items?.[0]?.price ?? null} nationalAvg={sections[0]?.avg ?? null} from="sido" />
 
       {sections.map((s) => (
         <PriceTable key={s.product} label={PRODUCT_LABEL[s.product]} items={s.items} avg={s.avg} />
