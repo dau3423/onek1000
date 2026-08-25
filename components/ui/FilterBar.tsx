@@ -50,30 +50,33 @@ const HAS_MENU = new Set<MapLayer>(['gas', 'carwash', 'repair', 'rental']);
  * 334px 로 여전히 넘친다 — 그래서 '조금 줄이기'가 아니라 오버플로 구조로 바꿨다.
  */
 const SLOT_VISIBILITY = [
-  'flex',                        // 0 — 항상
-  'flex',                        // 1 — 항상(활성은 반드시 0 또는 1 에 온다)
-  'hidden min-[390px]:flex',     // 2
+  'flex',                        // 0 — 주유소(고정)
+  'flex',                        // 1 — EV(고정)
+  'flex',                        // 2 — **활성 자리라 항상 노출**(orderLayers 주석 참고)
   'hidden min-[460px]:flex',     // 3
   'hidden min-[560px]:flex',     // 4
 ];
 
 /**
- * 표시 순서를 정한다 — **활성 레이어는 반드시 앞 두 슬롯 안에** 들어온다.
+ * 표시 순서를 정한다 — **주유소·EV 는 항상 앞 두 자리**, 세 번째는 활성 레이어가 차지한다.
  *
- * 최소 노출 슬롯이 2개(320px)이므로, 활성이 3번째 이후로 밀리면 좁은 화면에서 "선택했는데
- * 화면에서 사라지는" 상태가 된다. 그래서 활성과 '활성 아닌 것 중 우선순위 1위' 를 먼저 두고,
- * 그 둘은 원래 순서대로 정렬한다(순서가 뒤집히면 위치 기억이 깨진다).
- * 나머지는 원래 우선순위 그대로 뒤에 붙는다.
+ *   주유소 활성 → [휘발유▾] [EV] [세차장]   +2
+ *   세차장 활성 → [주유소]  [EV] [세차장▾]  +2
+ *   정비소 활성 → [주유소]  [EV] [정비소▾]  +2
+ *   렌터카 활성 → [주유소]  [EV] [렌터카▾]  +2
+ *
+ * 앞 두 자리를 고정하는 이유: 사용 빈도가 가장 높은 둘이고, 자리가 고정돼야 위치를 손이 기억한다.
+ * 활성이 세 번째로 오므로 **슬롯 2까지는 반드시 노출돼야 한다**(SLOT_VISIBILITY 참고) —
+ * 안 그러면 좁은 화면에서 "선택했는데 화면에서 사라지는" 상태가 된다.
+ * 활성이 주유소/EV 면 세 번째는 세차장이 채운다(원래 우선순위 다음 순서).
  */
 function orderLayers(active: MapLayer): typeof LAYER_OPTIONS {
-  const activeItem = LAYER_OPTIONS.find((o) => o.value === active);
-  if (!activeItem) return LAYER_OPTIONS;
-  const rest = LAYER_OPTIONS.filter((o) => o.value !== active);
-  const companion = rest[0];
-  const head = [activeItem, companion]
-    .filter(Boolean)
-    .sort((a, b) => LAYER_OPTIONS.indexOf(a) - LAYER_OPTIONS.indexOf(b));
-  return [...head, ...rest.filter((o) => o !== companion)];
+  const pinned = LAYER_OPTIONS.slice(0, 2);          // 주유소, EV
+  const rest = LAYER_OPTIONS.slice(2);               // 세차장, 정비소, 렌터카
+  const third = pinned.some((o) => o.value === active)
+    ? rest[0]                                        // 활성이 고정석이면 세차장이 세 번째
+    : (rest.find((o) => o.value === active) ?? rest[0]);
+  return [...pinned, third, ...rest.filter((o) => o !== third)];
 }
 
 /** 본 적 있는 레이어 집합(localStorage) — '+N' 에 NEW 점을 띄울지 판정한다. */
@@ -210,7 +213,7 @@ export function FilterBar() {
   return (
     <div
       ref={barRef}
-      className="relative flex items-center gap-1.5 border-b border-gray-100 bg-white px-3 py-2 dark:border-gray-800 dark:bg-gray-900"
+      className="relative flex items-center gap-1.5 border-b border-gray-100 bg-white px-2.5 py-2 dark:border-gray-800 dark:bg-gray-900"
     >
       {/* 레이어 전환 세그먼트 — 내용폭(flex-1 없음)이라 넓은 화면에서 늘어나지 않는다. */}
       {/* radio 롤은 쓰지 않는다 — 주유소/세차장 버튼이 메뉴 트리거를 겸해(aria-haspopup)
@@ -225,7 +228,9 @@ export function FilterBar() {
         // 잘리는 경우까지 생겼다.
         // → 지금은 뒤쪽 슬롯을 감추고 '+N' 으로 넘긴다(SLOT_VISIBILITY). overflow-x-auto 는
         //   안전망으로만 남긴다 — 평상시엔 발동하지 않는다.
-        className="scrollbar-none relative z-20 flex min-w-0 shrink items-center gap-0.5 overflow-x-auto rounded-full bg-gray-100 p-0.5 dark:bg-gray-800"
+        // gap-0: 320px 에서 3개+더보기가 6px 모자랐다(실측). 세그먼트는 버튼 사이가 붙어도
+        // 활성 배경색으로 충분히 갈라지므로, 좁은 화면에서만 간격을 0 으로 둔다.
+        className="scrollbar-none relative z-20 flex min-w-0 shrink items-center gap-0 overflow-x-auto rounded-full bg-gray-100 p-0.5 min-[360px]:gap-0.5 dark:bg-gray-800"
       >
         {ordered.map(({ value, labelKey, Icon }, slot) => {
           const active = layer === value;
@@ -255,7 +260,9 @@ export function FilterBar() {
               onClick={(e) => onLayerClick(value, e.currentTarget)}
               className={clsx(
                 // h-9 + 바의 py-2 로 실효 히트 영역 44px 를 확보한다(기존 h-8/py-1.5 보다 큼).
-                'h-9 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-semibold transition',
+                // px-2: 320px 에서 3개+더보기+브랜드가 들어가려면 16px 이 모자랐다(실측).
+                // 세로(h-9)는 그대로라 터치 영역 44px 는 유지된다.
+                'h-9 shrink-0 items-center gap-1 rounded-full px-2 text-xs font-semibold transition',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 'focus-visible:ring-offset-1 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-offset-gray-800',
                 SLOT_VISIBILITY[slot] ?? 'hidden',
@@ -292,7 +299,7 @@ export function FilterBar() {
             track('layer_more_open');
           }}
           className={clsx(
-            'flex h-9 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-bold tabular-nums transition',
+            'flex h-9 shrink-0 items-center gap-1 rounded-full px-2 text-xs font-bold tabular-nums transition',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
             'focus-visible:ring-offset-1 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-offset-gray-800',
             'text-gray-600 hover:bg-gray-200/70 dark:text-gray-300 dark:hover:bg-gray-700',
@@ -301,8 +308,8 @@ export function FilterBar() {
         >
           {/* 숨겨진 개수는 화면 폭마다 다르다. aria-label 에는 숫자를 넣지 않아
               반응형 불일치(스크린리더가 틀린 수를 읽는 것)를 원천 차단한다. */}
-          <span aria-hidden className="min-[390px]:hidden">+3</span>
-          <span aria-hidden className="hidden min-[390px]:inline min-[460px]:hidden">+2</span>
+          {/* 슬롯 2 까지 항상 보이므로 최소 노출이 3개다 → 숨는 수는 2 또는 1. */}
+          <span aria-hidden className="min-[460px]:hidden">+2</span>
           <span aria-hidden className="hidden min-[460px]:inline">+1</span>
           {hasUnseen && (
             <>
