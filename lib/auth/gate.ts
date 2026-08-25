@@ -17,7 +17,11 @@ import { track } from '@/lib/analytics';
  * 값을 추가하면 4개 로케일 문구도 함께 추가해야 한다(i18n:check 가 잡아준다).
  */
 export type AuthGateReason =
-  | 'location'   // 내 위치 / 따라가기
+  // ⚠️ 'location' 은 현재 **어디서도 쓰지 않는다**. 내 위치/따라가기는 2026-08-25 에
+  //    비회원에게 열었다(지도 앱의 기본 동작이라 여기서 막는 비용이 더 컸다).
+  //    값을 남겨 두는 이유: 다시 막을 가능성이 있고, 지우면 과거 auth_gate 로그의
+  //    reason='location' 을 해석할 수 없게 된다.
+  | 'location'   // (미사용) 내 위치 / 따라가기
   | 'navi'       // 길안내 시작
   | 'favorite'   // 즐겨찾기
   | 'fuelLog'    // 주유·충전 기록
