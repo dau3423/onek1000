@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
+import { requireLogin } from '@/lib/auth/gate';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
@@ -82,7 +83,7 @@ export function NaviButton({ name, lat, lng, stationId }: Props) {
     // 로그인/회원가입으로 보내고, 완료 후 현재 상세 화면(/station/[id] 또는 /ev/[statId])으로 복귀.
     // 세션 확인 중(loading)에는 막지 않고 통과시킨다(깜빡임/오차단 방지).
     if (status === 'unauthenticated') {
-      signIn(undefined, { callbackUrl: pathname ?? '/' });
+      requireLogin('navi', pathname ?? '/');
       return;
     }
     // 길찾기 CTA 클릭 계측 — fire-and-forget(전송 실패/차단도 아래 이동을 지연/차단하지 않음).

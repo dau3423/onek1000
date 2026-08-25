@@ -146,7 +146,7 @@ export function CarwashDayCard({ onCta, lat, lng }: Props) {
         <div className="flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
           <DropletIcon className="h-4 w-4" />{t('lockedTitle')}
         </div>
-        <LoginBlurGate>
+        <LoginBlurGate reason="carwash">
           <div className="mt-2">
             <div className="h-5 w-2/3 rounded bg-gray-200 dark:bg-gray-700" />
             <div className="mt-2 h-3.5 w-5/6 rounded bg-gray-100 dark:bg-gray-800" />

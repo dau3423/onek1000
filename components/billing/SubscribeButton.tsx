@@ -12,6 +12,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
+import { requireLogin } from '@/lib/auth/gate';
 import * as PortOne from '@portone/browser-sdk/v2';
 import { normalizePhone, isValidPhone } from '@/lib/phone';
 
@@ -62,7 +63,7 @@ export function SubscribeButton() {
   const startPay = async () => {
     setPayError('');
     if (status !== 'authenticated') {
-      signIn(undefined, { callbackUrl: '/pricing' });
+      requireLogin('premium', '/pricing');
       return;
     }
     // 이니시스 V2는 구매자 휴대폰 번호가 필수 → 결제창 호출 전에 검증/차단.

@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
+import { requireLogin } from '@/lib/auth/gate';
 import { useTranslations } from 'next-intl';
 import { CameraIcon, CloseIcon, PencilIcon } from '@/components/icons';
 import {
@@ -202,7 +203,7 @@ export function CorrectionButton(props: Props) {
                 <h2 className="mb-2 text-sm font-bold text-gray-900">{title}</h2>
                 <p className="py-3 text-center text-sm text-gray-600">{t('loginRequired')}</p>
                 <button
-                  onClick={() => signIn(undefined, { callbackUrl: props.callbackUrl })}
+                  onClick={() => requireLogin('report', props.callbackUrl)}
                   className="w-full rounded-lg bg-primary py-2.5 text-xs font-bold text-white"
                 >
                   {t('login')}

@@ -839,6 +839,17 @@
         "OAuthAccountNotLinked": "This email is already registered with a different method. Please sign in the way you first signed up.",
         "Configuration": "There is a problem with the sign-in setup. Try again shortly, or let us know via the contact link below.",
         "default": "Sign-in failed. Please try again or use email sign-in below."
+      },
+      "why": {
+        "location": "Sign in to show your location on the map",
+        "navi": "Sign in to start directions",
+        "favorite": "Sign in to save favorites",
+        "fuelLog": "Sign in to log refueling and charging",
+        "review": "Sign in to write a review",
+        "report": "Sign in to report a correction",
+        "forecast": "Sign in to see fuel price timing",
+        "carwash": "Sign in to see the car wash index",
+        "premium": "Sign in to remove ads"
       }
     },
     "forgotPassword": {

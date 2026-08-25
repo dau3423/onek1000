@@ -15,16 +15,19 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { signIn } from 'next-auth/react';
+import { requireLogin, type AuthGateReason } from '@/lib/auth/gate';
 import { useTranslations } from 'next-intl';
 import { LockIcon } from '@/components/icons';
 
 interface Props {
+  /** 무엇을 가렸는지 — 로그인 화면이 그 사유로 안내 문구를 바꾸고 계측에도 남는다. */
+  reason: AuthGateReason;
   children: ReactNode;
   /** 로그인 후 돌아올 경로. 기본값은 현재 경로. */
   callbackUrl?: string;
 }
 
-export function LoginBlurGate({ children, callbackUrl }: Props) {
+export function LoginBlurGate({ children, callbackUrl, reason }: Props) {
   const t = useTranslations('auth.loginGate');
   const pathname = usePathname();
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -45,7 +48,7 @@ export function LoginBlurGate({ children, callbackUrl }: Props) {
       </div>
       <button
         type="button"
-        onClick={() => signIn(undefined, { callbackUrl: callbackUrl ?? pathname ?? '/' })}
+        onClick={() => requireLogin(reason, callbackUrl ?? pathname ?? '/')}
         className="absolute inset-0 flex items-center justify-center rounded-xl"
       >
         <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-900/85 px-3.5 py-2 text-xs font-bold text-white shadow-lg backdrop-blur dark:bg-gray-100/90 dark:text-gray-900">

@@ -287,3 +287,42 @@ export async function getTodayVisitorCount(): Promise<number | null> {
     return null;
   }
 }
+
+/**
+ * 최근 N일 로그인 게이트 발동 분포 — **어느 기능이 비회원을 로그인 화면으로 돌려세우는가**.
+ *
+ * 왜 필요한가(실측 2026-08-25): 28일간 지도 진입 1,038명 중 로그인 화면까지 간 사람이
+ * 26명(2.5%)뿐이었는데, signIn() 을 여기저기서 직접 부르고 있어 **어느 게이트가 원인인지
+ * 가릴 수 없었다**. 이제 requireLogin(reason) 이 auth_gate 를 남기므로 여기서 집계한다.
+ *
+ * 디바이스 기준(고유 수)으로 센다 — 한 사람이 같은 버튼을 여러 번 눌러도 1로 본다.
+ * 실패/미설정 시 null → 대시보드가 '-' 로 표시한다.
+ */
+export async function getAuthGateBreakdown(days = 7): Promise<Array<{ reason: string; devices: number }> | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const sb = getSupabase();
+    const since = new Date(Date.now() - days * 86400000).toISOString();
+    // props 를 서버에서 그룹핑할 수단이 없어(자유 jsonb) 행을 받아 집계한다.
+    // auth_gate 는 비회원이 막힐 때만 찍혀 양이 적다 — 상한을 둬 폭주를 막는다.
+    const { data, error } = await sb
+      .from('funnel_events')
+      .select('device_id, props')
+      .eq('event', 'auth_gate')
+      .gte('created_at', since)
+      .limit(5000);
+    if (error || !data) return null;
+    const byReason = new Map<string, Set<string>>();
+    for (const row of data as Array<{ device_id: string | null; props: { reason?: unknown } | null }>) {
+      const reason = typeof row.props?.reason === 'string' ? row.props.reason : '(미상)';
+      const set = byReason.get(reason) ?? new Set<string>();
+      set.add(row.device_id ?? '');
+      byReason.set(reason, set);
+    }
+    return [...byReason.entries()]
+      .map(([reason, set]) => ({ reason, devices: set.size }))
+      .sort((a, b) => b.devices - a.devices);
+  } catch {
+    return null;
+  }
+}

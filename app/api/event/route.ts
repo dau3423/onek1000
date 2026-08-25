@@ -35,6 +35,13 @@ const ALLOWED_EVENTS = new Set([
   'auth_success',        // 로그인 성공(props.method = email|google|kakao, props.mode)
   'auth_error',          // 소셜 로그인 실패(props.code = NextAuth error 코드)
   'session_revoked',     // 중복 로그인으로 강제 로그아웃되어 로그인 화면으로 밀려남
+  // 로그인 게이트 발동 — **어느 기능이 비회원을 돌려세우는지**(props.reason = location|navi|…).
+  // 이 값이 없어서 "로그인 화면까지 온 26명 중 17명이 버튼도 안 눌렀다"의 원인을 못 갈랐다.
+  'auth_gate',
+  // 로그인 성공 표식으로 복귀했는데 **세션이 실제로 없는** 경우(props.method).
+  // auth_success 는 URL 표식만 보고 찍혀 세션 유효성을 확인하지 않았다 — 그래서 재로그인
+  // 반복(한 기기 성공 4회/로그인화면 32회)이 성공으로 집계되고 있었다.
+  'auth_session_missing',
   // ── 핵심 가치 행동(성장 계기판). props에는 stationId(공개 오피넷 ID)까지만 허용 —
   //    좌표·주소·검색어 등 위치/개인정보성 값은 절대 넣지 않는다.
   'station_detail_view', // 주유소 상세 화면 열림(props.stationId) — 열릴 때마다 1건

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
+import { requireLogin } from '@/lib/auth/gate';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { HeartIcon, HeartFilledIcon } from '@/components/icons';
@@ -27,7 +28,7 @@ export function FavoriteButton({ stationId }: Props) {
 
   const toggle = async () => {
     if (status !== 'authenticated') {
-      signIn(undefined, { callbackUrl: `/station/${encodeURIComponent(stationId)}` });
+      requireLogin('favorite', `/station/${encodeURIComponent(stationId)}`);
       return;
     }
     setBusy(true);

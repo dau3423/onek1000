@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
+import { requireLogin } from '@/lib/auth/gate';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { StarRating } from './StarRating';
@@ -81,9 +82,7 @@ export function ReviewForm({ targetType, targetId, lat, lng, onCreated, onCancel
         <p className="text-sm text-gray-600">{t('loginRequired')}</p>
         <button
           onClick={() =>
-            signIn(undefined, {
-              callbackUrl: `${PLACE_DETAIL_PATH[targetType]}/${encodeURIComponent(targetId)}`,
-            })
+            requireLogin('review', `${PLACE_DETAIL_PATH[targetType]}/${encodeURIComponent(targetId)}`)
           }
           className="mt-3 rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-white"
         >

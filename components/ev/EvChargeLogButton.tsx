@@ -6,6 +6,7 @@
 // 비로그인 시 signIn 유도. 충전소/시각은 서버가 보강한다(클라는 statId + 선택값만 전송).
 import { useEffect, useRef, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
+import { requireLogin } from '@/lib/auth/gate';
 import { useTranslations } from 'next-intl';
 import type { FuelLog } from '@/types/fuel-log';
 import { CheckIcon, BoltIcon } from '@/components/icons';
@@ -67,7 +68,7 @@ export function EvChargeLogButton({ statId, className }: Props) {
 
   const save = async (payload: { kwh?: number; amountWon?: number }) => {
     if (status !== 'authenticated') {
-      signIn(undefined, { callbackUrl: `/ev/${encodeURIComponent(statId)}` });
+      requireLogin('fuelLog', `/ev/${encodeURIComponent(statId)}`);
       return;
     }
     setState('busy');
@@ -110,7 +111,7 @@ export function EvChargeLogButton({ statId, className }: Props) {
 
   const onMainClick = () => {
     if (status !== 'authenticated') {
-      signIn(undefined, { callbackUrl: `/ev/${encodeURIComponent(statId)}` });
+      requireLogin('fuelLog', `/ev/${encodeURIComponent(statId)}`);
       return;
     }
     setErr(null);

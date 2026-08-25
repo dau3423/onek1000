@@ -7,6 +7,7 @@
 // 비로그인 시 signIn 유도. 단가/유종/시각은 서버가 보강한다(클라는 stationId + 선택값만 전송).
 import { useEffect, useRef, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
+import { requireLogin } from '@/lib/auth/gate';
 import { useTranslations } from 'next-intl';
 import type { FuelLog } from '@/types/fuel-log';
 import { amountToQuantity, hasUsableUnitPrice, quantityToAmount, segmentKmPerL } from '@/lib/fuel/calc';
@@ -82,7 +83,7 @@ export function FuelLogButton({ stationId, className, unitPrice, productLabel }:
   // 현재 키로수 입력값은 함께 합쳐 보낸다(빈값이면 미전송).
   const save = async (payload: { liters?: number; amountWon?: number }) => {
     if (status !== 'authenticated') {
-      signIn(undefined, { callbackUrl: `/station/${encodeURIComponent(stationId)}` });
+      requireLogin('fuelLog', `/station/${encodeURIComponent(stationId)}`);
       return;
     }
     // 현재 키로수: 빈값이면 미전송, 음수/NaN이면 에러 안내(프리필값 그대로 저장은 허용).
@@ -143,7 +144,7 @@ export function FuelLogButton({ stationId, className, unitPrice, productLabel }:
 
   const onMainClick = () => {
     if (status !== 'authenticated') {
-      signIn(undefined, { callbackUrl: `/station/${encodeURIComponent(stationId)}` });
+      requireLogin('fuelLog', `/station/${encodeURIComponent(stationId)}`);
       return;
     }
     setErr(null);

@@ -19,6 +19,7 @@ import {
   getRetentionD7,
   getTodayChannels,
   getRegionVisits,
+  getAuthGateBreakdown,
 } from '@/lib/db/stats';
 import RegionVisitsSection from '@/components/admin/RegionTileMap';
 
@@ -88,6 +89,8 @@ async function loadStats(): Promise<Stat[]> {
       { label: '[리텐션] D7 (최근 4주)', value: '-', hint: '디바이스(쿠키) 기준 · 절대값보다 추이 참고' },
       { label: '[유입] 오늘 채널 TOP3', value: '-' },
       { label: '[행동] 오늘 상세진입/길찾기', value: '-' },
+      { label: '[게이트] 오늘 로그인 요구', value: '-' },
+      { label: '[인증] 세션 누락', value: '-', hint: 'OAuth 복귀했는데 세션이 없던 횟수 — 0이 정상' },
     ];
   }
 
@@ -181,8 +184,25 @@ async function loadStats(): Promise<Stat[]> {
     // ── 유입 채널(오늘 first-touch) + 핵심 행동(오늘 고유 디바이스).
     { label: '[유입] 오늘 채널 TOP3', value: channelsText },
     { label: '[행동] 오늘 상세진입/길찾기', value: behaviorText },
+    // ── 로그인 게이트: 비회원이 어디서 막혀 돌아가는가(가입 전환의 실제 병목).
+    { label: '[게이트] 오늘 로그인 요구', value: fmt(fv('auth_gate')), hint: '기능별 분포는 아래 표 참고' },
+    // OAuth 콜백은 돌아왔는데 세션이 없던 경우. 0이 정상이며, 잡히면 로그인 유지에 문제가 있다.
+    { label: '[인증] 세션 누락', value: fmt(fv('auth_session_missing')), hint: 'OAuth 복귀했는데 세션 없음 — 0이 정상' },
   ];
 }
+
+/** auth_gate 의 reason → 사람이 읽는 이름(lib/auth/gate.ts 의 AuthGateReason 과 1:1). */
+const GATE_LABEL: Record<string, string> = {
+  location: '내 위치 / 따라가기',
+  navi: '길안내 시작',
+  favorite: '즐겨찾기',
+  fuelLog: '주유·충전 기록',
+  review: '리뷰 작성',
+  report: '정보 제보',
+  forecast: '주유 타이밍(블러)',
+  carwash: '세차 지수(블러)',
+  premium: '광고 제거 결제',
+};
 
 // 도구 허브 링크 카드 정의.
 const TOOLS: { href: string; title: string; desc: string }[] = [
@@ -217,7 +237,7 @@ export default async function AdminPage() {
   const admin = await getAdminOrNull();
   if (!admin) notFound();
 
-  const [stats, regionRows] = await Promise.all([loadStats(), getRegionVisits(7)]);
+  const [stats, regionRows, gateRows] = await Promise.all([loadStats(), getRegionVisits(7), getAuthGateBreakdown(7)]);
 
   return (
     // 관리 도구는 가독성 우선 — OS 다크모드와 무관하게 라이트 배경+진한 글자로 고정.
@@ -253,6 +273,36 @@ export default async function AdminPage() {
             {s.hint && <div className="mt-1 text-[10px] leading-tight text-gray-400">{s.hint}</div>}
           </div>
         ))}
+      </section>
+
+      {/* 로그인 게이트 분포 (최근 7일) — 어느 기능이 비회원을 돌려세우는지.
+          여기 수가 큰데 가입이 안 늘면, 그 기능은 로그인을 요구할 값어치가 없다는 신호다. */}
+      <section aria-label="로그인 게이트" className="mt-8">
+        <h2 className="mb-3 text-sm font-bold text-gray-700">로그인 요구 지점 (최근 7일, 디바이스 기준)</h2>
+        {!gateRows || gateRows.length === 0 ? (
+          <p className="rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
+            아직 기록이 없습니다. (배포 직후라면 데이터가 쌓일 때까지 기다려 주세요)
+          </p>
+        ) : (
+          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-xs text-gray-500">
+                <tr>
+                  <th className="px-4 py-2 text-left font-medium">막힌 기능</th>
+                  <th className="px-4 py-2 text-right font-medium">디바이스</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {gateRows.map((r) => (
+                  <tr key={r.reason}>
+                    <td className="px-4 py-2 text-gray-900">{GATE_LABEL[r.reason] ?? r.reason}</td>
+                    <td className="px-4 py-2 text-right font-bold tabular-nums text-gray-900">{fmt(r.devices)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       {/* 지역별 접속 (최근 7일) — 시도 단계구분도 + 수치 표. 집계 전용(개인 좌표·핀 없음). */}

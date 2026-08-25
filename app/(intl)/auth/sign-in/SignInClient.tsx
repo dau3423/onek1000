@@ -16,6 +16,7 @@ import {
 } from '@/lib/inapp';
 import { BETA_FREE } from '@/lib/flags';
 import { track } from '@/lib/analytics';
+import { AUTH_REASON_PARAM, isAuthGateReason } from '@/lib/auth/gate';
 
 const boldTag = { b: (chunks: React.ReactNode) => <b>{chunks}</b> };
 
@@ -46,6 +47,11 @@ function SignInInner() {
   // 않아서, 사용자는 아무 메시지 없는 깨끗한 로그인 화면을 다시 보고 같은 버튼을 계속 눌렀다.
   // 실측(전 기간): 한 기기가 구글 로그인을 12회 이상 반복 시도하고 끝내 가입하지 못했다.
   const oauthError = params.get('error');
+  // 무엇을 하려다 막혀서 왔는지(lib/auth/gate.ts). 이 값이 있으면 제목을 그 맥락으로 바꾼다.
+  // 실측: 로그인 화면까지 온 26명 중 17명(65%)이 버튼도 안 누르고 이탈했는데, 화면이 어디서
+  // 왔든 같은 문구라 "왜 로그인해야 하는지"가 사용자에게 연결되지 않았다.
+  const whyParam = params.get(AUTH_REASON_PARAM);
+  const why = isAuthGateReason(whyParam) ? whyParam : null;
 
   // 이메일 로그인/회원가입 폼 상태. mode로 로그인↔가입을 전환한다.
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -65,7 +71,7 @@ function SignInInner() {
     setInAppKind(getInAppKind());
     setIsIos(getPlatform() === 'ios');
     // 퍼널 최상단: 로그인 화면 도달. (방문 → 로그인화면 전환율의 기준점)
-    track('signin_view');
+    track('signin_view', why ? { why } : undefined);
     // 왜 여기서 실패를 기록하나: 소셜 로그인 실패는 "가입 시도 후 이탈"로만 보여서
     // 원인을 알 수 없었다. 코드를 남겨야 OAuthCallback(콜백 실패)인지
     // AccessDenied(동의 거부)인지 Configuration(설정 오류)인지 구분된다.
@@ -173,7 +179,10 @@ function SignInInner() {
         priority
       />
       <h1 className="mt-4 text-xl font-bold text-gray-900">{tCommon('appName')}</h1>
-      <p className="mt-1 text-sm text-gray-500">{tSignIn('tagline')}</p>
+      {/* 사유가 있으면 그것을 먼저 말한다 — "무엇을 하려다 왔는지"가 로그인 이유가 된다. */}
+      <p className="mt-1 text-center text-sm text-gray-500">
+        {why ? tSignIn(`why.${why}` as 'why.navi') : tSignIn('tagline')}
+      </p>
 
       {/* 가입 혜택 한 줄 — 외부 브라우저 유도/소셜 버튼과 함께 가입 동기를 살짝 보강. */}
       {/* [베타 전면무료] 베타엔 광고 제거 포함 전 기능 무료 가치를 전면에 내세운다. 플래그 off 시 기존 카피로 원복. */}

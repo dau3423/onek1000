@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession, signIn } from 'next-auth/react';
+import { requireLogin } from '@/lib/auth/gate';
 import { useTranslations } from 'next-intl';
 import { Header } from '@/components/ui/Header';
 import { FilterBar } from '@/components/ui/FilterBar';
@@ -136,7 +137,7 @@ export default function HomePage() {
   const requireAuth = useCallback(
     (action: () => void) => {
       if (authStatus === 'unauthenticated') {
-        signIn(undefined, { callbackUrl: '/' });
+        requireLogin('navi', '/');
         return;
       }
       // 회원 가드 통과(길안내 시작/따라가기 등 명시적 인터랙션) 시점에 권한 확보 1회 시도.
@@ -1188,7 +1189,7 @@ export default function HomePage() {
             // 확정될 때까지(보통 수백 ms) 탭을 무시하는 쪽을 택했다.
             if (authStatus === 'loading') return;
             if (authStatus === 'unauthenticated') {
-              signIn(undefined, { callbackUrl: '/' });
+              requireLogin('location', '/');
               return;
             }
             setGeoEnabled(true);
