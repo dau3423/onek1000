@@ -1168,6 +1168,14 @@
     "saveAria": "Set {name} as my insurer",
     "disclaimer": "Numbers are each insurer’s main line as published on the General Insurance Association of Korea portal (checked August 2026). Accident reports and roadside assistance are routed by phone menu, and numbers can change — check your policy for the exact contact. If someone is injured, call <b>119</b> first.",
     "copyCoords": "Lat {lat}, Lng {lng}",
-    "copyNear": "About {dist} from {name}"
+    "copyNear": "About {dist} from {name}",
+    "miniCard": {
+      "title": "Roadside assistance",
+      "open": "Insurer contacts",
+      "allInsurers": "All insurers",
+      "myInsurerLabel": "My insurer · tap to call",
+      "setupHint": "Save your insurer and you can call right here when something happens.",
+      "anonHint": "See insurer hotlines and your exact location on one screen."
+    }
   }
 }

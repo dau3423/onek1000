@@ -16,6 +16,7 @@ import { RouteAlert } from '@/components/alert/RouteAlert';
 import { PriceTrendBanner } from '@/components/alert/PriceTrendBanner';
 import { ForecastCard } from '@/components/forecast/ForecastCard';
 import { CarwashDayCard } from '@/components/carwash/CarwashDayCard';
+import { EmergencyMiniCard } from '@/components/emergency/EmergencyMiniCard';
 import { NaviConfirm } from '@/components/alert/NaviConfirm';
 import { ProductSync } from '@/components/map/ProductSync';
 import { StationPopup } from '@/components/map/StationPopup';
@@ -1437,18 +1438,26 @@ export default function HomePage() {
       {/* ④ 주유 타이밍 예측 카드 — 현재 선택 유종(전국) 기준 방향/추천/추이.
           PriceTrendBanner(지도 상단 absolute 오버레이) 아래, 첫 화면(지도) 아래로 스크롤하면 노출되는
           흐름 영역에 둔다(다른 절대배너와 자리 충돌 없이 '아래'에 배치). 신호 없음/비대상 유종이면
-          ForecastCard 내부에서 스스로 미표시(graceful). gas 레이어에서만 노출(충전소 무관). */}
-      {/* 세차하기 좋은 날 카드(FR-3) — ForecastCard 위(더 컴팩트·시한성). gas 레이어 한정.
+          ForecastCard 내부에서 스스로 미표시(graceful). */}
+      {/* 세차하기 좋은 날 카드(FR-3) — ForecastCard 위(더 컴팩트·시한성).
           지수 데이터 없으면 카드 내부에서 스스로 미표시(graceful). 좌표는 내 위치 → 지도 중심 폴백. */}
-      {layer === 'gas' && (
-        <CarwashDayCard
-          onCta={handleCarwashCta}
-          lat={(myLocation ?? mapCenter)?.lat ?? null}
-          lng={(myLocation ?? mapCenter)?.lng ?? null}
-        />
-      )}
+      {/* ⚠️ 예전에는 두 카드를 gas 레이어에서만 노출했다. 지금은 **레이어를 가리지 않는다** —
+          세차 지수는 어느 레이어를 보고 있든 오늘 세차해도 될지 궁금한 정보이고(세차장 레이어에서는
+          오히려 더 맞다), 주유 타이밍도 유종만 정해져 있으면 성립한다(product 는 레이어와 무관하게
+          필터바에서 유지된다). 레이어를 바꿨다고 아래 정보가 사라지면 '없어졌다'로 읽힌다. */}
+      <CarwashDayCard
+        onCta={handleCarwashCta}
+        lat={(myLocation ?? mapCenter)?.lat ?? null}
+        lng={(myLocation ?? mapCenter)?.lng ?? null}
+      />
 
-      {layer === 'gas' && <ForecastCard product={product} />}
+      <ForecastCard product={product} />
+
+      {/* 긴급출동 미니 카드 — **레이어를 가리지 않는다**.
+          위 두 카드는 주유소 레이어 전용 정보지만, 사고·고장은 어느 레이어를 보고 있든 난다
+          (정비소 레이어에서는 오히려 더 필요하다). 평소에 눈에 익히고 보험사를 미리 저장해 두게
+          하는 것이 이 카드의 목적이다 — 정작 급할 때는 메뉴를 뒤지기 어렵다. */}
+      <EmergencyMiniCard />
 
       {/* 메인 하단 사업자 정보 푸터 — 첫 화면(지도) 아래로 스크롤하면 노출(카드사 심사용) */}
       <BusinessFooter />
