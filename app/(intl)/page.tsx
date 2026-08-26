@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl';
 import { Header } from '@/components/ui/Header';
 import { FilterBar } from '@/components/ui/FilterBar';
 import { BottomSheet, SHEET_PEEK_PX } from '@/components/ui/BottomSheet';
+import { track } from '@/lib/analytics';
 import { BannerAd, BANNER_BOTTOM_PX, BANNER_HEIGHT_PX, useBannerVisible } from '@/components/ads/BannerAd';
 import { RadiusAlert } from '@/components/alert/RadiusAlert';
 import { RouteAlert } from '@/components/alert/RouteAlert';
@@ -31,7 +32,7 @@ import { InstallBanner } from '@/components/pwa/InstallBanner';
 import { RouteLoginPrompt } from '@/components/route/RouteLoginPrompt';
 import { NoticePopup } from '@/components/notice/NoticePopup';
 import { BusinessFooter } from '@/components/legal/BusinessFooter';
-import { useMapStore, getInitialMapView, getInitialRoutePlan, type MapView } from '@/stores/map';
+import { useMapStore, getInitialMapView, getInitialRoutePlan, type MapView, type MapLayer } from '@/stores/map';
 import { useGeolocation, GEO_UNSUPPORTED } from '@/hooks/useGeolocation';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useFullscreen } from '@/hooks/useFullscreen';
@@ -327,7 +328,15 @@ export default function HomePage() {
   //  - PC: 상세 페이지로 이동하지 않고 요약 정보 카드(팝업)를 띄운다.
   //  - 모바일: 기존 동작 유지 — 상세 페이지로 이동.
   // 일반 마커와 전국 TOP10 메달 마커 모두 onMarkerClick을 경유하므로 동일하게 적용된다.
+  // 지도·목록에서 '장소를 골랐다'는 신호. 이 앱의 핵심 행동인데 그동안 전혀 측정되지 않아
+  // (KakaoMap·BottomSheet·이 파일에 track 호출 0건) 방문과 상세 열람 사이가 통째로 비어 있었다.
+  // props 에는 레이어와 경로(marker/list) 같은 범주값만 담는다 — 장소 식별자·이름은 넣지 않는다.
+  function trackPick(from: 'marker' | 'list', l: MapLayer) {
+    track('place_click', { from, layer: l });
+  }
+
   function handleMarkerClick(s: StationWithPrice) {
+    trackPick('marker', 'gas');
     if (isDesktop) setPopupStation(s);
     // 고속도로 주유소 id('EX-'+코드) 포함 특수문자가 경로에서 깨지지 않도록 인코딩(하이픈/영숫자엔 no-op).
     else router.push(`/station/${encodeURIComponent(s.id)}`);
@@ -1170,15 +1179,16 @@ export default function HomePage() {
           layer={layer}
           evStations={evStations}
           onEvMarkerClick={(s) => {
+            trackPick('marker', 'ev');
             if (isDesktop) setEvPopup(s);
             else router.push(`/ev/${encodeURIComponent(s.statId)}`);
           }}
           carwashPlaces={visibleCarwash}
           repairShops={visibleRepair}
-          onRepairMarkerClick={(p) => router.push(`/repair/${encodeURIComponent(p.shopKey)}`)}
+          onRepairMarkerClick={(p) => { trackPick('marker', 'repair'); router.push(`/repair/${encodeURIComponent(p.shopKey)}`); }}
           rentalPlaces={rentalPlaces}
-          onRentalMarkerClick={(p) => router.push(`/rental/${encodeURIComponent(p.placeKey)}`)}
-          onCarwashMarkerClick={(p) => setCarwashPopup(p)}
+          onRentalMarkerClick={(p) => { trackPick('marker', 'rental'); router.push(`/rental/${encodeURIComponent(p.placeKey)}`); }}
+          onCarwashMarkerClick={(p) => { trackPick('marker', 'carwash'); setCarwashPopup(p); }}
           routePlan={layer === 'gas' ? routePlan : null}
           onRouteStationClick={handleMarkerClick}
           // RouteAlert 배너가 떠 있는 그 주유소만 지도에서 강하게 강조(주황 펄스 + bounce).
@@ -1396,7 +1406,7 @@ export default function HomePage() {
           nationalTop10Rank={nationalTop10Rank}
           nearbyEnabled={geoEnabled && !!geo.coords}
           nearbyRadiusM={NEARBY_RADIUS_M}
-          onSelect={(s) => router.push(`/station/${encodeURIComponent(s.id)}`)}
+          onSelect={(s) => { trackPick('list', 'gas'); router.push(`/station/${encodeURIComponent(s.id)}`); }}
           onNavigate={(s) => requireAuth(() => setNaviTarget(s))}
           onOpenChange={setSheetOpen}
           onTabChange={handleTabChange}
@@ -1406,7 +1416,7 @@ export default function HomePage() {
           layer={layer}
           evStations={evStations}
           evOrigin={evOrigin}
-          onSelectEv={(s) => router.push(`/ev/${encodeURIComponent(s.statId)}`)}
+          onSelectEv={(s) => { trackPick('list', 'ev'); router.push(`/ev/${encodeURIComponent(s.statId)}`); }}
           onNavigateEv={(s) =>
             requireAuth(() =>
               setNaviTarget({
@@ -1419,7 +1429,7 @@ export default function HomePage() {
           carwashPlaces={visibleCarwash}
           repairShops={visibleRepair}
           repairOrigin={myLocation ?? mapCenter}
-          onSelectRepair={(p) => router.push(`/repair/${encodeURIComponent(p.shopKey)}`)}
+          onSelectRepair={(p) => { trackPick('list', 'repair'); router.push(`/repair/${encodeURIComponent(p.shopKey)}`); }}
           onNavigateRepair={(p) =>
             requireAuth(() => {
               // 정비소도 가격이 없다 — NaviConfirm 이 브랜드·가격 줄을 숨기도록 kind='repair'.
@@ -1434,7 +1444,7 @@ export default function HomePage() {
           }
           rentalPlaces={rentalPlaces}
           rentalOrigin={myLocation ?? mapCenter}
-          onSelectRental={(p) => router.push(`/rental/${encodeURIComponent(p.placeKey)}`)}
+          onSelectRental={(p) => { trackPick('list', 'rental'); router.push(`/rental/${encodeURIComponent(p.placeKey)}`); }}
           onNavigateRental={(p) =>
             requireAuth(() => {
               // 렌터카도 '지금 이 자리 가격'이 없다 — NaviConfirm 이 브랜드·가격 줄을 숨기도록 kind='rental'.
@@ -1448,7 +1458,7 @@ export default function HomePage() {
             })
           }
           carwashOrigin={carwashOrigin}
-          onSelectCarwash={(p) => router.push(`/carwash/${encodeURIComponent(p.mgmtNo)}`)}
+          onSelectCarwash={(p) => { trackPick('list', 'carwash'); router.push(`/carwash/${encodeURIComponent(p.mgmtNo)}`); }}
           onNavigateCarwash={(p) =>
             requireAuth(() => {
               // 세차장은 가격이 없다 — NaviConfirm이 브랜드·가격 줄을 숨기도록 kind='carwash'로 표시.

@@ -180,6 +180,9 @@ export function FilterBar() {
   // '주유소' 복귀 시 유종은 유지한다(setProduct 호출 안 함 — B027로 강제 되돌리지 않는다).
   const onLayerClick = (value: MapLayer, el?: HTMLElement | null) => {
     if (layer !== value) {
+      // 레이어 전환은 이 앱에서 가장 잦은 선택인데 그동안 전혀 측정되지 않았다.
+      // 어느 레이어에서 어디로 옮기는지가 보여야 '+N 뒤에 숨은 레이어가 쓰이는지'를 판단할 수 있다.
+      track('layer_select', { from: layer, to: value });
       setLayer(value);
       // 하위 선택지가 있는 레이어는 전환과 동시에 열어 준다(주유소=유종, 세차장=유형).
       // 앵커는 여기서 잡지 않는다 — 전환되면 슬롯이 재배치돼(orderLayers) 이 버튼이 다른

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import clsx from 'clsx';
 import { useTranslations } from 'next-intl';
+import { track } from '@/lib/analytics';
 import type { StationWithPrice } from '@/types/station';
 import { BRAND_COLOR } from '@/types/station';
 import { useBrandLabel } from '@/lib/i18n/labels';
@@ -184,6 +185,8 @@ export function BottomSheet({
   useEffect(() => {
     if (openSignal === openSignalRef.current) return;
     openSignalRef.current = openSignal;
+    // 여기서는 sheet_open 을 남기지 않는다 — 이 경로는 홈 세차 카드 CTA 뿐이고
+    // 그쪽이 이미 carwash_card_click 을 기록한다(같은 행동을 두 번 세지 않는다).
     setOpen(true);
     onOpenChange?.(true);
   }, [openSignal, onOpenChange]);
@@ -192,8 +195,11 @@ export function BottomSheet({
    * 열림 상태 전이의 단일 출처. 변화가 없으면 부모에 통지하지 않는다
    * (탭/스와이프/딥링크가 같은 상태를 중복 통지해 지도 오버레이가 깜빡이는 것을 막는다).
    */
-  function applyOpen(next: boolean) {
+  function applyOpen(next: boolean, via: 'tap' | 'swipe') {
     if (open === next) return;
+    // 시트 펼침은 '목록을 실제로 보려 한' 신호다. 여는 방식(탭/스와이프)까지 남겨야
+    // 이번에 넣은 스와이프 제스처가 쓰이는지 판단할 수 있다. 접힘은 기록하지 않는다(잡음).
+    if (next) track('sheet_open', { layer, via });
     setOpen(next);
     onOpenChange?.(next);
   }
@@ -227,7 +233,7 @@ export function BottomSheet({
     if (Math.abs(dy) < DRAG_THRESHOLD_PX) return;
     dragStartY.current = null;   // 한 제스처당 한 번만 전이시킨다
     lastDragAt.current = Date.now();
-    applyOpen(dy < 0);           // 위로 쓸면 펼침, 아래로 쓸면 접힘
+    applyOpen(dy < 0, 'swipe');  // 위로 쓸면 펼침, 아래로 쓸면 접힘
   }
 
   function handleTouchEnd() {
@@ -239,13 +245,13 @@ export function BottomSheet({
     if (open && !fromHeader(e.target)) return;
     if (Math.abs(e.deltaY) < 2) return;
     lastDragAt.current = Date.now();
-    applyOpen(e.deltaY > 0);
+    applyOpen(e.deltaY > 0, 'swipe');
   }
 
   function toggleOpen() {
     // 스와이프 뒤에 따라오는 합성 click 이 방금의 전이를 되돌리지 않게 한다.
     if (Date.now() - lastDragAt.current < CLICK_SUPPRESS_MS) return;
-    applyOpen(!open);
+    applyOpen(!open, 'tap');
   }
 
   // ── 목록 끝에서 바깥 스크롤로 이어가기(터치 전용) ──────────────────────────
