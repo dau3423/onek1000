@@ -561,7 +561,14 @@
     "cellAriaDust": "、微細粉じん {dust}",
     "rain": "降水 {pop}%",
     "rainUnknown": "降水 —",
-    "lockedTitle": "洗車におすすめの日"
+    "lockedTitle": "洗車におすすめの日",
+    "notify": {
+      "heading": "洗車指数のお知らせ",
+      "description": "洗車に良い日の朝にお知らせします",
+      "toggleAria": "洗車指数のお知らせ",
+      "footnote": "降水確率とPM2.5から算出した目安の指数です。通知を受け取るには上のプッシュ通知もオンにしてください。",
+      "saveFailed": "保存に失敗しました。"
+    }
   },
   "search": {
     "backAria": "戻る",

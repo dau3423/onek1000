@@ -32,6 +32,8 @@ import {
   FavoriteCount,
   ForecastNotifySection,
   ForecastNotifySkeleton,
+  CarwashNotifySection,
+  CarwashNotifySkeleton,
   FuelLogCount,
   PushSection,
   PushSkeleton,
@@ -217,6 +219,12 @@ export default async function MyPage() {
         {canQuery && userId ? (
           <Suspense fallback={<ForecastNotifySkeleton />}>
             <ForecastNotifySection userId={userId} />
+          </Suspense>
+        ) : null}
+        {/* 세차 지수 알림 옵트인 — 푸시 켠 사용자에게 carwash-notify 배치가 발송. */}
+        {canQuery && userId ? (
+          <Suspense fallback={<CarwashNotifySkeleton />}>
+            <CarwashNotifySection userId={userId} />
           </Suspense>
         ) : null}
       </section>

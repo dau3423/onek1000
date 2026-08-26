@@ -241,6 +241,26 @@ gcloud scheduler jobs create http forecast-notify \
 ```
 
 ```bash
+# 6-1) 세차 지수 알림 발송 — 1일 1회 08:00 KST (반드시 sync-weather 이후)
+#    오늘자 carwash_index 가 grade='good' + 점수 임계(70) 이상인 시도의 사용자에게,
+#    옵트인(users.carwash_notify_opt_in) + 푸시 구독이 있으면 "오늘 세차하기 좋아요"를 보낸다.
+#    지역 판정: 관심지역(interest_regions) 우선 → 없으면 최근 방문 시도(page_visits.sido_code).
+#              둘 다 없으면 보내지 않는다(위치를 모르는 채 서울로 추측하지 않는다).
+#    dedupe(carwash_notify_log): 같은 날 중복 금지 + 5일 쿨다운(맑은 날 연속 구간 스팸 방지).
+#    ⚠️ 선행: supabase/migrations/0053_carwash_notify.sql 을 운영에 적용해야 한다.
+#       미적용이면 라우트가 graceful skip(`opt-in not available`)만 반환한다.
+gcloud scheduler jobs create http carwash-notify \
+  --project=onek1000 \
+  --location=asia-northeast3 \
+  --schedule="0 8 * * *" \
+  --time-zone="Asia/Seoul" \
+  --http-method=POST \
+  --uri="https://onek1000.kr/api/internal/carwash-notify" \
+  --headers="Authorization=Bearer ${CRON_SECRET}" \
+  --attempt-deadline=300s
+```
+
+```bash
 # 7) 데일리 트윗(X) 자동발행 — 매일 07:30 KST (어제자 데이터 확정 + 출근 시간대)
 #    "어제자 전국 최저가 TOP10" 스레드를 X에 발행한다. X env 4종 미설정 시 발행 skip + 미리보기만 반환.
 #    (X env: X_API_KEY / X_API_SECRET / X_ACCESS_TOKEN / X_ACCESS_SECRET — .env.example 참고)

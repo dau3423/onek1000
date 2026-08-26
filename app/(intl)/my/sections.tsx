@@ -10,6 +10,7 @@ import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { CancelButton } from '@/components/billing/CancelButton';
 import { EnablePushButton } from '@/components/push/EnablePushButton';
 import { ForecastNotifyToggle } from '@/components/forecast/ForecastNotifyToggle';
+import { CarwashNotifyToggle } from '@/components/carwash/CarwashNotifyToggle';
 
 interface Sub {
   id: string;
@@ -158,6 +159,29 @@ export async function ForecastNotifySection({ userId }: { userId: string }) {
     optIn = Boolean((data as { forecast_notify_opt_in?: boolean } | null)?.forecast_notify_opt_in);
   }
   return <ForecastNotifyToggle initialOptIn={optIn} />;
+}
+
+/** 세차 지수 알림 토글 스켈레톤. */
+export function CarwashNotifySkeleton() {
+  return <div className="mt-2 h-[88px] animate-pulse rounded-xl bg-gray-100" />;
+}
+
+/**
+ * 세차 지수 알림 옵트인 토글 영역.
+ * 서버에서 users.carwash_notify_opt_in 을 조회해 초기값을 전달(0053 미적용 시 기본 false).
+ */
+export async function CarwashNotifySection({ userId }: { userId: string }) {
+  let optIn = false;
+  if (isSupabaseConfigured()) {
+    const sb = getSupabase();
+    const { data } = await sb
+      .from('users')
+      .select('carwash_notify_opt_in')
+      .eq('id', userId)
+      .maybeSingle();
+    optIn = Boolean((data as { carwash_notify_opt_in?: boolean } | null)?.carwash_notify_opt_in);
+  }
+  return <CarwashNotifyToggle initialOptIn={optIn} />;
 }
 
 // NOTE: 카카오 알림톡 수신 토글 + 휴대폰번호 입력 카드(AlimtalkSection/AlimtalkSkeleton)는

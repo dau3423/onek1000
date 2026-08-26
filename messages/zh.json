@@ -561,7 +561,14 @@
     "cellAriaDust": "，细颗粒物 {dust}",
     "rain": "降水 {pop}%",
     "rainUnknown": "降水 —",
-    "lockedTitle": "适合洗车的日子"
+    "lockedTitle": "适合洗车的日子",
+    "notify": {
+      "heading": "洗车指数提醒",
+      "description": "适合洗车的日子早上通知您",
+      "toggleAria": "洗车指数提醒",
+      "footnote": "根据降水概率和细颗粒物计算的参考指数。要接收提醒，请同时打开上方的推送通知。",
+      "saveFailed": "保存失败。"
+    }
   },
   "search": {
     "backAria": "返回",

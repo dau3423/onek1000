@@ -561,7 +561,14 @@
     "cellAriaDust": ", 미세먼지 {dust}",
     "rain": "강수 {pop}%",
     "rainUnknown": "강수 —",
-    "lockedTitle": "세차하기 좋은 날"
+    "lockedTitle": "세차하기 좋은 날",
+    "notify": {
+      "heading": "세차 지수 알림",
+      "description": "세차하기 좋은 날 아침에 알려드려요",
+      "toggleAria": "세차 지수 알림",
+      "footnote": "강수확률·미세먼지로 계산한 참고 지수예요. 알림을 받으려면 위에서 푸시 알림도 켜주세요.",
+      "saveFailed": "저장에 실패했어요."
+    }
   },
   "search": {
     "backAria": "뒤로 가기",

@@ -561,7 +561,14 @@
     "cellAriaDust": ", fine dust {dust}",
     "rain": "Rain {pop}%",
     "rainUnknown": "Rain —",
-    "lockedTitle": "Good day to wash your car"
+    "lockedTitle": "Good day to wash your car",
+    "notify": {
+      "heading": "Car wash forecast alerts",
+      "description": "We'll let you know on mornings that are good for washing",
+      "toggleAria": "Car wash forecast alerts",
+      "footnote": "A reference index based on rain probability and fine dust. Turn on push notifications above to receive alerts.",
+      "saveFailed": "Couldn't save."
+    }
   },
   "search": {
     "backAria": "Back",
