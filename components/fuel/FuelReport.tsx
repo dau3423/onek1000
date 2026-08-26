@@ -4,11 +4,15 @@
 // 요약 카드(이번 달 주유비/절약 추정/평균 연비) + 월별 주유비 막대 차트 + 총/평균 통계 + 절약 안내.
 // 빈 상태: 기록이 없으면 기록 유도. 연비/절약은 데이터가 없으면 안내로 대체(널 가드).
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useLocale, useTranslations } from 'next-intl';
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
-} from 'recharts';
+
+// 차트만 지연 로딩한다 — 요약 카드·통계는 즉시 보이고 recharts 는 뒤따라온다.
+const MonthlyChart = dynamic(() => import('./MonthlyChart').then((m) => m.MonthlyChart), {
+  ssr: false,
+  loading: () => <div className="h-44 w-full animate-pulse rounded-xl bg-gray-100" />,
+});
+import { useTranslations } from 'next-intl';
 import { BoltIcon, ChartIcon, ChevronRightIcon } from '@/components/icons';
 import { useProductLabel } from '@/lib/i18n/labels';
 import { PRODUCT_LABEL, type ProductCode } from '@/types/station';
@@ -199,54 +203,6 @@ function StatRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function MonthlyChart({ data }: { data: FuelReportData['monthly'] }) {
-  const t = useTranslations('my');
-  const locale = useLocale();
-  const hasAny = data.some((d) => d.spent > 0);
-  if (!hasAny) {
-    return (
-      <div className="flex h-40 items-center justify-center text-xs text-gray-400">
-        {t('report.chartEmptyMessage')}
-      </div>
-    );
-  }
-  // 차트 데이터: 'YYYY-MM' → 로케일별 짧은 월 표기(예: ko '3월', en 'Mar').
-  // Intl.DateTimeFormat(locale,{month:'short'})는 ko/zh/ja에서 원본과 동일하게 '3월'/'3月'을 낸다.
-  const monthFmt = new Intl.DateTimeFormat(locale, { month: 'short' });
-  const chart = data.map((d) => ({
-    ...d,
-    label: monthFmt.format(new Date(Number(d.month.slice(0, 4)), Number(d.month.slice(5)) - 1, 1)),
-  }));
-  return (
-    <div className="h-44 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chart} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
-          <CartesianGrid strokeDasharray="2 4" stroke="#e5e7eb" vertical={false} />
-          <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-          <YAxis
-            orientation="right"
-            tick={{ fontSize: 10, fill: '#9ca3af' }}
-            tickFormatter={(v: number) => (v >= 10000 ? `${Math.round(v / 1000)}k` : `${v}`)}
-            width={36}
-            axisLine={false}
-            tickLine={false}
-          />
-          <Tooltip
-            cursor={{ fill: 'rgba(255,107,0,0.06)' }}
-            contentStyle={{ fontSize: 12, borderRadius: 8 }}
-            formatter={(v: number) => [`₩${v.toLocaleString()}`, t('report.tooltipFuelCostLabel')]}
-            labelFormatter={(l: string) => l}
-          />
-          <Bar dataKey="spent" radius={[4, 4, 0, 0]} isAnimationActive={false}>
-            {chart.map((d) => (
-              <Cell key={d.month} fill={d.spent > 0 ? '#FF6B00' : '#e5e7eb'} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
 
 function SavingsNote({ savings }: { savings: FuelReportData['savings'] }) {
   const t = useTranslations('my');

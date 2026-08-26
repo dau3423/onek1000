@@ -17,11 +17,21 @@ import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
 import { LoginBlurGate } from '@/components/auth/LoginBlurGate';
 import { track } from '@/lib/analytics';
+import dynamic from 'next/dynamic';
 import { FuelIcon } from '@/components/icons';
 import type { ProductCode, SidoCode } from '@/types/station';
 import { SIDO_NAME } from '@/types/station';
 import { useProductLabel, useSidoLabel } from '@/lib/i18n/labels';
-import { ForecastChart, type ForecastSeriesPoint, type ForecastBand } from './ForecastChart';
+// 그래프는 사용자가 '그래프 보기'를 눌렀을 때만 그려진다. recharts(약 95 KB)를 정적으로
+// 물고 있으면 이 카드가 홈에 있는 탓에 **모든 홈 방문자가 펼치지도 않을 차트 코드를 받는다**
+// (실측: 홈 초기 JS 307 KB 중 95 KB 청크가 recharts). 타입만 정적으로 가져온다.
+import type { ForecastSeriesPoint, ForecastBand } from './ForecastChart';
+
+const ForecastChart = dynamic(() => import('./ForecastChart').then((m) => m.ForecastChart), {
+  ssr: false,
+  // 스켈레톤 높이는 차트 컨테이너(h-40)와 같게 맞춘다 — 로드 후 레이아웃이 밀리지 않게.
+  loading: () => <div className="h-40 w-full animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800" />,
+});
 import ForecastSavingsSim from './ForecastSavingsSim';
 import ForecastDrivers from './ForecastDrivers';
 import ForecastHistory from './ForecastHistory';

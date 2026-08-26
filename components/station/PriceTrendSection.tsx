@@ -4,7 +4,14 @@
 // 선택 유종은 FuelSelectionProvider가 공유하고, 이 섹션은 제목/탭/차트를 렌더한다.
 // 차트는 [stationId, product] deps로 자동 재조회되므로 추가 배선이 필요 없다.
 import { useTranslations } from 'next-intl';
-import { PriceHistoryChart } from '@/components/charts/PriceHistoryChart';
+import dynamic from 'next/dynamic';
+
+// 차트는 접힘 없이 바로 보이지만 화면 아래쪽이라, 초기 JS 에서 recharts 를 떼어내는 편이
+// 상세 진입을 빠르게 한다. 스켈레톤은 PriceHistoryChart 자체 로딩 상태(h-40)와 동일하다.
+const PriceHistoryChart = dynamic(
+  () => import('@/components/charts/PriceHistoryChart').then((m) => m.PriceHistoryChart),
+  { ssr: false, loading: () => <div className="h-40 animate-pulse rounded-lg bg-gray-100" /> },
+);
 import { useProductLabel } from '@/lib/i18n/labels';
 import { useFuelSelection } from './FuelSelectionProvider';
 
