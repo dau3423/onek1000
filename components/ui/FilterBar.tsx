@@ -262,7 +262,10 @@ export function FilterBar() {
                 // h-9 + 바의 py-2 로 실효 히트 영역 44px 를 확보한다(기존 h-8/py-1.5 보다 큼).
                 // px-2: 320px 에서 3개+더보기+브랜드가 들어가려면 16px 이 모자랐다(실측).
                 // 세로(h-9)는 그대로라 터치 영역 44px 는 유지된다.
-                'h-9 shrink-0 items-center gap-1 rounded-full px-2 text-xs font-semibold transition',
+                // 400px 미만에서 px-1.5: ja/en 은 라벨이 길어 기본 상태에서도 트랙이 넘쳤다
+                // (실측 ja@360 10px, en@320 19px 초과). 좌우 2px 씩 × 버튼 4개 = 16px 을 되찾는다.
+                'h-9 shrink-0 items-center gap-1 rounded-full px-1.5 text-xs font-semibold transition min-[400px]:px-2',
+                'min-w-0',   // 아래 라벨 truncate 가 flex 안에서 먹히려면 필요하다
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 'focus-visible:ring-offset-1 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-offset-gray-800',
                 SLOT_VISIBILITY[slot] ?? 'hidden',
@@ -272,7 +275,12 @@ export function FilterBar() {
               )}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" />
-              <span>{sub ?? label}</span>
+              {/* 하위값(sub)은 길이를 통제할 수 없다 — 로케일 무관하게 트랙을 깨뜨리는 주범이다.
+                  실측 최장: ko '쌍용 · KG모빌리티'(11자), en 'Vehicle inspection'(18자),
+                  'Premium Gasoline'(16자), zh '现代 Bluehands'(12자).
+                  상한을 두면 긴 값만 말줄임되고 트랙 전체가 밀리지 않는다. 흔한 값
+                  (ko '고급휘발유' 약 60px)은 상한 안이라 그대로 다 보인다. */}
+              <span className="max-w-[4.5rem] truncate min-[390px]:max-w-[7rem]">{sub ?? label}</span>
               {/* ▾ 는 **활성 버튼에만** 단다. 비활성에 붙이면 "메뉴가 열린다"고 말하지만 실제
                   첫 탭은 레이어 전환이라 거짓 신호이고, 버튼당 14px 씩 폭만 먹는다. */}
               {hasMenu && active && (
