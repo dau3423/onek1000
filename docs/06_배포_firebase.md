@@ -241,7 +241,8 @@ gcloud scheduler jobs create http forecast-notify \
 ```
 
 ```bash
-# 6-1) 세차 지수 알림 발송 — 1일 1회 08:00 KST (반드시 sync-weather 이후)
+# 6-1) 세차 지수 알림 발송 — 1일 1회 08:10 KST (반드시 sync-weather 이후)
+#    forecast-notify(08:00)와 10분 띄운다 — 푸시 배치 둘이 같은 분에 겹치지 않게.
 #    오늘자 carwash_index 가 grade='good' + 점수 임계(70) 이상인 시도의 사용자에게,
 #    옵트인(users.carwash_notify_opt_in) + 푸시 구독이 있으면 "오늘 세차하기 좋아요"를 보낸다.
 #    지역 판정: 관심지역(interest_regions) 우선 → 없으면 최근 방문 시도(page_visits.sido_code).
@@ -252,7 +253,7 @@ gcloud scheduler jobs create http forecast-notify \
 gcloud scheduler jobs create http carwash-notify \
   --project=onek1000 \
   --location=asia-northeast3 \
-  --schedule="0 8 * * *" \
+  --schedule="10 8 * * *" \
   --time-zone="Asia/Seoul" \
   --http-method=POST \
   --uri="https://onek1000.kr/api/internal/carwash-notify" \
