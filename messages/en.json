@@ -793,7 +793,10 @@
       "failedPrefix": "Cancellation failed: {message}",
       "processingLabel": "Processing...",
       "buttonLabel": "Cancel subscription"
-    }
+    },
+    "emergencyHeading": "Emergency",
+    "emergencyLabel": "Roadside assistance · Insurer contacts",
+    "emergencyHint": "Save your insurer now so you can call in one tap when something happens."
   },
   "auth": {
     "passwordTooShort": "Password must be at least 8 characters.",
@@ -1075,7 +1078,8 @@
       "emission": "Emissions",
       "taximeter": "Taxi meter"
     },
-    "laneCount": "{count} inspection lanes"
+    "laneCount": "{count} inspection lanes",
+    "emergencyLink": "Call roadside assistance"
   },
   "correction": {
     "photoLabel": "Attach photos (optional, up to {max})",
@@ -1138,5 +1142,32 @@
     "dataSource": "Rental car data: Korea Public Data Portal, National Rental Car Company Standard Data",
     "baseDate": " · as of {date}",
     "publicDataDisclaimer": "Based on public data, so it may differ from reality (closures, rate changes). Updated twice a year, so recent changes may lag."
+  },
+  "emergency": {
+    "pageTitle": "Emergency · Insurer contacts",
+    "metaDescription": "Check your exact location and call your insurer roadside assistance in one tap. Includes main numbers for 12 Korean auto insurers.",
+    "locationTitle": "Your location now",
+    "locationDenied": "Location permission is off. Allow location in your browser settings to see the address of where you are.",
+    "locating": "Finding your location…",
+    "addressLoading": "Looking up the address…",
+    "addressNotFound": "Address not found. Please read out the coordinates below.",
+    "coords": "Lat {lat} · Lng {lng}",
+    "copyLocation": "Copy location",
+    "copied": "Copied",
+    "copyHint": "Read the address aloud when asked on the call. Your location is not sent to the insurer automatically.",
+    "kind": {
+      "highway": "Highway rest area",
+      "gas": "Gas station",
+      "repair": "Repair shop"
+    },
+    "myInsurer": "My insurer",
+    "selectTitle": "Choose your insurer",
+    "otherTitle": "Other insurers",
+    "listHint": "Tap a number to call. Tap <b>Set as mine</b> on the right to pin it to the top next time.",
+    "saveAction": "Set as mine",
+    "saveAria": "Set {name} as my insurer",
+    "disclaimer": "Numbers are each insurer’s main line as published on the General Insurance Association of Korea portal (checked August 2026). Accident reports and roadside assistance are routed by phone menu, and numbers can change — check your policy for the exact contact. If someone is injured, call <b>119</b> first.",
+    "copyCoords": "Lat {lat}, Lng {lng}",
+    "copyNear": "About {dist} from {name}"
   }
 }

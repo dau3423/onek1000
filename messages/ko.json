@@ -793,7 +793,10 @@
       "failedPrefix": "해지 실패: {message}",
       "processingLabel": "처리 중...",
       "buttonLabel": "구독 해지하기"
-    }
+    },
+    "emergencyHeading": "긴급 상황",
+    "emergencyLabel": "긴급출동 · 보험사 연락처",
+    "emergencyHint": "내 보험사를 저장해 두면 사고·고장 시 바로 전화할 수 있어요."
   },
   "auth": {
     "passwordTooShort": "비밀번호는 8자 이상이어야 합니다.",
@@ -1075,7 +1078,8 @@
       "emission": "배출가스정밀",
       "taximeter": "택시미터검정"
     },
-    "laneCount": "검사진로 {count}개"
+    "laneCount": "검사진로 {count}개",
+    "emergencyLink": "보험사 긴급출동 부르기"
   },
   "correction": {
     "photoLabel": "사진 첨부 (선택, 최대 {max}장)",
@@ -1138,5 +1142,32 @@
     "dataSource": "렌터카 정보 제공: 공공데이터포털 전국렌터카업체정보표준데이터",
     "baseDate": " · 기준일 {date}",
     "publicDataDisclaimer": "공공데이터 기준이라 실제와 다를 수 있어요(폐업·요금 변경 가능). 갱신 주기가 반기라 최근 변경은 반영이 늦을 수 있어요."
+  },
+  "emergency": {
+    "pageTitle": "긴급출동 · 보험사 연락처",
+    "metaDescription": "사고·고장 시 내 위치를 바로 확인하고 보험사 긴급출동 번호로 전화하세요. 손해보험사 12곳 대표번호와 내 주변 위치 안내를 제공합니다.",
+    "locationTitle": "지금 내 위치",
+    "locationDenied": "위치 권한이 꺼져 있어요. 브라우저 설정에서 위치를 허용하면 지금 있는 곳의 주소를 보여드려요.",
+    "locating": "위치를 확인하는 중이에요…",
+    "addressLoading": "주소를 확인하는 중이에요…",
+    "addressNotFound": "주소를 찾지 못했어요. 아래 좌표를 알려주세요.",
+    "coords": "위도 {lat} · 경도 {lng}",
+    "copyLocation": "위치 정보 복사",
+    "copied": "복사했어요",
+    "copyHint": "전화로 위치를 물으면 위 주소를 읽어 주세요. 보험사에 위치가 자동으로 전송되지는 않아요.",
+    "kind": {
+      "highway": "고속도로 휴게소",
+      "gas": "주유소",
+      "repair": "정비소"
+    },
+    "myInsurer": "내 보험사",
+    "selectTitle": "보험사 선택",
+    "otherTitle": "다른 보험사",
+    "listHint": "번호를 누르면 바로 전화가 걸려요. 오른쪽 <b>내 보험사로 저장</b>을 누르면 다음부터 맨 위에 나와요.",
+    "saveAction": "내 보험사로",
+    "saveAria": "{name}을 내 보험사로 저장",
+    "disclaimer": "번호는 손해보험협회 자동차보험 종합포털에 공개된 각 사 대표번호입니다(2026년 8월 확인). 사고접수·긴급출동은 ARS 안내에 따라 나뉘며, 번호는 바뀔 수 있으니 정확한 연락처는 보험증권을 확인해 주세요. 사람이 다쳤다면 <b>119</b>에 먼저 신고하세요.",
+    "copyCoords": "위도 {lat}, 경도 {lng}",
+    "copyNear": "{name}에서 약 {dist}"
   }
 }

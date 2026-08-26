@@ -46,6 +46,11 @@ const ALLOWED_EVENTS = new Set([
   // 네이버 검색 유입(28일 509명, 전체의 14%)이 닿는 곳이 지역 페이지라, 그 사람들이
   // 실제로 지도까지 오는지 재기 위한 값이다.
   'region_map_cta',
+  // 긴급출동 화면 — 실제로 쓰이는지(그리고 어느 보험사인지) 본다.
+  // props.insurer 는 우리가 정의한 12개 식별자 중 하나이고, 위치·좌표는 절대 담지 않는다.
+  'emergency_open',
+  'emergency_call',
+  'emergency_copy_location',
   // ── 핵심 가치 행동(성장 계기판). props에는 stationId(공개 오피넷 ID)까지만 허용 —
   //    좌표·주소·검색어 등 위치/개인정보성 값은 절대 넣지 않는다.
   'station_detail_view', // 주유소 상세 화면 열림(props.stationId) — 열릴 때마다 1건

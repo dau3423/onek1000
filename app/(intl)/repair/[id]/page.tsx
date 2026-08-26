@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { queryRepairDetail } from '@/lib/db/repair';
@@ -8,7 +9,7 @@ import { RepairBrandBadge } from '@/components/repair/RepairBrandBadge';
 import { ReviewSection } from '@/components/reviews/ReviewSection';
 import type { RepairDetail } from '@/types/repair';
 import { CorrectionButton } from '@/components/corrections/CorrectionButton';
-import { PinIcon, PhoneIcon, ClockIcon, BuildingIcon, CheckCircleIcon } from '@/components/icons';
+import { PinIcon, PhoneIcon, ClockIcon, BuildingIcon, CheckCircleIcon, ChevronRightIcon } from '@/components/icons';
 
 interface Props { params: { id: string } }
 
@@ -134,6 +135,21 @@ export default async function RepairDetailPage({ params }: Props) {
             {t('noOperatingInfo')}
           </p>
         )}
+      </section>
+
+      {/* 긴급출동 — 고장으로 정비소를 찾는 맥락이라 여기서 필요할 수 있다.
+          보험사 긴급출동이 견인·현장 조치를 해 주므로, 정비소로 가기 전에 부를 일이 많다. */}
+      <section className="border-t border-gray-100 px-5 py-4">
+        <Link
+          href="/emergency"
+          className="flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50 px-4 py-3"
+        >
+          <span className="flex items-center gap-1.5 text-sm font-semibold text-orange-900">
+            <PhoneIcon className="h-4 w-4 text-primary" />
+            {t('emergencyLink')}
+          </span>
+          <ChevronRightIcon className="h-4 w-4 text-orange-300" />
+        </Link>
       </section>
 
       {/* CTA — 길안내 + (있으면) 전화걸기. 정비소는 가격/브랜드 개념이 없어 관련 표기 없음. */}

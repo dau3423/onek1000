@@ -15,6 +15,7 @@ import {
   FuelIcon,
   HeartIcon,
   MailIcon,
+  PhoneIcon,
   PinIcon,
 } from '@/components/icons';
 import { SignOutButton } from '@/components/SignOutButton';
@@ -100,6 +101,19 @@ export default async function MyPage() {
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">{t('referralHeading')}</h2>
         {/* 코드 lazy 발급/성공수는 클라이언트에서 /api/referral/me로 조회(서버 검증). */}
         <ReferralCard />
+      </section>
+
+      {/* 긴급출동 — 평소에 한 번 보고 보험사를 저장해 두면, 정작 급할 때 목록을 훑지 않아도 된다.
+          그래서 자주 여는 마이페이지 위쪽에 둔다(설치형 PWA 는 홈 아이콘 길게 눌러 바로 진입). */}
+      <section className="border-t border-gray-100 px-5 py-5">
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">{t('emergencyHeading')}</h2>
+        <Link href="/emergency" className="flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50 p-4">
+          <span className="flex items-center gap-1.5 text-sm font-semibold text-orange-900">
+            <PhoneIcon className="h-4 w-4 text-primary" />{t('emergencyLabel')}
+          </span>
+          <ChevronRightIcon className="h-4 w-4 text-orange-300" />
+        </Link>
+        <p className="mt-1.5 text-[11px] leading-relaxed text-gray-400">{t('emergencyHint')}</p>
       </section>
 
       <section className="border-t border-gray-100 px-5 py-5">

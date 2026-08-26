@@ -793,7 +793,10 @@
       "failedPrefix": "取消失败：{message}",
       "processingLabel": "处理中...",
       "buttonLabel": "取消订阅"
-    }
+    },
+    "emergencyHeading": "紧急情况",
+    "emergencyLabel": "紧急救援 · 保险公司联系方式",
+    "emergencyHint": "先保存您的保险公司，事故或故障时即可一键拨打。"
   },
   "auth": {
     "passwordTooShort": "密码至少需要8位。",
@@ -1075,7 +1078,8 @@
       "emission": "尾气精密",
       "taximeter": "出租车计价器检定"
     },
-    "laneCount": "检测车道 {count}条"
+    "laneCount": "检测车道 {count}条",
+    "emergencyLink": "呼叫保险公司救援"
   },
   "correction": {
     "photoLabel": "附上照片（选填，最多 {max} 张）",
@@ -1138,5 +1142,32 @@
     "dataSource": "租车信息提供：公共数据门户 全国租车企业信息标准数据",
     "baseDate": " · 基准日 {date}",
     "publicDataDisclaimer": "基于公共数据，可能与实际情况不同（可能已停业或调价）。更新周期为半年，近期变更可能反映较慢。"
+  },
+  "emergency": {
+    "pageTitle": "紧急救援 · 保险公司联系方式",
+    "metaDescription": "事故或故障时立即确认当前位置，一键拨打保险公司道路救援电话。收录韩国12家财产保险公司代表号码。",
+    "locationTitle": "当前位置",
+    "locationDenied": "位置权限已关闭。在浏览器设置中允许定位后，即可显示您所在位置的地址。",
+    "locating": "正在确认位置…",
+    "addressLoading": "正在查询地址…",
+    "addressNotFound": "未找到地址，请告知下方坐标。",
+    "coords": "纬度 {lat} · 经度 {lng}",
+    "copyLocation": "复制位置信息",
+    "copied": "已复制",
+    "copyHint": "通话中被问到位置时，请读出上方地址。位置不会自动发送给保险公司。",
+    "kind": {
+      "highway": "高速公路服务区",
+      "gas": "加油站",
+      "repair": "汽修店"
+    },
+    "myInsurer": "我的保险公司",
+    "selectTitle": "选择保险公司",
+    "otherTitle": "其他保险公司",
+    "listHint": "点击号码即可拨打。点击右侧<b>设为我的</b>，下次就会显示在最上方。",
+    "saveAction": "设为我的",
+    "saveAria": "将{name}设为我的保险公司",
+    "disclaimer": "号码为韩国损害保险协会汽车保险综合门户公布的各公司代表号码（2026年8月核实）。事故报案与紧急救援通过语音菜单分流，号码可能变更，准确联系方式请查阅保险单。如有人员受伤，请先拨打<b>119</b>。",
+    "copyCoords": "纬度 {lat}，经度 {lng}",
+    "copyNear": "距{name}约{dist}"
   }
 }
