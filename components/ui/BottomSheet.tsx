@@ -1,7 +1,7 @@
 'use client';
 
 import type { MapLayer } from '@/stores/map';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import clsx from 'clsx';
@@ -248,6 +248,67 @@ export function BottomSheet({
     applyOpen(!open);
   }
 
+  // ── 목록 끝에서 바깥 스크롤로 이어가기(터치 전용) ──────────────────────────
+  //
+  // 실측(프로덕션, 모바일 에뮬레이션):
+  //   휠  — 목록이 끝나면 바깥이 이어서 스크롤된다(브라우저 기본 체이닝이 동작).
+  //   터치 — 한 제스처 안에서는 이어지지 않는다. 목록이 끝에 붙은 채 멈추고,
+  //          손을 뗐다가 다시 쓸어야 비로소 바깥이 움직인다.
+  // 그래서 **터치에만** 수동으로 넘겨준다. 휠에도 넣으면 기본 체이닝과 겹쳐 두 배로 스크롤된다.
+  //
+  // 목록이 이미 끝에 붙어 있을 때만 손대므로, 브라우저가 목록을 더 스크롤할 여지는 없다
+  // → 우리가 바깥에 더해도 이중 적용이 되지 않는다. preventDefault 는 취소 가능한
+  // 이벤트에서만 부른다(스크롤이 시작된 뒤에는 무시되며 콘솔 경고만 남는다).
+  const chainState = useRef<{ outer: HTMLElement | null; lastY: number }>({ outer: null, lastY: 0 });
+
+  /** el 위쪽에서 실제로 스크롤 가능한 가장 가까운 조상. 지도 컨테이너(overflow-hidden)는 건너뛴다. */
+  function nearestScrollable(el: HTMLElement): HTMLElement | null {
+    let p = el.parentElement;
+    while (p) {
+      const ov = getComputedStyle(p).overflowY;
+      if ((ov === 'auto' || ov === 'scroll') && p.scrollHeight - p.clientHeight > 1) return p;
+      p = p.parentElement;
+    }
+    return null;
+  }
+
+  const chainCleanup = useRef<(() => void) | null>(null);
+  /** 목록 컨테이너에 붙이는 콜백 ref. 레이어마다 목록이 하나씩만 렌더되므로 공유해도 된다. */
+  const listRef = useCallback((el: HTMLDivElement | null) => {
+    chainCleanup.current?.();
+    chainCleanup.current = null;
+    if (!el) return;
+
+    const onStart = (e: TouchEvent) => {
+      chainState.current = { outer: nearestScrollable(el), lastY: e.touches[0]?.clientY ?? 0 };
+    };
+    const onMove = (e: TouchEvent) => {
+      const y = e.touches[0]?.clientY;
+      const st = chainState.current;
+      if (y == null || !st.outer) return;
+      const dy = st.lastY - y;          // 위로 쓸면 양수
+      st.lastY = y;
+      if (dy === 0) return;
+      const atEnd = dy > 0
+        ? el.scrollTop >= el.scrollHeight - el.clientHeight - 1
+        : el.scrollTop <= 0;
+      if (!atEnd) return;
+      const room = dy > 0
+        ? st.outer.scrollTop < st.outer.scrollHeight - st.outer.clientHeight - 1
+        : st.outer.scrollTop > 0;
+      if (!room) return;
+      st.outer.scrollTop += dy;
+      if (e.cancelable) e.preventDefault();
+    };
+
+    el.addEventListener('touchstart', onStart, { passive: true });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    chainCleanup.current = () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove', onMove);
+    };
+  }, []);
+
   const isEv = layer === 'ev';
   const isCarwash = layer === 'carwash';
   const isRepair = layer === 'repair';
@@ -369,7 +430,7 @@ export function BottomSheet({
 
       {/* EV 레이어: 충전소 목록(사용가능→급속→거리). 주유소 목록 대신 노출. */}
       {isEv ? (
-        <div className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
+        <div ref={listRef} className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
           {evRanked.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
               {t('bottomSheet.emptyEv')}
@@ -390,7 +451,7 @@ export function BottomSheet({
         </div>
       ) : isCarwash ? (
         /* 세차장 레이어: 세차장 목록(거리순). 가격 컬럼/정렬 없음 — 이름+유형 뱃지+거리+주소만. */
-        <div className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
+        <div ref={listRef} className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
           {carwashRanked.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
               {t('bottomSheet.emptyCarwash')}
@@ -412,7 +473,7 @@ export function BottomSheet({
         </div>
       ) : isRepair ? (
         /* 정비소 레이어: 정비소 목록(거리순). 가격 컬럼/정렬 없음 — 이름+유형 뱃지+거리+주소만. */
-        <div className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
+        <div ref={listRef} className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
           {repairRanked.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
               {t('bottomSheet.emptyRepair')}
@@ -434,7 +495,7 @@ export function BottomSheet({
         </div>
       ) : isRental ? (
         /* 렌터카 레이어: 업체 목록(거리순). 요금이 있으면 우측에 대표 요금을 보여준다. */
-        <div className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
+        <div ref={listRef} className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
           {rentalRanked.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
               {t('bottomSheet.emptyRental')}
@@ -456,7 +517,7 @@ export function BottomSheet({
         </div>
       ) : (
       /* 시트 높이(SHEET_OPEN_VH=70vh)에서 손잡이/탭 영역(SHEET_PEEK_PX=96px)을 뺀 스크롤 영역 */
-      <div className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
+      <div ref={listRef} className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
         {list.length === 0 ? (
           carwashOnly ? (
             // 세차 필터 빈 상태(AC-4) — DropletIcon + 안내 + 탈출구("세차 필터 끄기").
