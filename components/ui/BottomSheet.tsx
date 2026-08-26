@@ -33,6 +33,13 @@ type Tab = 'area' | 'nearby';
 export const SHEET_PEEK_PX = 96;
 /** 펼침 상태의 시트 높이(뷰포트 비율) */
 export const SHEET_OPEN_VH = 70;
+/**
+ * 스와이프로 펼침/접힘을 인정할 최소 세로 이동량(px).
+ * 브라우저의 탭 슬롭(약 10px)보다 충분히 커야 목록 항목을 누르려던 손가락이 시트를 여닫지 않는다.
+ */
+const DRAG_THRESHOLD_PX = 24;
+/** 스와이프 직후 따라오는 합성 click 을 무시하는 시간(ms). 스와이프가 곧바로 되돌려지는 것을 막는다. */
+const CLICK_SUPPRESS_MS = 400;
 
 interface Props {
   stations: StationWithPrice[];
@@ -181,12 +188,64 @@ export function BottomSheet({
     onOpenChange?.(true);
   }, [openSignal, onOpenChange]);
 
+  /**
+   * 열림 상태 전이의 단일 출처. 변화가 없으면 부모에 통지하지 않는다
+   * (탭/스와이프/딥링크가 같은 상태를 중복 통지해 지도 오버레이가 깜빡이는 것을 막는다).
+   */
+  function applyOpen(next: boolean) {
+    if (open === next) return;
+    setOpen(next);
+    onOpenChange?.(next);
+  }
+
+  // ── 스와이프로 펼치기/접기 ────────────────────────────────────────────────
+  //
+  // 왜 필요한가: 지도가 첫 화면의 대부분을 덮고 카카오 지도가 세로 드래그를 패닝으로 소비하므로,
+  // 페이지를 스크롤할 수 있는 곳은 사실상 이 시트의 peek(96px)뿐이다. 그래서 예전에는 peek 을
+  // 위로 쓸어올리면 **시트가 펼쳐지는 대신 페이지가 스크롤되어** 하단 카드가 나왔다 — 바텀시트
+  // 관습과 정반대였다. 이제 위로 = 펼침, 아래로 = 접힘이고, 페이지 스크롤은 시트가 펼쳐진 뒤
+  // 목록 끝에서 overscroll 체이닝으로 이어진다(잠금은 app/(intl)/page.tsx 가 담당).
+  //
+  // 펼친 상태에서는 **손잡이에서 시작한 제스처만** 받는다. 목록 위 스와이프까지 가로채면
+  // 목록 스크롤이 불가능해진다.
+  const headerRef = useRef<HTMLButtonElement>(null);
+  const dragStartY = useRef<number | null>(null);
+  const lastDragAt = useRef(0);
+
+  function fromHeader(target: EventTarget | null): boolean {
+    return headerRef.current?.contains(target as Node) ?? false;
+  }
+
+  function handleTouchStart(e: React.TouchEvent) {
+    dragStartY.current = open && !fromHeader(e.target) ? null : (e.touches[0]?.clientY ?? null);
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    const start = dragStartY.current;
+    if (start == null) return;
+    const dy = (e.touches[0]?.clientY ?? start) - start;
+    if (Math.abs(dy) < DRAG_THRESHOLD_PX) return;
+    dragStartY.current = null;   // 한 제스처당 한 번만 전이시킨다
+    lastDragAt.current = Date.now();
+    applyOpen(dy < 0);           // 위로 쓸면 펼침, 아래로 쓸면 접힘
+  }
+
+  function handleTouchEnd() {
+    dragStartY.current = null;
+  }
+
+  /** 데스크톱 휠 — deltaY > 0(아래로 스크롤)은 손가락을 위로 쓰는 것과 같은 의미다. */
+  function handleWheel(e: React.WheelEvent) {
+    if (open && !fromHeader(e.target)) return;
+    if (Math.abs(e.deltaY) < 2) return;
+    lastDragAt.current = Date.now();
+    applyOpen(e.deltaY > 0);
+  }
+
   function toggleOpen() {
-    setOpen((v) => {
-      const next = !v;
-      onOpenChange?.(next);
-      return next;
-    });
+    // 스와이프 뒤에 따라오는 합성 click 이 방금의 전이를 되돌리지 않게 한다.
+    if (Date.now() - lastDragAt.current < CLICK_SUPPRESS_MS) return;
+    applyOpen(!open);
   }
 
   const isEv = layer === 'ev';
@@ -278,8 +337,14 @@ export function BottomSheet({
         open ? 'translate-y-0' : 'translate-y-[calc(100%-96px)]',
       )}
       style={{ maxHeight: `${SHEET_OPEN_VH}vh` }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+      onWheel={handleWheel}
     >
       <button
+        ref={headerRef}
         onClick={toggleOpen}
         className="flex w-full items-center justify-between px-5 py-3"
       >

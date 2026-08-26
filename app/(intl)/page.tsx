@@ -1067,10 +1067,48 @@ export default function HomePage() {
     setSheetOpenSignal((n) => n + 1);
   }, [setCarwashOnly]);
 
+  // === 스크롤 우선순위: 시트가 먼저, 하단 카드는 그 다음 ===
+  //
+  // 문제: 지도가 첫 화면의 대부분을 덮고 카카오 지도가 세로 드래그를 패닝으로 소비하므로,
+  // 페이지를 스크롤할 수 있는 곳은 사실상 시트 peek(96px)뿐이었다. 그래서 peek 을 위로
+  // 쓸어올리면 시트가 펼쳐지는 대신 페이지가 스크롤되어 하단 카드(세차지수·주유타이밍·긴급출동)가
+  // 먼저 나왔다 — 정작 핵심인 주유소 목록을 건너뛰는 순서였다.
+  //
+  // 해법: 시트가 접혀 있고 맨 위에 있는 동안에는 페이지 스크롤을 잠근다. 이때의 스와이프는
+  // BottomSheet 의 제스처가 받아 시트를 펼치고, 시트가 펼쳐지면 잠금이 풀려 목록 끝에서
+  // overscroll 체이닝으로 하단 카드까지 이어진다.
+  //
+  // 가두지 않기 위한 조건 두 가지 — 둘 중 하나라도 빠지면 하단 카드에 영원히 못 간다:
+  //   · 시트가 렌더되지 않는 상태(세차장 0건)에서는 잠그지 않는다 — 펼칠 시트가 없다.
+  //   · 이미 아래로 스크롤된 뒤 시트를 접어도 잠그지 않는다 — 맨 위로 돌아왔을 때만 다시 잠근다.
+  // 키보드 사용자는 Tab 으로 하단 요소에 포커스하면 브라우저가 overflow-hidden 컨테이너도
+  // 스크롤해 주므로(programmatic scroll 은 막히지 않는다) 그 순간 잠금이 스스로 풀린다.
+  const sheetRendered = layer !== 'carwash' || visibleCarwash.length > 0;
+  const [atScrollTop, setAtScrollTop] = useState(true);
+  useEffect(() => {
+    const el = scrollRootRef.current;
+    if (!el) return;
+    const sync = () => setAtScrollTop(el.scrollTop <= 0);
+    // 마운트 직후와 bfcache 복원 직후에 실제 스크롤 위치와 맞춘다.
+    // 이게 없으면 뒤로가기로 scrollTop>0 인 채 복원됐을 때 초기값(true)만 보고 잠가 버리고,
+    // 잠긴 뒤에는 scroll 이벤트가 나지 않으니 잠금이 영원히 풀리지 않는다 — 실제 가둠 경로다.
+    sync();
+    el.addEventListener('scroll', sync, { passive: true });
+    window.addEventListener('pageshow', sync);
+    return () => {
+      el.removeEventListener('scroll', sync);
+      window.removeEventListener('pageshow', sync);
+    };
+  }, []);
+  const lockPageScroll = sheetRendered && !sheetOpen && atScrollTop;
+
   return (
     // 바깥 래퍼: 세로 스크롤 가능. 첫 뷰포트(헤더+필터바+지도)는 한 화면(h-dvh)을 채우고,
     // 그 아래로 스크롤하면 사업자 정보 푸터가 나온다(카드사 심사: 메인 하단 사업자 정보).
-    <div ref={scrollRootRef} className="h-dvh overflow-y-auto">
+    <div
+      ref={scrollRootRef}
+      className={`h-dvh ${lockPageScroll ? 'overflow-hidden' : 'overflow-y-auto'}`}
+    >
       {/* 첫 화면: 기존 전체화면 지도 UX 유지. 지도 영역(map-container)은 한 화면을 채운다.
           내부 absolute 요소(GPS/배너/시트/알람/전체화면)는 모두 이 묶음 내부 기준이라 동작 불변. */}
       <div className="relative flex h-dvh flex-col">
@@ -1351,7 +1389,7 @@ export default function HomePage() {
 
         {/* 하단 시트 — gas/ev는 항상, 세차장은 표시할 세차장이 있을 때만 노출한다.
             (세차장 0건/유형필터로 0개면 위 오버레이 빈 상태 배너가 표면을 담당 → 시트·배너 중복/겹침 방지) */}
-        {(layer !== 'carwash' || visibleCarwash.length > 0) && (
+        {sheetRendered && (
         <BottomSheet
           stations={visibleStations}
           nearbyStations={visibleNearbyStations}
