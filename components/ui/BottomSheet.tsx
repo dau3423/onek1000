@@ -35,10 +35,14 @@ export const SHEET_PEEK_PX = 96;
 /** 펼침 상태의 시트 높이(뷰포트 비율) */
 export const SHEET_OPEN_VH = 70;
 /**
- * 스와이프로 펼침/접힘을 인정할 최소 세로 이동량(px).
- * 브라우저의 탭 슬롭(약 10px)보다 충분히 커야 목록 항목을 누르려던 손가락이 시트를 여닫지 않는다.
+ * 시트를 끌기 시작할 최소 이동량(px). 브라우저 탭 슬롭(약 10px)보다 커야
+ * 목록 항목을 누르려던 손가락이 시트를 움직이지 않는다.
  */
-const DRAG_THRESHOLD_PX = 24;
+const DRAG_SLOP_PX = 12;
+/** 이 속도(px/ms, 위로 양수)를 넘으면 위치와 무관하게 방향대로 스냅한다(플링). */
+const FLING_VELOCITY = 0.4;
+/** 스냅 애니메이션 시간(ms). 클래스의 duration-300 과 맞춘다. */
+const SNAP_MS = 300;
 /** 스와이프 직후 따라오는 합성 click 을 무시하는 시간(ms). 스와이프가 곧바로 되돌려지는 것을 막는다. */
 const CLICK_SUPPRESS_MS = 400;
 
@@ -191,83 +195,51 @@ export function BottomSheet({
     onOpenChange?.(true);
   }, [openSignal, onOpenChange]);
 
-  /**
-   * 열림 상태 전이의 단일 출처. 변화가 없으면 부모에 통지하지 않는다
-   * (탭/스와이프/딥링크가 같은 상태를 중복 통지해 지도 오버레이가 깜빡이는 것을 막는다).
-   */
+  // ── 제스처: 펼침 ↔ 목록 스크롤 ↔ 바깥 스크롤을 한 손짓으로 이어 붙인다 ──────
+  //
+  // 왜 이렇게까지: 지도가 첫 화면 대부분을 덮고 카카오 지도가 세로 드래그를 패닝으로 소비하므로,
+  // 페이지를 스크롤할 수 있는 곳은 사실상 이 시트뿐이다. 이전 구현은 핸들러가 셋으로 쪼개져
+  // (peek 전용 열기 / 손잡이 전용 닫기 / 목록 전용 체이닝) **잡는 위치마다 반응이 달랐고**,
+  // 시트도 손가락을 따라오지 않고 2단으로 튀었다.
+  //
+  // 이제 시트 루트에 붙은 touchmove 하나가 이동량을 순서대로 소비한다:
+  //   위로   시트 펼침(손가락 추종) → 목록 스크롤 → 바깥 스크롤
+  //   아래로 바깥 스크롤 → 목록 스크롤 → 시트 접힘(손가락 추종)
+  // 어디를 잡든 같은 규칙이라 '여기선 되고 저기선 안 되는' 문제가 사라진다.
+  //
+  // 접힘 상태에서 목록을 overflow-hidden 으로 두는 게 핵심이다(아래 listClass).
+  // 네이티브 스크롤이 아예 시작되지 않아야 브라우저가 제스처를 가져가지 않고,
+  // 그래야 시트가 손가락을 따라올 수 있다.
+  //
+  // ⚠️ 한계(브라우저 제약): iOS/Chrome 은 네이티브 스크롤이 시작되면 그 제스처 동안
+  //    preventDefault 를 무시한다. 그래서 '목록 한가운데에서 한 번에 쭉 내려 시트까지 접기'는
+  //    한 손짓으로 되지 않는다 — 목록이 맨 위에 닿으면 거기서 멈추고, 손을 뗐다 다시 내려야
+  //    접힌다. 없애려면 목록 스크롤까지 관성 포함해 직접 구동해야 하는데 네이티브보다
+  //    어색해질 위험이 커서 택하지 않았다.
+  const lastDragAt = useRef(0);
+  const sheetElRef = useRef<HTMLDivElement | null>(null);
+  const listElRef = useRef<HTMLDivElement | null>(null);
+
+  // 네이티브 리스너는 마운트 시 한 번만 등록되므로 렌더마다 새로 만들어지는 값은
+  // ref 로 건네야 한다(안 그러면 첫 렌더의 layer·onOpenChange 를 계속 붙든다).
+  const openRef = useRef(open);
+  useEffect(() => { openRef.current = open; }, [open]);
+
   function applyOpen(next: boolean, via: 'tap' | 'swipe') {
-    if (open === next) return;
+    if (openRef.current === next) return;
+    openRef.current = next;
     // 시트 펼침은 '목록을 실제로 보려 한' 신호다. 여는 방식(탭/스와이프)까지 남겨야
-    // 이번에 넣은 스와이프 제스처가 쓰이는지 판단할 수 있다. 접힘은 기록하지 않는다(잡음).
+    // 스와이프 제스처가 쓰이는지 판단할 수 있다. 접힘은 기록하지 않는다(잡음).
     if (next) track('sheet_open', { layer, via });
     setOpen(next);
     onOpenChange?.(next);
   }
+  const applyOpenRef = useRef(applyOpen);
+  applyOpenRef.current = applyOpen;
 
-  // ── 스와이프로 펼치기/접기 ────────────────────────────────────────────────
-  //
-  // 왜 필요한가: 지도가 첫 화면의 대부분을 덮고 카카오 지도가 세로 드래그를 패닝으로 소비하므로,
-  // 페이지를 스크롤할 수 있는 곳은 사실상 이 시트의 peek(96px)뿐이다. 그래서 예전에는 peek 을
-  // 위로 쓸어올리면 **시트가 펼쳐지는 대신 페이지가 스크롤되어** 하단 카드가 나왔다 — 바텀시트
-  // 관습과 정반대였다. 이제 위로 = 펼침, 아래로 = 접힘이고, 페이지 스크롤은 시트가 펼쳐진 뒤
-  // 목록 끝에서 overscroll 체이닝으로 이어진다(잠금은 app/(intl)/page.tsx 가 담당).
-  //
-  // 펼친 상태에서는 **손잡이에서 시작한 제스처만** 받는다. 목록 위 스와이프까지 가로채면
-  // 목록 스크롤이 불가능해진다.
-  const headerRef = useRef<HTMLButtonElement>(null);
-  const dragStartY = useRef<number | null>(null);
-  const lastDragAt = useRef(0);
-
-  function fromHeader(target: EventTarget | null): boolean {
-    return headerRef.current?.contains(target as Node) ?? false;
-  }
-
-  function handleTouchStart(e: React.TouchEvent) {
-    dragStartY.current = open && !fromHeader(e.target) ? null : (e.touches[0]?.clientY ?? null);
-  }
-
-  function handleTouchMove(e: React.TouchEvent) {
-    const start = dragStartY.current;
-    if (start == null) return;
-    const dy = (e.touches[0]?.clientY ?? start) - start;
-    if (Math.abs(dy) < DRAG_THRESHOLD_PX) return;
-    dragStartY.current = null;   // 한 제스처당 한 번만 전이시킨다
-    lastDragAt.current = Date.now();
-    applyOpen(dy < 0, 'swipe');  // 위로 쓸면 펼침, 아래로 쓸면 접힘
-  }
-
-  function handleTouchEnd() {
-    dragStartY.current = null;
-  }
-
-  /** 데스크톱 휠 — deltaY > 0(아래로 스크롤)은 손가락을 위로 쓰는 것과 같은 의미다. */
-  function handleWheel(e: React.WheelEvent) {
-    if (open && !fromHeader(e.target)) return;
-    if (Math.abs(e.deltaY) < 2) return;
-    lastDragAt.current = Date.now();
-    applyOpen(e.deltaY > 0, 'swipe');
-  }
-
-  function toggleOpen() {
-    // 스와이프 뒤에 따라오는 합성 click 이 방금의 전이를 되돌리지 않게 한다.
-    if (Date.now() - lastDragAt.current < CLICK_SUPPRESS_MS) return;
-    applyOpen(!open, 'tap');
-  }
-
-  // ── 목록 끝에서 바깥 스크롤로 이어가기(터치 전용) ──────────────────────────
-  //
-  // 실측(프로덕션, 모바일 에뮬레이션):
-  //   휠  — 목록이 끝나면 바깥이 이어서 스크롤된다(브라우저 기본 체이닝이 동작).
-  //   터치 — 한 제스처 안에서는 이어지지 않는다. 목록이 끝에 붙은 채 멈추고,
-  //          손을 뗐다가 다시 쓸어야 비로소 바깥이 움직인다.
-  // 그래서 **터치에만** 수동으로 넘겨준다. 휠에도 넣으면 기본 체이닝과 겹쳐 두 배로 스크롤된다.
-  //
-  // 목록이 이미 끝에 붙어 있을 때만 손대므로, 브라우저가 목록을 더 스크롤할 여지는 없다
-  // → 우리가 바깥에 더해도 이중 적용이 되지 않는다. preventDefault 는 취소 가능한
-  // 이벤트에서만 부른다(스크롤이 시작된 뒤에는 무시되며 콘솔 경고만 남는다).
-  const chainState = useRef<{ outer: HTMLElement | null; lastY: number }>({ outer: null, lastY: 0 });
-
-  /** el 위쪽에서 실제로 스크롤 가능한 가장 가까운 조상. 지도 컨테이너(overflow-hidden)는 건너뛴다. */
+  /** el 위쪽에서 실제로 스크롤 가능한 가장 가까운 조상.
+   *  closest('.h-dvh') 로 찾으면 안 된다 — 스크롤되지 않는 div.h-dvh.flex.flex-col 이 먼저 걸린다.
+   *  지도 컨테이너는 overflow-hidden 이라 자연히 건너뛴다. */
   function nearestScrollable(el: HTMLElement): HTMLElement | null {
     let p = el.parentElement;
     while (p) {
@@ -278,42 +250,147 @@ export function BottomSheet({
     return null;
   }
 
-  const chainCleanup = useRef<(() => void) | null>(null);
-  /** 목록 컨테이너에 붙이는 콜백 ref. 레이어마다 목록이 하나씩만 렌더되므로 공유해도 된다. */
-  const listRef = useCallback((el: HTMLDivElement | null) => {
-    chainCleanup.current?.();
-    chainCleanup.current = null;
+  /** 접힘 위치의 translateY(px) — 시트 실제 높이에서 peek 을 뺀 값. */
+  const collapsedY = (el: HTMLElement) => Math.max(0, el.offsetHeight - SHEET_PEEK_PX);
+  const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
+
+  const gesture = useRef<{
+    lastY: number; startY: number; lastT: number;
+    dragging: boolean;   // 시트를 직접 끌고 있는가
+    y: number;           // 현재 translateY(px)
+    vUp: number;         // 최근 속도(px/ms, 위로 양수)
+    outer: HTMLElement | null;
+  } | null>(null);
+
+  const rootCleanup = useRef<(() => void) | null>(null);
+  const sheetRef = useCallback((el: HTMLDivElement | null) => {
+    rootCleanup.current?.();
+    rootCleanup.current = null;
+    sheetElRef.current = el;
     if (!el) return;
 
     const onStart = (e: TouchEvent) => {
-      chainState.current = { outer: nearestScrollable(el), lastY: e.touches[0]?.clientY ?? 0 };
+      const t = e.touches[0];
+      if (!t) return;
+      gesture.current = {
+        lastY: t.clientY, startY: t.clientY, lastT: e.timeStamp,
+        dragging: false,
+        y: openRef.current ? 0 : collapsedY(el),
+        vUp: 0,
+        outer: nearestScrollable(el),
+      };
     };
-    const onMove = (e: TouchEvent) => {
-      const y = e.touches[0]?.clientY;
-      const st = chainState.current;
-      if (y == null || !st.outer) return;
-      const dy = st.lastY - y;          // 위로 쓸면 양수
-      st.lastY = y;
-      if (dy === 0) return;
-      const atEnd = dy > 0
-        ? el.scrollTop >= el.scrollHeight - el.clientHeight - 1
-        : el.scrollTop <= 0;
-      if (!atEnd) return;
-      const room = dy > 0
-        ? st.outer.scrollTop < st.outer.scrollHeight - st.outer.clientHeight - 1
-        : st.outer.scrollTop > 0;
-      if (!room) return;
-      st.outer.scrollTop += dy;
+
+    const drag = (g: NonNullable<typeof gesture.current>, dy: number, e: TouchEvent) => {
+      g.dragging = true;
+      g.y = clamp(g.y - dy, 0, collapsedY(el));
+      el.style.transition = 'none';
+      el.style.transform = `translateY(${g.y}px)`;
       if (e.cancelable) e.preventDefault();
+    };
+
+    const onMove = (e: TouchEvent) => {
+      const g = gesture.current;
+      const t = e.touches[0];
+      if (!g || !t) return;
+      const y = t.clientY;
+      const dy = g.lastY - y;                       // 위로 쓸면 양수
+      const dt = Math.max(1, e.timeStamp - g.lastT);
+      g.lastY = y; g.lastT = e.timeStamp;
+      if (dy === 0) return;
+      g.vUp = dy / dt;
+
+      // 이미 시트를 끌고 있으면 방향과 무관하게 계속 끈다(되돌리기 포함).
+      if (g.dragging) { drag(g, dy, e); return; }
+
+      if (!openRef.current) {
+        // 접힘: 목록이 overflow-hidden 이라 네이티브 스크롤이 없다 → 시트를 직접 끈다.
+        if (Math.abs(g.startY - y) < DRAG_SLOP_PX) return;
+        drag(g, dy, e);
+        return;
+      }
+
+      const list = listElRef.current;
+      if (dy > 0) {
+        // 위로 — 목록이 남았으면 네이티브 스크롤에 맡기고, 끝났으면 바깥으로 넘긴다.
+        const listAtEnd = !list || list.scrollTop >= list.scrollHeight - list.clientHeight - 1;
+        if (!listAtEnd) return;
+        const o = g.outer;
+        if (o && o.scrollTop < o.scrollHeight - o.clientHeight - 1) {
+          o.scrollTop += dy;
+          if (e.cancelable) e.preventDefault();
+        }
+        return;
+      }
+
+      // 아래로 — 목록 → 바깥 → 시트 접힘 순으로 되돌린다.
+      const listAtTop = !list || list.scrollTop <= 0;
+      if (!listAtTop) return;                        // 목록이 남았으면 네이티브에 맡긴다
+      const o = g.outer;
+      if (o && o.scrollTop > 0) {
+        o.scrollTop += dy;                           // dy<0 → 위로 되돌린다
+        if (e.cancelable) e.preventDefault();
+        return;
+      }
+      if (Math.abs(g.startY - y) < DRAG_SLOP_PX) return;
+      drag(g, dy, e);                                // 목록도 바깥도 끝 → 시트를 접는다
+    };
+
+    const onEnd = () => {
+      const g = gesture.current;
+      gesture.current = null;
+      if (!g || !g.dragging) return;
+      const max = collapsedY(el);
+      // 던지듯 빠르게 움직였으면 방향대로, 아니면 절반을 넘겼는지로 정한다.
+      const next = Math.abs(g.vUp) > FLING_VELOCITY ? g.vUp > 0 : g.y < max / 2;
+      lastDragAt.current = Date.now();
+      // 목표 위치로 직접 애니메이션한 뒤 인라인 스타일을 걷어낸다. 여기서 인라인을 즉시
+      // 지우면 React 가 클래스를 바꾸기 전 한 프레임 동안 원위치로 튀어 보인다.
+      el.style.transition = `transform ${SNAP_MS}ms`;
+      el.style.transform = `translateY(${next ? 0 : max}px)`;
+      window.setTimeout(() => {
+        if (sheetElRef.current !== el) return;
+        el.style.transition = '';
+        el.style.transform = '';
+      }, SNAP_MS + 20);
+      applyOpenRef.current(next, 'swipe');
     };
 
     el.addEventListener('touchstart', onStart, { passive: true });
     el.addEventListener('touchmove', onMove, { passive: false });
-    chainCleanup.current = () => {
+    el.addEventListener('touchend', onEnd, { passive: true });
+    el.addEventListener('touchcancel', onEnd, { passive: true });
+    rootCleanup.current = () => {
       el.removeEventListener('touchstart', onStart);
       el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', onEnd);
+      el.removeEventListener('touchcancel', onEnd);
     };
   }, []);
+
+  /** 목록 컨테이너 ref — 레이어마다 하나만 렌더되므로 공유해도 된다. */
+  const listRef = useCallback((el: HTMLDivElement | null) => { listElRef.current = el; }, []);
+
+  /** 데스크톱 휠. 휠은 브라우저 기본 체이닝이 이미 동작하므로(실측) 목록·바깥은 건드리지 않고
+   *  시트 여닫기만 담당한다. 여기서 바깥까지 더하면 기본 체이닝과 겹쳐 두 배로 스크롤된다. */
+  function handleWheel(e: React.WheelEvent) {
+    if (Math.abs(e.deltaY) < 2) return;
+    if (!open) {
+      if (e.deltaY > 0) { lastDragAt.current = Date.now(); applyOpen(true, 'swipe'); }
+      return;
+    }
+    const list = listElRef.current;
+    if (e.deltaY < 0 && (!list || list.scrollTop <= 0)) {
+      lastDragAt.current = Date.now();
+      applyOpen(false, 'swipe');
+    }
+  }
+
+  function toggleOpen() {
+    // 스와이프 뒤 따라오는 합성 click 이 방금의 전이를 되돌리지 않게 한다.
+    if (Date.now() - lastDragAt.current < CLICK_SUPPRESS_MS) return;
+    applyOpen(!open, 'tap');
+  }
 
   const isEv = layer === 'ev';
   const isCarwash = layer === 'carwash';
@@ -396,6 +473,14 @@ export function BottomSheet({
         ? t('bottomSheet.titleNearby', { radius: radiusKm, count: NEARBY_LIMIT })
         : t('bottomSheet.titleArea', { count: Math.min(areaSorted.length, AREA_LIMIT) });
 
+  // 접힘 상태에선 목록을 스크롤 불가로 둔다 — 네이티브 스크롤이 시작되지 않아야
+  // 시트 드래그가 제스처를 온전히 소유하고 손가락을 따라올 수 있다(위 제스처 주석 참고).
+  // 두 리터럴 모두 정적으로 남겨 Tailwind JIT 가 스캔할 수 있게 한다.
+  const listClass = clsx(
+    'max-h-[calc(70vh-96px)] pb-[calc(8px+env(safe-area-inset-bottom))]',
+    open ? 'overflow-y-auto' : 'overflow-hidden',
+  );
+
   return (
     <div
       className={clsx(
@@ -404,14 +489,10 @@ export function BottomSheet({
         open ? 'translate-y-0' : 'translate-y-[calc(100%-96px)]',
       )}
       style={{ maxHeight: `${SHEET_OPEN_VH}vh` }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
+      ref={sheetRef}
       onWheel={handleWheel}
     >
       <button
-        ref={headerRef}
         onClick={toggleOpen}
         className="flex w-full items-center justify-between px-5 py-3"
       >
@@ -436,7 +517,7 @@ export function BottomSheet({
 
       {/* EV 레이어: 충전소 목록(사용가능→급속→거리). 주유소 목록 대신 노출. */}
       {isEv ? (
-        <div ref={listRef} className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
+        <div ref={listRef} className={listClass}>
           {evRanked.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
               {t('bottomSheet.emptyEv')}
@@ -457,7 +538,7 @@ export function BottomSheet({
         </div>
       ) : isCarwash ? (
         /* 세차장 레이어: 세차장 목록(거리순). 가격 컬럼/정렬 없음 — 이름+유형 뱃지+거리+주소만. */
-        <div ref={listRef} className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
+        <div ref={listRef} className={listClass}>
           {carwashRanked.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
               {t('bottomSheet.emptyCarwash')}
@@ -479,7 +560,7 @@ export function BottomSheet({
         </div>
       ) : isRepair ? (
         /* 정비소 레이어: 정비소 목록(거리순). 가격 컬럼/정렬 없음 — 이름+유형 뱃지+거리+주소만. */
-        <div ref={listRef} className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
+        <div ref={listRef} className={listClass}>
           {repairRanked.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
               {t('bottomSheet.emptyRepair')}
@@ -501,7 +582,7 @@ export function BottomSheet({
         </div>
       ) : isRental ? (
         /* 렌터카 레이어: 업체 목록(거리순). 요금이 있으면 우측에 대표 요금을 보여준다. */
-        <div ref={listRef} className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
+        <div ref={listRef} className={listClass}>
           {rentalRanked.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
               {t('bottomSheet.emptyRental')}
@@ -523,7 +604,7 @@ export function BottomSheet({
         </div>
       ) : (
       /* 시트 높이(SHEET_OPEN_VH=70vh)에서 손잡이/탭 영역(SHEET_PEEK_PX=96px)을 뺀 스크롤 영역 */
-      <div ref={listRef} className="max-h-[calc(70vh-96px)] overflow-y-auto pb-[calc(8px+env(safe-area-inset-bottom))]">
+      <div ref={listRef} className={listClass}>
         {list.length === 0 ? (
           carwashOnly ? (
             // 세차 필터 빈 상태(AC-4) — DropletIcon + 안내 + 탈출구("세차 필터 끄기").
