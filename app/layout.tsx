@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import localFont from 'next/font/local';
 import { Suspense } from 'react';
 import './globals.css';
 import { SessionProvider } from '@/components/SessionProvider';
@@ -10,12 +9,10 @@ import { AdsenseScript } from '@/components/ads/AdsenseScript';
 import { FirebaseAnalytics } from '@/components/FirebaseAnalytics';
 import { VisitPing } from '@/components/VisitPing';
 
-const pretendard = localFont({
-  src: './fonts/PretendardVariable.woff2',
-  display: 'swap',
-  variable: '--font-pretendard',
-  weight: '45 920',
-});
+// 폰트는 next/font/local 대신 app/fonts/pretendard.css 의 unicode-range 동적 서브셋을 쓴다.
+// next/font 는 @font-face 를 한 벌만 만들어 unicode-range 분할을 표현할 수 없고, 그래서
+// 2,010 KB 짜리 통짜 파일을 통째로 받아야 했다(4G 실측 11.7초). --font-pretendard 변수는
+// 그 CSS 의 :root 에서 정의한다. 재생성은 scripts/gen-font-subset.py.
 
 // Google AdSense 사이트 소유 확인용 publisher ID (env 우선, 없으면 하드코딩 폴백)
 const ADSENSE_ACCOUNT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT || 'ca-pub-6206539456344377';
@@ -105,7 +102,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko" className={pretendard.variable}>
+    <html lang="ko">
       <body className="h-full">
         <SessionProvider>
           <SessionGuard />
