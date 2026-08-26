@@ -566,7 +566,7 @@
       "heading": "洗车指数提醒",
       "description": "适合洗车的日子早上通知您",
       "toggleAria": "洗车指数提醒",
-      "footnote": "根据降水概率和细颗粒物计算的参考指数。要接收提醒，请同时打开上方的推送通知。",
+      "footnote": "根据降水概率和细颗粒物计算的参考指数。开启后将在此设备接收通知。",
       "saveFailed": "保存失败。"
     }
   },
@@ -803,7 +803,9 @@
     },
     "emergencyHeading": "紧急情况",
     "emergencyLabel": "紧急救援 · 保险公司联系方式",
-    "emergencyHint": "先保存您的保险公司，事故或故障时即可一键拨打。"
+    "emergencyHint": "先保存您的保险公司，事故或故障时即可一键拨打。",
+    "pushUnsupported": "此浏览器不支持通知。iPhone 请先添加到主屏幕后重试。",
+    "pushDenied": "浏览器已阻止通知。请在网站设置中允许通知后重试。"
   },
   "auth": {
     "passwordTooShort": "密码至少需要8位。",
@@ -1017,7 +1019,7 @@
       "heading": "加油时机预测提醒",
       "description": "预计油价上涨前提前通知您",
       "toggleAria": "加油时机预测提醒",
-      "footnote": "预测约为未来2周的走势方向。要收到提醒，请同时开启上方的推送通知。",
+      "footnote": "约两周的走势展望。开启后将在此设备接收通知。",
       "saveFailed": "保存失败。"
     },
     "savingsSim": {

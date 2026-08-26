@@ -566,7 +566,7 @@
       "heading": "Car wash forecast alerts",
       "description": "We'll let you know on mornings that are good for washing",
       "toggleAria": "Car wash forecast alerts",
-      "footnote": "A reference index based on rain probability and fine dust. Turn on push notifications above to receive alerts.",
+      "footnote": "A reference index based on rain probability and fine dust. Turning this on enables notifications on this device.",
       "saveFailed": "Couldn't save."
     }
   },
@@ -803,7 +803,9 @@
     },
     "emergencyHeading": "Emergency",
     "emergencyLabel": "Roadside assistance · Insurer contacts",
-    "emergencyHint": "Save your insurer now so you can call in one tap when something happens."
+    "emergencyHint": "Save your insurer now so you can call in one tap when something happens.",
+    "pushUnsupported": "Notifications aren't available in this browser. On iPhone, add the site to your Home Screen and try again.",
+    "pushDenied": "Notifications are blocked in your browser. Allow them in site settings and try again."
   },
   "auth": {
     "passwordTooShort": "Password must be at least 8 characters.",
@@ -1017,7 +1019,7 @@
       "heading": "Fill-up timing forecast alerts",
       "description": "Get a heads-up before fuel prices are expected to rise",
       "toggleAria": "Fill-up timing forecast alerts",
-      "footnote": "This covers roughly the next 2 weeks of direction. Turn on push notifications above too, or you won't get alerts.",
+      "footnote": "A roughly two-week directional outlook. Turning this on enables notifications on this device.",
       "saveFailed": "Failed to save."
     },
     "savingsSim": {
