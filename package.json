@@ -14,7 +14,8 @@
     "i18n:check": "node scripts/i18n-check.mjs",
     "i18n:scan": "node scripts/i18n-scan.mjs",
     "lock:verify": "npx -y npm@10.9.4 ci --dry-run --no-audit --no-fund",
-    "vapid:gen": "node -e \"const w=require('web-push');const k=w.generateVAPIDKeys();console.log('NEXT_PUBLIC_VAPID_PUBLIC_KEY='+k.publicKey);console.log('VAPID_PRIVATE_KEY='+k.privateKey);\""
+    "vapid:gen": "node -e \"const w=require('web-push');const k=w.generateVAPIDKeys();console.log('NEXT_PUBLIC_VAPID_PUBLIC_KEY='+k.publicKey);console.log('VAPID_PRIVATE_KEY='+k.privateKey);\"",
+    "events:check": "node scripts/events-check.mjs"
   },
   "dependencies": {
     "@portone/browser-sdk": "^0.1.8",

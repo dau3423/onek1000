@@ -27,6 +27,12 @@ const RATE_LIMIT = 60;
 
 // 화이트리스트 — 임의 문자열 오염을 막고 집계 대상을 고정한다.
 const ALLOWED_EVENTS = new Set([
+  // ⚠️ 여기에 없는 이벤트는 200 을 돌려주면서 **조용히 버려진다**. 클라이언트에서 track() 을
+  //    추가하면 반드시 여기도 추가할 것. 빠뜨려도 화면·네트워크상으로는 정상으로 보이므로
+  //    사람 눈으로는 못 잡는다 — `npm run events:check` 가 대신 잡는다(scripts/events-check.mjs).
+  //    실제로 layer_more_open / layer_select_from_more 는 필터바 재설계 때부터,
+  //    place_click / sheet_open / layer_select 는 2026-08-26 배포 때부터 전량 폐기되고 있었다.
+
   'landing_view',        // 첫 화면(지도) 진입
   'signin_view',         // 로그인 화면 도달
   'oauth_click',         // 카카오/구글 버튼 클릭(props.provider, props.inApp)
@@ -64,6 +70,15 @@ const ALLOWED_EVENTS = new Set([
   'carwash_card_click',  // 세차 카드 CTA 클릭(props.bestDay=YYYY-MM-DD, props.grade)
   // ── i18n(과업 11) — 감지/선택된 로케일 분포로 4개 언어 유지·번역 투자 우선순위를 판단.
   'locale_active',       // 세션 내 로케일 활성화·전환(props.locale = ko|en|zh|ja)
+
+  // ── 지도·시트 상호작용(2026-08-26 추가) ──
+  // 이 앱의 핵심 행동인데 그동안 전혀 측정되지 않았다(KakaoMap/BottomSheet/홈에 track 0건).
+  'place_click',            // 장소 선택(props.from = marker|list, props.layer)
+  'sheet_open',             // 하단 시트 펼침(props.layer, props.via = tap|swipe)
+  'layer_select',           // 레이어 전환(props.from, props.to)
+  // ── 필터바 '+N' 메뉴(레이어 발견성) ──
+  'layer_more_open',        // '+N' 메뉴 열기
+  'layer_select_from_more', // '+N' 메뉴에서 레이어 선택(props.layer)
 ]);
 
 function clientIp(req: NextRequest): string {
