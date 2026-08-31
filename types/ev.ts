@@ -88,4 +88,9 @@ export interface EvBboxResponse {
   bbox: { sw: [number, number]; ne: [number, number] };
   cachedAt: string;
   ttlSec: number;
+  /**
+   * 조회에 실패해 빈 목록을 돌려준 경우 true. "이 지역에 충전소가 없다"와 구분하기 위한 표식이다.
+   * 예전에는 실패가 빈 본문 500으로 나가 클라이언트가 삼켰고, 사용자에겐 둘이 똑같아 보였다.
+   */
+  degraded?: boolean;
 }

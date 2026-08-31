@@ -33,7 +33,28 @@ export async function GET(req: Request) {
     });
   }
 
-  const stations = await queryEvChargersByBbox({ swLat, swLng, neLat, neLng }, EV_LIMIT);
+  // 조회 실패(statement timeout 등)를 500으로 흘리지 않는다. lib/db/ev.ts는 RPC 오류를 throw하는데,
+  // 그대로 두면 라우트가 **빈 본문 500**을 내고 클라이언트(page.tsx의 ev fetch)는 이를 console.error로
+  // 삼켜, 사용자에겐 "이 지역에 충전소가 없는" 것과 구분되지 않았다. 빈 목록 + degraded 표식으로
+  // 바꿔 최소한 조용히 사라지지는 않게 한다. (근본 원인은 마이그레이션 0055의 사전집계로 해소)
+  let stations;
+  try {
+    stations = await queryEvChargersByBbox({ swLat, swLng, neLat, neLng }, EV_LIMIT);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`[ev/bbox] 조회 실패 — ${msg}`);
+    return NextResponse.json(
+      {
+        stations: [],
+        bbox: { sw: [swLat, swLng], ne: [neLat, neLng] },
+        cachedAt: new Date().toISOString(),
+        ttlSec: 0,
+        degraded: true,        // 클라이언트가 "없음"과 "못 불러옴"을 구분할 수 있게 한다.
+      },
+      // 실패 응답은 캐시하지 않는다 — 다음 요청이 다시 시도해야 한다.
+      { status: 200, headers: { 'X-Cache': 'BYPASS', 'Cache-Control': 'no-store' } },
+    );
+  }
 
   const body: EvBboxResponse = {
     stations,

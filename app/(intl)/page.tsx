@@ -546,6 +546,13 @@ export default function HomePage() {
         return (await r.json()) as EvBboxResponse;
       })
       .then((data) => {
+        // degraded=true는 "이 영역에 충전소가 없음"이 아니라 "불러오지 못함"이다.
+        // 화면 처리는 아직 없지만(별도 디자인 결정), 기존 마커를 지우지 않고 유지해
+        // 일시적 실패가 이미 보이던 충전소를 지우는 일은 막는다.
+        if (data?.degraded) {
+          console.warn('ev bbox degraded — 조회 실패로 빈 응답. 기존 마커 유지');
+          return;
+        }
         setEvStations(Array.isArray(data?.stations) ? data.stations : []);
       })
       .catch((e) => {

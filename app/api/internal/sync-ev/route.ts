@@ -383,10 +383,27 @@ export async function POST(req: Request) {
     }
   }
 
+  // 전국 순회를 이번 호출에서 마쳤고(resumeFrom 없음) 실제로 완료된 시도가 있으면
+  // 충전소 사전집계(ev_station_summary, 마이그레이션 0055)를 갱신한다.
+  // 중간 페이지에서 끊긴 호출(resumeFrom 있음)에는 돌리지 않는다 — 부분 적재 상태를 노출하지 않고,
+  // 비싼 전량 재집계를 한 사이클에 한 번만 지불하기 위해서다.
+  // 0055 미적용 환경에서도 sync 자체는 성공해야 하므로 실패는 기록만 하고 넘어간다.
+  let summaryRefreshed: number | null = null;
+  if (!resumeFrom && okZcodes.length > 0) {
+    try {
+      const { data, error } = await sb.rpc('refresh_ev_station_summary');
+      if (error) fetchErrors.push(`ev_station_summary refresh failed: ${error.message}`);
+      else summaryRefreshed = typeof data === 'number' ? data : null;
+    } catch (e) {
+      fetchErrors.push(`ev_station_summary refresh: ${(e as Error).message}`);
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     asOf: now,
     mode: single ? `single(z${single})` : 'nationwide',
+    summaryRefreshed,         // 사전집계 테이블에 적재된 충전소 수. null이면 이번 호출에선 갱신 안 함.
     cursorEnabled: cursorsAvailable, // false면 마이그레이션(0016) 미적용 → page1부터(대형 시도 미완 가능)
     zcodes: targets.length,
     okZcodes,                 // 이번 호출에서 cycle 완료·정리까지 끝난 시도 목록
