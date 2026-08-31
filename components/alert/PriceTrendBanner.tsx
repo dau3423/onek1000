@@ -60,14 +60,20 @@ export function PriceTrendBanner({ lat, lng, product }: Props) {
     setDismissed(isDismissedToday());
   }, []);
 
-  // 좌표/유종 변경 시 추세 조회. 좌표는 ~1km(소수 2자리)로 양자화해 잦은 재호출 방지.
+  // 좌표를 ~1km(소수 2자리)로 양자화한다. **렌더 중에 계산해 의존성 배열에 넣는 것이 핵심이다** —
+  // 예전에는 URL 파라미터만 양자화하고 deps는 raw 좌표라, 양자화가 재호출을 전혀 줄이지 못했다.
+  // 이 컴포넌트의 lat/lng는 geo.coords(watchPosition) 또는 지도 idle의 mapCenter라, 주행 중에는
+  // 초당 1회꼴로 새 값이 들어온다. /api/price-trend는 반경 5km × 최근 7일 vs 직전 7일
+  // prices_history 집계라 가볍지 않고, 배너는 오름세일 때만 보이므로 화면에 아무것도 없는
+  // 상태로 그 부하가 계속 나갔다.
+  const qlat = lat == null ? null : lat.toFixed(2);
+  const qlng = lng == null ? null : lng.toFixed(2);
+
   useEffect(() => {
-    if (lat == null || lng == null) {
+    if (qlat == null || qlng == null) {
       setTrend(null);
       return;
     }
-    const qlat = lat.toFixed(2);
-    const qlng = lng.toFixed(2);
     const ac = new AbortController();
     const params = new URLSearchParams({ lat: qlat, lng: qlng, product });
     fetch(`/api/price-trend?${params}`, { signal: ac.signal, cache: 'no-store' })
@@ -77,7 +83,7 @@ export function PriceTrendBanner({ lat, lng, product }: Props) {
         if (e?.name !== 'AbortError') setTrend(null);
       });
     return () => ac.abort();
-  }, [lat, lng, product]);
+  }, [qlat, qlng, product]);
 
   const show =
     !dismissed &&

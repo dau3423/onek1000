@@ -109,15 +109,20 @@ export function CarwashDayCard({ onCta, lat, lng }: Props) {
     }
   }, []);
 
+  // 좌표를 ~1km(소수 2자리)로 양자화한다(PriceTrendBanner와 같은 이유·같은 방식).
+  // /api/carwash-index는 IP당 분당 60회 제한이라, 주행 중 GPS 픽스마다 호출하면 한계를 넘어
+  // 429가 나고 카드가 통째로 사라진다 — 공용 IP(회사 NAT·통신사 CGNAT)면 옆 사람까지 같이.
+  // 지금은 Redis 비활성으로 레이트리밋이 통과라 잠복 중이고, Redis를 되살리는 순간 발현된다.
+  // 세차 지수는 시도 단위 값이라 1km 양자화로 정확도 손실도 없다.
+  const qlat = (lat ?? SEOUL.lat).toFixed(2);
+  const qlng = (lng ?? SEOUL.lng).toFixed(2);
+
   // 세차 지수 조회 — 좌표 있으면 사용, 없으면 서울 폴백(위치를 저장하지 않는 일회성 조회).
   useEffect(() => {
     // 세션 확인 중(loading)에도 호출하지 않는다 — 비로그인 사용자에게 실제 값이 잠깐 보였다가
     // 잠기는 것을 막기 위해, 인증이 확정된 뒤에만 조회한다.
     if (hidden || authStatus !== 'authenticated') return;
-    const q = new URLSearchParams({
-      lat: String(lat ?? SEOUL.lat),
-      lng: String(lng ?? SEOUL.lng),
-    });
+    const q = new URLSearchParams({ lat: qlat, lng: qlng });
     const ac = new AbortController();
     fetch(`/api/carwash-index?${q}`, { signal: ac.signal })
       .then(async (r) => (r.ok ? ((await r.json()) as CarwashIndexResponse) : null))
@@ -126,7 +131,7 @@ export function CarwashDayCard({ onCta, lat, lng }: Props) {
         if (e?.name !== 'AbortError') setData(null);
       });
     return () => ac.abort();
-  }, [hidden, lat, lng, authStatus]);
+  }, [hidden, qlat, qlng, authStatus]);
 
   // "오늘 하루 숨김"은 로그인 여부와 무관하게 존중한다.
   if (hidden) return null;
