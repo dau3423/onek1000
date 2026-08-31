@@ -200,4 +200,11 @@ export interface RoutePlan {
    * directions 실패(폴백) 시 출발/도착 직선 2점이 들어온다.
    */
   path: RoutePoint[];
+  /**
+   * 총 주행거리(m) — 카카오내비 도로 경로 성공 시에만 채워진다.
+   * 직선 폴백에서는 undefined(직선거리를 주행거리로 보여주지 않는다).
+   */
+  distance?: number;
+  /** 예상 소요(s) — distance와 같은 조건. 없으면 표시를 생략한다. */
+  duration?: number;
 }

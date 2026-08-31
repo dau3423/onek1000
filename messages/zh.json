@@ -84,6 +84,10 @@
       }
     },
     "route": {
+      "summary": "· {distance} · {duration}",
+      "durationHm": "{h}小时{m}分钟",
+      "durationH": "{h}小时",
+      "durationM": "{m}分钟",
       "lowestCount": "· 最低价 {count}处",
       "clearAria": "取消显示路线"
     },

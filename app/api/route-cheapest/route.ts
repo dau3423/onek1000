@@ -1,6 +1,8 @@
 // 경로별 최저가 — 카카오내비 도로 경로 주변(buffer, 기본 2km) 최저가 TOP N.
 // directions(도로 경로) 성공 시 도로 path 주변 최저가, 실패 시 출발↔도착 직선 폴백.
 // 응답에 path(도로 점들)를 포함해 클라이언트가 지도에 도로 Polyline을 그릴 수 있게 한다.
+// distance(m)/duration(s)는 directions가 이미 돌려주는 값이라 추가 호출 없이 함께 실어 보낸다.
+// 직선 폴백(도로 경로 실패)에서는 둘 다 생략한다 — 직선거리를 주행거리로 보여주면 거짓말이 된다.
 import { NextResponse } from 'next/server';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { getMockStations } from '@/lib/mock/stations';
@@ -84,6 +86,9 @@ export async function GET(req: Request) {
   // RPC 파라미터/거리계산 부담을 줄이려 도로 경로를 최대 120점으로 다운샘플링.
   const path: RoutePoint[] = road ? downsamplePath(road.path, 120) : straightPath;
   const usedRoad = Boolean(road);
+  // 경로 요약 — 다운샘플링과 무관하게 directions 원본 summary 값을 그대로 쓴다(오차 없음).
+  // 0/음수/비정상은 표시 의미가 없으므로 생략(undefined → JSON에서 키 자체가 빠진다).
+  const summary = roadSummary(road);
 
   // 2-a) Supabase 미설정(mock 모드) — 도로 path(또는 직선) 주변 최저가를 순수 함수로 계산.
   if (!isSupabaseConfigured()) {
@@ -92,7 +97,7 @@ export async function GET(req: Request) {
       .filter((s) => (s.distance ?? Infinity) <= buffer)
       .sort((a, b) => a.price - b.price)
       .slice(0, limit);
-    return NextResponse.json({ stations, buffer, product, path, usedRoad });
+    return NextResponse.json({ stations, buffer, product, path, usedRoad, ...summary });
   }
 
   const sb = getSupabase();
@@ -106,7 +111,7 @@ export async function GET(req: Request) {
     });
     if (!error) {
       const stations = mapRows(data, product);
-      return NextResponse.json({ stations, buffer, product, path, usedRoad: true });
+      return NextResponse.json({ stations, buffer, product, path, usedRoad: true, ...summary });
     }
     // RPC 미배포(마이그레이션 0015 미적용) 등 → 직선 RPC로 폴백
   }
@@ -121,7 +126,22 @@ export async function GET(req: Request) {
 
   const stations = mapRows(data, product);
   // 도로 RPC 실패로 직선 폴백한 경우, path도 직선으로 맞춰 클라가 직선을 그리게 한다.
+  // 이 갈래는 요약(distance/duration)도 싣지 않는다 — directions가 성공했더라도 화면에 그려지는
+  // 선은 직선이므로, 도로 기준 수치를 직선 위에 얹으면 선과 숫자가 어긋나 보인다.
   return NextResponse.json({ stations, buffer, product, path: usedRoad ? straightPath : path, usedRoad: false });
+}
+
+/**
+ * directions 결과 → 응답에 실을 경로 요약(거리 m / 소요 s).
+ * 도로 경로 실패(null)거나 값이 비정상이면 해당 키를 생략해 클라이언트가 표시를 건너뛰게 한다.
+ */
+function roadSummary(road: { distance: number; duration: number } | null) {
+  if (!road) return {};
+  const ok = (n: number) => Number.isFinite(n) && n > 0;
+  return {
+    ...(ok(road.distance) ? { distance: road.distance } : {}),
+    ...(ok(road.duration) ? { duration: road.duration } : {}),
+  };
 }
 
 /** RPC 결과 행 → StationWithPrice 매핑(직선/도로 RPC 공통). */

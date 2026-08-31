@@ -84,6 +84,10 @@
       }
     },
     "route": {
+      "summary": "・{distance}・{duration}",
+      "durationHm": "{h}時間{m}分",
+      "durationH": "{h}時間",
+      "durationM": "{m}分",
       "lowestCount": "・最安値 {count}件",
       "clearAria": "ルート表示を解除"
     },

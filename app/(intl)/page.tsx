@@ -11,6 +11,7 @@ import { Header } from '@/components/ui/Header';
 import { FilterBar } from '@/components/ui/FilterBar';
 import { BottomSheet, SHEET_PEEK_PX } from '@/components/ui/BottomSheet';
 import { track } from '@/lib/analytics';
+import { formatRouteDistance, splitRouteDuration } from '@/lib/route/format';
 import { BannerAd, BANNER_BOTTOM_PX, BANNER_HEIGHT_PX, useBannerVisible } from '@/components/ads/BannerAd';
 import { RadiusAlert } from '@/components/alert/RadiusAlert';
 import { RouteAlert } from '@/components/alert/RouteAlert';
@@ -1012,6 +1013,10 @@ export default function HomePage() {
           product: reqProduct,
           stations: newStations,
           path: newPath,
+          // 재탐색은 현재 위치→목적지 재계산이므로 요약값도 자연히 "남은 거리·시간"이 된다.
+          // 없으면(직선 폴백) undefined가 들어가 표시가 사라진다 — 옛 값을 남겨두면 거짓이 된다.
+          distance: typeof j?.distance === 'number' ? j.distance : undefined,
+          duration: typeof j?.duration === 'number' ? j.duration : undefined,
         });
         setRerouteToast(true);
         window.setTimeout(() => setRerouteToast(false), 2500);
@@ -1067,6 +1072,21 @@ export default function HomePage() {
     setDwellStation(s);
   }, []);
   useFuelDwellDetect(geo.coords ?? null, dwellEnabled, handleDwellDetect);
+
+  // 경로 요약 문구("178.4km · 2시간 14분") — 경로 모드 표시줄에 쓴다.
+  // 거리·소요시간은 카카오내비 도로 경로가 잡혔을 때만 함께 오므로 둘 다 있을 때만 만든다.
+  // 어느 한쪽이라도 없으면 null → 표시줄에서 이 조각이 통째로 빠지고 기존 모습 그대로가 된다.
+  const routeSummaryText = (() => {
+    if (!routePlan) return null;
+    const distance = formatRouteDistance(routePlan.distance);
+    const parts = splitRouteDuration(routePlan.duration);
+    if (!distance || !parts) return null;
+    const duration =
+      parts.hours === 0 ? t('route.durationM', { m: parts.minutes })
+      : parts.minutes === 0 ? t('route.durationH', { h: parts.hours })
+      : t('route.durationHm', { h: parts.hours, m: parts.minutes });
+    return t('route.summary', { distance, duration });
+  })();
 
   // 홈 세차 카드 CTA(FR-3) — 세차 칩 활성 + 지도 최상단 스크롤 + 하단 시트 펼침.
   // (스토어 세팅·스크롤·시트 열기는 부모가 수행 — 카드는 지도 내부 구현을 모른다.)
@@ -1141,6 +1161,11 @@ export default function HomePage() {
                 <ChevronRightIcon className="mx-0.5 inline-block h-3 w-3 align-[-0.1em] text-gray-400" />
                 {routePlan.to.isMyLocation ? t('myLocationName') : (routePlan.to.name ?? t('arrive'))}
               </span>
+              {/* 거리·소요시간 — 카카오내비 도로 경로가 잡힌 경우에만 채워진다(직선 폴백이면 통째로 생략).
+                  이미 받아온 directions 요약값이라 추가 호출은 없다(strategy 2026-08-28 §4-1). */}
+              {routeSummaryText && (
+                <span className="ml-1.5 text-gray-500 dark:text-gray-400">{routeSummaryText}</span>
+              )}
               <span className="ml-1.5 text-gray-500 dark:text-gray-400">
                 {t('route.lowestCount', { count: routePlan.stations.length })}
               </span>

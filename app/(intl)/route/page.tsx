@@ -171,6 +171,10 @@ function RouteCheapestInner() {
         product,
         stations,
         path,
+        // 거리·소요시간 — 카카오내비 도로 경로가 잡힌 응답에만 담겨 온다(직선 폴백이면 없음).
+        // 지도의 경로 모드 표시줄에서 "178.4km · 2시간 14분"으로 쓰인다.
+        distance: typeof j?.distance === 'number' ? j.distance : undefined,
+        duration: typeof j?.duration === 'number' ? j.duration : undefined,
       });
       // 비회원이 "경로 위 최저가 찾기"로 지도에 진입하면, 지도 화면에서 5초 뒤 로그인 유도
       // 팝업(RouteLoginPrompt)을 띄우기 위한 플래그를 세운다. 로그인 사용자는 세우지 않는다.

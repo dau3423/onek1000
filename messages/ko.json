@@ -84,6 +84,10 @@
       }
     },
     "route": {
+      "summary": "· {distance} · {duration}",
+      "durationHm": "{h}시간 {m}분",
+      "durationH": "{h}시간",
+      "durationM": "{m}분",
       "lowestCount": "· 최저가 {count}곳",
       "clearAria": "경로 표시 해제"
     },

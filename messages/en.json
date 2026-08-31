@@ -84,6 +84,10 @@
       }
     },
     "route": {
+      "summary": "· {distance} · {duration}",
+      "durationHm": "{h} hr {m} min",
+      "durationH": "{h} hr",
+      "durationM": "{m} min",
       "lowestCount": "· {count, plural, one {# lowest-price station} other {# lowest-price stations}}",
       "clearAria": "Clear route"
     },
