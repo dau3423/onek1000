@@ -90,11 +90,7 @@ export const keys = {
   eventRate: (ip: string) => `rl:event:${ip}`,
   // 세차 지수 조회 rate limit — IP당 분당 카운터(공개 GET /api/carwash-index 남용 방어, SEC-3 준용).
   carwashIndexRate: (ip: string) => `rl:carwash:${ip}`,
-  // 비순위(가격 없는) 주유소 상세에서 on-demand로 받은 Opinet 실시간 가격 캐시(가격만).
-  // prices_latest에는 쓰지 않아 지도 마커 불변. KST 자정까지 TTL.
-  detailPrice: (id: string) => `detailprice:${id}`,
-  // Opinet 할당량 소진/연속 무효 응답 시 전역 쿨다운 플래그 — set 동안 상세에서 Opinet 헛호출 차단.
-  detailPriceCooldown: () => `detailprice:cooldown`,
+  // (해당 상세 가격 캐시/쿨다운은 마이그레이션 0054로 DB(prices_ondemand)로 옮겼다 — lib/db/priceCache.ts)
   // 일일 최저가 TOP10 트윗 발행 멱등키 — 같은 날짜 중복 발행 방지(날짜별, TTL 3일).
   dailyTweet: (date: string) => `tweet:posted:${date}`,
 };

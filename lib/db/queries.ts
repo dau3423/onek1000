@@ -8,6 +8,10 @@ import { getMockStations, getMockStationDetail } from '@/lib/mock/stations';
 import { distanceMeters, inBbox, topPriceRankMap } from '@/lib/map/geo';
 import { fetchStationDetail } from '@/lib/opinet/client';
 import { redis, keys } from '@/lib/cache/redis';
+import {
+  readOndemandPrices, writeOndemandPrices,
+  isOpinetCoolingDown, setOpinetCooldown, type CooldownReason,
+} from './priceCache';
 
 interface RpcRow {
   id: string; name: string; brand_code: string; is_self: boolean;
@@ -537,34 +541,30 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   });
 }
 
-// 전체 적재 시 가격이 아직 없는 주유소는 상세 진입 시 Opinet detailById 1회로 가격을 채운다.
-// "상세=DB only" 원칙을 가격이 전무할 때에만 완화한다. 단, 받은 가격은 prices_latest에 쓰지 않고
-// 별도 Redis 캐시(detailPrice)에만 저장한다 — prices_latest에 적재하면 지도 bbox/마커가 이 주유소를
-// '가격 있는 일반 마커'로 바꿔 비순위 마커가 사라지기 때문이다(마커 불변 보장). Opinet 호출은 짧은
-// 타임아웃으로 보호하고, 실패/할당량 소진/빈 응답이면 전역 쿨다운 플래그를 세워 이후 헛호출을 차단한다.
+// 전체 적재 시 가격이 아직 없는 주유소("해골 주유소")는 상세 진입 시 Opinet detailById 1회로
+// 가격을 채운다. "상세=DB only" 원칙을 가격이 전무할 때에만 완화한다. 단, 받은 가격은
+// prices_latest에 쓰지 않고 별도 캐시(prices_ondemand, 마이그레이션 0054)에만 저장한다 —
+// prices_latest에 적재하면 지도 bbox/마커가 이 주유소를 '가격 있는 일반 마커'로 바꿔 비순위
+// 마커가 사라지기 때문이다(마커 불변 보장). Opinet 호출은 짧은 타임아웃으로 보호하고,
+// 실패/할당량 소진/빈 응답이면 전역 쿨다운을 세워 이후 헛호출을 차단한다.
+//
+// 캐시 저장소가 Redis가 아니라 DB인 이유: 프로덕션에서 Redis가 비활성이라 setJson이 no-op이 되어
+// 같은 주유소를 보는 모든 요청이 매번 새 Opinet 콜을 썼다. 배치 예산(sync ~1,420 + backfill 500)이
+// 이미 일일 한도 1,500을 거의 채우도록 설계돼 있어, 상한 없는 상세 조회가 늘면 배치까지 잠식한다.
+// DB는 인스턴스 재시작·다중 인스턴스와 무관하게 주유소당 하루 1콜을 보장한다.
 const DETAIL_OPINET_TIMEOUT_MS = 7000;
 // Opinet 무효/실패 응답 후 전역 쿨다운(분). 이 동안 상세 조회는 Opinet을 호출하지 않는다.
 const DETAIL_COOLDOWN_MIN = 30;
-
-/** 현재 시각 기준 다음 KST(UTC+9) 자정까지 남은 초. 최소 60초 가드. (가격 캐시 TTL용) */
-function secondsUntilKstMidnight(): number {
-  const KST_OFFSET_MS = 9 * 3600 * 1000;
-  const nowKst = Date.now() + KST_OFFSET_MS;
-  const dayMs = 24 * 3600 * 1000;
-  const sinceMidnight = ((nowKst % dayMs) + dayMs) % dayMs; // KST 자정 이후 경과 ms
-  const remainMs = dayMs - sinceMidnight;
-  return Math.max(60, Math.floor(remainMs / 1000));
-}
 
 /**
  * 상세 페이지용 주유소 조회. DB 우선 조회 후, 가격이 하나도 없으면(전체 적재로 새로
  * 들어온 주유소 등) on-demand로 가격을 채운다. 우선순위:
  *   a. DB 가격 있으면 그대로(Opinet 미호출)
  *   b. Supabase 미설정(mock) → base 그대로(Opinet 미호출)
- *   c. Redis 가격 캐시(detailPrice) 히트 → 머지 반환(Opinet 미호출)
+ *   c. on-demand 가격 캐시(prices_ondemand) 히트 → 머지 반환(Opinet 미호출)
  *   d. 캐시 미스 & 쿨다운 없음 → Opinet detailById 1회(짧은 타임아웃)
- *        - 유효 → 머지 + Redis 가격 캐시(KST 자정까지) + (미보강 시)부가서비스 보강
- *        - 무효/빈/타임아웃 → base 그대로 + 전역 쿨다운 플래그 set
+ *        - 유효 → 머지 + 가격 캐시 적재(KST 자정 만료) + (미보강 시)부가서비스 보강
+ *        - 무효/빈/타임아웃 → base 그대로 + 전역 쿨다운 set(사유 기록)
  *   e. 쿨다운 플래그 있으면 → base 그대로(Opinet 미호출)
  * 어느 경로든 가격은 절대 prices_latest에 쓰지 않아 지도 마커가 불변이다.
  */
@@ -575,31 +575,47 @@ export async function queryStationDetailWithPriceFallback(id: string): Promise<S
   // a/b. 가격이 이미 있거나 Supabase 미설정(mock)이면 그대로 반환 — Opinet 미호출.
   if (!isSupabaseConfigured() || hasAnyPrice(base)) return base;
 
-  // c. Redis 가격 캐시 히트 → 그 가격을 머지해 반환(Opinet 미호출).
-  const cached = await redis.getJson<StationDetail['prices']>(keys.detailPrice(id));
+  // c. on-demand 가격 캐시 히트 → 그 가격을 머지해 반환(Opinet 미호출).
+  //    여기가 Opinet 예산을 지키는 핵심이다 — 같은 주유소는 KST 자정까지 1콜로 끝난다.
+  const cached = await readOndemandPrices(id);
   if (cached) {
     return { ...base, prices: { ...base.prices, ...cached } };
   }
 
-  // e. 전역 쿨다운(소진) 상태면 Opinet 호출 없이 base 그대로.
-  const cooling = await redis.getJson<number>(keys.detailPriceCooldown());
-  if (cooling) return base;
+  // e. 전역 쿨다운(소진/장애) 상태면 Opinet 호출 없이 base 그대로.
+  if (await isOpinetCoolingDown()) return base;
 
   // d. 캐시 미스 & 쿨다운 없음 → Opinet detailById 1회 실시간 조회(짧은 타임아웃).
+  //    실패 사유를 구분해 남긴다 — 이전에는 catch가 통째로 삼켜 운영에서 원인을 알 수 없었다.
+  //
+  //    ★ 전역 쿨다운은 "호출이 던진 경우"에만 건다. 타임아웃/네트워크/할당량은 모든 주유소에
+  //      공통인 신호지만, "응답은 정상인데 이 주유소 가격이 없다"는 그 주유소만의 사정이다.
+  //      후자에 전역 쿨다운을 걸면 Opinet이 모르는 주유소 한 곳 때문에 다른 모든 해골 주유소의
+  //      보강이 30분간 막힌다. 대신 그런 주유소는 볼 때마다 1콜을 쓴다(개별 네거티브 캐시는
+  //      두지 않기로 한 결정 — 필요해지면 그때 도입한다).
   let live: StationDetail | null = null;
+  let failure: CooldownReason | null = null;
   try {
     live = await withTimeout(fetchStationDetail(id), DETAIL_OPINET_TIMEOUT_MS, 'opinet detail');
-  } catch {
-    live = null; // 타임아웃/네트워크/할당량
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    live = null;
+    failure = /timeout|timed out/i.test(msg) ? 'timeout' : 'error';
+    console.warn(`[detailPrice] opinet detail 실패 id=${id} reason=${failure}: ${msg}`);
   }
   if (!live || !hasAnyPrice(live)) {
-    // 무효/빈/타임아웃 → 전역 쿨다운 플래그 set 후 base 폴백(이후 d 단락).
-    await redis.setJson(keys.detailPriceCooldown(), 1, DETAIL_COOLDOWN_MIN * 60);
+    if (failure) {
+      // 전역 신호 → 쿨다운 set 후 base 폴백(이후 e 단락이 받는다).
+      await setOpinetCooldown(failure, DETAIL_COOLDOWN_MIN);
+    } else {
+      // 개별 신호 → 전역 쿨다운을 걸지 않는다. 다른 주유소의 보강은 계속된다.
+      console.warn(`[detailPrice] opinet에 가격 없음 id=${id} — 전역 쿨다운 미적용`);
+    }
     return base;
   }
 
-  // 유효 → 가격만 Redis 캐시(KST 자정까지). prices_latest에는 절대 쓰지 않는다.
-  await redis.setJson(keys.detailPrice(id), live.prices, secondsUntilKstMidnight());
+  // 유효 → 가격만 캐시(KST 자정 만료). prices_latest에는 절대 쓰지 않는다.
+  await writeOndemandPrices(id, live.prices);
 
   // 부가서비스는 아직 미보강(amenities_updated_at null)일 때만 stations에 보강(best-effort).
   if (base.amenitiesUpdatedAt == null) {
