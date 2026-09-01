@@ -8,8 +8,9 @@
 //   - 그 외 → carwash_index(오늘~D+3) 조회. 오늘자 미존재면 days: [].
 
 import { NextResponse, type NextRequest } from 'next/server';
+import { clientIp } from '@/lib/http/clientIp';
+import { hitRateLimit } from '@/lib/db/rateLimit';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
-import { redis, keys } from '@/lib/cache/redis';
 import {
   nearestSido, windowDates, pickBest, gradeOf,
   mockCarwashIndex, type CarwashDay, type CarwashGrade, type CarwashIndexResult,
@@ -25,18 +26,10 @@ const RATE_LIMIT = 60;
 // 좌표 결측/비정상 시 서울 폴백(카드는 "서울 기준" 라벨로 근사 고지).
 const FALLBACK: { lat: number; lng: number } = { lat: 37.5665, lng: 126.9780 };
 
-function clientIp(req: NextRequest): string {
-  const xff = req.headers.get('x-forwarded-for');
-  if (xff) {
-    const first = xff.split(',')[0]?.trim();
-    if (first) return first;
-  }
-  return req.headers.get('x-real-ip')?.trim() || 'unknown';
-}
 
 export async function GET(req: NextRequest) {
-  // rate limit(미설정/에러 시 0 → 통과). 초과 시 429.
-  const count = await redis.incrWithTtl(keys.carwashIndexRate(clientIp(req)), RATE_WINDOW_SEC);
+  // rate limit(DB 백엔드 0056, 실패 시 0 → 통과). 초과 시 429.
+  const count = await hitRateLimit(`carwash:${clientIp(req)}`, RATE_WINDOW_SEC);
   if (count > RATE_LIMIT) {
     return NextResponse.json({ error: 'rate limited' }, { status: 429 });
   }

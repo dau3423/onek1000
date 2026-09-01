@@ -49,22 +49,6 @@ export const redis = {
     }
   },
 
-  /**
-   * 카운터 증가(rate limit용). INCR 후 첫 증가(반환값 1)면 EXPIRE로 TTL을 건다.
-   * 반환: 현재 카운트(number). 미설정(enabled=false)/에러 시 0 → 호출부에서 '통과'로 해석.
-   * throw하지 않고 graceful 처리(setJson/del 패턴과 동일).
-   */
-  async incrWithTtl(key: string, windowSec: number): Promise<number> {
-    if (!enabled) return 0;
-    try {
-      const count = (await call(['incr', key])) as number;
-      if (count === 1) await call(['expire', key, windowSec]);
-      return count;
-    } catch (e) {
-      console.warn('redis incr fail', e);
-      return 0;
-    }
-  },
 };
 
 // ─── 캐시 키 빌더 ───
@@ -84,12 +68,7 @@ export const keys = {
   stationsInBbox: (z: number, q: string) => `allstn:z${z}:${q}`,
   // 지역 가격 추세(④ 타이밍 배너) — 유종+격자+반경. 추세는 1일 단위 변화라 TTL 길게(1h).
   priceTrend: (prod: string, q: string, r: number) => `trend:${prod}:${q}:r${r}`,
-  // 방문 ping rate limit — IP당 분당 카운터(공개 POST /api/visit 남용 방어).
-  visitRate: (ip: string) => `rl:visit:${ip}`,
-  // 퍼널 이벤트 rate limit — IP당 분당 카운터(공개 POST /api/event 남용 방어, 방문보다 빈번).
-  eventRate: (ip: string) => `rl:event:${ip}`,
-  // 세차 지수 조회 rate limit — IP당 분당 카운터(공개 GET /api/carwash-index 남용 방어, SEC-3 준용).
-  carwashIndexRate: (ip: string) => `rl:carwash:${ip}`,
+  // (레이트리밋 3종은 마이그레이션 0056으로 DB(rate_limits)로 옮겼다 — lib/db/rateLimit.ts)
   // (해당 상세 가격 캐시/쿨다운은 마이그레이션 0054로 DB(prices_ondemand)로 옮겼다 — lib/db/priceCache.ts)
   // 일일 최저가 TOP10 트윗 발행 멱등키 — 같은 날짜 중복 발행 방지(날짜별, TTL 3일).
   dailyTweet: (date: string) => `tweet:posted:${date}`,

@@ -13,11 +13,12 @@
 //   사용자 경험을 깨뜨리면 안 된다(쿠키 발급/응답은 정상 진행). 라우트는 얇게, upsert는 lib/db/stats.
 
 import { NextResponse, type NextRequest } from 'next/server';
+import { clientIp } from '@/lib/http/clientIp';
+import { hitRateLimit } from '@/lib/db/rateLimit';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/options';
 import { recordVisit } from '@/lib/db/stats';
 import { lookupSido } from '@/lib/geoip/lookup';
-import { redis, keys } from '@/lib/cache/redis';
 import { DEVICE_COOKIE, DEVICE_COOKIE_MAX_AGE, isValidDeviceId } from '@/lib/analytics/device';
 import { isBotUserAgent } from '@/lib/analytics/bot';
 
@@ -32,16 +33,6 @@ const RATE_LIMIT = 10;
 // Firebase App Hosting 전용 헤더(x-fah-client-ip)를 최우선으로 신뢰한다: XFF 첫 값은 위조
 // 가능하므로 지역 추정 통계 소스로는 신뢰도 낮음. 헤더가 전무하면 기존과 동일하게 'unknown'.
 // (이 코드베이스엔 공용 파서가 없어 route 내 소형 헬퍼로 처리)
-function clientIp(req: NextRequest): string {
-  const fah = req.headers.get('x-fah-client-ip')?.trim();
-  if (fah) return fah;
-  const xff = req.headers.get('x-forwarded-for');
-  if (xff) {
-    const first = xff.split(',')[0]?.trim();
-    if (first) return first;
-  }
-  return req.headers.get('x-real-ip')?.trim() || 'unknown';
-}
 
 // 유입 채널 body(모두 선택) — referrer 호스트 + utm 3종. 문자열만 신뢰(그 외 무시).
 interface VisitChannel {
@@ -87,11 +78,11 @@ export async function POST(req: NextRequest) {
     /* 세션 조회 실패는 비로그인 취급 */
   }
 
-  // 3) IP 기반 rate limit으로 page_visits 기록 여부 결정.
-  //    incrWithTtl는 미설정(Upstash 없음)/에러 시 0을 반환 → count(0) > limit이 거짓이라
-  //    항상 '통과'. 로컬/테스트(미설정)는 기존과 100% 동일하게 정상 기록된다.
+  // 3) IP 기반 rate limit으로 page_visits 기록 여부 결정 (DB 백엔드, 마이그레이션 0056).
+  //    hitRateLimit은 Supabase 미설정/0056 미적용/장애 시 0을 반환 → count(0) > limit이 거짓이라
+  //    '통과'(fail-open). 로컬/테스트는 기존과 동일하게 정상 기록된다.
   const ip = clientIp(req);
-  const count = await redis.incrWithTtl(keys.visitRate(ip), RATE_WINDOW_SEC);
+  const count = await hitRateLimit(`visit:${ip}`, RATE_WINDOW_SEC);
   // 봇/크롤러/링크 미리보기는 방문자가 아니다 — 집계에서 뺀다(쿠키·200 응답은 그대로).
   const bot = isBotUserAgent(req.headers.get('user-agent'));
   const limited = count > RATE_LIMIT || bot;

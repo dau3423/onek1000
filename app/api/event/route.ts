@@ -11,12 +11,13 @@
 //   클라이언트는 navigator.sendBeacon으로 fire-and-forget 전송한다(응답을 읽지 않음).
 
 import { NextResponse, type NextRequest } from 'next/server';
+import { clientIp } from '@/lib/http/clientIp';
+import { hitRateLimit } from '@/lib/db/rateLimit';
 import { DEVICE_COOKIE, isValidDeviceId } from '@/lib/analytics/device';
 import { isBotUserAgent } from '@/lib/analytics/bot';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/options';
 import { recordEvent } from '@/lib/db/stats';
-import { redis, keys } from '@/lib/cache/redis';
 
 export const runtime = 'nodejs';
 
@@ -81,14 +82,6 @@ const ALLOWED_EVENTS = new Set([
   'layer_select_from_more', // '+N' 메뉴에서 레이어 선택(props.layer)
 ]);
 
-function clientIp(req: NextRequest): string {
-  const xff = req.headers.get('x-forwarded-for');
-  if (xff) {
-    const first = xff.split(',')[0]?.trim();
-    if (first) return first;
-  }
-  return req.headers.get('x-real-ip')?.trim() || 'unknown';
-}
 
 export async function POST(req: NextRequest) {
   // body 파싱 실패/형식 오류여도 200(분석은 UX를 깨지 않는다).
@@ -120,8 +113,8 @@ export async function POST(req: NextRequest) {
       /* 비로그인 취급 */
     }
 
-    // 3) IP rate limit. incrWithTtl는 미설정/에러 시 0 → 항상 통과(로컬/테스트 동일 동작).
-    const count = await redis.incrWithTtl(keys.eventRate(clientIp(req)), RATE_WINDOW_SEC);
+    // 3) IP rate limit (DB 백엔드, 마이그레이션 0056). 실패 시 0 → 통과(fail-open).
+    const count = await hitRateLimit(`event:${clientIp(req)}`, RATE_WINDOW_SEC);
     if (count <= RATE_LIMIT) {
       await recordEvent(event, deviceId, userId, props);
     }
