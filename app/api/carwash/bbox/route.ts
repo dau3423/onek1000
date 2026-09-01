@@ -4,7 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { queryCarwashByBbox } from '@/lib/db/carwash';
-import { redis, keys, geoQuantize } from '@/lib/cache/redis';
+import { redis, keys, bboxCacheKey } from '@/lib/cache/redis';
 import type { CarwashBboxResponse } from '@/types/carwash';
 
 export const revalidate = 600;
@@ -23,9 +23,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'invalid bbox' }, { status: 400 });
   }
 
-  const cx = (swLat + neLat) / 2;
-  const cy = (swLng + neLng) / 2;
-  const cacheKey = keys.carwashBbox(geoQuantize(cx, cy, 2));
+  const cacheKey = keys.carwashBbox(bboxCacheKey({ swLat, swLng, neLat, neLng }, 2));
 
   const cached = await redis.getJson<CarwashBboxResponse>(cacheKey);
   if (cached) {

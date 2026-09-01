@@ -4,7 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { queryRentalByBbox } from '@/lib/db/rental';
-import { redis, keys, geoQuantize } from '@/lib/cache/redis';
+import { redis, keys, bboxCacheKey } from '@/lib/cache/redis';
 import type { RentalBboxResponse, RentalFilter } from '@/types/rental';
 
 export const revalidate = 600;
@@ -37,10 +37,8 @@ export async function GET(req: Request) {
     ? Math.min(Math.max(Math.trunc(parsedLimit), RENTAL_LIMIT_MIN), RENTAL_LIMIT)
     : RENTAL_LIMIT;
 
-  const cx = (swLat + neLat) / 2;
-  const cy = (swLng + neLng) / 2;
   // 필터·limit 을 캐시키에 넣지 않으면 필터 결과가 전체 결과 자리에 캐시된다(그 반대도).
-  const cacheKey = keys.rentalBbox(`${geoQuantize(cx, cy, 2)}:${filter}:${limit}`);
+  const cacheKey = keys.rentalBbox(`${bboxCacheKey({ swLat, swLng, neLat, neLng }, 2)}:${filter}:${limit}`);
 
   const cached = await redis.getJson<RentalBboxResponse>(cacheKey);
   if (cached) {

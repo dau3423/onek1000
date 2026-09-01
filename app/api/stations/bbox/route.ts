@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { ProductCode, BboxResponse, BrandCode } from '@/types/station';
 import { topNByZoom } from '@/lib/map/geo';
 import { queryStationsByBbox } from '@/lib/db/queries';
-import { redis, keys, geoQuantize } from '@/lib/cache/redis';
+import { redis, keys, bboxCacheKey } from '@/lib/cache/redis';
 
 export const revalidate = 600;
 
@@ -36,12 +36,13 @@ export async function GET(req: Request) {
   // 일반 조회는 줌별 상한(topNByZoom). 단일 브랜드 조회는 희소하므로 별도 상한으로
   // 줌 아웃에서도 그 브랜드가 가격순 상한에 밀려 빠지지 않게 한다.
   const limit = brand ? BRAND_ONLY_LIMIT : topNByZoom(zoom);
-  const cx = (swLat + neLat) / 2;
-  const cy = (swLng + neLng) / 2;
-  const precision = zoom >= 12 ? 2 : 1;     // 줌 인일수록 캐시 분해능을 높임 (≈10km/100km)
+  // 줌 인일수록 캐시 분해능을 높인다 (precision 2 ≈ 1.1km 격자 / 1 ≈ 11km).
+  const precision = zoom >= 12 ? 2 : 1;
   // 브랜드 조회는 응답 집합이 다르므로 캐시 키를 브랜드별로 분리(일반/브랜드 응답 혼선 방지).
   // 세차 필터도 응답 집합이 달라 캐시 차원에 포함한다(캐시 오염 방지).
-  const cacheKey = `${keys.bbox(zoom, product, geoQuantize(cx, cy, precision))}${brand ? `:${brand}` : ''}${carwash ? ':cw' : ''}`;
+  // bboxCacheKey는 중심 격자에 **영역 크기**를 함께 담는다 — 크기를 빼면 같은 중심·같은 줌의
+  // 좁은 화면 캐시가 넓은 화면에 잘린 지도로 나간다(헬퍼 주석 참고).
+  const cacheKey = `${keys.bbox(zoom, product, bboxCacheKey({ swLat, swLng, neLat, neLng }, precision))}${brand ? `:${brand}` : ''}${carwash ? ':cw' : ''}`;
 
   const cached = await redis.getJson<BboxResponse>(cacheKey);
   if (cached) {

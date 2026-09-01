@@ -4,7 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { queryRepairByBbox } from '@/lib/db/repair';
-import { redis, keys, geoQuantize } from '@/lib/cache/redis';
+import { redis, keys, bboxCacheKey } from '@/lib/cache/redis';
 import type { RepairBboxResponse, RepairBrandFilter } from '@/types/repair';
 
 export const revalidate = 600;
@@ -53,11 +53,9 @@ export async function GET(req: Request) {
     ? Math.min(Math.max(Math.trunc(parsedLimit), REPAIR_LIMIT_MIN), REPAIR_LIMIT)
     : REPAIR_LIMIT;
 
-  const cx = (swLat + neLat) / 2;
-  const cy = (swLng + neLng) / 2;
   // 캐시키에 브랜드를 넣지 않으면 필터 결과가 전체 결과 자리에 캐시된다(그 반대도).
   // limit 도 캐시키에 넣는다 — 40개짜리 응답이 150개 자리에 캐시되면 확대해도 안 늘어난다.
-  const cacheKey = keys.repairBbox(`${geoQuantize(cx, cy, 2)}:${brand}:${limit}`);
+  const cacheKey = keys.repairBbox(`${bboxCacheKey({ swLat, swLng, neLat, neLng }, 2)}:${brand}:${limit}`);
 
   const cached = await redis.getJson<RepairBboxResponse>(cacheKey);
   if (cached) {

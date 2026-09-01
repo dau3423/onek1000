@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { queryEvChargersByBbox } from '@/lib/db/ev';
-import { redis, keys, geoQuantize } from '@/lib/cache/redis';
+import { redis, keys, bboxCacheKey } from '@/lib/cache/redis';
 import type { EvBboxResponse } from '@/types/ev';
 
 export const revalidate = 600;
@@ -22,9 +22,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'invalid bbox' }, { status: 400 });
   }
 
-  const cx = (swLat + neLat) / 2;
-  const cy = (swLng + neLng) / 2;
-  const cacheKey = keys.evBbox(geoQuantize(cx, cy, 2));
+  // 중심만으로 키를 만들면 화면 크기(=사실상 줌)가 다른 요청이 서로의 캐시를 받는다.
+  // bboxCacheKey가 영역 크기를 함께 담아 그 혼선을 막는다.
+  const cacheKey = keys.evBbox(bboxCacheKey({ swLat, swLng, neLat, neLng }, 2));
 
   const cached = await redis.getJson<EvBboxResponse>(cacheKey);
   if (cached) {

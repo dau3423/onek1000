@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { StationsInBboxResponse } from '@/types/station';
 import { queryStationsInBbox } from '@/lib/db/queries';
-import { redis, keys, geoQuantize } from '@/lib/cache/redis';
+import { redis, keys, bboxCacheKey } from '@/lib/cache/redis';
 
 export const revalidate = 600;
 
@@ -23,10 +23,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'invalid bbox' }, { status: 400 });
   }
 
-  const cx = (swLat + neLat) / 2;
-  const cy = (swLng + neLng) / 2;
-  // 줌 인 상태(이 API는 확대 시에만 호출)라 격자 분해능을 높게(≈10km) 잡아 캐시 적중률을 확보.
-  const cacheKey = keys.stationsInBbox(zoom, geoQuantize(cx, cy, 2));
+  // 줌 인 상태(이 API는 확대 시에만 호출)라 격자 분해능을 높게(precision 2 ≈ 1.1km) 잡는다.
+  // 영역 크기도 키에 포함한다 — 같은 중심·같은 줌이어도 화면 크기에 따라 응답 집합이 다르다.
+  const cacheKey = keys.stationsInBbox(zoom, bboxCacheKey({ swLat, swLng, neLat, neLng }, 2));
 
   const cached = await redis.getJson<StationsInBboxResponse>(cacheKey);
   if (cached) {

@@ -95,7 +95,33 @@ export const keys = {
   dailyTweet: (date: string) => `tweet:posted:${date}`,
 };
 
-/** 좌표 양자화: precision=3 → 약 110m 격자, 4 → 11m */
+/** 좌표 양자화: precision=3 → 약 110m 격자, 4 → 11m (2 → 약 1.1km, 1 → 약 11km) */
 export function geoQuantize(lat: number, lng: number, precision = 3): string {
   return `${lat.toFixed(precision)},${lng.toFixed(precision)}`;
+}
+
+/**
+ * 지도 영역(bbox) 캐시 키 조각 — **중심 격자 + 영역 크기**.
+ *
+ * 크기를 빼면 안 되는 이유: 응답 본문은 요청한 bbox로 걸러진 목록인데, 같은 줌·같은 중심이라도
+ * 화면 크기에 따라 실제 영역 넓이가 10배 이상 차이난다(폰 세로 vs 데스크톱 전체화면).
+ * 크기가 키에 없으면 모바일이 먼저 캐시한 좁은 결과가 데스크톱 사용자에게 그대로 나가,
+ * 자기 화면의 일부만 채워진 "잘린 지도"가 되고 TTL 동안 새로고침해도 그대로다.
+ *
+ * 크기는 중심보다 한 단계 촘촘하게(precision+1) 잡는다 — 크게 잡으면 확대 상태에서 폭·높이가
+ * 전부 "0.00"으로 뭉개져 크기 차원이 사라진다.
+ *
+ * 남는 근사: 중심을 격자로 접으므로 캐시된 응답의 영역이 요청 영역과 최대 격자 크기만큼
+ * 어긋날 수 있다(경계에서 약간의 누락/과잉). 이건 이 캐시 설계가 원래 감수한 근사다.
+ */
+export function bboxCacheKey(
+  bbox: { swLat: number; swLng: number; neLat: number; neLng: number },
+  precision = 2,
+): string {
+  const cx = (bbox.swLat + bbox.neLat) / 2;
+  const cy = (bbox.swLng + bbox.neLng) / 2;
+  const h = Math.abs(bbox.neLat - bbox.swLat);
+  const w = Math.abs(bbox.neLng - bbox.swLng);
+  const sp = precision + 1;
+  return `${geoQuantize(cx, cy, precision)}:${w.toFixed(sp)}x${h.toFixed(sp)}`;
 }
