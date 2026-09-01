@@ -41,7 +41,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { katecToWgs84, wgs84ToKatec } from '@/lib/map/katec';
-import { BRAND_LABEL, type BrandCode, type SidoCode } from '@/types/station';
+import { BRAND_LABEL, type BrandCode, type SidoCode, toBrandCode } from '@/types/station';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -96,11 +96,6 @@ function cellCenter(row: number, col: number): { lat: number; lng: number } {
   };
 }
 
-/** Opinet 브랜드 코드 정규화 — 알 수 없는 값은 'ETC' 폴백. */
-function toBrandCode(raw?: string): BrandCode {
-  const v = (raw ?? '').trim();
-  return (v && v in BRAND_LABEL ? v : 'ETC') as BrandCode;
-}
 
 /**
  * 좌표 기반 시도 코드 추정(폴백). aroundAll 응답엔 시도가 없고 sido_code 가 NOT NULL 이라

@@ -8,6 +8,7 @@ import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { getMockStations } from '@/lib/mock/stations';
 import { distanceMeters } from '@/lib/map/geo';
 import { fetchRoadRoute } from '@/lib/route/directions';
+import { toBrandCode } from '@/types/station';
 import type { ProductCode, BrandCode, SidoCode, StationWithPrice, RoutePoint } from '@/types/station';
 
 export const revalidate = 300;
@@ -149,7 +150,7 @@ function mapRows(data: unknown, product: ProductCode): StationWithPrice[] {
   return ((data as Record<string, unknown>[]) ?? []).map((r) => ({
     id: r.id as string,
     name: r.name as string,
-    brand: ((r.brand_code as BrandCode) ?? 'ETC'),
+    brand: toBrandCode(r.brand_code as string | null),
     isSelf: r.is_self as boolean,
     sido: '01' as SidoCode,
     address: '',

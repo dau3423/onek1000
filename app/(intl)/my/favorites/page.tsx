@@ -6,7 +6,7 @@ import { authOptions } from '@/lib/auth/options';
 import { getSupabase, isSupabaseConfigured } from '@/lib/db/supabase';
 import { BackButton } from '@/components/common/BackButton';
 import { ChevronRightIcon, HeartIcon } from '@/components/icons';
-import { BRAND_COLOR, type BrandCode } from '@/types/station';
+import { BRAND_COLOR, type BrandCode, toBrandCode } from '@/types/station';
 
 interface FavRow {
   station_id: string;
@@ -53,7 +53,7 @@ export default async function FavoritesPage() {
         <ul className="divide-y divide-gray-100">
           {favs.map((f) => {
             const station = f.stations?.[0];
-            const brand = (station?.brand_code as BrandCode) ?? 'ETC';
+            const brand = toBrandCode(station?.brand_code as string | null);
             return (
               <li key={f.station_id}>
                 <Link

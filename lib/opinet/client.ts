@@ -3,16 +3,10 @@
 // false 인 경우 실제 Opinet API 호출 (서버 사이드 전용 — OPINET_API_KEY 필요).
 
 import type { ProductCode, StationWithPrice, SidoCode, StationDetail, BrandCode } from '@/types/station';
-import { BRAND_LABEL } from '@/types/station';
+import { toBrandCode } from '@/types/station';
 import { getMockStations, getMockStationDetail } from '@/lib/mock/stations';
 import { distanceMeters, inBbox, type Bbox } from '@/lib/map/geo';
 import { katecToWgs84 } from '@/lib/map/katec';
-
-/** Opinet 브랜드 코드 정규화 — 알 수 없는 값은 'ETC'로 폴백 */
-function toBrandCode(raw?: string): BrandCode {
-  const v = (raw ?? '').trim();
-  return (v && v in BRAND_LABEL ? v : 'ETC') as BrandCode;
-}
 
 const BASE = 'https://www.opinet.co.kr/api';
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== 'false';

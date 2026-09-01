@@ -13,7 +13,7 @@ import { ROUTE_ENTRY_FLAG } from '@/components/route/RouteLoginPrompt';
 import { useMapStore } from '@/stores/map';
 import { track } from '@/lib/analytics';
 import { useBrandLabel, useProductLabel } from '@/lib/i18n/labels';
-import { BRAND_COLOR, type BrandCode, type ProductCode, type StationWithPrice } from '@/types/station';
+import { BRAND_COLOR, type BrandCode, type ProductCode, type StationWithPrice, toBrandCode } from '@/types/station';
 import {
   getRecentPlaces,
   recordRecentPlace,
@@ -289,7 +289,7 @@ function RouteCheapestInner() {
                 <span className="w-5 text-center text-xs font-bold text-gray-500">{i + 1}</span>
                 <span
                   className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ background: BRAND_COLOR[(s.brand as BrandCode) ?? 'ETC'] ?? '#666' }}
+                  style={{ background: BRAND_COLOR[toBrandCode(s.brand)] }}
                 />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-semibold text-gray-900">{s.name}</div>

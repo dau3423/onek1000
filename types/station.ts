@@ -28,6 +28,26 @@ export const BRAND_LABEL: Record<BrandCode, string> = {
   EXP: '고속도로',
 };
 
+/**
+ * 브랜드 코드 정규화 — BRAND_LABEL에 없는 코드는 'ETC'(자영/기타)로 접는다.
+ *
+ * Opinet 원천에는 우리가 라벨을 가진 11종 외의 코드가 섞여 온다(2026-09-01 기준 SKG 73곳,
+ * RTX 63곳 = 전체 10,750곳 중 136곳). DB에는 원본 코드를 그대로 보존하고 **읽는 쪽에서** 접는다.
+ *
+ * 접지 않으면 세 가지가 조용히 깨진다:
+ *  - 브랜드 필터(matchBrand)가 정확 일치라 어떤 브랜드를 골라도 안 걸린다 — '자영/기타'에도.
+ *    즉 필터를 켜는 순간 그 주유소들이 지도에서 사라진다.
+ *  - BRAND_COLOR[code]가 undefined라 마커/뱃지 색이 빠진다(폴백 없는 화면이 있다).
+ *  - useBrandLabel의 t(code)에 해당 메시지가 없어 라벨 자리에 코드가 그대로 노출된다.
+ *
+ * SKG/RTX가 각각 SK가스(SOG)·알뜰 계열인지는 Opinet 코드표로 확인되지 않아 임의 매핑하지 않는다.
+ * 확인되면 여기에 명시적 매핑을 추가하면 된다.
+ */
+export function toBrandCode(raw?: string | null): BrandCode {
+  const v = (raw ?? '').trim();
+  return (v && v in BRAND_LABEL ? v : 'ETC') as BrandCode;
+}
+
 export const BRAND_COLOR: Record<BrandCode, string> = {
   SKE: '#EE2737',
   GSC: '#00833F',

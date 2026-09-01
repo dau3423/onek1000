@@ -1,6 +1,6 @@
 // Supabase 기반 도메인 쿼리 — Supabase 미설정 시 mock 폴백
 import { getSupabase, isSupabaseConfigured } from './supabase';
-import { PRODUCT_LABEL } from '@/types/station';
+import { PRODUCT_LABEL, toBrandCode } from '@/types/station';
 import type { StationWithPrice, ProductCode, SidoCode, BrandCode, NationalTop10Item, DailyTop10Item, StationDetail, StationPoint } from '@/types/station';
 import type { FuelLog } from '@/types/fuel-log';
 import type { Bbox } from '@/lib/map/geo';
@@ -108,7 +108,7 @@ export async function queryStationsByBbox(
   }
   if (error) throw new Error(`bbox query failed: ${error.message}`);
   return (data as RpcRow[]).map((r) => ({
-    id: r.id, name: r.name, brand: (r.brand_code as BrandCode) ?? 'ETC',
+    id: r.id, name: r.name, brand: toBrandCode(r.brand_code),
     isSelf: r.is_self, sido: '01' as SidoCode, address: '',
     lat: r.lat, lng: r.lng,
     product, price: r.price, tradeDate: r.trade_dt,
@@ -146,7 +146,7 @@ export async function queryStationsInBbox(
   });
   if (error) throw new Error(`stations in bbox query failed: ${error.message}`);
   return (data as PointRpcRow[]).map((r) => ({
-    id: r.id, name: r.name, brand: (r.brand_code as BrandCode) ?? 'ETC',
+    id: r.id, name: r.name, brand: toBrandCode(r.brand_code),
     isSelf: r.is_self, lat: r.lat, lng: r.lng,
   }));
 }
@@ -181,7 +181,7 @@ export async function queryStationsByRadius(
   }
   if (error) throw new Error(`radius query failed: ${error.message}`);
   return (data as RpcRow[]).map((r) => ({
-    id: r.id, name: r.name, brand: (r.brand_code as BrandCode) ?? 'ETC',
+    id: r.id, name: r.name, brand: toBrandCode(r.brand_code),
     isSelf: r.is_self, sido: '01' as SidoCode, address: '',
     lat: r.lat, lng: r.lng,
     product, price: r.price, tradeDate: r.trade_dt,
@@ -343,7 +343,7 @@ export async function queryNationalTop10(
     return {
       id: r.station_id,
       name: st?.name ?? '',
-      brand: (st?.brand_code as BrandCode) ?? 'ETC',
+      brand: toBrandCode(st?.brand_code),
       lat: st?.lat ?? 0,
       lng: st?.lng ?? 0,
       price: r.price,
@@ -392,7 +392,7 @@ export async function queryDailyTop10(
       rank: i + 1,
       id: r.station_id,
       name: st?.name ?? '',
-      brand: (st?.brand_code as BrandCode) ?? 'ETC',
+      brand: toBrandCode(st?.brand_code),
       sido: (st?.sido_code as SidoCode) ?? '01',
       isSelf: !!st?.is_self,
       price: r.price,
@@ -442,7 +442,7 @@ export async function queryRegionDailyTop10(
       rank: i + 1,
       id: r.station_id,
       name: st?.name ?? '',
-      brand: (st?.brand_code as BrandCode) ?? 'ETC',
+      brand: toBrandCode(st?.brand_code),
       sido: (st?.sido_code as SidoCode) ?? sido,
       isSelf: !!st?.is_self,
       price: r.price,
@@ -484,7 +484,7 @@ export async function queryRegionDailyTop10BySigungu(
       rank: i + 1,
       id: r.station_id,
       name: st?.name ?? '',
-      brand: (st?.brand_code as BrandCode) ?? 'ETC',
+      brand: toBrandCode(st?.brand_code),
       sido: (st?.sido_code as SidoCode) ?? '01',
       isSelf: !!st?.is_self,
       price: r.price,
@@ -514,7 +514,7 @@ export async function queryStationDetail(id: string): Promise<StationDetail | nu
     }
   }
   return {
-    id: s.id, name: s.name, brand: (s.brand_code as BrandCode) ?? 'ETC',
+    id: s.id, name: s.name, brand: toBrandCode(s.brand_code),
     isSelf: s.is_self, sido: (s.sido_code as SidoCode) ?? '01',
     address: s.address ?? '', tel: s.tel ?? undefined,
     hasCarwash: !!s.has_carwash, hasCvs: !!s.has_cvs, hasMaintenance: !!s.has_maintenance,
