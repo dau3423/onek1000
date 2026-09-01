@@ -181,7 +181,10 @@ export default function HomePage() {
 
   // 지도 영역 (bbox) 내 주유소
   const [stations, setStations] = useState<StationWithPrice[]>([]);
-  const [averagePrice, setAveragePrice] = useState(1600);
+  // 1km 알람 판정 기준가. **아직 모르면 null** — 예전에는 1600으로 시작해, 반경 응답이 오기
+  // 전이나 주변에 주유소가 없을 때 지역 시세와 무관한 숫자로 알람을 판정했다
+  // (시세가 1500대면 1550원짜리에 "싸다" 알람이, 1750대면 진짜 싼 곳에 알람이 안 떴다).
+  const [averagePrice, setAveragePrice] = useState<number | null>(null);
 
   // 전국 최저가 TOP10 (화면 영역 무관). 핀/메달 강조 대상. 유종 변경 시에만 재조회.
   const [nationalTop10, setNationalTop10] = useState<NationalTop10Item[]>([]);
@@ -427,13 +430,19 @@ export default function HomePage() {
       zoom: String(b.zoom),
       product: reqProduct,
     });
-    // "고속도로만" 필터(브랜드가 정확히 EXP 하나)일 때는 EXP만 서버에서 조회한다.
-    // 고속도로 주유소는 전국 ~214개로 희소해, 줌 아웃 시 가격순 상한(topNByZoom)에
-    // 일반 주유소에 밀려 누락되던 문제를 막는다(서버가 EXP만 충분한 상한으로 반환).
-    // 여러 브랜드 동시 선택/미선택(전체)일 때는 기존 동작 유지(전체 조회 후 클라이언트 필터).
+    // 브랜드를 하나만 고른 경우 그 브랜드를 서버에서 조회한다.
+    // bbox 응답은 가격순 상한(topNByZoom, 최대 100)이라, 상한이 필터보다 먼저 걸리면
+    // 소수 브랜드가 통째로 잘려 "마커 0개 = 이 지역엔 그 브랜드가 없다"로 보인다.
+    // 정비소에서 같은 결함을 겪고 서버 필터로 옮긴 선례가 있다(아래 visibleRepair 주석 참고).
+    // 원래 EXP(고속도로, 전국 ~214개)만 이 경로를 탔는데, 희소한 건 EXP뿐이 아니라
+    // 단일 선택이면 브랜드를 가리지 않고 서버로 보낸다(서버는 BRAND_ONLY_LIMIT=300으로 반환).
+    //
+    // 2개 이상 동시 선택은 여전히 전체 조회 후 클라이언트 필터다 — RPC가 브랜드를 하나만
+    // 받기 때문이다. 이 경우 상한 안에 각 브랜드가 섞여 들어와 0개가 되지는 않지만
+    // 부분 노출은 남는다(다중 브랜드 RPC가 필요).
     const reqBrands = brandsRef.current;
-    if (reqBrands.length === 1 && reqBrands[0] === 'EXP') {
-      params.set('brand', 'EXP');
+    if (reqBrands.length === 1) {
+      params.set('brand', reqBrands[0]);
     }
     // 세차 칩 ON이면 서버측 세차 필터(has_carwash=true)를 적용한다(FR-1).
     if (carwashOnlyRef.current) params.set('carwash', '1');
@@ -449,10 +458,9 @@ export default function HomePage() {
         // 오류 응답({error})이나 예기치 못한 형태로 stations가 비어도 마커 렌더가 깨지지 않도록 방어
         const list = Array.isArray(data?.stations) ? data.stations : [];
         setStations(list);
-        if (list.length) {
-          const avg = Math.round(list.reduce((s, x) => s + x.price, 0) / list.length);
-          setAveragePrice(avg);
-        }
+        // 알람 기준가는 여기서 세우지 않는다. bbox 응답은 "지금 보고 있는 지도 영역"의
+        // 가격순 상위 N이라, 서울에 서서 지도만 제주로 밀면 내 1km 알람 기준이 제주 시세가 되고
+        // 줌아웃하면 전국 최저가 100곳 평균이 기준이 됐다. 기준가는 내 위치 반경 조회에서 받는다.
       })
       .catch((e) => {
         if (e.name !== 'AbortError') console.error('bbox fetch fail', e);
@@ -697,6 +705,12 @@ export default function HomePage() {
       .then((data) => {
         const list = Array.isArray(data?.stations) ? data.stations : [];
         setRadiusStations(list);
+        // 알람 기준가 — 내 위치 반경(NEARBY_RADIUS_M) 기준이라 지도 조작에 흔들리지 않는다.
+        // 주의: 이 값도 반경 내 "가격순 상위 N"의 평균이라 저가 편향이 남아 있다(진짜 평균 아님).
+        // 편향 없는 값은 Opinet 시도 평균(/api/avg-price)뿐인데 Opinet 콜이 붙어 별도 판단 대상.
+        if (typeof data?.averagePrice === 'number' && data.averagePrice > 0) {
+          setAveragePrice(data.averagePrice);
+        }
         resetAlert();
       })
       .catch((e) => {
@@ -780,7 +794,7 @@ export default function HomePage() {
     return m;
   }, [visibleNationalTop10]);
   // 하단 시트 리스트도 동일 브랜드 필터 적용(표시 집합 일관성).
-  // averagePrice는 1km 알람 판정(평균-50원) 기준으로 사용한다. 마커 색상은 별도로
+  // averagePrice는 1km 알람 판정(기준가-50원)에 쓴다(출처: 반경 조회). 마커 색상은 별도로
   // 화면 표시 집합의 상대 분포(분위수)로 산정한다(KakaoMap/BottomSheet 내부).
   const visibleNearbyStations = useMemo(
     () => filterDisplay(radiusStations),
@@ -801,9 +815,10 @@ export default function HomePage() {
     return within[0] ?? null;
   }, [radiusStations]);
 
-  // 알람 대상: 지도 영역 평균 대비 ALERT_THRESHOLD 이상 싼 1km 내 최저가
+  // 알람 대상: 내 위치 반경 기준가 대비 ALERT_THRESHOLD 이상 싼 1km 내 최저가
   const alertStation = useMemo(() => {
-    if (!cheapestWithin1km) return null;
+    // 기준가를 아직 모르면 판정하지 않는다(추측값으로 알람을 띄우지 않는다).
+    if (!cheapestWithin1km || averagePrice == null) return null;
     return averagePrice - cheapestWithin1km.price >= ALERT_THRESHOLD ? cheapestWithin1km : null;
   }, [cheapestWithin1km, averagePrice]);
 
@@ -1363,7 +1378,7 @@ export default function HomePage() {
 
         {/* 1km 알람 — 주유소 레이어에서만(충전소는 가격 알람 대상 아님).
             경로 모드일 때는 경로 표시줄과 겹치므로 내 주변 알람 대신 경로 알림(RouteAlert)을 우선한다. */}
-        {layer === 'gas' && !routePlan && alertStation && !alertDismissed && (
+        {layer === 'gas' && !routePlan && alertStation && averagePrice != null && !alertDismissed && (
           <RadiusAlert
             station={alertStation}
             averagePrice={averagePrice}
