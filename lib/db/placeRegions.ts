@@ -110,17 +110,61 @@ export async function queryPlacesBySigungu(
  * generateStaticParams 에서 쓴다 — 데이터가 0곳인 지역까지 페이지를 만들면
  * 내용 없는 얇은 페이지가 수십 개 생기고, 그건 색인에 도움이 되지 않고 해가 된다.
  */
+/**
+ * 폴백 페이지네이션의 시간 예산(ms).
+ *
+ * 이 함수는 빌드의 generateStaticParams 에서 돈다. Next.js 의 staticPageGenerationTimeout
+ * 기본값이 **60초**라, 여기서 넘기면 빌드가 통째로 실패한다 —
+ * 실제로 2026-09-01 App Hosting 빌드가 이것 때문에 죽었다(ev_chargers 527,093행 = 약 210초).
+ *
+ * 세 레이어가 Promise.all 로 동시에 도므로 최악이 대략 이 값 + 오버헤드다. 빌드 컨테이너는
+ * 개발 머신보다 느리므로(실측 repair 12.4초가 그쪽에선 더 걸린다) 60초에 여유를 크게 둔다.
+ */
+const FALLBACK_BUDGET_MS = 15_000;
+
+/**
+ * 레이어별 "데이터가 있는 시군구 코드" 집합.
+ *
+ * 1순위는 RPC(마이그레이션 0057) — SQL distinct 한 번이다. sigungu_code 인덱스(0048)가 있어
+ * index-only scan 이 된다.
+ *
+ * 폴백은 기존 페이지네이션인데 **시간 예산을 둔다**. PostgREST 에 distinct 가 없어 테이블 전체를
+ * 1,000행씩 훑어야 하고, 그게 정확히 빌드를 죽인 원인이었다. 예산을 넘기면 거기까지만 쓰고
+ * 중단한다 — 결과가 부분집합이 되어 일부 시군구가 정적 생성에서 빠지지만, dynamicParams 기본값이
+ * true 라 그 경로는 첫 방문 시 온디맨드로 렌더된다(빌드가 죽는 것보다 낫다).
+ * 잘리는 쪽이 sigungu_code 오름차순 뒷번호로 **편향**되므로, 잘렸다는 사실을 반드시 로그로 남긴다.
+ */
 export async function queryDistrictsWithPlaces(layer: PlaceLayer): Promise<Set<string>> {
   const out = new Set<string>();
   if (!isSupabaseConfigured()) return out;
-  const table = layer === 'repair' ? 'repair_shops' : layer === 'carwash' ? 'carwash_places' : 'ev_chargers';
   const sb = getSupabase();
+
+  // 1) RPC — 왕복 1회.
   try {
-    // PostgREST 는 distinct 를 지원하지 않아 코드 컬럼만 페이지네이션으로 훑는다.
-    // 값이 짧아 수십만 행이어도 부담이 크지 않고, 빌드에서 한 번만 돈다.
+    const { data, error } = await sb.rpc('rpc_districts_with_places', { p_layer: layer });
+    if (!error && Array.isArray(data)) {
+      for (const row of data as unknown[]) {
+        // setof text 는 스칼라 배열로 오지만, 드라이버/버전에 따라 객체로 감싸질 수 있어 둘 다 받는다.
+        const code = typeof row === 'string' ? row : (row as { sigungu_code?: string })?.sigungu_code;
+        if (code) out.add(code);
+      }
+      if (out.size) return out;
+    }
+    if (error) {
+      console.warn(`[placeRegions] RPC 미사용(${layer}) — 마이그레이션 0057 미적용? ${error.message}`);
+    }
+  } catch (e) {
+    console.warn(`[placeRegions] RPC 호출 실패(${layer}):`, (e as Error).message);
+  }
+
+  // 2) 폴백 — 페이지네이션 + 시간 예산.
+  const startedAt = Date.now();
+  let truncated = false;
+  try {
     for (let from = 0; ; from += 1000) {
+      if (Date.now() - startedAt > FALLBACK_BUDGET_MS) { truncated = true; break; }
       const { data, error } = await sb
-        .from(table)
+        .from(tableFor(layer))
         .select('sigungu_code')
         .not('sigungu_code', 'is', null)
         .order('sigungu_code', { ascending: true })
@@ -129,10 +173,21 @@ export async function queryDistrictsWithPlaces(layer: PlaceLayer): Promise<Set<s
       const rows = (data as { sigungu_code: string }[]) ?? [];
       rows.forEach((r) => out.add(r.sigungu_code));
       if (rows.length < 1000) break;
-      if (from > 400_000) break; // 폭주 가드
+      if (from > 400_000) { truncated = true; break; } // 폭주 가드
     }
   } catch (e) {
     console.warn(`districts-with-places query fail (${layer}):`, (e as Error).message);
   }
+  if (truncated) {
+    console.warn(
+      `[placeRegions] ${layer}: 시간 예산(${FALLBACK_BUDGET_MS}ms) 초과로 중단 — 시군구 ${out.size}개만 수집했다. `
+      + '뒷번호 시군구가 빠졌을 수 있다. 마이그레이션 0057을 적용하면 해소된다.',
+    );
+  }
   return out;
+}
+
+/** 레이어 → 테이블명. RPC 폴백에서만 쓴다. */
+function tableFor(layer: PlaceLayer): string {
+  return layer === 'repair' ? 'repair_shops' : layer === 'carwash' ? 'carwash_places' : 'ev_chargers';
 }
