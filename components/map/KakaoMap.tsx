@@ -14,8 +14,11 @@ import type { RepairMarker } from '@/types/repair';
 import type { CarwashMarker } from '@/types/carwash';
 import { buildCarwashMarkerContent } from '@/lib/map/carwashMarker';
 import { buildRepairMarkerContent } from '@/lib/map/repairMarker';
+import type { ParkingMarker } from '@/types/parking';
 import type { RentalMarker } from '@/types/rental';
 import { buildRentalMarkerContent } from '@/lib/map/rentalMarker';
+import { buildParkingMarkerContent } from '@/lib/map/parkingMarker';
+import { toFeeKindCode } from '@/lib/parking/labels';
 import { primaryFee } from '@/types/rental';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
 import { SPARKLE_SVG_STRING } from '@/components/icons';
@@ -257,8 +260,10 @@ interface Props {
 
   /** 렌터카 마커 목록(layer='rental' 일 때만 그린다). */
   rentalPlaces?: RentalMarker[];
+  parkingPlaces?: ParkingMarker[];
   /** 렌터카 마커 클릭 콜백 — 상세로 이동. */
   onRentalMarkerClick?: (p: RentalMarker) => void;
+  onParkingMarkerClick?: (p: ParkingMarker) => void;
   /**
    * 경로별 최저가 계획. 설정되면 출발→도착 직선 Polyline + 출발/도착 핀 +
    * 경로 최저가 주유소 마커를 지도에 그리고, 출발~도착이 모두 보이도록 fit한다.
@@ -308,6 +313,8 @@ export function KakaoMap({
   onRepairMarkerClick,
   rentalPlaces,
   onRentalMarkerClick,
+  parkingPlaces,
+  onParkingMarkerClick,
   onCarwashMarkerClick,
   routePlan,
   onRouteStationClick,
@@ -344,6 +351,9 @@ export function KakaoMap({
   const rentalOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
   const onRentalMarkerClickRef = useRef(onRentalMarkerClick);
   useEffect(() => { onRentalMarkerClickRef.current = onRentalMarkerClick; }, [onRentalMarkerClick]);
+  const parkingOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
+  const onParkingMarkerClickRef = useRef(onParkingMarkerClick);
+  useEffect(() => { onParkingMarkerClickRef.current = onParkingMarkerClick; }, [onParkingMarkerClick]);
   // 경로(직선) Polyline — 경로 모드일 때만 그린다(독립 관리, 해제 시 제거).
   const routeLineRef = useRef<kakao.maps.Polyline | null>(null);
   // 경로 오버레이(출발/도착 핀 + 경로 최저가 주유소 마커) — Polyline과 함께 관리.
@@ -932,6 +942,48 @@ export function KakaoMap({
       rentalOverlaysRef.current.push(overlay);
     }
   }, [ready, layer, rentalPlaces, mapLevel, t]);
+
+  // 주차장 마커 — layer==='parking' 일 때만. 무료만 필터는 서버(RPC)에서 걸려 이미 반영돼 있다.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+
+    parkingOverlaysRef.current.forEach((o) => o.setMap(null));
+    parkingOverlaysRef.current = [];
+
+    if (layer !== 'parking') return;
+
+    const showLabel = map.getLevel() <= 6;   // 다른 레이어와 동일 기준
+    for (const p of parkingPlaces ?? []) {
+      // 라벨 = **요금**. 구획수를 쓰지 않는 이유는 parkingMarker.ts 주석 참고
+      // (핀 위 숫자가 잔여면수로 읽히고, 이 앱에서 마커 안 숫자는 유가 순위를 뜻한다).
+      //
+      // 단위를 반드시 앞에 붙인다("5분 100원") — 단위 없는 원화 숫자는 이 앱에서 유가다.
+      // 금액이 없으면 무료/유료 라벨로 떨어지고, 그것도 없으면 이름을 쓴다(빈 라벨 금지).
+      const feeCode = toFeeKindCode(p.feeKind);
+      const label = (p.basicCharge != null && p.basicTime != null)
+        ? t('parkingMarkerLabel.fee', { time: p.basicTime, charge: p.basicCharge.toLocaleString() })
+        : feeCode === 'free'
+          ? t('parkingMarkerLabel.free')
+          : feeCode === 'paid' || feeCode === 'mixed'
+            ? t('parkingMarkerLabel.paid')
+            : p.name;
+      const content = buildParkingMarkerContent(p, showLabel, label);
+      content.addEventListener('click', () => onParkingMarkerClickRef.current?.(p));
+      // 큰 주차장을 위로 — 겹칠 때 규모가 큰 쪽이 보이는 게 유용하다.
+      const z = (p.capacity ?? 0) >= 200 ? 4 : (p.capacity ?? 0) >= 50 ? 3 : 2;
+      const overlay = new window.kakao.maps.CustomOverlay({
+        position: new window.kakao.maps.LatLng(p.lat, p.lng),
+        content,
+        // 꼬리 있는 핀 → 콘텐츠 아래 끝이 좌표(3541182 규칙). transform 금지.
+        yAnchor: 1,
+        clickable: true,
+        zIndex: z,
+      });
+      overlay.setMap(map);
+      parkingOverlaysRef.current.push(overlay);
+    }
+  }, [ready, layer, parkingPlaces, mapLevel, t]);
 
   // 회색 점(비하이라이트 주유소) 오버레이 — 일정 줌 이상 확대(level ≤ GRAY_DOT_MAX_LEVEL)일 때만.
   // allStations(화면 내 전체 주유소) 중, 이미 강조/일반 마커로 그려진 id를 제외한 나머지를

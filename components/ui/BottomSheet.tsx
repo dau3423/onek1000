@@ -15,6 +15,8 @@ import type { EvStationMarker } from '@/types/ev';
 import { rankEvStations, type EvStationRanked, type EvSortOrigin } from '@/lib/ev/sort';
 import type { CarwashMarker } from '@/types/carwash';
 import type { RepairMarker } from '@/types/repair';
+import type { ParkingMarker } from '@/types/parking';
+import { toFeeKindCode, toLotKindCode } from '@/lib/parking/labels';
 import type { RentalMarker } from '@/types/rental';
 import { primaryFee, RENTAL_COLOR, RENTAL_EV_COLOR } from '@/types/rental';
 import { REPAIR_BRAND_COLOR, REPAIR_TYPE_COLOR } from '@/types/repair';
@@ -69,6 +71,8 @@ interface Props {
    * 목록 필터 자체는 서버(carwash=1)에서 이미 적용되어 stations/nearbyStations에 반영된다.
    */
   carwashOnly?: boolean;
+  /** 주차장 '무료만' 필터 — 빈 상태 문구를 가르는 데 쓴다. */
+  parkingFree?: boolean;
   /** 세차 빈 상태 탈출구 — "세차 필터 끄기" 탭 시 호출(carwashOnly를 끈다). */
   onDisableCarwash?: () => void;
   /**
@@ -104,6 +108,7 @@ interface Props {
   repairShops?: RepairMarker[];
   /** 렌터카 목록(layer='rental'). */
   rentalPlaces?: RentalMarker[];
+  parkingPlaces?: ParkingMarker[];
   /**
    * 세차장 거리 계산/정렬 기준 좌표(내 위치 우선, 없으면 화면 중심). null이면 거리 미표시.
    * 세차장엔 가격이 없으므로 정렬은 거리순(좌표 있을 때)만 적용한다.
@@ -112,10 +117,13 @@ interface Props {
   /** 정비소 거리 계산 기준 좌표(내 위치 → 지도 중심 폴백). */
   repairOrigin?: { lat: number; lng: number } | null;
   rentalOrigin?: { lat: number; lng: number } | null;
+  parkingOrigin?: { lat: number; lng: number } | null;
   /** 세차장 선택 콜백(상세 이동). */
   onSelectCarwash?: (p: CarwashMarker) => void;
   onSelectRepair?: (p: RepairMarker) => void;
   onSelectRental?: (p: RentalMarker) => void;
+  onSelectParking?: (p: ParkingMarker) => void;
+  onNavigateParking?: (p: ParkingMarker) => void;
   /** 세차장 길안내 콜백. */
   onNavigateCarwash?: (p: CarwashMarker) => void;
   onNavigateRepair?: (p: RepairMarker) => void;
@@ -158,6 +166,7 @@ export function BottomSheet({
   onOpenChange,
   onTabChange,
   carwashOnly = false,
+  parkingFree = false,
   onDisableCarwash,
   openSignal,
   layer = 'gas',
@@ -168,12 +177,16 @@ export function BottomSheet({
   carwashPlaces = [],
   repairShops = [],
   rentalPlaces = [],
+  parkingPlaces = [],
   carwashOrigin = null,
   repairOrigin = null,
   rentalOrigin = null,
+  parkingOrigin = null,
   onSelectCarwash,
   onSelectRepair,
   onSelectRental,
+  onSelectParking,
+  onNavigateParking,
   onNavigateCarwash,
   onNavigateRepair,
   onNavigateRental,
@@ -396,6 +409,7 @@ export function BottomSheet({
   const isCarwash = layer === 'carwash';
   const isRepair = layer === 'repair';
   const isRental = layer === 'rental';
+  const isParking = layer === 'parking';
 
   const activeTab: Tab = nearbyEnabled ? tab : 'area';
 
@@ -457,7 +471,23 @@ export function BottomSheet({
         .slice(0, RENTAL_LIMIT)
     : [];
 
-  const title = isRental
+  // === 주차장 레이어: 직선거리순 목록 ===
+  // ★ 정렬 이름을 '가까운 순'/'빠른 순'으로 부르지 않는다. 실제 도로 소요시간이 아니라 직선거리다
+  //   (기획 3단계에서 도착시간순으로 바뀔 때까지 과장하지 않는다 — design §0).
+  //   모집단 한계도 있다: 서버가 화면 상한 200곳을 **구획수 큰 순**으로 자른 뒤 여기서 거리순으로
+  //   정렬하므로, 아주 작은 주차장은 가까워도 목록에 없을 수 있다. 캡션으로 알린다.
+  const parkingRanked = isParking
+    ? parkingPlaces
+        .map((p) => ({
+          place: p,
+          distance: parkingOrigin ? distanceMeters(parkingOrigin.lat, parkingOrigin.lng, p.lat, p.lng) : null,
+        }))
+        .sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
+    : [];
+
+  const title = isParking
+    ? t('bottomSheet.titleParkingArea', { count: parkingRanked.length })
+    : isRental
     ? t('bottomSheet.titleRentalArea', { count: rentalRanked.length })
     : isEv
     ? t('bottomSheet.titleEvArea', { count: evRanked.length })
@@ -575,6 +605,31 @@ export function BottomSheet({
                   index={i}
                   onSelect={onSelectRepair}
                   onNavigate={onNavigateRepair}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : isParking ? (
+        /* 주차장 레이어: 직선거리순 목록. 캡션으로 정렬 기준과 '빈자리 모름'을 상시 고지한다. */
+        <div ref={listRef} className={listClass}>
+          <p className="px-5 pb-1 pt-2 text-[11px] text-gray-400 dark:text-gray-500">
+            {t('parking.sortStraightLine')} · {t('parking.noVacancyShort')}
+          </p>
+          {parkingRanked.length === 0 ? (
+            <p className="px-5 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+              {parkingFree ? t('bottomSheet.emptyParkingFree') : t('bottomSheet.emptyParking')}
+            </p>
+          ) : (
+            <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+              {parkingRanked.map((r, i) => (
+                <ParkingRow
+                  key={r.place.placeKey}
+                  place={r.place}
+                  distance={r.distance}
+                  index={i}
+                  onSelect={onSelectParking}
+                  onNavigate={onNavigateParking}
                 />
               ))}
             </ul>
@@ -835,6 +890,106 @@ function CarwashRow({
 }
 
 /** 정비소 목록 행 — CarwashRow 와 동형(가격 없음, 이름+유형 뱃지+거리+주소). */
+/**
+ * 주차장 목록 행 — 거리 · 이름 · (공영/민영·노상노외) · 요금 · 규모.
+ *
+ * ★ 규모 표기는 반드시 "총 N면"이다. 맨숫자 'N면'은 잔여면수로 읽힌다(design §6-1).
+ *   '여유'·'자리 있음'·'잔여' 같은 말은 쓰지 않는다 — 우리는 빈자리를 모른다.
+ * ★ 요금 숫자에는 단위를 앞에 붙인다("5분 100원"). 단위 없는 원화 숫자는 이 앱에서 유가다.
+ */
+function ParkingRow({
+  place,
+  distance,
+  index,
+  onSelect,
+  onNavigate,
+}: {
+  place: ParkingMarker;
+  distance: number | null;
+  index: number;
+  onSelect?: (p: ParkingMarker) => void;
+  onNavigate?: (p: ParkingMarker) => void;
+}) {
+  const t = useTranslations('map');
+  const address = place.roadAddr ?? place.jibunAddr ?? null;
+  const distanceText = distance != null
+    ? distance < 1000 ? `${Math.round(distance)}m` : `${(distance / 1000).toFixed(1)}km`
+    : null;
+  const feeCode = toFeeKindCode(place.feeKind);
+  const lotKindCode = toLotKindCode(place.lotKind);
+  // 매핑 실패 시 원문을 그대로 노출한다 — 사라지는 것보다 낫다(lib/parking/labels.ts 주석).
+  const kindText = lotKindCode ? t(`parking.lotKind.${lotKindCode}`) : place.lotKind;
+  const free = feeCode === 'free';
+  return (
+    <li>
+      <div className="flex w-full items-center gap-3 px-5 py-3">
+        <button
+          onClick={() => onSelect?.(place)}
+          aria-label={t('bottomSheet.detailAria', { name: place.name })}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          <span className="w-5 text-center text-xs font-bold text-gray-500 dark:text-gray-400">{index + 1}</span>
+          {/* 무료=속 빈 점, 유료=채운 점 — 지도 핀의 채움 반전과 같은 규칙(색 대비가 아니라 형태 대비). */}
+          <span
+            className={clsx(
+              'h-2.5 w-2.5 shrink-0 rounded-full border-2',
+              free ? 'border-indigo-600 bg-transparent dark:border-indigo-400' : 'border-indigo-600 bg-indigo-600 dark:border-indigo-400 dark:bg-indigo-400',
+            )}
+          />
+          {/* 폭이 늘어도(3단계에서 도착시간이 붙어도) 요금 컬럼이 밀리지 않도록 min-w-0 + truncate */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span className="truncate text-sm font-semibold text-gray-900 dark:text-gray-50">{place.name}</span>
+              {kindText && (
+                <span className="shrink-0 rounded-full border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[10px] font-bold leading-none text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                  {kindText}
+                </span>
+              )}
+            </div>
+            <div className="truncate text-xs text-gray-500 dark:text-gray-400">
+              {distanceText ? `${distanceText} · ` : ''}
+              {place.capacity != null ? t('parking.capacity', { count: place.capacity }) : t('parking.capacityUnknown')}
+              {address ? ` · ${address}` : ''}
+            </div>
+          </div>
+          <span className="shrink-0 text-right">
+            {place.basicCharge != null && place.basicTime != null ? (
+              <>
+                <span className="block text-sm font-extrabold text-gray-900 dark:text-gray-50">
+                  ₩{place.basicCharge.toLocaleString()}
+                </span>
+                <span className="block text-[10px] text-gray-400 dark:text-gray-500">
+                  {t('parking.feeUnit', { time: place.basicTime })}
+                </span>
+              </>
+            ) : (
+              <span className={clsx(
+                'block text-sm font-extrabold',
+                free ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-500',
+              )}>
+                {feeCode === 'free' ? t('parking.feeFree')
+                  : feeCode === 'paid' ? t('parking.feePaid')
+                  : feeCode === 'mixed' ? t('parking.feeMixed')
+                  : t('parking.feeUnknown')}
+              </span>
+            )}
+          </span>
+          <ChevronRightIcon className="h-4 w-4 shrink-0 text-gray-300 dark:text-gray-600" />
+        </button>
+        {onNavigate && (
+          <button
+            onClick={() => onNavigate(place)}
+            aria-label={t('bottomSheet.navigateAria', { name: place.name })}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
+          >
+            <Image src="/icons/icon_transparent.png" alt="" width={36} height={36} className="block" />
+          </button>
+        )}
+      </div>
+    </li>
+  );
+}
+
 function RentalRow({
   place,
   distance,

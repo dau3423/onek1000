@@ -20,7 +20,7 @@ interface Props {
   /** 출발지(현재 위치). 있으면 출발→도착 경로로 길안내가 시작된다. */
   origin?: NaviOrigin | null;
   /** 대상 종류. 'gas' 외에는 가격·브랜드 개념이 없어 그 줄을 숨기고 문구를 바꾼다(기본 'gas'). */
-  kind?: 'gas' | 'carwash' | 'repair' | 'rental';
+  kind?: 'gas' | 'carwash' | 'repair' | 'rental' | 'parking';
   onClose: () => void;
 }
 

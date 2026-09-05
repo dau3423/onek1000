@@ -128,7 +128,9 @@
       "layerRental": "Rental",
       "rentalMenuAria": "Rental car filter",
       "moreLayersAria": "Show other map layers",
-      "newLayerBadge": "New layer"
+      "newLayerBadge": "New layer",
+      "layerParking": "Parking",
+      "parkingMenuAria": "Parking fee filter"
     },
     "carwashFilter": {
       "all": "All",
@@ -240,7 +242,12 @@
       "titleRepairArea": "{count, plural, one {# repair shop} other {# repair shops}} in this area",
       "emptyRepair": "No repair shops in this area. Try moving the map.",
       "titleRentalArea": "{count} rental companies here",
-      "emptyRental": "No rental companies in this area. Try moving the map."
+      "emptyRental": "No rental companies in this area. Try moving the map.",
+      "titleParkingArea": "{count} parking lots in this area",
+      "emptyParking": "No parking lots to show in this area. Try moving the map.",
+      "emptyParkingFree": "No free parking lots in this area.",
+      "disableParkingFree": "Turn off free only",
+      "parkingLoadFailed": "Couldn't load parking info. Please try again shortly."
     },
     "kakaoMap": {
       "errorTitle": "Couldn't load the map.",
@@ -317,7 +324,37 @@
       "imported": "Imported"
     },
     "rentalMarkerLabel": "{carClass} ₩{price}",
-    "rentalCarCountLabel": "{count} cars"
+    "rentalCarCountLabel": "{count} cars",
+    "parkingFilter": {
+      "all": "All",
+      "free": "Free only"
+    },
+    "parkingMarkerLabel": {
+      "free": "Free",
+      "paid": "Paid",
+      "fee": "{charge} KRW/{time}min"
+    },
+    "parking": {
+      "capacity": "{count} spaces total",
+      "capacityUnknown": "Size unknown",
+      "feeUnit": "per {time} min",
+      "feeUnknown": "Fee unknown",
+      "feeFree": "Free",
+      "feePaid": "Paid",
+      "feeMixed": "Mixed",
+      "lotKind": {
+        "public": "Public",
+        "private": "Private"
+      },
+      "lotType": {
+        "street": "On-street",
+        "offstreet": "Off-street",
+        "annex": "Attached"
+      },
+      "sortStraightLine": "By straight-line distance",
+      "noVacancyShort": "No vacancy data",
+      "freeOnlyChip": "Free only"
+    }
   },
   "station": {
     "self": "Self-service",
@@ -1190,5 +1227,39 @@
       "setupHint": "Save your insurer and you can call right here when something happens.",
       "anonHint": "See insurer hotlines and your exact location on one screen."
     }
+  },
+  "parking": {
+    "feeTitle": "Fees",
+    "fee": {
+      "basic": "Base",
+      "add": "Additional",
+      "dayTicket": "Day pass",
+      "monthTicket": "Monthly pass",
+      "payMethods": "Payment",
+      "minutesWon": "{charge} KRW / {time} min"
+    },
+    "feeDisclaimerWithDate": "Based on public data ({date}); actual on-site fees may differ.",
+    "feeDisclaimer": "Based on public data; actual on-site fees may differ.",
+    "noFee": "No fee information is registered.",
+    "capacityTitle": "Size",
+    "capacityValue": "{count} spaces total",
+    "capacityUnknown": "Size unknown",
+    "disabledZone": "Accessible parking available",
+    "noVacancyNotice": "Real-time availability is not provided. '{count} spaces total' is the lot's full size — we can't tell how many are free right now.",
+    "noVacancyNoticeNoCapacity": "Real-time availability is not provided. This lot's size isn't registered either.",
+    "operatingInfoTitle": "Hours",
+    "hours": {
+      "weekday": "Weekdays {open} – {close}",
+      "saturday": "Saturday {open} – {close}",
+      "holiday": "Holidays {open} – {close}"
+    },
+    "noOperatingInfo": "No operating hours information.",
+    "instName": "Operated by {name}",
+    "noTel": "No phone number available.",
+    "callButton": "Call",
+    "dataSource": "Data: Korea Public Data Portal — National Parking Lot Standard Data",
+    "baseDate": " · As of {date}",
+    "publicDataDisclaimer": "Based on public data; may differ from reality.",
+    "notFound": "Parking lot not found."
   }
 }

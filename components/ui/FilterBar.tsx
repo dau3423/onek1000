@@ -7,7 +7,7 @@ import { type ProductCode } from '@/types/station';
 import type { CarwashTypeFilter } from '@/types/carwash';
 import { useProductLabel } from '@/lib/i18n/labels';
 import { BrandFilter } from './BrandFilter';
-import { BoltIcon, CarwashIcon, WrenchIcon, FuelIcon, CarIcon } from '@/components/icons';
+import { BoltIcon, CarwashIcon, WrenchIcon, FuelIcon, CarIcon, ParkingIcon } from '@/components/icons';
 import { REPAIR_BRAND_ORDER } from '@/types/repair';
 import type { RentalFilter } from '@/types/rental';
 import { track } from '@/lib/analytics';
@@ -17,14 +17,26 @@ import clsx from 'clsx';
 // 있어 유종 선택이 두 군데로 갈렸다. 이제 주유소 버튼 하나가 드롭다운을 열고 여기서 전부 고른다.
 const FUEL_OPTIONS: ProductCode[] = ['B027', 'D047', 'B034', 'C004'];
 
-// 레이어 전환 — 주유소/EV/세차장/정비소/렌터카. 하위 선택지가 있는 레이어는 드롭다운 트리거를 겸한다.
-type LayerLabelKey = 'layerGas' | 'layerEv' | 'layerCarwash' | 'layerRepair' | 'layerRental';
+// 레이어 전환 — 주유소/EV/세차장/정비소/주차장/렌터카. 하위 선택지가 있는 레이어는 드롭다운 트리거를 겸한다.
+//
+// ★ 순서 주의: orderLayers 가 slice(2) 를 rest 로 쓰고 rest[0] 을 "활성이 고정석일 때의 세 번째"로
+//   삼는다. 즉 **세차장이 인덱스 2 를 지켜야** 한다 — 주차장을 앞에 끼우면 세차장이 세 번째
+//   고정석에서 밀려난다. 주차장은 정비소 뒤(인덱스 4)에 넣어 그 불변을 유지한다.
+type LayerLabelKey = 'layerGas' | 'layerEv' | 'layerCarwash' | 'layerRepair' | 'layerParking' | 'layerRental';
 const LAYER_OPTIONS: { value: MapLayer; labelKey: LayerLabelKey; Icon: ComponentType<{ className?: string }> }[] = [
   { value: 'gas', labelKey: 'layerGas', Icon: FuelIcon },
   { value: 'ev', labelKey: 'layerEv', Icon: BoltIcon },
   { value: 'carwash', labelKey: 'layerCarwash', Icon: CarwashIcon },
   { value: 'repair', labelKey: 'layerRepair', Icon: WrenchIcon },
+  { value: 'parking', labelKey: 'layerParking', Icon: ParkingIcon },
   { value: 'rental', labelKey: 'layerRental', Icon: CarIcon },
+];
+
+// 주차장 레이어 필터. 무료가 전국 17,552곳 중 12,160곳(69%)이라 의미 있는 축이다.
+// 금액대 필터는 두지 않는다(원천 금액 결측이 흔해 멀쩡한 주차장이 사라진다 — stores/map.ts 주석).
+const PARKING_FILTER_OPTIONS: { value: boolean; labelKey: 'all' | 'free' }[] = [
+  { value: false, labelKey: 'all' },
+  { value: true, labelKey: 'free' },
 ];
 
 // 렌터카 레이어 필터. 'ev'=전기차 보유 업체만(원천에 전기승용/전기승합 보유대수가 있어 정확히 갈린다).
@@ -36,7 +48,7 @@ const RENTAL_FILTER_OPTIONS: { value: RentalFilter; labelKey: 'all' | 'ev' }[] =
 /** 하위 선택지(드롭다운)를 가진 레이어. EV 만 없다.
  *  같은 판정이 세 군데(전환 시 자동 열기 / ▾ 표시 / 토글)에 쓰여 한 곳으로 모았다 —
  *  레이어를 추가할 때 한 군데만 고쳐 놓고 나머지를 빠뜨리는 사고를 막는다. */
-const HAS_MENU = new Set<MapLayer>(['gas', 'carwash', 'repair', 'rental']);
+const HAS_MENU = new Set<MapLayer>(['gas', 'carwash', 'repair', 'parking', 'rental']);
 
 /**
  * 슬롯별 표시 브레이크포인트 — 좁은 화면에서 뒤쪽 슬롯을 감추고 '+N' 으로 넘긴다.
@@ -55,6 +67,11 @@ const SLOT_VISIBILITY = [
   'flex',                        // 2 — **활성 자리라 항상 노출**(orderLayers 주석 참고)
   'hidden min-[460px]:flex',     // 3
   'hidden min-[560px]:flex',     // 4
+  'hidden min-[600px]:flex',     // 5 — 주차장 추가로 생긴 6번째.
+  //   2026-09-06 실측(레이어 6개가 넘치지 않는 최소 뷰포트 = 그룹 내용폭 + 바 패딩 20 + 우측 요소):
+  //     ko 478 · zh 471 · en 516 · **ja 569**(レンタカー 90 / 整備工場 82 로 가장 넓다)
+  //   최악(ja)에 약 30px 여유를 둬 600 으로 잡았다. 디자인 명세의 660 은 5개 실측의 외삽치였고
+  //   실측 결과 과하게 보수적이었다 — 600~659 구간에서 6개가 다 들어가는데 굳이 '+1' 을 띄웠다.
 ];
 
 /**
@@ -104,6 +121,7 @@ const MENU_WIDTH: Record<MapLayer | 'more', number> = {
   gas: 144,       // w-36
   carwash: 128,   // w-32
   repair: 160,    // w-40
+  parking: 144,   // w-36
   rental: 144,    // w-36
   ev: 0,          // 메뉴 없음
   more: 208,      // w-52
@@ -122,12 +140,13 @@ export function FilterBar() {
   const tCarwashFilter = useTranslations('map.carwashFilter');
   const tRepairBrand = useTranslations('repair.brandLabel');
   const tRentalFilter = useTranslations('map.rentalFilter');
+  const tParkingFilter = useTranslations('map.parkingFilter');
   const productLabel = useProductLabel();
   // 세차 가능(carwashOnly)은 BrandFilter 드롭다운으로 옮겨 여기선 다루지 않는다.
-  const { product, setProduct, layer, setLayer, carwashType, setCarwashType, repairBrand, setRepairBrand, rentalFilter, setRentalFilter } = useMapStore();
+  const { product, setProduct, layer, setLayer, carwashType, setCarwashType, repairBrand, setRepairBrand, rentalFilter, setRentalFilter, parkingFree, setParkingFree } = useMapStore();
   // 열려 있는 드롭다운('gas'=유종 | 'carwash'=세차장 유형 | null)
   /** 하위 선택지를 가진 레이어만 메뉴를 연다(EV 는 없음). */
-  type MenuKey = 'gas' | 'carwash' | 'repair' | 'rental' | 'more';
+  type MenuKey = 'gas' | 'carwash' | 'repair' | 'parking' | 'rental' | 'more';
   const [openMenu, setOpenMenu] = useState<null | MenuKey>(null);
   const barRef = useRef<HTMLDivElement>(null);
   /** 열린 메뉴를 트리거 버튼 아래에 맞추기 위한 x 좌표(px, 필터바 기준). */
@@ -314,14 +333,16 @@ export function FilterBar() {
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
             'focus-visible:ring-offset-1 focus-visible:ring-offset-gray-100 dark:focus-visible:ring-offset-gray-800',
             'text-gray-600 hover:bg-gray-200/70 dark:text-gray-300 dark:hover:bg-gray-700',
-            'min-[560px]:hidden',
+            'min-[600px]:hidden',
           )}
         >
           {/* 숨겨진 개수는 화면 폭마다 다르다. aria-label 에는 숫자를 넣지 않아
               반응형 불일치(스크린리더가 틀린 수를 읽는 것)를 원천 차단한다. */}
-          {/* 슬롯 2 까지 항상 보이므로 최소 노출이 3개다 → 숨는 수는 2 또는 1. */}
-          <span aria-hidden className="min-[460px]:hidden">+2</span>
-          <span aria-hidden className="hidden min-[460px]:inline">+1</span>
+          {/* 슬롯 2 까지 항상 보이므로 최소 노출이 3개다 → 레이어 6개에서 숨는 수는 3·2·1.
+              (주차장 추가 전에는 5개라 2·1 이었다. 브레이크포인트는 SLOT_VISIBILITY 와 1:1 로 맞춘다.) */}
+          <span aria-hidden className="min-[460px]:hidden">+3</span>
+          <span aria-hidden className="hidden min-[460px]:inline min-[560px]:hidden">+2</span>
+          <span aria-hidden className="hidden min-[560px]:inline">+1</span>
           {hasUnseen && (
             <>
               {/* 색만으로 의미를 전달하지 않는다 — sr-only 텍스트를 반드시 병기한다. */}
@@ -455,6 +476,44 @@ export function FilterBar() {
       )}
 
       {/* 렌터카 필터 드롭다운 — 전체 / 전기차 보유. 항목이 둘뿐이라 폭을 좁게 잡는다. */}
+      {/* 주차장 드롭다운 — '전체 / 무료만'. 금액대 필터는 두지 않는다(원천 금액 결측이 흔하다). */}
+      {openMenu === 'parking' && (
+        <div
+          role="menu"
+          aria-label={t('parkingMenuAria')}
+          style={{ left: menuLeft }}
+          className="absolute top-[50px] z-50 w-36 rounded-xl border border-gray-100 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800"
+        >
+          {PARKING_FILTER_OPTIONS.map((opt) => {
+            const active = parkingFree === opt.value;
+            return (
+              <button
+                key={String(opt.value)}
+                role="menuitemradio"
+                aria-checked={active}
+                onClick={() => {
+                  setParkingFree(opt.value);
+                  setOpenMenu(null);
+                }}
+                className={clsx(
+                  'flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs font-semibold transition',
+                  active
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700',
+                )}
+              >
+                {tParkingFilter(opt.labelKey)}
+                {active && (
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.4}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 12l5 5L20 7" />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {openMenu === 'rental' && (
         <div
           role="menu"

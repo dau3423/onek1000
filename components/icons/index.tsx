@@ -446,6 +446,21 @@ export function DropletIcon({ className }: IconProps) {
 
 // 세차장 레이어 진입 칩 아이콘 — 부설 필터의 DropletIcon(물방울)과 반드시 형태가 달라야 한다.
 // 차체 실루엣 + 위에서 내려오는 분사선 3줄(= 차를 씻는다)로 "독립 세차장"을 나타낸다.
+/**
+ * 주차장 — 라운드 사각 + 'P'.
+ * 기존 아이콘 중 대체할 게 없다(CarIcon 은 렌터카, BuildingIcon 은 관리기관 표시에 쓰인다).
+ * 'P' 는 획이 아니라 path 로 그린다 — Stroke 래퍼가 fill=none 이라 텍스트를 쓰면 안 보인다.
+ */
+export function ParkingIcon({ className }: IconProps) {
+  return (
+    <Stroke className={className}>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="4" />
+      {/* P: 세로 기둥 + 위쪽 반원 */}
+      <path d="M9.75 16.5V7.5h3.1a2.6 2.6 0 0 1 0 5.2H9.75" />
+    </Stroke>
+  );
+}
+
 export function CarwashIcon({ className }: IconProps) {
   return (
     <Stroke className={className}>

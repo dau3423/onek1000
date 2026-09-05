@@ -70,3 +70,15 @@ export async function queryParkingByRadius(
   if (error) throw new Error(`parking radius query failed: ${error.message}`);
   return ((data as Record<string, unknown>[]) ?? []).map(rowToMarker);
 }
+
+/** 상세 페이지용 단건 조회. bbox/반경과 같은 rowToMarker 를 재사용한다. */
+export async function queryParkingDetail(placeKey: string): Promise<ParkingMarker | null> {
+  if (!isSupabaseConfigured()) return null;
+  const { data, error } = await getSupabase()
+    .from('parking_lots')
+    .select('*')
+    .eq('place_key', placeKey)
+    .maybeSingle();
+  if (error) throw new Error(`parking detail query failed: ${error.message}`);
+  return data ? rowToMarker(data as Record<string, unknown>) : null;
+}

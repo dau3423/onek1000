@@ -109,7 +109,7 @@ function writeRoutePlan(v: RoutePlan | null) {
 
 /** 지도 레이어 — 'gas'=주유소(기존 기본), 'ev'=전기차 충전소, 'carwash'=독립 세차장,
  *  'repair'=자동차 정비소(검사소 포함), 'rental'=렌터카. */
-export type MapLayer = 'gas' | 'ev' | 'carwash' | 'repair' | 'rental';
+export type MapLayer = 'gas' | 'ev' | 'carwash' | 'repair' | 'parking' | 'rental';
 
 interface MapState {
   /** 현재 지도 레이어(주유소/충전소 토글). */
@@ -159,6 +159,17 @@ interface MapState {
    */
   rentalFilter: RentalFilter;
   setRentalFilter: (f: RentalFilter) => void;
+
+  /**
+   * 주차장 '무료만' 필터. 전국 17,552곳 중 무료가 12,160곳(69%)이라 의미 있는 축이다.
+   *
+   * 요금대(금액) 필터는 두지 않는다 — 원천의 basicCharge 결측이 흔해서(표본에서 feeKind='무료'만
+   * 있고 금액이 빈 경우가 다수) 금액으로 거르면 **멀쩡한 주차장이 조용히 사라진다**.
+   * 렌터카에서 요금 필터를 두지 않은 것과 같은 판단이다.
+   * carwashOnly 와 동형으로 세션 저장은 하지 않는다(새로고침 시 off).
+   */
+  parkingFree: boolean;
+  setParkingFree: (v: boolean) => void;
 
   selectedStationId: string | null;
   selectStation: (id: string | null) => void;
@@ -211,6 +222,9 @@ export const useMapStore = create<MapState>((set) => ({
 
   rentalFilter: 'all',
   setRentalFilter: (f) => set({ rentalFilter: f }),
+
+  parkingFree: false,
+  setParkingFree: (v) => set({ parkingFree: v }),
 
   selectedStationId: null,
   selectStation: (id) => set({ selectedStationId: id }),

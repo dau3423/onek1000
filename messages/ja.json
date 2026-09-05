@@ -128,7 +128,9 @@
       "layerRental": "レンタカー",
       "rentalMenuAria": "レンタカーの絞り込み",
       "moreLayersAria": "他の地図レイヤーを表示",
-      "newLayerBadge": "新しいレイヤー"
+      "newLayerBadge": "新しいレイヤー",
+      "layerParking": "駐車場",
+      "parkingMenuAria": "駐車場料金フィルター"
     },
     "carwashFilter": {
       "all": "すべて",
@@ -240,7 +242,12 @@
       "titleRepairArea": "このエリアの整備工場 {count}件",
       "emptyRepair": "このエリアに表示できる整備工場がありません。地図を移動してみてください。",
       "titleRentalArea": "この地域のレンタカー {count}件",
-      "emptyRental": "この範囲に表示するレンタカー業者がありません。地図を動かしてみてください。"
+      "emptyRental": "この範囲に表示するレンタカー業者がありません。地図を動かしてみてください。",
+      "titleParkingArea": "このエリアの駐車場 {count}件",
+      "emptyParking": "このエリアに表示できる駐車場がありません。地図を動かしてみてください。",
+      "emptyParkingFree": "このエリアに無料駐車場はありません。",
+      "disableParkingFree": "無料のみを解除",
+      "parkingLoadFailed": "駐車場情報を読み込めませんでした。しばらくしてからお試しください。"
     },
     "kakaoMap": {
       "errorTitle": "地図を読み込めませんでした。",
@@ -317,7 +324,37 @@
       "imported": "輸入車"
     },
     "rentalMarkerLabel": "{carClass} {price}ウォン",
-    "rentalCarCountLabel": "{count}台"
+    "rentalCarCountLabel": "{count}台",
+    "parkingFilter": {
+      "all": "すべて",
+      "free": "無料のみ"
+    },
+    "parkingMarkerLabel": {
+      "free": "無料",
+      "paid": "有料",
+      "fee": "{time}分 {charge}ウォン"
+    },
+    "parking": {
+      "capacity": "全{count}台",
+      "capacityUnknown": "規模不明",
+      "feeUnit": "{time}分あたり",
+      "feeUnknown": "料金不明",
+      "feeFree": "無料",
+      "feePaid": "有料",
+      "feeMixed": "混合",
+      "lotKind": {
+        "public": "公営",
+        "private": "民営"
+      },
+      "lotType": {
+        "street": "路上",
+        "offstreet": "路外",
+        "annex": "附設"
+      },
+      "sortStraightLine": "直線距離順",
+      "noVacancyShort": "空き情報なし",
+      "freeOnlyChip": "無料のみ"
+    }
   },
   "station": {
     "self": "セルフ",
@@ -1190,5 +1227,39 @@
       "setupHint": "マイ保険会社を登録しておくと、事故・故障の際ここからすぐ電話できます。",
       "anonHint": "保険会社の緊急連絡先と現在地を一つの画面で確認できます。"
     }
+  },
+  "parking": {
+    "feeTitle": "料金",
+    "fee": {
+      "basic": "基本",
+      "add": "追加",
+      "dayTicket": "1日券",
+      "monthTicket": "月極",
+      "payMethods": "支払い",
+      "minutesWon": "{time}分 {charge}ウォン"
+    },
+    "feeDisclaimerWithDate": "公共データ基準（{date}）のため現場料金と異なる場合があります。",
+    "feeDisclaimer": "公共データ基準のため現場料金と異なる場合があります。",
+    "noFee": "料金情報が登録されていません。",
+    "capacityTitle": "規模",
+    "capacityValue": "全{count}台",
+    "capacityUnknown": "規模不明",
+    "disabledZone": "障害者専用区画あり",
+    "noVacancyNotice": "リアルタイムの空き情報は提供していません。「全{count}台」は駐車場全体の規模で、今何台空いているかは分かりません。",
+    "noVacancyNoticeNoCapacity": "リアルタイムの空き情報は提供していません。この駐車場は規模情報も登録されていません。",
+    "operatingInfoTitle": "営業時間",
+    "hours": {
+      "weekday": "平日 {open}～{close}",
+      "saturday": "土曜 {open}～{close}",
+      "holiday": "祝日 {open}～{close}"
+    },
+    "noOperatingInfo": "営業時間の情報がありません。",
+    "instName": "管理: {name}",
+    "noTel": "電話番号の情報がありません。",
+    "callButton": "電話する",
+    "dataSource": "データ提供: 公共データポータル 全国駐車場情報標準データ",
+    "baseDate": " · 基準日 {date}",
+    "publicDataDisclaimer": "公共データ基準のため実際と異なる場合があります。",
+    "notFound": "駐車場が見つかりません。"
   }
 }

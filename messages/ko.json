@@ -128,7 +128,9 @@
       "layerRental": "렌터카",
       "rentalMenuAria": "렌터카 필터",
       "moreLayersAria": "다른 지도 레이어 보기",
-      "newLayerBadge": "새 레이어"
+      "newLayerBadge": "새 레이어",
+      "layerParking": "주차장",
+      "parkingMenuAria": "주차장 요금 필터"
     },
     "carwashFilter": {
       "all": "전체",
@@ -240,7 +242,12 @@
       "titleRepairArea": "이 지역 정비소 {count}곳",
       "emptyRepair": "이 영역에 표시할 정비소가 없어요. 지도를 이동해보세요.",
       "titleRentalArea": "이 지역 렌터카 {count}곳",
-      "emptyRental": "이 영역에 표시할 렌터카 업체가 없어요. 지도를 이동해보세요."
+      "emptyRental": "이 영역에 표시할 렌터카 업체가 없어요. 지도를 이동해보세요.",
+      "titleParkingArea": "이 지역 주차장 {count}곳",
+      "emptyParking": "이 영역에 표시할 주차장이 없어요. 지도를 이동해보세요.",
+      "emptyParkingFree": "이 지역엔 무료 주차장이 없어요.",
+      "disableParkingFree": "무료만 끄기",
+      "parkingLoadFailed": "주차장 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
     },
     "kakaoMap": {
       "errorTitle": "지도를 불러오지 못했습니다.",
@@ -317,7 +324,37 @@
       "imported": "수입차"
     },
     "rentalMarkerLabel": "{carClass} {price}원",
-    "rentalCarCountLabel": "{count}대"
+    "rentalCarCountLabel": "{count}대",
+    "parkingFilter": {
+      "all": "전체",
+      "free": "무료만"
+    },
+    "parkingMarkerLabel": {
+      "free": "무료",
+      "paid": "유료",
+      "fee": "{time}분 {charge}원"
+    },
+    "parking": {
+      "capacity": "총 {count}면",
+      "capacityUnknown": "규모 미상",
+      "feeUnit": "{time}분당",
+      "feeUnknown": "요금 미상",
+      "feeFree": "무료",
+      "feePaid": "유료",
+      "feeMixed": "혼합",
+      "lotKind": {
+        "public": "공영",
+        "private": "민영"
+      },
+      "lotType": {
+        "street": "노상",
+        "offstreet": "노외",
+        "annex": "부설"
+      },
+      "sortStraightLine": "직선거리순",
+      "noVacancyShort": "빈자리 정보 없음",
+      "freeOnlyChip": "무료만"
+    }
   },
   "station": {
     "self": "셀프",
@@ -1190,5 +1227,39 @@
       "setupHint": "내 보험사를 저장해 두면 사고·고장 시 여기서 바로 전화할 수 있어요.",
       "anonHint": "보험사 긴급출동 번호와 지금 내 위치를 한 화면에서 확인하세요."
     }
+  },
+  "parking": {
+    "feeTitle": "요금",
+    "fee": {
+      "basic": "기본",
+      "add": "추가",
+      "dayTicket": "1일권",
+      "monthTicket": "월정기권",
+      "payMethods": "결제",
+      "minutesWon": "{time}분 {charge}원"
+    },
+    "feeDisclaimerWithDate": "공공데이터 기준({date})이라 현장 요금과 다를 수 있어요.",
+    "feeDisclaimer": "공공데이터 기준이라 현장 요금과 다를 수 있어요.",
+    "noFee": "요금 정보가 등록되어 있지 않아요.",
+    "capacityTitle": "규모",
+    "capacityValue": "총 {count}면",
+    "capacityUnknown": "규모 미상",
+    "disabledZone": "장애인전용구역 있음",
+    "noVacancyNotice": "실시간 빈자리 정보는 제공하지 않아요. '총 {count}면'은 이 주차장 전체 규모이고, 지금 몇 자리가 비었는지는 알 수 없어요.",
+    "noVacancyNoticeNoCapacity": "실시간 빈자리 정보는 제공하지 않아요. 이 주차장은 규모 정보도 등록되어 있지 않아요.",
+    "operatingInfoTitle": "운영시간",
+    "hours": {
+      "weekday": "평일 {open} ~ {close}",
+      "saturday": "토요일 {open} ~ {close}",
+      "holiday": "공휴일 {open} ~ {close}"
+    },
+    "noOperatingInfo": "운영시간 정보가 없어요.",
+    "instName": "관리: {name}",
+    "noTel": "전화번호 정보가 없어요.",
+    "callButton": "전화걸기",
+    "dataSource": "데이터 제공: 공공데이터포털 전국주차장정보표준데이터",
+    "baseDate": " · 기준일 {date}",
+    "publicDataDisclaimer": "공공데이터 기준이라 실제와 다를 수 있어요.",
+    "notFound": "주차장을 찾을 수 없어요."
   }
 }

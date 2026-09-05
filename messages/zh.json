@@ -128,7 +128,9 @@
       "layerRental": "租车",
       "rentalMenuAria": "租车筛选",
       "moreLayersAria": "查看其他地图图层",
-      "newLayerBadge": "新图层"
+      "newLayerBadge": "新图层",
+      "layerParking": "停车场",
+      "parkingMenuAria": "停车场费用筛选"
     },
     "carwashFilter": {
       "all": "全部",
@@ -240,7 +242,12 @@
       "titleRepairArea": "该区域维修厂 {count} 家",
       "emptyRepair": "此区域没有可显示的维修厂。请移动地图试试。",
       "titleRentalArea": "该区域租车 {count}家",
-      "emptyRental": "该区域没有可显示的租车公司，请移动地图试试。"
+      "emptyRental": "该区域没有可显示的租车公司，请移动地图试试。",
+      "titleParkingArea": "该区域停车场 {count}处",
+      "emptyParking": "该区域没有可显示的停车场。请移动地图试试。",
+      "emptyParkingFree": "该区域没有免费停车场。",
+      "disableParkingFree": "关闭仅免费",
+      "parkingLoadFailed": "无法加载停车场信息。请稍后再试。"
     },
     "kakaoMap": {
       "errorTitle": "地图加载失败。",
@@ -317,7 +324,37 @@
       "imported": "进口车"
     },
     "rentalMarkerLabel": "{carClass} {price}韩元",
-    "rentalCarCountLabel": "{count}辆"
+    "rentalCarCountLabel": "{count}辆",
+    "parkingFilter": {
+      "all": "全部",
+      "free": "仅免费"
+    },
+    "parkingMarkerLabel": {
+      "free": "免费",
+      "paid": "收费",
+      "fee": "{time}分钟 {charge}韩元"
+    },
+    "parking": {
+      "capacity": "共{count}个车位",
+      "capacityUnknown": "规模不明",
+      "feeUnit": "每{time}分钟",
+      "feeUnknown": "费用不明",
+      "feeFree": "免费",
+      "feePaid": "收费",
+      "feeMixed": "混合",
+      "lotKind": {
+        "public": "公营",
+        "private": "民营"
+      },
+      "lotType": {
+        "street": "路上",
+        "offstreet": "路外",
+        "annex": "附设"
+      },
+      "sortStraightLine": "按直线距离",
+      "noVacancyShort": "无空位信息",
+      "freeOnlyChip": "仅免费"
+    }
   },
   "station": {
     "self": "自助",
@@ -1190,5 +1227,39 @@
       "setupHint": "保存您的保险公司后，事故或故障时可在此直接拨打。",
       "anonHint": "在一个页面查看保险公司紧急电话和您的当前位置。"
     }
+  },
+  "parking": {
+    "feeTitle": "费用",
+    "fee": {
+      "basic": "基本",
+      "add": "追加",
+      "dayTicket": "日票",
+      "monthTicket": "月票",
+      "payMethods": "支付",
+      "minutesWon": "{time}分钟 {charge}韩元"
+    },
+    "feeDisclaimerWithDate": "基于公共数据（{date}），可能与现场费用不同。",
+    "feeDisclaimer": "基于公共数据，可能与现场费用不同。",
+    "noFee": "未登记费用信息。",
+    "capacityTitle": "规模",
+    "capacityValue": "共{count}个车位",
+    "capacityUnknown": "规模不明",
+    "disabledZone": "设有无障碍车位",
+    "noVacancyNotice": "不提供实时空位信息。“共{count}个车位”是该停车场的总规模，目前有多少空位无法得知。",
+    "noVacancyNoticeNoCapacity": "不提供实时空位信息。该停车场的规模信息也未登记。",
+    "operatingInfoTitle": "营业时间",
+    "hours": {
+      "weekday": "工作日 {open}～{close}",
+      "saturday": "周六 {open}～{close}",
+      "holiday": "节假日 {open}～{close}"
+    },
+    "noOperatingInfo": "没有营业时间信息。",
+    "instName": "管理: {name}",
+    "noTel": "没有电话号码信息。",
+    "callButton": "拨打电话",
+    "dataSource": "数据来源: 公共数据门户 全国停车场信息标准数据",
+    "baseDate": " · 基准日 {date}",
+    "publicDataDisclaimer": "基于公共数据，可能与实际不同。",
+    "notFound": "找不到该停车场。"
   }
 }
