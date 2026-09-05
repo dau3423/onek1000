@@ -60,6 +60,8 @@ export const keys = {
   avgNation: () => `avg:nation`,
   avgSido: (prod: string) => `avg:sido:${prod}`,
   evBbox: (q: string) => `ev:bbox:${q}`,
+  // 주차장 bbox(지도 영역) 조회 — 좌표 격자 + 영역 크기(+무료만 필터).
+  parkingBbox: (q: string) => `parking:bbox:${q}`,
   // 세차장 bbox(지도 영역) 조회 — 좌표 격자만. 유형 필터는 클라이언트에서 적용하므로 캐시 차원에 없음.
   carwashBbox: (q: string) => `carwash:bbox:${q}`,
   repairBbox: (q: string) => `repair:bbox:${q}`,
