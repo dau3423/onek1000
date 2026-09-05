@@ -3,7 +3,7 @@ import { getTranslations } from 'next-intl/server';
 import { queryParkingDetail } from '@/lib/db/parking';
 import { BackButton } from '@/components/common/BackButton';
 import { NaviButton } from '@/components/station/NaviButton';
-import { toFeeKindCode, toLotKindCode, toLotTypeCode } from '@/lib/parking/labels';
+import { toFeeKindCode, toLotKindCode, toLotTypeCode, realFee, hasRealAmount } from '@/lib/parking/labels';
 import type { ParkingMarker } from '@/types/parking';
 import { PinIcon, PhoneIcon, ClockIcon, CoinIcon, BuildingIcon } from '@/components/icons';
 
@@ -46,9 +46,12 @@ export default async function ParkingDetailPage({ params }: Props) {
   ].filter((h): h is { key: 'weekday' | 'saturday' | 'holiday'; open: string; close: string } => !!h.open && !!h.close);
 
   // 값이 있는 요금만 뽑는다 — '0원'이나 빈 행을 그리지 않는다.
-  const hasBasic = detail.basicCharge != null && detail.basicTime != null;
-  const hasAdd = detail.addUnitCharge != null && detail.addUnitTime != null;
-  const anyFee = hasBasic || hasAdd || detail.dayTicket != null || detail.monthTicket != null;
+  // 원천이 무료 주차장에 0 을 넣으므로 **양수일 때만** 요금으로 본다(labels.ts hasRealFee 주석).
+  const basicFee = realFee(detail.basicCharge, detail.basicTime);
+  const addFee = realFee(detail.addUnitCharge, detail.addUnitTime);
+  const hasBasic = basicFee !== null;
+  const hasAdd = addFee !== null;
+  const anyFee = hasBasic || hasAdd || hasRealAmount(detail.dayTicket) || hasRealAmount(detail.monthTicket);
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-2xl bg-white pb-24">
@@ -119,7 +122,7 @@ export default async function ParkingDetailPage({ params }: Props) {
                 <div className="flex justify-between gap-4">
                   <dt className="text-gray-500">{t('fee.basic')}</dt>
                   <dd className="font-semibold text-gray-900">
-                    {t('fee.minutesWon', { time: detail.basicTime!, charge: detail.basicCharge!.toLocaleString() })}
+                    {t('fee.minutesWon', { time: basicFee!.time, charge: basicFee!.charge.toLocaleString() })}
                   </dd>
                 </div>
               )}
@@ -127,17 +130,17 @@ export default async function ParkingDetailPage({ params }: Props) {
                 <div className="flex justify-between gap-4">
                   <dt className="text-gray-500">{t('fee.add')}</dt>
                   <dd className="font-semibold text-gray-900">
-                    {t('fee.minutesWon', { time: detail.addUnitTime!, charge: detail.addUnitCharge!.toLocaleString() })}
+                    {t('fee.minutesWon', { time: addFee!.time, charge: addFee!.charge.toLocaleString() })}
                   </dd>
                 </div>
               )}
-              {detail.dayTicket != null && (
+              {hasRealAmount(detail.dayTicket) && (
                 <div className="flex justify-between gap-4">
                   <dt className="text-gray-500">{t('fee.dayTicket')}</dt>
                   <dd className="font-semibold text-gray-900">₩{detail.dayTicket.toLocaleString()}</dd>
                 </div>
               )}
-              {detail.monthTicket != null && (
+              {hasRealAmount(detail.monthTicket) && (
                 <div className="flex justify-between gap-4">
                   <dt className="text-gray-500">{t('fee.monthTicket')}</dt>
                   <dd className="font-semibold text-gray-900">₩{detail.monthTicket.toLocaleString()}</dd>

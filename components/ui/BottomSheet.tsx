@@ -16,7 +16,7 @@ import { rankEvStations, type EvStationRanked, type EvSortOrigin } from '@/lib/e
 import type { CarwashMarker } from '@/types/carwash';
 import type { RepairMarker } from '@/types/repair';
 import type { ParkingMarker } from '@/types/parking';
-import { toFeeKindCode, toLotKindCode } from '@/lib/parking/labels';
+import { toFeeKindCode, toLotKindCode, realFee } from '@/lib/parking/labels';
 import type { RentalMarker } from '@/types/rental';
 import { primaryFee, RENTAL_COLOR, RENTAL_EV_COLOR } from '@/types/rental';
 import { REPAIR_BRAND_COLOR, REPAIR_TYPE_COLOR } from '@/types/repair';
@@ -920,6 +920,8 @@ function ParkingRow({
   // 매핑 실패 시 원문을 그대로 노출한다 — 사라지는 것보다 낫다(lib/parking/labels.ts 주석).
   const kindText = lotKindCode ? t(`parking.lotKind.${lotKindCode}`) : place.lotKind;
   const free = feeCode === 'free';
+  // 원천이 무료 주차장에 0 을 넣으므로 양수일 때만 요금으로 본다(labels.ts realFee 주석).
+  const fee = realFee(place.basicCharge, place.basicTime);
   return (
     <li>
       <div className="flex w-full items-center gap-3 px-5 py-3">
@@ -953,13 +955,13 @@ function ParkingRow({
             </div>
           </div>
           <span className="shrink-0 text-right">
-            {place.basicCharge != null && place.basicTime != null ? (
+            {fee ? (
               <>
                 <span className="block text-sm font-extrabold text-gray-900 dark:text-gray-50">
-                  ₩{place.basicCharge.toLocaleString()}
+                  ₩{fee.charge.toLocaleString()}
                 </span>
                 <span className="block text-[10px] text-gray-400 dark:text-gray-500">
-                  {t('parking.feeUnit', { time: place.basicTime })}
+                  {t('parking.feeUnit', { time: fee.time })}
                 </span>
               </>
             ) : (

@@ -53,3 +53,31 @@ export function parkingSizeTier(capacity: number | null | undefined): ParkingSiz
   if (capacity >= 50) return 'md';
   return 'sm';
 }
+
+/**
+ * "표시할 만한 요금"인지 — 금액과 단위시간이 **둘 다 양수**여야 한다.
+ *
+ * 원천은 무료 주차장에 0 을 넣는다(2026-09-06 실측: basic_charge=0 이 7,883곳 = 전체의 45%,
+ * 그중 표본 400건의 399건이 fee_kind='무료'. basic_time 도 함께 0 인 경우가 많다).
+ * null 검사만으로 거르면 화면에 **"₩0 5분당"·"0분 0원"** 이 뜬다 — 요금이 0원인 게 아니라
+ * 요금 개념이 없는 곳이므로, 그런 경우엔 금액 대신 무료/유료 라벨로 떨어져야 한다.
+ */
+export function hasRealFee(charge: number | null | undefined, time: number | null | undefined): boolean {
+  return typeof charge === 'number' && charge > 0 && typeof time === 'number' && time > 0;
+}
+
+/** 금액 단독 필드(1일권·월정기권 등) — 0 은 미기재로 본다. 타입 술어라 호출부에서 좁혀진다. */
+export function hasRealAmount(v: number | null | undefined): v is number {
+  return typeof v === 'number' && v > 0;
+}
+
+/**
+ * 요금(금액+단위시간)을 좁혀서 돌려준다. 표시할 만하지 않으면 null.
+ * hasRealFee 는 인자가 둘이라 타입 술어로 만들 수 없어, 값을 담아 돌려주는 쪽을 쓴다.
+ */
+export function realFee(
+  charge: number | null | undefined,
+  time: number | null | undefined,
+): { charge: number; time: number } | null {
+  return hasRealFee(charge, time) ? { charge: charge as number, time: time as number } : null;
+}

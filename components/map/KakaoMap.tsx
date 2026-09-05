@@ -18,7 +18,7 @@ import type { ParkingMarker } from '@/types/parking';
 import type { RentalMarker } from '@/types/rental';
 import { buildRentalMarkerContent } from '@/lib/map/rentalMarker';
 import { buildParkingMarkerContent } from '@/lib/map/parkingMarker';
-import { toFeeKindCode } from '@/lib/parking/labels';
+import { toFeeKindCode, hasRealFee } from '@/lib/parking/labels';
 import { primaryFee } from '@/types/rental';
 import { GRAY_DOTS_ENABLED } from '@/lib/flags';
 import { SPARKLE_SVG_STRING } from '@/components/icons';
@@ -967,8 +967,10 @@ export function KakaoMap({
       // 단위를 반드시 앞에 붙인다("5분 100원") — 단위 없는 원화 숫자는 이 앱에서 유가다.
       // 금액이 없으면 무료/유료 라벨로 떨어지고, 그것도 없으면 이름을 쓴다(빈 라벨 금지).
       const feeCode = toFeeKindCode(p.feeKind);
-      const label = (p.basicCharge != null && p.basicTime != null)
-        ? t('parkingMarkerLabel.fee', { time: p.basicTime, charge: p.basicCharge.toLocaleString() })
+      // 금액·단위시간이 둘 다 양수일 때만 요금을 쓴다 — 원천이 무료 주차장에 0 을 넣어서,
+      // null 검사만 하면 "0분 0원" 이 뜬다(전체의 45%가 basic_charge=0).
+      const label = hasRealFee(p.basicCharge, p.basicTime)
+        ? t('parkingMarkerLabel.fee', { time: p.basicTime as number, charge: (p.basicCharge as number).toLocaleString() })
         : feeCode === 'free'
           ? t('parkingMarkerLabel.free')
           : feeCode === 'paid' || feeCode === 'mixed'
