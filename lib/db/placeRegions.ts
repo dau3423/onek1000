@@ -123,6 +123,24 @@ export async function queryPlacesBySigungu(
 const FALLBACK_BUDGET_MS = 15_000;
 
 /**
+ * RPC 시간 상한(ms). 0058 의 loose index scan 이면 수백 ms 면 끝나지만, 콜드 캐시나 데이터 증가로
+ * 느려질 수 있다. 넘기면 폴백으로 내려가 부분 결과라도 들고 빌드를 살린다.
+ * FALLBACK_BUDGET_MS 와 합쳐도 60초(staticPageGenerationTimeout)에 한참 못 미치게 잡는다.
+ */
+const RPC_DEADLINE_MS = 10_000;
+
+/** 프로미스에 마감을 건다 — 초과 시 reject. (빌드가 무한정 기다리지 않게) */
+function withDeadline<T>(p: PromiseLike<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timeout ${ms}ms`)), ms);
+    p.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); },
+    );
+  });
+}
+
+/**
  * 레이어별 "데이터가 있는 시군구 코드" 집합.
  *
  * 1순위는 RPC(마이그레이션 0057) — SQL distinct 한 번이다. sigungu_code 인덱스(0048)가 있어
@@ -140,8 +158,14 @@ export async function queryDistrictsWithPlaces(layer: PlaceLayer): Promise<Set<s
   const sb = getSupabase();
 
   // 1) RPC — 왕복 1회.
+  //    시간 상한을 반드시 건다. RPC 가 느려지면(데이터 증가·콜드 캐시) 빌드가 다시 60초를 넘긴다 —
+  //    폴백에만 예산을 두고 이쪽을 열어두면 안전장치에 구멍이 남는다.
   try {
-    const { data, error } = await sb.rpc('rpc_districts_with_places', { p_layer: layer });
+    const { data, error } = await withDeadline(
+      sb.rpc('rpc_districts_with_places', { p_layer: layer }),
+      RPC_DEADLINE_MS,
+      `districts rpc ${layer}`,
+    );
     if (!error && Array.isArray(data)) {
       for (const row of data as unknown[]) {
         // setof text 는 스칼라 배열로 오지만, 드라이버/버전에 따라 객체로 감싸질 수 있어 둘 다 받는다.
@@ -151,7 +175,16 @@ export async function queryDistrictsWithPlaces(layer: PlaceLayer): Promise<Set<s
       if (out.size) return out;
     }
     if (error) {
-      console.warn(`[placeRegions] RPC 미사용(${layer}) — 마이그레이션 0057 미적용? ${error.message}`);
+      // 사유를 구분해 적는다. "함수 없음"과 "느려서 죽음"은 조치가 완전히 다른데,
+      // 뭉뚱그리면 로그를 읽는 사람이 엉뚱한 곳을 본다(실제로 그런 일이 있었다).
+      const code = (error as { code?: string }).code;
+      const why =
+        code === 'PGRST202' || /could not find the function/i.test(error.message)
+          ? '마이그레이션 0057 미적용'
+          : code === '57014'
+            ? '문(statement) 타임아웃 — 0058(loose index scan) 미적용이면 콜드 호출에서 재현된다'
+            : `${code ?? '?'}`;
+      console.warn(`[placeRegions] RPC 실패(${layer}) — ${why}: ${error.message}`);
     }
   } catch (e) {
     console.warn(`[placeRegions] RPC 호출 실패(${layer}):`, (e as Error).message);
