@@ -757,7 +757,13 @@ export default function HomePage() {
         resetAlert();
       })
       .catch((e) => {
-        if (e.name !== 'AbortError') console.error('radius fetch fail', e);
+        if (e.name === 'AbortError') return;
+        console.error('radius fetch fail', e);
+        // ★ 실패한 키를 되돌린다. 게이트 키를 fetch **시작 전에** 세우기 때문에, 되돌리지 않으면
+        //   이 좌표에 잠겨 재시도가 영영 없다 — 목록이 빈 채로 굳고, 지도(bbox)는 이 잠금이
+        //   없어 계속 갱신되므로 "지도는 보이는데 목록만 빈다"가 된다.
+        //   그 사이 새 조회가 시작돼 키가 바뀌었으면 건드리지 않는다(최신 키를 지우면 중복 조회).
+        if (lastRadiusKeyRef.current === key) lastRadiusKeyRef.current = null;
       });
     // geo.coords 전체가 아닌 위경도 변화에만 반응 (양자화 게이트로 재조회 빈도 제어)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1265,6 +1271,7 @@ export default function HomePage() {
           expOnly={expOnly}
           expStations={expStations}
           activeTab={activeTab}
+          myRadiusM={activeTab === 'nearby' ? NEARBY_RADIUS_M : ALERT_RADIUS_M}
           product={product}
           layer={layer}
           evStations={evStations}

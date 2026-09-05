@@ -259,6 +259,11 @@ interface Props {
   onRepairMarkerClick?: (s: RepairMarker) => void;
 
   /** 렌터카 마커 목록(layer='rental' 일 때만 그린다). */
+  /**
+   * 내 위치 원의 반경(m). 하단 시트 활성 탭이 뜻하는 범위와 같은 값을 넘긴다
+   * ('이 지역' = 알람 반경 1km / '내 주변' = 목록 반경 10km).
+   */
+  myRadiusM?: number;
   rentalPlaces?: RentalMarker[];
   parkingPlaces?: ParkingMarker[];
   /** 렌터카 마커 클릭 콜백 — 상세로 이동. */
@@ -311,6 +316,7 @@ export function KakaoMap({
   carwashPlaces,
   repairShops,
   onRepairMarkerClick,
+  myRadiusM = 1000,
   rentalPlaces,
   onRentalMarkerClick,
   parkingPlaces,
@@ -1285,7 +1291,12 @@ export function KakaoMap({
     nationalTop10, nearbyTop10, nearbyListRank, layer, expOnly,
   ]);
 
-  // 내 위치 마커 + 1km 원
+  // 내 위치 마커 + 반경 원.
+  //
+  // 원의 반경은 **하단 시트의 활성 탭이 뜻하는 범위**와 같아야 한다(myRadiusM).
+  // 예전에는 1000m 하드코딩이라, '내 주변 10km' 탭에서 3~4km 떨어진 주유소가 목록에 뜨는데
+  // 지도에는 1km 원만 그려져 "원 밖인데 왜 내 주변인가"로 읽혔다. 원에 라벨도 없어 그 원이
+  // 알람 반경(ALERT_RADIUS_M)인지 목록 반경(NEARBY_RADIUS_M)인지 구분할 방법이 없었다.
   useEffect(() => {
     if (!ready || !mapRef.current || !myLocation) return;
     const map = mapRef.current;
@@ -1323,7 +1334,7 @@ export function KakaoMap({
     myOverlayRef.current = overlay;
 
     myCircleRef.current = new window.kakao.maps.Circle({
-      center: pos, radius: 1000,
+      center: pos, radius: myRadiusM,
       strokeWeight: 1, strokeColor: '#1d4ed8', strokeOpacity: 0.6, strokeStyle: 'dash',
       fillColor: '#1d4ed8', fillOpacity: 0.06,
     });
@@ -1343,7 +1354,7 @@ export function KakaoMap({
     }
     // follow 변화만으로는 재이동하지 않고 위치 갱신 시점에만 추적 (의도치 않은 이동 방지)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, myLocation]);
+  }, [ready, myLocation, myRadiusM]);
 
   // 내 위치 버튼 재클릭 시(recenterSignal 증가) 명시적으로 내 위치로 이동
   useEffect(() => {
